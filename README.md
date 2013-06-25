@@ -1,4 +1,4 @@
 bioinformatics
 ==============
 
-Bioinformatics tools developed at Roche NimbleGen
+Bioinformatics tools developed at Roche NimbleGen.
