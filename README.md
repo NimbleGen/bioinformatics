@@ -22,5 +22,5 @@ http://m2e-jaxb2-connector.eclipselabs.org.codespot.com/hg.update/org.eclipselab
   2. Type an arbitrary name in the “Name” textbox when the “Add Repository” dialog appears and click the “OK” button:<br>  ![alt text](https://github.com/NimbleGen/bioinformatics/raw/master/documentation/images/jaxb.png "Add Repository Dialog")<br>
   3. Make sure the m2e-jaxb2-connector is selected and click the “Next>” button: <br>  ![alt text](https://github.com/NimbleGen/bioinformatics/raw/master/documentation/images/jaxb2.png "Install Jaxb Dialog")<br>
   4. An “Install Details” panel will appear, click the “Next>” button. <br>  ![alt text](https://github.com/NimbleGen/bioinformatics/raw/master/documentation/images/jaxb3.png "Install Jaxb Details Dialog")<br>
-  5. Make sure the “I accept the terms of the license agreement” radio button is selected and click the “Finish” button.
+  5. Make sure the “I accept the terms of the license agreement” radio button is selected and click the “Finish” button. <br>  ![alt text](https://github.com/NimbleGen/bioinformatics/raw/master/documentation/images/jaxb4.png "Accept Jaxb License Dialog")<br>
   6. After the connector is installed you will be prompted to restart eclipse, comply.
