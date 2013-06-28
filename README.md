@@ -13,7 +13,7 @@ Building the Heatseq Tool in Eclipse
 2A (optional) – Deleting the C://Users/[user name]/.eclipse directory may alleviate issues with installing plug-ins.
 3.  Run eclipse by double clicking the eclipse.exe file (sample location: C://Eclipse/Juno/eclipse/eclipse.exe).  You may want to right click the eclipse.exe file and “Run as Administrator” if you run into issues installing plug-ins.
 4.  Create a workspace by browsing to the desired location for the heatseq code when the “Select a workspace” dialog appears (Recommended:  C://Eclipse_Workspaces/heatseq_workspace).
-5.  Install EGit plug-in by clicking “Help”>>”Install New Software…” from the main menu within Eclipse.   Add http://download.eclipse.org/releases/juno to the "Work with" text box and "git" in the type filter textbox and hit return.  Then select and install:
+5.  Install EGit plug-in by clicking “Help”>>”Install New Software…” from the main menu within Eclipse.   Add http://download.eclipse.org/releases/juno to the "Work with" text box and "git" in the type filter textbox and hit return:  <br>  ![alt text](https://github.com/NimbleGen/bioinformatics/raw/master/documentation/images/egit.png "Install EGit Dialog")<br> Then select and install:
   1. Eclipse EGit
   2. Eclipse JGit
 6.  Install m2e-jaxb2-connector.
