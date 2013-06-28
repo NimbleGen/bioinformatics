@@ -1,0 +1,284 @@
+/**
+ *   Copyright 2013 Roche NimbleGen
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+package com.roche.sequencing.bioinformatics.common.commandline;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * 
+ * The result of using a CommandLineParser to parse the arguments passed into the application.
+ * 
+ */
+public class ParsedCommandLine {
+	private final Map<CommandLineOption, String> argumentToValueMap;
+	private final CommandLineOptionsGroup group;
+
+	private final Set<NameValuePair> unrecognizedShortFormOptions;
+	private final Set<NameValuePair> unrecognizedLongFormOptions;
+
+	private final Set<String> duplicateArguments;
+	private final Set<String> foundArguments;
+
+	private final List<String> nonOptionArguments;
+
+	ParsedCommandLine(CommandLineOptionsGroup group) {
+		this.group = group;
+		argumentToValueMap = new LinkedHashMap<CommandLineOption, String>();
+		unrecognizedShortFormOptions = new LinkedHashSet<NameValuePair>();
+		unrecognizedLongFormOptions = new LinkedHashSet<NameValuePair>();
+		duplicateArguments = new LinkedHashSet<String>();
+		foundArguments = new LinkedHashSet<String>();
+		nonOptionArguments = new ArrayList<String>();
+	}
+
+	private void markArgumentAsFound(String argumentName) {
+		if (foundArguments.contains(argumentName)) {
+			duplicateArguments.add(argumentName);
+		} else {
+			foundArguments.add(argumentName);
+		}
+	}
+
+	public String[] getNonOptionArguments() {
+		return nonOptionArguments.toArray(new String[0]);
+	}
+
+	void addNonOptionArgument(String nonOptionArgument) {
+		markArgumentAsFound(nonOptionArgument);
+		nonOptionArguments.add(nonOptionArgument);
+	}
+
+	/**
+	 * @return the CommandLineOptionsGroup used to parse this command line
+	 */
+	public CommandLineOptionsGroup getCommandLineOptionsGroup() {
+		return group;
+	}
+
+	void setArgumentValue(String option, String value) {
+		markArgumentAsFound(option);
+		if (CommandLineParser.isLongFormIdentifierArgument(option)) {
+			setLongFormArgumentValue(option, value);
+		} else if (CommandLineParser.isShortFormIdentifierArgument(option)) {
+			setShortFormArgumentValue(option, value);
+		} else {
+			throw new AssertionError("Only options starting with " + CommandLineParser.LONG_OPTION_INDICATOR + " or " + CommandLineParser.SHORT_OPTION_INDICATOR + " are accepted.");
+		}
+	}
+
+	private void setShortFormArgumentValue(String shortFormOption, String value) {
+		char[] shortFormOptionsAsChars = parseShortFormOption(shortFormOption);
+
+		for (char shortFormOptionAsChar : shortFormOptionsAsChars) {
+			setShortFormArgumentValue(shortFormOptionAsChar, value);
+		}
+	}
+
+	static char[] parseShortFormOption(String shortFormOption) {
+		int optionsStartIndex = CommandLineParser.SHORT_OPTION_INDICATOR.length();
+		char[] shortFormOptionsAsChars = new char[shortFormOption.length() - optionsStartIndex];
+
+		for (int i = optionsStartIndex; i < shortFormOption.length(); i++) {
+			char shortFormOptionAsChar = shortFormOption.charAt(i);
+
+			shortFormOptionsAsChars[i - optionsStartIndex] = shortFormOptionAsChar;
+
+		}
+
+		return shortFormOptionsAsChars;
+	}
+
+	/**
+	 * @param option
+	 * @return true if the provided option was found within the arguments passed into the application
+	 */
+	public boolean isOptionPresent(CommandLineOption option) {
+		return argumentToValueMap.containsKey(option);
+	}
+
+	private void setShortFormArgumentValue(char shortFormOption, String value) {
+		CommandLineOption option = group.getMatchingCommandLineOptionForShortFormOption(shortFormOption);
+		if (option == null) {
+			unrecognizedShortFormOptions.add(new NameValuePair("" + shortFormOption, value));
+			markArgumentAsFound("" + shortFormOption);
+		} else {
+			markArgumentAsFound(option.getLongFormOption());
+			if (option.isFlag() && (value != null) && !value.isEmpty()) {
+				throw new IllegalStateException("Value[" + value + "] was passed in for a flag option[" + option.getOptionName() + "].");
+			}
+
+			argumentToValueMap.put(option, value);
+		}
+	}
+
+	private void setLongFormArgumentValue(String longFormOption, String value) {
+		longFormOption = longFormOption.replaceFirst(CommandLineParser.LONG_OPTION_INDICATOR, "");
+
+		CommandLineOption option = group.getMatchingCommandLineOptionForLongFormOption(longFormOption);
+		markArgumentAsFound("" + longFormOption);
+
+		if (option == null) {
+			unrecognizedLongFormOptions.add(new NameValuePair(longFormOption, value));
+		} else {
+			if (option.isFlag() && (value != null) && !value.isEmpty()) {
+				throw new IllegalStateException("Value[" + value + "] was passed in for a flag option[" + option.getOptionName() + "].");
+			}
+
+			argumentToValueMap.put(option, value);
+		}
+	}
+
+	void setArgumentValue(CommandLineOption option, String value) {
+		markArgumentAsFound("" + option.getLongFormOption());
+		argumentToValueMap.put(option, value);
+	}
+
+	/**
+	 * @param option
+	 * @return the value associated with the given option
+	 */
+	public String getOptionsValue(CommandLineOption option) {
+		return argumentToValueMap.get(option);
+	}
+
+	/**
+	 * @return missing required options
+	 */
+	public CommandLineOption[] getMissingRequiredOptions() {
+		Set<CommandLineOption> missingRequiredOptions = new LinkedHashSet<CommandLineOption>();
+
+		for (CommandLineOption argument : group) {
+			if (argument.isRequired() && !argumentToValueMap.containsKey(argument)) {
+				missingRequiredOptions.add(argument);
+			}
+		}
+
+		return missingRequiredOptions.toArray(new CommandLineOption[0]);
+	}
+
+	void addUnrecognizedShortFormOptions(String unrecognizedOption) {
+		unrecognizedShortFormOptions.add(new NameValuePair(unrecognizedOption, ""));
+	}
+
+	void addUnrecognizedLongFormOptions(String unrecognizedOption) {
+		unrecognizedLongFormOptions.add(new NameValuePair(unrecognizedOption, ""));
+	}
+
+	/**
+	 * @return unrecognized short form options
+	 */
+	public Set<NameValuePair> getUnrecognizedShortFormOptions() {
+		return unrecognizedShortFormOptions;
+	}
+
+	/**
+	 * @return unrecognized long form options
+	 */
+	public Set<NameValuePair> getUnrecognizedLongFormOption() {
+		return unrecognizedLongFormOptions;
+	}
+
+	/**
+	 * @return duplicate arguments
+	 */
+	public Set<String> getDuplicateArguments() {
+		return duplicateArguments;
+	}
+
+	@Override
+	public String toString() {
+		return "ParsedCommandLine [argumentToValueMap=" + argumentToValueMap + ", group=" + group + ", unrecognizedShortFormOptions=" + unrecognizedShortFormOptions + ", unrecognizedLongFormOption="
+				+ unrecognizedLongFormOptions + ", nonOptionArguments=" + nonOptionArguments + " Missing Required Options=" + Arrays.toString(getMissingRequiredOptions()) + "]";
+	}
+
+	/**
+	 * 
+	 * Class used internally to store name value pairs
+	 * 
+	 */
+	static class NameValuePair {
+		private final String name;
+		private final String value;
+
+		private NameValuePair(String name, String value) {
+			super();
+			this.name = name;
+			this.value = value;
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public String getValue() {
+			return value;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+
+			result = prime * result + ((name == null) ? 0 : name.hashCode());
+			result = prime * result + ((value == null) ? 0 : value.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
+			}
+
+			if (obj == null) {
+				return false;
+			}
+
+			if (getClass() != obj.getClass()) {
+				return false;
+			}
+
+			NameValuePair other = (NameValuePair) obj;
+
+			if (name == null) {
+				if (other.name != null) {
+					return false;
+				}
+			} else if (!name.equals(other.name)) {
+				return false;
+			}
+
+			if (value == null) {
+				if (other.value != null) {
+					return false;
+				}
+			} else if (!value.equals(other.value)) {
+				return false;
+			}
+
+			return true;
+		}
+
+	}
+
+}
