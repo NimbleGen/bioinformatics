@@ -32,8 +32,8 @@ import java.util.Set;
  */
 public final class DelimitedFileParserUtil {
 	private static final int NUMBER_OF_ROWS_TO_LOOK_FOR_HEADER = 100;
-	private static final String LINE_FEED = "\n";
-	private static final String CARRIAGE_RETURN = "\r";
+	private static final String LINE_FEED = StringUtil.LINUX_NEWLINE;
+	private static final String CARRIAGE_RETURN = StringUtil.CARRIAGE_RETURN;
 
 	// NOTE: WINDOWS_NEWLINE = CARRIAGE_RETURN + LINE_FEED;
 	// NOTE: LINUX_NEWLINE = LINE_FEED;

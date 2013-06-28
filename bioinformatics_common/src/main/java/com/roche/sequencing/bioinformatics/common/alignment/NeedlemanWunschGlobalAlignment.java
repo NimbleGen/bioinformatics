@@ -267,8 +267,8 @@ public class NeedlemanWunschGlobalAlignment {
 		TraceabilityMatrixCell cellAbove = traceabilityMatrix[rowIndex - 1][columnIndex];
 		TraceabilityMatrixCell cellToLeft = traceabilityMatrix[rowIndex][columnIndex - 1];
 
-		boolean isBottomOfColumn = rowIndex == (getQuerySequence().size());
-		boolean isEndOfRow = columnIndex == (getReferenceSequence().size());
+		boolean isBottomOfColumn = (rowIndex == (getQuerySequence().size()));
+		boolean isEndOfRow = (columnIndex == (getReferenceSequence().size()));
 
 		TraceabilityMatrixCell sourceOfCellAbove = cellAbove.getSourceCell();
 		boolean isVerticalGapContinuation = ((sourceOfCellAbove != null) && (sourceOfCellAbove.getColumnIndex() == cellAbove.getColumnIndex()));

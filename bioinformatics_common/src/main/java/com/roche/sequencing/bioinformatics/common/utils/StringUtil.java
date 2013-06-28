@@ -22,9 +22,16 @@ package com.roche.sequencing.bioinformatics.common.utils;
  */
 public final class StringUtil {
 	public static final String NEWLINE = System.getProperty("line.separator");
-	public static final String LINUX_NEWLINE = "\n";
-	public static final String WINDOWS_NEWLINE = "\r\n";
+	
 	public static final String TAB = "\t";
+	public static final String CARRIAGE_RETURN = "\r";
+	
+	// NOTE: WINDOWS_NEWLINE = CARRIAGE_RETURN + LINE_FEED;
+	// NOTE: LINUX_NEWLINE = LINE_FEED;
+	public static final String LINUX_NEWLINE = "\n";
+	public static final String WINDOWS_NEWLINE = CARRIAGE_RETURN+LINUX_NEWLINE;
+	
+	
 
 	private StringUtil() {
 		throw new AssertionError();

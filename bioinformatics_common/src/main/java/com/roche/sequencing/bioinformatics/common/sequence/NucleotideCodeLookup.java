@@ -21,7 +21,7 @@ import java.util.Map;
 
 /**
  * 
- * Simple Util to store codes for futre lookup
+ * Simple Util to store codes for future lookup
  * 
  */
 class NucleotideCodeLookup {

@@ -21,19 +21,14 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * 
  * Util for working with files
  * 
  */
 public final class FileUtil {
-	private static final Logger LOGGER = LoggerFactory.getLogger(FileUtil.class);
-
+	
 	private static final int BYTES_PER_KB = 1024;
-	private static final int THREAD_SLEEP_TIME = 100;
 	private static final int STRING_BUILDER_INITIAL_SIZE = 1000;
 
 	private FileUtil() {
@@ -92,81 +87,7 @@ public final class FileUtil {
 		return fileNameWithoutExtension;
 	}
 
-	/**
-	 * recursively delete the contents of directory AND the directory
-	 * 
-	 * @param directory
-	 * @return statistics of deletion
-	 */
-	public static FileDeleteStatistics deleteDirectoryAndContents(File directory) {
-		FileDeleteStatistics returnStats = deleteDirectoryContents(directory);
 
-		returnStats.add(deleteEmptyDirectory(directory));
-		return returnStats;
-	}
-
-	/**
-	 * recursively delete the contents of directory (But not the directory)
-	 * 
-	 * @param directory
-	 * @return statistics of deletion
-	 */
-	private static FileDeleteStatistics deleteDirectoryContents(File directory) {
-		FileDeleteStatistics stats = new FileDeleteStatistics();
-
-		if ((directory != null) && directory.isDirectory()) {
-			for (File file : directory.listFiles()) {
-				if (file.isDirectory()) {
-					FileDeleteStatistics returnStats = deleteDirectoryContents(file);
-
-					stats.add(returnStats);
-					stats.add(deleteEmptyDirectory(file));
-				} else {
-					stats.incrementFilesAttemptedToDelete();
-
-					if (file.delete()) {
-						stats.incrementFilesDeleted();
-					} else {
-						stats.addFileThatCouldNotBeDeleted(file);
-					}
-				}
-			}
-		}
-
-		return stats;
-	}
-
-	/**
-	 * @param directory
-	 * @return
-	 */
-	private static FileDeleteStatistics deleteEmptyDirectory(File directory) {
-		FileDeleteStatistics stats = new FileDeleteStatistics();
-		if (directory != null) {
-			stats.incrementDirectoriesAttemptedToDelete();
-
-			if (directory.list().length > 0) {
-				// Directories mounted on NFS volumes may have lingering
-				// .nfsXXXX files
-				// if no streams are open, it is likely from stale objects
-				System.gc();
-
-				try {
-					Thread.sleep(THREAD_SLEEP_TIME);
-				} catch (InterruptedException e) {
-					LOGGER.warn("Thread was interrupted while trying to resolve stale objects");
-				}
-			}
-
-			if (directory.delete()) {
-				stats.incrementDirectoriesDeleted();
-			} else {
-				stats.addDirectoryThatCouldNotBeDeleted(directory);
-			}
-		}
-
-		return stats;
-	}
 
 	/**
 	 * Simple utility to read the entire contents of a file into a string This code was taken from http://snippets.dzone.com/posts/show/1335
