@@ -1,1 +1,7 @@
 /.metadata/*
+*/.settings/
+*.project
+*.classpath
+*/target/
+*/test-output/
+*/.svn/
