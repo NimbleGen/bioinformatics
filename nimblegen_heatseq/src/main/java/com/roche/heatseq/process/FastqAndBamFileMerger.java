@@ -211,8 +211,6 @@ public class FastqAndBamFileMerger {
 		// Each new iteration starts at the first record.
 		try (SAMFileReader samReader = new SAMFileReader(unsortedBamFile)) {
 
-			samReader.setValidationStringency(ValidationStringency.LENIENT);
-
 			SAMFileHeader header = samReader.getFileHeader();
 			header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
 
