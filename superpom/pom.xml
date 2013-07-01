@@ -49,35 +49,6 @@
 	</dependencyManagement>
 
 	<build>
-		<!-- Resource filtering: Update the build meta info in StringBundle.properties -->
-		<resources>
-			<resource>
-				<directory>src/main/resources</directory>
-				<filtering>true</filtering>
-				<includes>
-					<include>**/*.properties</include>
-				</includes>
-				<!--<targetPath>${project.build.directory}/filtered-sources/resources</targetPath> -->
-			</resource>
-			<!-- This implies that all other files should be filtered and is needed 
-				because of the above include. Confusing syntax, but necessary. -->
-			<resource>
-				<directory>src/main/resources</directory>
-				<filtering>false</filtering>
-				<excludes>
-					<exclude>**/*.properties</exclude>
-				</excludes>
-			</resource>
-
-			<resource>
-				<filtering>true</filtering>
-				<directory>src/main/config</directory>
-				<includes>
-					<include>**</include>
-				</includes>
-			</resource>
-		</resources>
-
 		<!-- For all the plugins used here and in the child POMs this section defined 
 			the plugin version and inherited configurations. Plugin settings and configuration 
 			that applied in this section mean if a child pom uses the plugin then these 
@@ -85,88 +56,6 @@
 			http://repository.sonatype.org -->
 		<pluginManagement>
 			<plugins>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-enforcer-plugin</artifactId>
-					<version>1.0.1</version>
-				</plugin>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<version>2.3.2</version>
-				</plugin>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-jar-plugin</artifactId>
-					<version>2.3.2</version>
-					<configuration>
-						<archive>
-							<!-- Uncompressed for faster class loading. Less concerned about storage 
-								size or download time. -->
-							<compress>false</compress>
-
-							<!-- Prevent default inclusion of pom.xml and pom.properties in jar -->
-							<addMavenDescriptor>false</addMavenDescriptor>
-
-							<manifest>
-								<addDefaultImplementationEntries>true
-								</addDefaultImplementationEntries>
-								<addDefaultSpecificationEntries>true
-								</addDefaultSpecificationEntries>
-							</manifest>
-
-							<!-- Continuous integration build state properties to jar manifest -->
-							<manifestEntries>
-								<Svn-Revision>${SVN_REVISION}</Svn-Revision>
-								<Build-Tag>${BUILD_TAG}</Build-Tag>
-								<Build-Number>${BUILD_NUMBER}</Build-Number>
-								<Build-Id>${BUILD_ID}</Build-Id>
-							</manifestEntries>
-						</archive>
-					</configuration>
-				</plugin>
-
-				<plugin>
-					<groupId>org.codehaus.gmaven</groupId>
-					<artifactId>gmaven-plugin</artifactId>
-					<version>1.3</version>
-				</plugin>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-resources-plugin</artifactId>
-					<version>2.5</version>
-				</plugin>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-assembly-plugin</artifactId>
-					<version>2.4</version>
-				</plugin>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-release-plugin</artifactId>
-					<version>2.2.1</version>
-				</plugin>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-surefire-plugin</artifactId>
-					<version>2.12</version>
-				</plugin>
-
-				<plugin>
-					<!-- Not to be confused with less featured maven-license-plugin. Turns 
-						NOTICE.vm and LICENSE.vm into distributable text files. -->
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-remote-resources-plugin</artifactId>
-					<version>1.2.1</version>
-				</plugin>
-
 				<!--This plugin's configuration is used to store Eclipse m2e settings 
 					only. It has no influence on the Maven build itself. -->
 				<plugin>
@@ -253,14 +142,6 @@
 
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-resources-plugin</artifactId>
-				<configuration>
-					<encoding>${sourceEncoding}</encoding>
-				</configuration>
-			</plugin>
-
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
 					<source>${jdkVersion}</source>
@@ -273,9 +154,7 @@
 		</plugins>
 	</build>
 
-
 	<repositories>
-
 		<repository>
 			<id>biojava-maven-repo</id>
 			<name>BioJava repository</name>
@@ -292,11 +171,7 @@
 		<maven>3.0.4</maven>
 	</prerequisites>
 
-
-
-
-
-	<inceptionYear>2012</inceptionYear>
+	<inceptionYear>2013</inceptionYear>
 
 	<organization>
 		<name>Roche Applied Sciences</name>
@@ -346,24 +221,9 @@
 	</developers>
 
 	<properties>
-		<spring.version>3.0.5.RELEASE</spring.version>
-		<security.version>3.0.5.RELEASE</security.version>
-
-		<maven.build.timestamp.format>yyyyMMdd_HHmm
-		</maven.build.timestamp.format>
-		<maven.build.timestamp />
-		<current.year />
-		<buildNumber>${project.version} (${maven.build.timestamp})</buildNumber>
-
 		<jdkVersion>1.7</jdkVersion>
-
 		<sourceEncoding>ISO-8859-1</sourceEncoding>
-		<BUILD_NUMBER>${maven.build.timestamp}</BUILD_NUMBER>
-
-		<!-- Default product version is the maven project version, but can be overridden 
-			by build process, Product version is the customer facing string in the about 
-			box. -->
-		<product.version>${project.version}</product.version>
+		<product.version>1.0</product.version>
 	</properties>
 
 </project>
