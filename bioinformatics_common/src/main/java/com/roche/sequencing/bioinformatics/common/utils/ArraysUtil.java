@@ -58,4 +58,12 @@ public final class ArraysUtil {
 		return min;
 	}
 
+	public static double[] convertToDoubleArray(int[] values) {
+		double[] doubleArray = new double[values.length];
+		for (int i = 0; i < values.length; i++) {
+			doubleArray[i] = values[i];
+		}
+		return doubleArray;
+	}
+
 }
