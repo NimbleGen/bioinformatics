@@ -15,7 +15,6 @@
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
 		</dependency>
-
 		<dependency>
 			<groupId>org.testng</groupId>
 			<artifactId>testng</artifactId>
@@ -26,153 +25,20 @@
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
-				<groupId>com.google.guava</groupId>
-				<artifactId>guava</artifactId>
-				<version>14.0.1</version>
-			</dependency>
-
-			<dependency>
-				<groupId>org.slf4j</groupId>
-				<artifactId>slf4j-api</artifactId>
-				<version>1.7.5</version>
-			</dependency>
-
-			<dependency>
 				<groupId>ch.qos.logback</groupId>
 				<artifactId>logback-classic</artifactId>
 				<version>1.0.11</version>
 			</dependency>
-
-			<dependency>
-				<groupId>com.martiansoftware</groupId>
-				<artifactId>jsap</artifactId>
-				<version>2.1</version>
-			</dependency>
-
-			<dependency>
-				<groupId>commons-lang</groupId>
-				<artifactId>commons-lang</artifactId>
-				<version>2.6</version>
-			</dependency>
-
-			<dependency>
-				<groupId>org.python</groupId>
-				<artifactId>jython-standalone</artifactId>
-				<version>2.7-b1</version>
-			</dependency>
-
-			<dependency>
-				<groupId>jfree</groupId>
-				<artifactId>jfreechart</artifactId>
-				<version>1.0.13</version>
-			</dependency>
-
-			<dependency>
-				<groupId>net.sf.opencsv</groupId>
-				<artifactId>opencsv</artifactId>
-				<version>2.3</version>
-			</dependency>
-
-			<!-- restlet related dependencies -->
-			<dependency>
-				<groupId>commons-scxml</groupId>
-				<artifactId>commons-scxml</artifactId>
-				<version>0.9</version>
-			</dependency>
-			<dependency>
-				<groupId>commons-jexl</groupId>
-				<artifactId>commons-jexl</artifactId>
-				<version>1.1</version>
-			</dependency>
-
-			<dependency>
-				<groupId>xalan</groupId>
-				<artifactId>xalan</artifactId>
-				<version>2.7.1</version>
-			</dependency>
-
-			<dependency>
-				<groupId>org.restlet.jse</groupId>
-				<artifactId>org.restlet</artifactId>
-				<version>2.2-M3</version>
-			</dependency>
-			<dependency>
-				<groupId>org.restlet.jse</groupId>
-				<artifactId>org.restlet.ext.jaxrs</artifactId>
-				<version>2.2-M3</version>
-			</dependency>
-
-			<dependency>
-				<groupId>javax.ws.rs</groupId>
-				<artifactId>jsr311-api</artifactId>
-				<version>1.1.1</version>
-			</dependency>
-
-			<dependency>
-				<groupId>javax.servlet</groupId>
-				<artifactId>servlet-api</artifactId>
-				<version>2.5</version>
-			</dependency>
-
-			<dependency>
-				<groupId>org.apache.qpid</groupId>
-				<artifactId>qpid-client</artifactId>
-				<version>0.18</version>
-			</dependency>
-
 			<dependency>
 				<groupId>org.testng</groupId>
 				<artifactId>testng</artifactId>
 				<version>6.8</version>
 				<scope>test</scope>
 			</dependency>
-
 			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-core</artifactId>
-				<version>${spring.version}</version>
-			</dependency>
-
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-jdbc</artifactId>
-				<version>${spring.version}</version>
-			</dependency>
-
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-tx</artifactId>
-				<version>${spring.version}</version>
-			</dependency>
-
-			<dependency>
-				<groupId>com.h2database</groupId>
-				<artifactId>h2</artifactId>
-				<version>1.3.170</version>
-			</dependency>
-
-			<dependency>
-				<groupId>cglib</groupId>
-				<artifactId>cglib</artifactId>
-				<version>2.2.2</version>
-			</dependency>
-
-			<dependency>
-				<groupId>com.google.code.findbugs</groupId>
-				<artifactId>jsr305</artifactId>
-				<version>2.0.1</version>
-			</dependency>
-
-			<dependency>
-				<groupId>org.apache.poi</groupId>
-				<artifactId>poi</artifactId>
-				<version>3.8</version>
-			</dependency>
-
-			<dependency>
-				<groupId>org.apache.poi</groupId>
-				<artifactId>poi-ooxml</artifactId>
-				<version>3.8</version>
+				<groupId>com.google.guava</groupId>
+				<artifactId>guava</artifactId>
+				<version>14.0.1</version>
 			</dependency>
 			<dependency>
 				<groupId>org.utgenome.thirdparty</groupId>
@@ -183,35 +49,6 @@
 	</dependencyManagement>
 
 	<build>
-		<!-- Resource filtering: Update the build meta info in StringBundle.properties -->
-		<resources>
-			<resource>
-				<directory>src/main/resources</directory>
-				<filtering>true</filtering>
-				<includes>
-					<include>**/*.properties</include>
-				</includes>
-				<!--<targetPath>${project.build.directory}/filtered-sources/resources</targetPath> -->
-			</resource>
-			<!-- This implies that all other files should be filtered and is needed 
-				because of the above include. Confusing syntax, but necessary. -->
-			<resource>
-				<directory>src/main/resources</directory>
-				<filtering>false</filtering>
-				<excludes>
-					<exclude>**/*.properties</exclude>
-				</excludes>
-			</resource>
-
-			<resource>
-				<filtering>true</filtering>
-				<directory>src/main/config</directory>
-				<includes>
-					<include>**</include>
-				</includes>
-			</resource>
-		</resources>
-
 		<!-- For all the plugins used here and in the child POMs this section defined 
 			the plugin version and inherited configurations. Plugin settings and configuration 
 			that applied in this section mean if a child pom uses the plugin then these 
@@ -219,88 +56,6 @@
 			http://repository.sonatype.org -->
 		<pluginManagement>
 			<plugins>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-enforcer-plugin</artifactId>
-					<version>1.0.1</version>
-				</plugin>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<version>2.3.2</version>
-				</plugin>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-jar-plugin</artifactId>
-					<version>2.3.2</version>
-					<configuration>
-						<archive>
-							<!-- Uncompressed for faster class loading. Less concerned about storage 
-								size or download time. -->
-							<compress>false</compress>
-
-							<!-- Prevent default inclusion of pom.xml and pom.properties in jar -->
-							<addMavenDescriptor>false</addMavenDescriptor>
-
-							<manifest>
-								<addDefaultImplementationEntries>true
-								</addDefaultImplementationEntries>
-								<addDefaultSpecificationEntries>true
-								</addDefaultSpecificationEntries>
-							</manifest>
-
-							<!-- Continuous integration build state properties to jar manifest -->
-							<manifestEntries>
-								<Svn-Revision>${SVN_REVISION}</Svn-Revision>
-								<Build-Tag>${BUILD_TAG}</Build-Tag>
-								<Build-Number>${BUILD_NUMBER}</Build-Number>
-								<Build-Id>${BUILD_ID}</Build-Id>
-							</manifestEntries>
-						</archive>
-					</configuration>
-				</plugin>
-
-				<plugin>
-					<groupId>org.codehaus.gmaven</groupId>
-					<artifactId>gmaven-plugin</artifactId>
-					<version>1.3</version>
-				</plugin>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-resources-plugin</artifactId>
-					<version>2.5</version>
-				</plugin>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-assembly-plugin</artifactId>
-					<version>2.4</version>
-				</plugin>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-release-plugin</artifactId>
-					<version>2.2.1</version>
-				</plugin>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-surefire-plugin</artifactId>
-					<version>2.12</version>
-				</plugin>
-
-				<plugin>
-					<!-- Not to be confused with less featured maven-license-plugin. Turns 
-						NOTICE.vm and LICENSE.vm into distributable text files. -->
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-remote-resources-plugin</artifactId>
-					<version>1.2.1</version>
-				</plugin>
-
 				<!--This plugin's configuration is used to store Eclipse m2e settings 
 					only. It has no influence on the Maven build itself. -->
 				<plugin>
@@ -387,14 +142,6 @@
 
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-resources-plugin</artifactId>
-				<configuration>
-					<encoding>${sourceEncoding}</encoding>
-				</configuration>
-			</plugin>
-
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
 					<source>${jdkVersion}</source>
@@ -407,62 +154,12 @@
 		</plugins>
 	</build>
 
-
-	<!-- For all the plugins used here and in the child POMs this section defined 
-		the plugin version and inherited configurations. Plugin settings and configuration 
-		that applied in this section mean if a child pom uses the plugin then these 
-		settings are inherited. Search here for publicly available 3rd party versions: 
-		http://repository.sonatype.org -->
-	<pluginRepositories>
-
-	</pluginRepositories>
-
 	<repositories>
-
 		<repository>
 			<id>biojava-maven-repo</id>
 			<name>BioJava repository</name>
 			<url>http://www.biojava.org/download/maven/</url>
 		</repository>
-
-		<!-- spring related repositories -->
-		<repository>
-			<id>com.springsource.repository.bundles.release
-            </id>
-			<name>SpringSource Enterprise Bundle Repository -
-                SpringSource Releases
-            </name>
-			<url>http://repository.springsource.com/maven/bundles/release
-            </url>
-		</repository>
-		<repository>
-			<id>com.springsource.repository.bundles.external
-            </id>
-			<name>SpringSource Enterprise Bundle Repository -
-                External Releases
-            </name>
-			<url>http://repository.springsource.com/maven/bundles/external
-            </url>
-		</repository>
-		<repository>
-			<id>com.springsource.repository.bundles.snapshot</id>
-			<name>SpringSource Enterprise Bundle Snapshot Repository</name>
-			<url>http://repository.springsource.com/maven/bundles/snapshot</url>
-		</repository>
-
-		<!--For Restlet -->
-		<repository>
-			<id>repository.jboss.org-public</id>
-			<name>JBoss.org Maven repository</name>
-			<url>https://repository.jboss.org/nexus/content/groups/public</url>
-		</repository>
-
-		<repository>
-			<id>maven-restlet</id>
-			<name>Public online Restlet repository</name>
-			<url>http://maven.restlet.org</url>
-		</repository>
-
 		<repository>
 			<id>org.maven.repo1</id>
 			<name>Central Maven Repository</name>
@@ -470,23 +167,11 @@
 		</repository>
 	</repositories>
 
-	<scm>
-		<connection>scm:svn:http://forge54/svn/isfetapp/trunk/
-        </connection>
-		<developerConnection>scm:svn:http://forge54/svn/isfetapp/trunk/
-        </developerConnection>
-		<url>scm:svn:http://forge54/svn/isfetapp</url>
-	</scm>
-
 	<prerequisites>
 		<maven>3.0.4</maven>
 	</prerequisites>
 
-
-
-
-
-	<inceptionYear>2012</inceptionYear>
+	<inceptionYear>2013</inceptionYear>
 
 	<organization>
 		<name>Roche Applied Sciences</name>
@@ -536,24 +221,9 @@
 	</developers>
 
 	<properties>
-		<spring.version>3.0.5.RELEASE</spring.version>
-		<security.version>3.0.5.RELEASE</security.version>
-
-		<maven.build.timestamp.format>yyyyMMdd_HHmm
-		</maven.build.timestamp.format>
-		<maven.build.timestamp />
-		<current.year />
-		<buildNumber>${project.version} (${maven.build.timestamp})</buildNumber>
-
 		<jdkVersion>1.7</jdkVersion>
-
 		<sourceEncoding>ISO-8859-1</sourceEncoding>
-		<BUILD_NUMBER>${maven.build.timestamp}</BUILD_NUMBER>
-
-		<!-- Default product version is the maven project version, but can be overridden 
-			by build process, Product version is the customer facing string in the about 
-			box. -->
-		<product.version>${project.version}</product.version>
+		<product.version>1.0</product.version>
 	</properties>
 
 </project>

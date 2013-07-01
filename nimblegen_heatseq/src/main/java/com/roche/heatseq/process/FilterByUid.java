@@ -25,7 +25,6 @@ import java.util.Map.Entry;
 
 import net.sf.samtools.SAMRecord;
 
-import org.jfree.data.statistics.Statistics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +35,7 @@ import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
 import com.roche.heatseq.qualityreport.ProbeProcessingStats;
 import com.roche.mapping.SAMRecordUtil;
+import com.roche.sequencing.bioinformatics.common.utils.StatisticsUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 /**
@@ -141,13 +141,8 @@ class FilterByUid {
 		}
 
 		double standardDeviationOfReadPairsPerUid = Double.NaN;
-		Number[] sizeByUidAsNumber = new Number[sizeByUid.length];
-		for (int j = 0; j < sizeByUid.length; j++) {
-			sizeByUidAsNumber[j] = sizeByUid[j];
-		}
-
 		if (sizeByUid.length > 1) {
-			standardDeviationOfReadPairsPerUid = Statistics.getStdDev(sizeByUidAsNumber);
+			standardDeviationOfReadPairsPerUid = StatisticsUtil.standardDeviation(sizeByUid);
 		}
 
 		long probeProcessingStopInMs = System.currentTimeMillis();
