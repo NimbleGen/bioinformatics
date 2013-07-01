@@ -156,11 +156,6 @@
 
 	<repositories>
 		<repository>
-			<id>biojava-maven-repo</id>
-			<name>BioJava repository</name>
-			<url>http://www.biojava.org/download/maven/</url>
-		</repository>
-		<repository>
 			<id>org.maven.repo1</id>
 			<name>Central Maven Repository</name>
 			<url>http://repo1.maven.org/maven2</url>
