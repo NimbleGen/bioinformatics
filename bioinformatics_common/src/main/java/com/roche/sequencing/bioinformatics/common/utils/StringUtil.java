@@ -22,16 +22,14 @@ package com.roche.sequencing.bioinformatics.common.utils;
  */
 public final class StringUtil {
 	public static final String NEWLINE = System.getProperty("line.separator");
-	
+
 	public static final String TAB = "\t";
 	public static final String CARRIAGE_RETURN = "\r";
-	
+
 	// NOTE: WINDOWS_NEWLINE = CARRIAGE_RETURN + LINE_FEED;
 	// NOTE: LINUX_NEWLINE = LINE_FEED;
 	public static final String LINUX_NEWLINE = "\n";
-	public static final String WINDOWS_NEWLINE = CARRIAGE_RETURN+LINUX_NEWLINE;
-	
-	
+	public static final String WINDOWS_NEWLINE = CARRIAGE_RETURN + LINUX_NEWLINE;
 
 	private StringUtil() {
 		throw new AssertionError();
@@ -85,7 +83,7 @@ public final class StringUtil {
 
 	/**
 	 * @param strings
-	 * @return true if all the provided string equal eqch other
+	 * @return true if all the provided string equal each other
 	 */
 	public static boolean equals(String... strings) {
 		boolean equals = true;
@@ -108,19 +106,25 @@ public final class StringUtil {
 	/**
 	 * Return the index of the nth occurrence of a character in a string
 	 * 
-	 * @param str
+	 * @param string
 	 *            The source string
-	 * @param c
+	 * @param character
 	 *            The query character
-	 * @param n
+	 * @param indexOfDesiredOccurence
 	 *            Which occurrence of the character to return the index for
 	 * @return The index of the nth occurrence of the character, or -1 if there isn't an nth occurrence of the character in the string.
 	 */
-	public static int nthOccurrence(String str, char c, int n) {
-		int pos = str.indexOf(c, 0);
-		while (n-- > 0 && pos != -1)
-			pos = str.indexOf(c, pos + 1);
-		return pos;
+	public static int nthOccurrence(String string, char character, int indexOfDesiredOccurence) {
+		int position = string.indexOf(character, 0);
+		int timesCharacterFoundSoFar = 1;
+		while ((timesCharacterFoundSoFar < indexOfDesiredOccurence) && (position != -1)) {
+			timesCharacterFoundSoFar++;
+			position = string.indexOf(character, position + 1);
+		}
+		if (timesCharacterFoundSoFar != indexOfDesiredOccurence) {
+			position = -1;
+		}
+		return position;
 	}
 
 	/**

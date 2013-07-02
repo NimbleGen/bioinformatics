@@ -16,6 +16,8 @@
 
 package com.roche.sequencing.bioinformatics.common.commandline;
 
+import junit.framework.Assert;
+
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -35,7 +37,41 @@ public class CommandLineParserTest {
 		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
 
 		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--fastQFileOne", "a", "--fastQFileTwo", "b", "--bamFile", "bam", "--flag", "--flag" }, group);
+	}
 
+	@Test(groups = { "integration" })
+	public void parseCommandLineTwoTest() {
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
+
+		group.addOption(new CommandLineOption("fastQFileOne", "fastQFileOne", null, "The first fastq file", true, false));
+		group.addOption(new CommandLineOption("fastQFileTwo", "fastQFileTwo", null, "The second fastq file", true, false));
+		group.addOption(new CommandLineOption("b", "b", 'b', "bamfile", true, false));
+		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
+
+		Assert.assertFalse(group.getUsage().isEmpty());
+
+		ParsedCommandLine parsedCommandLine = CommandLineParser.parseCommandLineWithExceptions(new String[] { "--fastQFileOne", "a", "--fastQFileTwo", "b", "-b", "bam", "--flag" }, group);
+		Assert.assertEquals(parsedCommandLine.getDuplicateArguments().size(), 0);
+		Assert.assertEquals(parsedCommandLine.getMissingRequiredOptions().length, 0);
+		Assert.assertEquals(parsedCommandLine.getNonOptionArguments().length, 0);
+		Assert.assertEquals(parsedCommandLine.getUnrecognizedLongFormOption().size(), 0);
+		Assert.assertEquals(parsedCommandLine.getUnrecognizedShortFormOptions().size(), 0);
+
+	}
+
+	@Test(groups = { "integration" }, expectedExceptions = { IllegalStateException.class })
+	public void parseCommandLineThreeTest() {
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
+
+		group.addOption(new CommandLineOption("fastQFileOne", "fastQFileOne", null, "The first fastq file", true, false));
+		group.addOption(new CommandLineOption("fastQFileTwo", "fastQFileTwo", null, "The second fastq file", true, false));
+		group.addOption(new CommandLineOption("b", "b", 'b', "bamfile", true, false));
+		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
+
+		Assert.assertFalse(group.getUsage().isEmpty());
+
+		ParsedCommandLine parsedCommandLine = CommandLineParser.parseCommandLineWithExceptions(new String[] { "--fastQFileOne", "a", "--fastQFileTwo", "b", "-b", "bam", "--flag", "--unrecognized",
+				"-u" }, group);
 	}
 
 }

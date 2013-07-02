@@ -257,38 +257,4 @@ public class StatisticsUtil {
 
 		return median;
 	}
-
-	/**
-	 * Calculates the cumulative normal distribution function at x which is the probability of a value being less than x which is the area under the normal curve to the left of x.
-	 * 
-	 * @param x
-	 * @return the probability of a value being less than x.
-	 */
-	public static double cumulativeNormalProbability(double x) {
-		if (x > 6.0)
-			return (1.0);
-		if (x < -6.0)
-			return (0.0);
-
-		// 0.3989423 = 1 / Math.sqrt(2 * PI)
-		double probabilityDensity = 0.3989423 * Math.exp((-x) * x * 0.5);
-
-		// Numerical approximation for the normal cumulative distribution
-		// function
-		double p = 0.2316419;
-		double b1 = 0.31938153;
-		double b2 = -0.356563782;
-		double b3 = 1.781477937;
-		double b4 = -1.821255978;
-		double b5 = 1.330274429;
-
-		double positiveX = (x >= 0) ? x : -x;
-		double t = 1.0 / (1.0 + positiveX * p);
-
-		double phi = ((((b5 * t + b4) * t + b3) * t + b2) * t + b1) * t;
-		phi = 1.0 - probabilityDensity * phi;
-		if (x < 0.0)
-			phi = 1.0 - phi;
-		return phi;
-	}
 }
