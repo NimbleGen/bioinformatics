@@ -84,6 +84,7 @@ class FilterByUid {
 		Map<String, List<IReadPair>> uidToDataMap = new HashMap<String, List<IReadPair>>();
 		for (IReadPair read : datas) {
 			String uid = read.getUid();
+			// TODO 7/2/2013 Kurt Heilman this basically is using a string comparison instead of a sequence comparison to match the UIDs. Is this appropriate?
 			List<IReadPair> uidData = uidToDataMap.get(uid);
 
 			if (uidData == null) {
