@@ -80,7 +80,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	private final static String EXTENSION_ERRORS_REPORT_NAME = "extension_errors.txt";
 	private final static String PROBE_UID_QUALITY_REPORT_NAME = "probe_uid_quality.txt";
 
-	private static Semaphore primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore = null;
+	private static volatile Semaphore primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore = null;
 
 	/**
 	 * We never create instances of this class, we only expose static methods
@@ -98,6 +98,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings) {
 
 		// Initialize the thread semaphore if it hasn't already been initialized
+
 		if (primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore == null) {
 			primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore = new Semaphore(applicationSettings.getNumProcessors());
 		}
@@ -146,6 +147,10 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			probeInfo = ProbeFileUtil.parseProbeInfoFile(applicationSettings.getProbeFile());
 		} catch (IOException e) {
 			logger.warn(e.getMessage(), e);
+		}
+
+		if (probeInfo == null) {
+			throw new IllegalStateException("Unable to parse probe info file[" + applicationSettings.getProbeFile() + "].");
 		}
 
 		// Actually do the work

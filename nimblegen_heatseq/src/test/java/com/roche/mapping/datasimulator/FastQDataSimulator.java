@@ -335,7 +335,7 @@ class FastQDataSimulator {
 				}
 				mutatedSequence.append(mismatchString);
 				readSequenceIndex += mismatchString.length();
-			} else if (currentChar.equals(CigarStringUtil.CIGAR_DELETION_FROM_REFERENCE)) {
+			} else if (currentChar.equals("" + CigarStringUtil.CIGAR_DELETION_FROM_REFERENCE)) {
 				StringBuilder deletionSizeAsString = new StringBuilder();
 				// keep reading until you no longer find a number
 				while ((i < mismatchDetailsString.length()) && (StringUtil.isNumeric(currentChar))) {
@@ -345,7 +345,7 @@ class FastQDataSimulator {
 						currentChar = "" + mismatchDetailsString.charAt(i);
 					}
 				}
-				if (currentChar.equals(CigarStringUtil.CIGAR_DELETION_FROM_REFERENCE)) {
+				if (currentChar.equals("" + CigarStringUtil.CIGAR_DELETION_FROM_REFERENCE)) {
 					i++;
 					currentChar = "" + mismatchDetailsString.charAt(i);
 				} else {

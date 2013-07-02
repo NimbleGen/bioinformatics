@@ -176,6 +176,7 @@ class FilterByUid {
 					String sequenceQualityScore = "";
 					String sequenceTwoQualityScore = "";
 					String totalQualityScore = "";
+					String readName = "";
 
 					if (currentPair != null) {
 						probeIndex = probe.getIndex();
@@ -184,6 +185,7 @@ class FilterByUid {
 						probeStrand = probe.getProbeStrand().toString();
 
 						uid = "" + currentPair.getUid();
+						readName = currentPair.getReadName();
 
 						sequenceQualityScore = "" + currentPair.getSequenceOneQualityScore();
 						sequenceTwoQualityScore = "" + currentPair.getSequenceTwoQualityScore();
@@ -192,7 +194,7 @@ class FilterByUid {
 					}
 					probeUidQualityWriter.println(probeIndex + StringUtil.TAB + containerName + StringUtil.TAB + probeCaptureStart + StringUtil.TAB + probeCaptureStop + StringUtil.TAB + probeStrand
 							+ StringUtil.TAB + uid.toUpperCase() + StringUtil.TAB + sequenceQualityScore + StringUtil.TAB + sequenceTwoQualityScore + StringUtil.TAB + totalQualityScore
-							+ StringUtil.TAB + currentPair.getReadName());
+							+ StringUtil.TAB + readName);
 				}
 			}
 		}
