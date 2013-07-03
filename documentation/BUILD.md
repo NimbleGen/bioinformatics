@@ -34,7 +34,12 @@ http://m2e-jaxb2-connector.eclipselabs.org.codespot.com/hg.update/org.eclipselab
 1. In Eclipse, import the projects by clicking "File">>"Import">>"Maven" and selecting “Existing Maven Projects”.  Click "Next".
 2. On the "Maven Projects" screen, set to the local directory you chose as the "Local Destination" when cloning the GitHub repository to be the "Root Directory":  <br>![alt text](images/importMaven.png "Import Maven Projects") <br> You should see four projects.  Make sure they are all selected and then click "Finish".
 
-**Section 4: Build the Heatseq executable**
+**Section 4: Set up code formatting in Eclipse**
+
+1. In Eclipse, open "Window">>"Preferences" and select "Java">>"Code Style">>"Formatter".  Under the "Active profile:" text box click the "Import" button and select the eclipse_formatting_v1_0.xml file in your "Local Destination"'s superpom directory:  <br>![alt text](images/formatter.png "Code Formatter") <br> Click "Apply".
+2. Under "Window">>"Preferences" select "Java">>"Editor">>"Save Actions" and check the check boxes next to "Perform the selected actions on save", "Format source code", and "Format all lines":  <br>![alt text](images/saveActions.png "Save Actions") <br> Click "Apply" and then "OK".
+
+**Section 5: Build the Heatseq executable**
 
 1. In Eclipse, switch to the Java perspective by clicking "Window>>""Open Perspective">>"Java (default)".
 2. In the "Package Explorer" view, right click on "build">>heatseq_commandline">>"pom.xml" and select "Run As">>"Maven Install": <br>![alt text](images/buildJar.png "Build Jar") <br> 
