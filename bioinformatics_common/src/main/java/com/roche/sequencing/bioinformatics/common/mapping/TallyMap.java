@@ -39,7 +39,7 @@ class TallyMap<O> {
 		objectsWithLargestCount = new HashSet<O>();
 	}
 
-	private void add(O object) {
+	void add(O object) {
 		Integer currentCount = getCount(object);
 		currentCount++;
 		if (currentCount > largestCount) {

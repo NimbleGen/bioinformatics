@@ -16,9 +16,7 @@
 
 package com.roche.sequencing.bioinformatics.common.sequence;
 
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertNotNull;
-
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import com.roche.sequencing.bioinformatics.common.alignment.AlignmentPair;
@@ -37,7 +35,7 @@ public class NucleotideSequenceTest {
 			iupacSequence.append(new IupacNucleotideCodeSequence(repeatedString));
 		}
 
-		assertEquals(nucleotideCodeSequence.size(), repeatedString.length() * (numberOfRepeats + 1));
+		Assert.assertEquals(nucleotideCodeSequence.size(), repeatedString.length() * (numberOfRepeats + 1));
 	}
 
 	@Test(groups = { "unit" })
@@ -50,9 +48,9 @@ public class NucleotideSequenceTest {
 		NucleotideCodeSequence seqTwoAppendedToOne = new NucleotideCodeSequence(twoAppendedToOne);
 
 		seqOne.append(seqTwo);
-		assertEquals(seqOne, seqTwoAppendedToOne);
-		assertEquals(seqOne.toString(), seqTwoAppendedToOne.toString());
-		assertEquals(seqOne.toStringAsBits(), seqTwoAppendedToOne.toStringAsBits());
+		Assert.assertEquals(seqOne, seqTwoAppendedToOne);
+		Assert.assertEquals(seqOne.toString(), seqTwoAppendedToOne.toString());
+		Assert.assertEquals(seqOne.toStringAsBits(), seqTwoAppendedToOne.toStringAsBits());
 	}
 
 	@Test(groups = { "unit" })
@@ -63,7 +61,8 @@ public class NucleotideSequenceTest {
 		NeedlemanWunschGlobalAlignment needlemanWunsch = new NeedlemanWunschGlobalAlignment(nucleotideCodeSequence, nucleotideSequenceToFind);
 		AlignmentPair alignment2 = needlemanWunsch.getAlignmentPair();
 
-		assertNotNull(alignment2);
+		Assert.assertNotNull(alignment2);
+		Assert.assertFalse(needlemanWunsch.getTraceabilityMatrixAsString().isEmpty());
 	}
 
 }

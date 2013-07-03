@@ -91,13 +91,6 @@ public class AlignmentPair {
 	}
 
 	/**
-	 * @return the edit distance (number of mutations or inserts when converting from the query sequence to the reference sequence).
-	 */
-	public int getEditDistance() {
-		return getCigarString().getEditDistance();
-	}
-
-	/**
 	 * @return mismatch details string
 	 */
 	public String getMismatchDetailsString() {
@@ -111,27 +104,4 @@ public class AlignmentPair {
 		return CigarStringUtil.getMismatchDetailsString(getReferenceAlignmentWithoutTerminalInserts().getReverse(), getQueryAlignmentWithoutTerminalInserts().getReverse(), getReverseCigarString());
 	}
 
-	/**
-	 * @return an alignment representing how the reverse of both the query sequence and reference sequence would align
-	 */
-	public AlignmentPair getReverse() {
-		AlignmentPair newAlignmentPair = new AlignmentPair(referenceAlignment.getReverse(), queryAlignment.getReverse());
-		return newAlignmentPair;
-	}
-
-	/**
-	 * @return an alignment representing how the compliment of both the query sequence and reference sequence would align
-	 */
-	public AlignmentPair getCompliment() {
-		AlignmentPair newAlignmentPair = new AlignmentPair(referenceAlignment.getCompliment(), queryAlignment.getCompliment());
-		return newAlignmentPair;
-	}
-
-	/**
-	 * @return an alignment representing how the reverse compliment of both the query sequence and reference sequence would align
-	 */
-	public AlignmentPair getReverseCompliment() {
-		AlignmentPair newAlignmentPair = new AlignmentPair(referenceAlignment.getReverseCompliment(), queryAlignment.getReverseCompliment());
-		return newAlignmentPair;
-	}
 }
