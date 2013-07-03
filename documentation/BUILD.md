@@ -18,17 +18,24 @@ http://m2e-jaxb2-connector.eclipselabs.org.codespot.com/hg.update/org.eclipselab
   4. An “Install Details” panel will appear, click the “Next>” button. <br>  ![alt text](images/jaxb3.png "Install Jaxb Details Dialog")<br>
   5. Make sure the “I accept the terms of the license agreement” radio button is selected and click the “Finish” button. <br>  ![alt text](images/jaxb4.png "Accept Jaxb License Dialog")<br>
   6. After the connector is installed you will be prompted to restart eclipse, comply.
-7. Set a java 1.7 jdk in Eclipse to the default by clicking “Window”>>”Preferences” from the main menu.  Open the “Java”>>”Installed JREs” panel.  If there is not a jdk1.7 listed, add one by clicking the “Add...”  button.   Select “Standard VM” and click “Next”.   Click on the “Directory…” button and browse to an installed 1.7 jdk (For example: C:\Program Files\Java\jdk1.7.0_26) and click the “OK” button in the “Browse For Folder” dialog.  Click the “Finish” button in the “Add JRE” dialog.  Make sure that the 1.7 jdk has its checkbox selected and click “OK”. <br>  ![alt text](images/jdk.png "Select JDK dialog")<br> 
+7. Set a java 1.7 jdk in Eclipse as the default by clicking “Window”>>”Preferences” from the main menu.  Open the “Java”>>”Installed JREs” panel.  If there is not a jdk1.7 listed, add one by clicking the “Add...”  button.   Select “Standard VM” and click “Next”.   Click on the “Directory…” button and browse to an installed 1.7 jdk (For example: C:\Program Files\Java\jdk1.7.0_26) and click the “OK” button in the “Browse For Folder” dialog.  Click the “Finish” button in the “Add JRE” dialog.  Make sure that the 1.7 jdk has its checkbox selected and click “OK”. <br>  ![alt text](images/jdk.png "Select JDK dialog")<br> 
 
-**Section 2: Clone the GitHub repository **
+**Section 2: Clone the GitHub repository**
 
-1. In Eclipse, open the Git Repository Exploring perspective by clicking "Window">>"Open Perspective">>"Other" from the main menu within Eclipse.  Select the "Git Repository Exploring" perspective and click "Ok".
+1. In Eclipse, open the Git Repository Exploring perspective by clicking "Window">>"Open Perspective">>"Other" from the main menu.  Select the "Git Repository Exploring" perspective and click "Ok".
 2. Click on the “Clone a Git repository” link or toolbar button: <br> ![alt text](images/cloneRepository.png "Clone Git Repository") <br>
-3. In the "Clone Git Repository" dialog, select ‘URI’ and then click ‘Next’.
-4. In the "Source Git Repository" screen, enter https://github.com/NimbleGen/bioinformatics.git as the URI.  Enter your GitHub username and password, optionally checking "Store in Secure Store" if you want Eclipse to remember this inforamtion.  <br>![alt text](images/sourceRepository.png "Chose Git Repository Source") <br>  Then click 'Next'.
-5. In the "Branch Selection" screen, make sure the "master" branch is selected, then click 'Next'.
-6. In the "Local Destination" screen, choose a folder for the local directory or accept the default.  <br>![alt text](images/localDestination.png "Local Directory Destination") <br>   Then click 'Finish'.
+3. In the "Clone Git Repository" dialog, select ‘URI’ and then click "Next".
+4. On the "Source Git Repository" screen, enter https://github.com/NimbleGen/bioinformatics.git as the URI.  Enter your GitHub username and password, optionally checking "Store in Secure Store" if you want Eclipse to remember this information.  <br>![alt text](images/sourceRepository.png "Chose Git Repository Source") <br>  Then click "Next".
+5. On the "Branch Selection" screen, make sure the "master" branch is selected, then click "Next".
+6. On the "Local Destination" screen, choose a folder for the local directory or accept the default.  <br>![alt text](images/localDestination.png "Local Directory Destination") <br>   Then click "Finish".
 
-**Section 3: Import projects into Eclipse **
+**Section 3: Import projects into Eclipse**
 
-**Section 4: Build the Heatseq executable **
+1. In Eclipse, import the projects by clicking "File">>"Import">>"Maven" and selecting “Existing Maven Projects”.  Click "Next".
+2. On the "Maven Projects" screen, set to the local directory you chose as the "Local Destination" when cloning the GitHub repository to be the "Root Directory":  <br>![alt text](images/importMaven.png "Import Maven Projects") <br> You should see four projects.  Make sure they are all selected and then click "Finish".
+
+**Section 4: Build the Heatseq executable**
+
+1. In Eclipse, switch to the Java perspective by clicking "Window>>""Open Perspective">>"Java (default)".
+2. In the "Package Explorer" view, right click on "build">>heatseq_commandline">>"pom.xml" and select "Run As">>"Maven Install": <br>![alt text](images/buildJar.png "Build Jar") <br> 
+3. The "Console" view will show the build progress.  When the build has completed the standalone .jar file will be in your "Local Destination" directory under nimblegen_heatseq/target/nimblegen_heatseq-0.0.1-SNAPSHOT-jar-with-dependencies.jar.
