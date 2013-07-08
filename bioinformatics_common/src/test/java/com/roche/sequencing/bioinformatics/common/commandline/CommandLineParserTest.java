@@ -18,17 +18,12 @@ package com.roche.sequencing.bioinformatics.common.commandline;
 
 import junit.framework.Assert;
 
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 public class CommandLineParserTest {
 
-	@BeforeClass
-	public void setUp() {
-	}
-
 	@Test(groups = { "integration" }, expectedExceptions = IllegalStateException.class)
-	public void parseCommandLineTest() {
+	public void duplicateArgumentTest() {
 		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
 
 		group.addOption(new CommandLineOption("fastQFileOne", "fastQFileOne", null, "The first fastq file", true, false));
@@ -40,7 +35,7 @@ public class CommandLineParserTest {
 	}
 
 	@Test(groups = { "integration" })
-	public void parseCommandLineTwoTest() {
+	public void baseTest() {
 		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
 
 		group.addOption(new CommandLineOption("fastQFileOne", "fastQFileOne", null, "The first fastq file", true, false));
@@ -60,7 +55,58 @@ public class CommandLineParserTest {
 	}
 
 	@Test(groups = { "integration" }, expectedExceptions = { IllegalStateException.class })
-	public void parseCommandLineThreeTest() {
+	public void unrecognizedLongTest() {
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
+
+		group.addOption(new CommandLineOption("b", "b", 'b', "bamfile", true, false));
+		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
+
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--fastQFileOne", "a", "--fastQFileTwo", "b", "-b", "bam", "--flag", "--unrecognized" }, group);
+	}
+
+	@Test(groups = { "integration" }, expectedExceptions = { IllegalStateException.class })
+	public void unrecognizedShortTest() {
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
+
+		group.addOption(new CommandLineOption("b", "b", 'b', "bamfile", true, false));
+		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
+
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--fastQFileOne", "a", "--fastQFileTwo", "b", "-b", "bam", "--flag", "-u" }, group);
+	}
+
+	@Test(groups = { "integration" }, expectedExceptions = { IllegalStateException.class })
+	public void passedArgumentToNonOptionTest() {
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
+
+		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
+		group.addOption(new CommandLineOption("flag2", "flag2", null, "a flag field", false, true));
+		group.addOption(new CommandLineOption("flag3", "flag3", null, "a flag field", false, true));
+
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--flag", "a", "--flag2", "--flag3", }, group);
+	}
+
+	@Test(groups = { "integration" })
+	public void nonOptionBaseTest() {
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
+
+		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
+		group.addOption(new CommandLineOption("flag2", "flag2", null, "a flag field", false, true));
+		group.addOption(new CommandLineOption("flag3", "flag3", null, "a flag field", false, true));
+
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--flag", "--flag2", "--flag3" }, group);
+	}
+
+	@Test(groups = { "integration" }, expectedExceptions = { IllegalStateException.class })
+	public void missingArgumentOnOptionTest() {
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
+
+		group.addOption(new CommandLineOption("option", "option", null, "an option field", true, false));
+
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--option" }, group);
+	}
+
+	@Test(groups = { "integration" }, expectedExceptions = { IllegalStateException.class })
+	public void missingRequiredOptionTest() {
 		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
 
 		group.addOption(new CommandLineOption("fastQFileOne", "fastQFileOne", null, "The first fastq file", true, false));
@@ -68,10 +114,46 @@ public class CommandLineParserTest {
 		group.addOption(new CommandLineOption("b", "b", 'b', "bamfile", true, false));
 		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
 
-		Assert.assertFalse(group.getUsage().isEmpty());
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--fastQFileTwo", "b", "-b", "bam", "--flag" }, group);
+	}
 
-		ParsedCommandLine parsedCommandLine = CommandLineParser.parseCommandLineWithExceptions(new String[] { "--fastQFileOne", "a", "--fastQFileTwo", "b", "-b", "bam", "--flag", "--unrecognized",
-				"-u" }, group);
+	@Test(groups = { "integration" })
+	public void multipleShortOptionsTest() {
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
+
+		group.addOption(new CommandLineOption("a", "a", 'a', "a", true, true));
+		group.addOption(new CommandLineOption("b", "b", 'b', "b", true, true));
+		group.addOption(new CommandLineOption("c", "c", 'c', "c", true, true));
+
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "-abc" }, group);
+	}
+
+	@Test(groups = { "integration" })
+	public void missingOneOfMultipleShortOptionsTest() {
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
+
+		group.addOption(new CommandLineOption("a", "a", 'a', "a", true, true));
+		group.addOption(new CommandLineOption("b", "b", 'b', "b", true, true));
+		group.addOption(new CommandLineOption("c", "c", 'c', "c", true, true));
+
+		ParsedCommandLine parsedCommandLine = CommandLineParser.parseCommandLine(new String[] { "-ac" }, group);
+		Assert.assertEquals(parsedCommandLine.getMissingRequiredOptions().length, 1);
+	}
+
+	@Test(groups = { "integration" }, expectedExceptions = { IllegalStateException.class })
+	public void duplicateShortOptionsTest() {
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
+
+		group.addOption(new CommandLineOption("a", "a1", 'a', "a", true, true));
+		group.addOption(new CommandLineOption("a", "a2", 'a', "a", false, true));
+	}
+
+	@Test(groups = { "integration" }, expectedExceptions = { IllegalStateException.class })
+	public void duplicateLongOptionsTest() {
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
+
+		group.addOption(new CommandLineOption("a", "ab", 'a', "a", true, true));
+		group.addOption(new CommandLineOption("b", "ab", 'b', "a", false, true));
 	}
 
 }

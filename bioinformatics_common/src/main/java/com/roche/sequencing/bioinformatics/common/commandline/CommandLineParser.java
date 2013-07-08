@@ -19,6 +19,8 @@ package com.roche.sequencing.bioinformatics.common.commandline;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine.NameValuePair;
@@ -59,7 +61,13 @@ public class CommandLineParser {
 
 				for (CommandLineOption option : optionMatchingResults.getMatchingOptions()) {
 					if ((option != null) && option.isFlag()) {
-						parsedCommandLine.setArgumentValue(option, "");
+						if ((nextArgumentIndex < arguments.length) && !isOptionIdentifierArgument(arguments[nextArgumentIndex])) {
+							String nextNonOptionArgument = arguments[nextArgumentIndex];
+							nextArgumentIndex++;
+							parsedCommandLine.addFlagOptionWithArguments(option, nextNonOptionArgument);
+						} else {
+							parsedCommandLine.setArgumentValue(option, "");
+						}
 					} else {
 						// it is a non-flagged option argument
 						String nextArgument = "";
@@ -68,6 +76,8 @@ public class CommandLineParser {
 							nextArgument = arguments[nextArgumentIndex];
 							parsedCommandLine.setArgumentValue(argument, nextArgument);
 							nextArgumentIndex++;
+						} else {
+							parsedCommandLine.addNonFlagOptionWithoutArguments(option);
 						}
 					}
 				}
@@ -79,7 +89,9 @@ public class CommandLineParser {
 				for (String unrecognizedOption : optionMatchingResults.getUnrecognizedLongFormOptions()) {
 					parsedCommandLine.addUnrecognizedLongFormOptions(unrecognizedOption);
 				}
+
 			} else {
+
 				parsedCommandLine.addNonOptionArgument(argument);
 			}
 
@@ -170,8 +182,40 @@ public class CommandLineParser {
 			unrecognizedShortOptionsError = unrecognizedShortOptionsBuilder.toString();
 		}
 
-		if (!missingOptionsError.isEmpty() || !unrecognizedLongOptionsError.isEmpty() || !unrecognizedShortOptionsError.isEmpty() || !duplicateArguments.isEmpty()) {
-			throw new IllegalStateException(missingOptionsError + unrecognizedLongOptionsError + unrecognizedShortOptionsError + duplicateArgumentsError);
+		String flagOptionWithArgumentsError = "";
+		Map<CommandLineOption, String> flagOptionsWithArguments = parsedCommandLine.getFlagOptionWithArguments();
+
+		if (flagOptionsWithArguments.size() > 0) {
+			StringBuilder flagOptionWithArgumentsErrorBuilder = new StringBuilder();
+
+			flagOptionWithArgumentsErrorBuilder.append("The following flag option(s) were given arguments when none were expected:" + StringUtil.NEWLINE);
+
+			for (Entry<CommandLineOption, String> entry : flagOptionsWithArguments.entrySet()) {
+				flagOptionWithArgumentsErrorBuilder.append(StringUtil.TAB + entry.getKey().getUsage() + " " + entry.getValue() + StringUtil.NEWLINE);
+			}
+
+			flagOptionWithArgumentsError = flagOptionWithArgumentsErrorBuilder.toString();
+		}
+
+		String nonFlagOptionWithoutArgumentsError = "";
+		Set<CommandLineOption> nonFlagOptionsWithoutArguments = parsedCommandLine.getNonFlagOptionWithoutArguments();
+
+		if (nonFlagOptionsWithoutArguments.size() > 0) {
+			StringBuilder nonFlagOptionWithoutArgumentsErrorBuilder = new StringBuilder();
+
+			nonFlagOptionWithoutArgumentsErrorBuilder.append("The following option(s) require arguments that were not provided:" + StringUtil.NEWLINE);
+
+			for (CommandLineOption option : nonFlagOptionsWithoutArguments) {
+				nonFlagOptionWithoutArgumentsErrorBuilder.append(StringUtil.TAB + option.getUsage() + StringUtil.NEWLINE);
+			}
+
+			nonFlagOptionWithoutArgumentsError = nonFlagOptionWithoutArgumentsErrorBuilder.toString();
+		}
+
+		if (!missingOptionsError.isEmpty() || !unrecognizedLongOptionsError.isEmpty() || !unrecognizedShortOptionsError.isEmpty() || !duplicateArguments.isEmpty()
+				|| !flagOptionWithArgumentsError.isEmpty() || !nonFlagOptionWithoutArgumentsError.isEmpty()) {
+			throw new IllegalStateException(missingOptionsError + unrecognizedLongOptionsError + unrecognizedShortOptionsError + duplicateArgumentsError + flagOptionWithArgumentsError
+					+ nonFlagOptionWithoutArgumentsError);
 		}
 	}
 

@@ -41,6 +41,9 @@ public class ParsedCommandLine {
 
 	private final List<String> nonOptionArguments;
 
+	private final Map<CommandLineOption, String> flagOptionWithArguments;
+	private final Set<CommandLineOption> nonFlagOptionWithoutArguments;
+
 	ParsedCommandLine(CommandLineOptionsGroup group) {
 		this.group = group;
 		argumentToValueMap = new LinkedHashMap<CommandLineOption, String>();
@@ -49,6 +52,8 @@ public class ParsedCommandLine {
 		duplicateArguments = new LinkedHashSet<String>();
 		foundArguments = new LinkedHashSet<String>();
 		nonOptionArguments = new ArrayList<String>();
+		flagOptionWithArguments = new LinkedHashMap<CommandLineOption, String>();
+		nonFlagOptionWithoutArguments = new LinkedHashSet<CommandLineOption>();
 	}
 
 	private void markArgumentAsFound(String argumentName) {
@@ -66,6 +71,22 @@ public class ParsedCommandLine {
 	void addNonOptionArgument(String nonOptionArgument) {
 		markArgumentAsFound(nonOptionArgument);
 		nonOptionArguments.add(nonOptionArgument);
+	}
+
+	void addFlagOptionWithArguments(CommandLineOption flagOption, String passedInArgument) {
+		flagOptionWithArguments.put(flagOption, passedInArgument);
+	}
+
+	public Map<CommandLineOption, String> getFlagOptionWithArguments() {
+		return new LinkedHashMap<CommandLineOption, String>(flagOptionWithArguments);
+	}
+
+	void addNonFlagOptionWithoutArguments(CommandLineOption nonFlagOption) {
+		nonFlagOptionWithoutArguments.add(nonFlagOption);
+	}
+
+	public Set<CommandLineOption> getNonFlagOptionWithoutArguments() {
+		return nonFlagOptionWithoutArguments;
 	}
 
 	/**
@@ -168,7 +189,7 @@ public class ParsedCommandLine {
 		Set<CommandLineOption> missingRequiredOptions = new LinkedHashSet<CommandLineOption>();
 
 		for (CommandLineOption argument : group) {
-			if (argument.isRequired() && !argumentToValueMap.containsKey(argument)) {
+			if (argument.isRequired() && !(argumentToValueMap.containsKey(argument) || nonFlagOptionWithoutArguments.contains(argument))) {
 				missingRequiredOptions.add(argument);
 			}
 		}
