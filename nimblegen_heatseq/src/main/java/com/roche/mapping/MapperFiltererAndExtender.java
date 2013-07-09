@@ -37,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 import net.sf.picard.fastq.FastqReader;
 import net.sf.picard.fastq.FastqRecord;
 import net.sf.samtools.SAMFileHeader;
+import net.sf.samtools.SAMProgramRecord;
 import net.sf.samtools.SAMReadGroupRecord;
 import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMSequenceRecord;
@@ -54,6 +55,7 @@ import com.roche.heatseq.process.ExtendReadsToPrimer;
 import com.roche.heatseq.process.ProbeFileUtil;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
+import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 /**
@@ -81,6 +83,10 @@ public class MapperFiltererAndExtender {
 	private Semaphore mapFilterAndExtendSemaphore;
 	private Semaphore mapReadSemaphore;
 
+	private final String programName;
+	private final String programVersion;
+	private final String commandLineSignature;
+
 	/**
 	 * Default constructor
 	 * 
@@ -92,7 +98,8 @@ public class MapperFiltererAndExtender {
 	 * @param numProcessors
 	 * @param uidLength
 	 */
-	public MapperFiltererAndExtender(File fastQOneFile, File fastQTwoFile, File probeFile, File outputFile, File ambiguousMappingFile, int numProcessors, int uidLength) {
+	public MapperFiltererAndExtender(File fastQOneFile, File fastQTwoFile, File probeFile, File outputFile, File ambiguousMappingFile, int numProcessors, int uidLength, String programName,
+			String programVersion, String commandLineSignature) {
 		super();
 		samRecordPairs = new ArrayList<SAMRecordPair>();
 		uidAndProbeReferenceToFastQLineMapping = new ConcurrentHashMap<UidAndProbeReference, Set<QualityScoreAndFastQLineIndex>>();
@@ -114,6 +121,9 @@ public class MapperFiltererAndExtender {
 		mapFilterAndExtendSemaphore = new Semaphore(numProcessors);
 		mapReadSemaphore = new Semaphore(numProcessors);
 		this.uidLength = uidLength;
+		this.programName = programName;
+		this.programVersion = programVersion;
+		this.commandLineSignature = commandLineSignature;
 	}
 
 	private static class MyThreadGroup extends ThreadGroup {
@@ -160,6 +170,15 @@ public class MapperFiltererAndExtender {
 				readGroup.setPlatform("illumina");
 				readGroup.setSample(readGroupName);
 				samHeader.addReadGroup(readGroup);
+
+				List<SAMProgramRecord> programRecords = new ArrayList<SAMProgramRecord>();
+				String uniqueProgramGroupId = programName + "_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS();
+				SAMProgramRecord programRecord = new SAMProgramRecord(uniqueProgramGroupId);
+				programRecord.setProgramName(programName);
+				programRecord.setProgramVersion(programVersion);
+				programRecord.setCommandLine(commandLineSignature);
+				programRecords.add(programRecord);
+				samHeader.setProgramRecords(programRecords);
 
 				final ThreadGroup threadGroup = new MyThreadGroup();
 				ExecutorService executor = Executors.newFixedThreadPool(numProcessors, new ThreadFactory() {

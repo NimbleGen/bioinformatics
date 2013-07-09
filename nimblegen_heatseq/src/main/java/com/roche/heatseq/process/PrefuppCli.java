@@ -40,9 +40,10 @@ public class PrefuppCli {
 	private final static String APPLICATION_NAME = "prefupp";
 	private final static String APPLICATION_VERSION = "1.0.0";
 	public final static int DEFAULT_UID_LENGTH = 7;
+	private final static String BAM_EXTENSION = ".bam";
 
 	private final static String DUPLICATE_MAPPINGS_REPORT_NAME = "duplicate_mappings.txt";
-	private final static String OUTPUT_MAPPED_BAM_FILE = "results.bam";
+	private final static String DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME = "mappingresults.bam";
 
 	private final static CommandLineOption USAGE_OPTION = new CommandLineOption("Print Usage", "usage", 'h', "Print Usage.", false, true);
 	private final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("fastQ One File", "fastQOne", null, "The first fastq file", true, false);
@@ -64,6 +65,8 @@ public class PrefuppCli {
 			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.", false, false);
 	private final static CommandLineOption UID_LENGTH_OPTION = new CommandLineOption("Length of UID in bases", "uidLength", null,
 			"Length of the Universal Identifier.  If not specified this will default to " + DEFAULT_UID_LENGTH + " bases.", false, false);
+	private final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o',
+			"Name for output bam file.  If not specified this will default to [" + DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME + "].", false, false);
 
 	public static void main(String[] args) {
 		outputToConsole("Primer Read Extension and Filtering of Unique PCR Probes");
@@ -71,7 +74,7 @@ public class PrefuppCli {
 		runCommandLineApp(args);
 	}
 
-	private static void runCommandLineApp(String[] args) {
+	static void runCommandLineApp(String[] args) {
 		long start = System.currentTimeMillis();
 		String commandLineSignature = CommandLineParser.getCommandLineCallSignature(APPLICATION_NAME, args, true);
 		outputToConsole(commandLineSignature);
@@ -169,6 +172,14 @@ public class PrefuppCli {
 				}
 			}
 
+			String outputBamFileName = DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME;
+			if (parsedCommandLine.isOptionPresent(OUTPUT_BAM_FILE_NAME_OPTION)) {
+				outputBamFileName = parsedCommandLine.getOptionsValue(OUTPUT_BAM_FILE_NAME_OPTION);
+				if (!outputBamFileName.endsWith(BAM_EXTENSION)) {
+					outputBamFileName += BAM_EXTENSION;
+				}
+			}
+
 			boolean shouldOutputQualityReports = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_REPORTS_OPTION);
 			boolean shouldOutputFastq = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_FASTQ_OPTION);
 			boolean shouldExtendReads = !parsedCommandLine.isOptionPresent(SHOULD_NOT_EXTEND_READS_TO_PRIMERS);
@@ -187,24 +198,37 @@ public class PrefuppCli {
 				if (bamIndexFileString != null) {
 					bamIndexFile = new File(bamIndexFileString);
 				} else {
+					// a bam index file was not provided so look for the index file in the same location as the bam file
 					File tempBamIndexfile = new File(bamFileString + ".bai");
 
 					if (tempBamIndexfile.exists()) {
 						bamIndexFile = tempBamIndexfile;
+						outputToConsole("Using the BAM Index File located at [" + bamIndexFile + "].");
 					}
 				}
 
 				if ((bamIndexFile == null) || !bamIndexFile.exists()) {
-					throw new IllegalStateException("Could not find index file at " + bamFileString + ".index.  Please provide this file using the following option:" + BAM_INDEX_OPTION.getUsage());
+					// a bam index file was not provided so create one in the default location
+					bamIndexFile = new File(bamFileString + ".bai");
+					outputToConsole("A BAM Index File was not passed in and not found in the default location so creating bam index file at:" + bamIndexFile);
+
+					try {
+						SAMFileReader samReader = new SAMFileReader(bamFile);
+						BamFileUtil.createIndex(samReader, bamIndexFile);
+					} catch (Exception e) {
+						throw new IllegalStateException("Could not find or create bam index file at [" + bamFileString + ".bai].  Please provide this file using the following option:"
+								+ BAM_INDEX_OPTION.getUsage());
+					}
+
 				}
 
-				sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputFilePrefix, tmpDirectory, saveTmpFiles,
+				sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tmpDirectory, saveTmpFiles,
 						shouldOutputQualityReports, shouldOutputFastq, shouldExtendReads, commandLineSignature, numProcessors, uidLength);
 			} else {
 				outputToConsole("A bam file was not provided so a mapping will be performed.");
-				File resultsFile = new File(outputDirectory, OUTPUT_MAPPED_BAM_FILE);
+				File outputBamFile = new File(outputDirectory, outputBamFileName);
 				try {
-					FileUtil.createNewFile(resultsFile);
+					FileUtil.createNewFile(outputBamFile);
 				} catch (IOException e) {
 					throw new IllegalStateException(e);
 				}
@@ -219,7 +243,8 @@ public class PrefuppCli {
 					}
 				}
 
-				MapperFiltererAndExtender mapFilterAndExtend = new MapperFiltererAndExtender(fastQ1WithUidsFile, fastQ2File, probeFile, resultsFile, ambiguousMappingFile, numProcessors, uidLength);
+				MapperFiltererAndExtender mapFilterAndExtend = new MapperFiltererAndExtender(fastQ1WithUidsFile, fastQ2File, probeFile, outputBamFile, ambiguousMappingFile, numProcessors, uidLength,
+						APPLICATION_NAME, APPLICATION_VERSION, commandLineSignature);
 				mapFilterAndExtend.mapFilterAndExtend();
 			}
 		}
@@ -227,9 +252,9 @@ public class PrefuppCli {
 		outputToConsole("Processing Completed (Total time:" + (end - start) + "ms).");
 	}
 
-	private static void sortMergeFilterAndExtendReads(File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputFilePrefix,
-			File tmpDirectory, boolean saveTmpDirectory, boolean shouldOutputQualityReports, boolean shouldOutputFastq, boolean shouldExtendReads, String commandLineSignature, int numProcessors,
-			int uidLength) {
+	private static void sortMergeFilterAndExtendReads(File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName,
+			String outputFilePrefix, File tmpDirectory, boolean saveTmpDirectory, boolean shouldOutputQualityReports, boolean shouldOutputFastq, boolean shouldExtendReads,
+			String commandLineSignature, int numProcessors, int uidLength) {
 		File tempOutputDirectory = null;
 		File mergedBamFileSortedByCoordinates = null;
 		File indexFileForMergedBamFileSortedByCoordinates = null;
@@ -257,8 +282,8 @@ public class PrefuppCli {
 			samReader.close();
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
-					fastQ2File, outputDirectory, outputFilePrefix, tmpDirectory, bamFile.getName(), shouldOutputQualityReports, shouldOutputFastq, shouldExtendReads, commandLineSignature,
-					APPLICATION_NAME, APPLICATION_VERSION, numProcessors);
+					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tmpDirectory, bamFile.getName(), shouldOutputQualityReports, shouldOutputFastq, shouldExtendReads,
+					commandLineSignature, APPLICATION_NAME, APPLICATION_VERSION, numProcessors);
 
 			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
@@ -296,6 +321,7 @@ public class PrefuppCli {
 		group.addOption(BAM_OPTION);
 		group.addOption(BAM_INDEX_OPTION);
 		group.addOption(OUTPUT_DIR_OPTION);
+		group.addOption(OUTPUT_BAM_FILE_NAME_OPTION);
 		group.addOption(OUTPUT_FILE_PREFIX_OPTION);
 		group.addOption(TMP_DIR_OPTION);
 		group.addOption(SAVE_TMP_DIR_OPTION);

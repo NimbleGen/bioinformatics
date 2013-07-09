@@ -367,9 +367,8 @@ class FastQDataSimulator {
 	}
 
 	public static void main(String[] args) {
-		File outputDirectory = new File("C:\\Users\\heilmank\\Desktop\\simulated_data\\");
-		createSimulatedIlluminaReads(outputDirectory, 10, 10, 10, 160, "M40D10R5^CCCAAATTTGGGM110", true);
-		java.awt.Toolkit.getDefaultToolkit().beep();
+		File outputDirectory = new File("C:\\Users\\heilmank\\Desktop\\simulated_data2\\");
+		createSimulatedIlluminaReads(outputDirectory, 10, 10, 10, 160, "M160", true);
 	}
 
 }

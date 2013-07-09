@@ -204,8 +204,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					+ FileUtil.getFileExtension(applicationSettings.getBamFile());
 			File outputUnsortedBamFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + outputUnsortedBamFileName);
 
-			String outputSortedBamFileName = FileUtil.getFileNameWithoutExtension(applicationSettings.getOriginalBamFileName()) + "_REDUCED."
-					+ FileUtil.getFileExtension(applicationSettings.getBamFile());
+			String outputSortedBamFileName = FileUtil.getFileNameWithoutExtension(applicationSettings.getOriginalBamFileName());
 			File outputSortedBamFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + outputSortedBamFileName);
 
 			String outputBamIndexFileName = FileUtil.getFileNameWithoutExtension(outputSortedBamFileName + ".bai");
