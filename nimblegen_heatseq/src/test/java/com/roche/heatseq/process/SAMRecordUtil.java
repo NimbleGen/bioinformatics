@@ -27,9 +27,9 @@ import net.sf.samtools.SAMSequenceRecord;
 
 import com.roche.heatseq.objects.SAMRecordPair;
 
-public class SAMRecordUtilTest {
+public class SAMRecordUtil {
 
-	private SAMRecordUtilTest() {
+	private SAMRecordUtil() {
 		throw new AssertionError();
 	}
 
