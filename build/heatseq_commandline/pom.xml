@@ -2,19 +2,23 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>com.roche.sequencing</groupId>
-        <artifactId>superpom</artifactId>
-        <version>1.0</version>
-        <relativePath>../../superpom/pom.xml</relativePath>
-    </parent>
+	<parent>
+		<groupId>com.roche.sequencing</groupId>
+		<artifactId>superpom</artifactId>
+		<version>1.0</version>
+		<relativePath>../../superpom/pom.xml</relativePath>
+	</parent>
 
 	<artifactId>heatseq_commandline</artifactId>
 	<packaging>pom</packaging>
 	<name>Heatseq Command Line</name>
-    <description>Command line tool for heatseq</description>
-    <modules>
-        <module>../../bioinformatics_common</module>
-        <module>../../nimblegen_heatseq</module>        
-    </modules>
+	<description>Command line tool for heatseq</description>
+	
+	<modules>
+		<module>../../bioinformatics_common</module>
+		<module>../../nimblegen_heatseq</module>
+	</modules>	
+	
+	
+	
 </project>

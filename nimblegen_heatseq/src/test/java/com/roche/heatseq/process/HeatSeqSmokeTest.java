@@ -34,14 +34,14 @@ public class HeatSeqSmokeTest {
 	private String outputBamFileName;
 	private String outputDirectory;
 
-	@BeforeClass
+	@BeforeClass(groups = { "smoke" })
 	public void setup() {
 		File tempDir = FileUtil.getSystemSpecificTempDirectory();
 		outputDirectory = tempDir.getAbsolutePath();
 		outputBamFileName = "output.bam";
 	}
 
-	@AfterClass
+	@AfterClass(groups = { "smoke" })
 	public void teardown() {
 		File outputBamFile = new File(outputDirectory, outputBamFileName);
 		outputBamFile.delete();

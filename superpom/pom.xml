@@ -107,6 +107,12 @@
 						</lifecycleMappingMetadata>
 					</configuration>
 				</plugin>
+
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<version>2.15</version>
+				</plugin>
 			</plugins>
 		</pluginManagement>
 
@@ -118,6 +124,7 @@
 			<plugin>
 				<groupId>org.codehaus.gmaven</groupId>
 				<artifactId>gmaven-plugin</artifactId>
+				<version>1.4</version>
 				<executions>
 					<execution>
 						<phase>initialize</phase>
@@ -143,6 +150,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.1</version>
 				<configuration>
 					<source>${jdkVersion}</source>
 					<target>${jdkVersion}</target>
@@ -219,6 +227,38 @@
 		<jdkVersion>1.7</jdkVersion>
 		<sourceEncoding>ISO-8859-1</sourceEncoding>
 		<product.version>1.0</product.version>
+		<test-groups>unit, smoke</test-groups>
 	</properties>
+
+	<profiles>
+		<profile>
+			<id>no_tests</id>
+			<properties>
+				<test-groups>none</test-groups>
+			</properties>
+		</profile>
+		<profile>
+			<id>pre_checkin_tests</id>
+			<properties>
+				<test-groups>unit, smoke</test-groups>
+			</properties>
+		</profile>
+		<profile>
+			<id>ci_quick_tests</id>
+			<properties>
+				<test-groups>unit, integration, smoke</test-groups>
+			</properties>
+		</profile>
+		<profile>
+			<id>ci_nightly_tests</id>
+			<properties>
+				<test-groups>unit, integration, smoke, stress</test-groups>
+			</properties>
+		</profile>
+	</profiles>
+
+
+
+
 
 </project>
