@@ -31,6 +31,7 @@ public class ApplicationSettings {
 	private final File fastQ1WithUidsFile;
 	private final File fastQ2File;
 	private final File outputDirectory;
+	private final String outputBamFileName;
 	private final String outputFilePrefix;
 	private final File tmpDirectory;
 	private final String originalBamFileName;
@@ -62,8 +63,8 @@ public class ApplicationSettings {
 	 * @param programVersion
 	 * @param numProcessors
 	 */
-	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputFilePrefix, File tmpDirectory,
-			String originalBamFileName, boolean shouldOutputQualityReports, boolean shouldOutputFastq, boolean shouldExtendReads, String commandLineSignature, String programName,
+	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
+			File tmpDirectory, String originalBamFileName, boolean shouldOutputQualityReports, boolean shouldOutputFastq, boolean shouldExtendReads, String commandLineSignature, String programName,
 			String programVersion, int numProcessors) {
 		super();
 		this.probeFile = probeFile;
@@ -72,6 +73,7 @@ public class ApplicationSettings {
 		this.fastQ1WithUidsFile = fastQ1WithUidsFile;
 		this.fastQ2File = fastQ2File;
 		this.outputDirectory = outputDirectory;
+		this.outputBamFileName = outputBamFileName;
 		this.outputFilePrefix = outputFilePrefix;
 		this.tmpDirectory = tmpDirectory;
 		this.originalBamFileName = originalBamFileName;
@@ -124,6 +126,13 @@ public class ApplicationSettings {
 	 */
 	public File getOutputDirectory() {
 		return outputDirectory;
+	}
+
+	/**
+	 * @return outputBamFileName
+	 */
+	public String getOutputBamFileName() {
+		return outputBamFileName;
 	}
 
 	/**

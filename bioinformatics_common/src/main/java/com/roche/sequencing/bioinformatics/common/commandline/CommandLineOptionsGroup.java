@@ -91,6 +91,11 @@ public class CommandLineOptionsGroup implements Iterable<CommandLineOption> {
 		return options.iterator();
 	}
 
+	/**
+	 * @param option
+	 * @return the options that this matches with (note there would only be multiple options in the case of a short option indicator with multiple characters (for example -ac would be equivalent to
+	 *         the two options -a and -c).
+	 */
 	OptionMatchingResults getMatchingCommandLineOptions(String option) {
 		OptionMatchingResults optionMatchingResults = new OptionMatchingResults();
 
