@@ -63,7 +63,7 @@ public class StressTest {
 	}
 
 	@Test(groups = { "stress" })
-	public void smallMapRunTest() {
+	public void largeMapRunTest() {
 		String[] args = new String[] { "--fastQOne", fastqOneFile.getAbsolutePath(), "--fastQTwo", fastqTwoFile.getAbsolutePath(), "--probe", probesFile.getAbsolutePath(), "--outputDir",
 				outputDirectory, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
 
@@ -82,7 +82,7 @@ public class StressTest {
 	}
 
 	@Test(groups = { "stress" })
-	public void smallRunTest() {
+	public void largeRunTest() {
 		String outputBamFileName = "output.bam";
 		URL fastQOneFilePath = getClass().getResource("one.fastq");
 		URL fastQTwoFilePath = getClass().getResource("two.fastq");
