@@ -48,6 +48,13 @@
 		</dependencies>
 	</dependencyManagement>
 
+	<distributionManagement>
+		<site>
+			<id>heatseq-site</id>
+			<url>file:///opt/builds/heatseq</url>
+		</site>
+	</distributionManagement>
+
 	<build>
 		<!-- For all the plugins used here and in the child POMs this section defined 
 			the plugin version and inherited configurations. Plugin settings and configuration 
