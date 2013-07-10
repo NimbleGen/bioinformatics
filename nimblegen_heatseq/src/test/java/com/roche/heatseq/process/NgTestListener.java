@@ -40,8 +40,4 @@ public class NgTestListener extends TestListenerAdapter {
 			classToContextMap.put(testClass, testContext);
 		}
 	}
-
-	@Override
-	public void onFinish(ITestContext context) {
-	}
 }
