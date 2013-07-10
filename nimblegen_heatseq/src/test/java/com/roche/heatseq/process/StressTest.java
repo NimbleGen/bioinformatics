@@ -29,6 +29,7 @@ import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
 import com.google.common.io.Files;
+import com.roche.bioinformatics.common.testing.NgTestListener;
 import com.roche.mapping.datasimulator.FastQDataSimulator;
 
 @Listeners(NgTestListener.class)

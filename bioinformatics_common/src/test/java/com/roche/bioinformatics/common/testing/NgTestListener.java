@@ -1,4 +1,4 @@
-package com.roche.heatseq.process;
+package com.roche.bioinformatics.common.testing;
 
 import java.util.HashSet;
 import java.util.Map;
