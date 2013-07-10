@@ -17,6 +17,15 @@ public class NgTestListener extends TestListenerAdapter {
 		return classToContextMap.get(testClass);
 	}
 
+	public static boolean hasFailedTests(Class<?> testClass) {
+		ITestContext testContext = getTestConext(testClass);
+		boolean hasFailedTests = false;
+		if (testContext != null) {
+			hasFailedTests = testContext.getFailedTests().size() > 0;
+		}
+		return hasFailedTests;
+	}
+
 	@Override
 	public void onStart(ITestContext testContext) {
 		Set<Class<?>> testClasses = new HashSet<Class<?>>();

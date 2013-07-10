@@ -23,7 +23,6 @@ import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMRecordIterator;
 
 import org.testng.Assert;
-import org.testng.ITestContext;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Listeners;
@@ -58,12 +57,8 @@ public class StressTest {
 
 	@AfterClass(groups = { "stress" })
 	public void teardown() {
-		ITestContext testContext = NgTestListener.getTestConext(getClass());
-		boolean noTestsFailed = true;
-		if (testContext != null) {
-			noTestsFailed = testContext.getFailedTests().size() == 0;
-		}
-		if (noTestsFailed) {
+		boolean hasFailedTests = NgTestListener.hasFailedTests(getClass());
+		if (!hasFailedTests) {
 			File outputDirectory = new File(outputDirectoryPath);
 			outputDirectory.delete();
 		}
