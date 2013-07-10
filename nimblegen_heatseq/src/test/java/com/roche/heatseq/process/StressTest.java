@@ -25,18 +25,21 @@ import net.sf.samtools.SAMRecordIterator;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
+import com.google.common.io.Files;
+import com.roche.bioinformatics.common.testing.NgTestListener;
 import com.roche.mapping.datasimulator.FastQDataSimulator;
-import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 
+@Listeners(NgTestListener.class)
 public class StressTest {
 
 	private String outputBamFileName = "output.bam";
 	private String fastqOneFileName = "large_one.fastq";
 	private String fastqTwoFileName = "large_two.fastq";
 	private String probeInfoFileName = "probes.txt";
-	private String outputDirectory;
+	private String outputDirectoryPath;
 
 	private File fastqOneFile;
 	private File fastqTwoFile;
@@ -44,31 +47,31 @@ public class StressTest {
 
 	@BeforeClass(groups = { "stress" })
 	public void setup() {
-		File tempDir = FileUtil.getSystemSpecificTempDirectory();
-		outputDirectory = tempDir.getAbsolutePath();
-		FastQDataSimulator.createSimulatedIlluminaReads(tempDir, fastqOneFileName, fastqTwoFileName, probeInfoFileName, 10000, 50, 50, 160, "M40D10R5^CCCAAATTTGGGM110", true);
+		File outputDirectory = Files.createTempDir();
+		outputDirectoryPath = outputDirectory.getAbsolutePath();
+		System.out.println("outputDirectory is [" + outputDirectoryPath + "].");
+		FastQDataSimulator.createSimulatedIlluminaReads(outputDirectory, fastqOneFileName, fastqTwoFileName, probeInfoFileName, 10, 50, 50, 160, "M40D10R5^CCCAAATTTGGGM110", true);
 		fastqOneFile = new File(outputDirectory, fastqOneFileName);
 		fastqTwoFile = new File(outputDirectory, fastqTwoFileName);
 		probesFile = new File(outputDirectory, probeInfoFileName);
-
 	}
 
 	@AfterClass(groups = { "stress" })
 	public void teardown() {
-		File outputBamFile = new File(outputDirectory, outputBamFileName);
-		outputBamFile.delete();
-		fastqOneFile.delete();
-		fastqTwoFile.delete();
-		probesFile.delete();
+		boolean hasFailedTests = NgTestListener.hasFailedTests(getClass());
+		if (!hasFailedTests) {
+			File outputDirectory = new File(outputDirectoryPath);
+			outputDirectory.delete();
+		}
 	}
 
 	@Test(groups = { "stress" })
 	public void largeMapRunTest() {
 		String[] args = new String[] { "--fastQOne", fastqOneFile.getAbsolutePath(), "--fastQTwo", fastqTwoFile.getAbsolutePath(), "--probe", probesFile.getAbsolutePath(), "--outputDir",
-				outputDirectory, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
+				outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
 
 		PrefuppCli.runCommandLineApp(args);
-		File outputBam = new File(outputDirectory, outputBamFileName);
+		File outputBam = new File(outputDirectoryPath, outputBamFileName);
 		int count = 0;
 		try (final SAMFileReader samReader = new SAMFileReader(outputBam)) {
 			SAMRecordIterator samRecordIter = samReader.iterator();
@@ -90,10 +93,10 @@ public class StressTest {
 		URL bamFilePath = getClass().getResource("mapping.bam");
 
 		String[] args = new String[] { "--fastQOne", fastQOneFilePath.getPath(), "--fastQTwo", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--bam", bamFilePath.getPath(),
-				"--outputDir", outputDirectory, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
+				"--outputDir", outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
 		PrefuppCli.runCommandLineApp(args);
 
-		File outputBam = new File(outputDirectory, outputBamFileName);
+		File outputBam = new File(outputDirectoryPath, outputBamFileName);
 		int count = 0;
 		try (final SAMFileReader samReader = new SAMFileReader(outputBam)) {
 
