@@ -39,16 +39,16 @@ import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
-class FastQDataSimulator {
+public class FastQDataSimulator {
 
 	private final Logger logger = LoggerFactory.getLogger(FastQDataSimulator.class);
 
 	private final static Random randomNumberGenerator = new Random(System.currentTimeMillis());
 
 	private final static FileOsFlavor FILE_OS_FLAVOR = FileOsFlavor.LINUX;
-	private final static String OUTPUT_FASTQ1_NAME = "one.fastq";
-	private final static String OUTPUT_FASTQ2_NAME = "two.fastq";
-	private final static String OUTPUT_PROBE_INFO = "probes.txt";
+	private final static String DEFAULT_OUTPUT_FASTQ1_NAME = "one.fastq";
+	private final static String DEFAULT_OUTPUT_FASTQ2_NAME = "two.fastq";
+	private final static String DEFAULTOUTPUT_PROBE_INFO = "probes.txt";
 	private final static int UID_LENGTH = 14;
 	private final static int EXTENSION_PRIMER_LENGTH = 22;
 	private final static int LIGATION_PRIMER_LENGTH = 18;
@@ -72,8 +72,12 @@ class FastQDataSimulator {
 
 	private final boolean alternateProbeStrands;
 
-	private FastQDataSimulator(File outputDirectory, int numberOfProbes, int readsPerUidProbePair, int uidsPerProbe, int captureTargetAndPrimersLength, String mismatchDetailsString,
-			boolean alternateProbeStrands) {
+	private final String outputFastqOneFileName;
+	private final String outputFastqTwoFileName;
+	private final String outputProbesFileName;
+
+	private FastQDataSimulator(File outputDirectory, String outputFastqOneFileName, String outputFastqTwoFileName, String outputProbesFileName, int numberOfProbes, int readsPerUidProbePair,
+			int uidsPerProbe, int captureTargetAndPrimersLength, String mismatchDetailsString, boolean alternateProbeStrands) {
 
 		this.outputDirectory = outputDirectory;
 		this.numberOfProbes = numberOfProbes;
@@ -82,6 +86,10 @@ class FastQDataSimulator {
 		this.mismatchDetailsString = mismatchDetailsString;
 		this.alternateProbeStrands = alternateProbeStrands;
 		this.captureTargetAndPrimersLength = captureTargetAndPrimersLength;
+
+		this.outputFastqOneFileName = outputFastqOneFileName;
+		this.outputFastqTwoFileName = outputFastqTwoFileName;
+		this.outputProbesFileName = outputProbesFileName;
 	}
 
 	private void write(int currentProbeLocation, int usedRecordIndex, String readHeader, String readString, String baseQualityHeader, BufferedWriter fastQOneWriter, BufferedWriter fastQTwoWriter,
@@ -186,8 +194,8 @@ class FastQDataSimulator {
 
 	private void createSimulatedReads() {
 		List<Probe> probes = new ArrayList<Probe>();
-		File outputFastQ1 = new File(outputDirectory, OUTPUT_FASTQ1_NAME);
-		File outputFastQ2 = new File(outputDirectory, OUTPUT_FASTQ2_NAME);
+		File outputFastQ1 = new File(outputDirectory, outputFastqOneFileName);
+		File outputFastQ2 = new File(outputDirectory, outputFastqTwoFileName);
 
 		try {
 			FileUtil.createNewFile(outputFastQ1);
@@ -225,7 +233,7 @@ class FastQDataSimulator {
 		}
 
 		try {
-			File outputProbeFile = new File(outputDirectory, OUTPUT_PROBE_INFO);
+			File outputProbeFile = new File(outputDirectory, outputProbesFileName);
 			ProbeFileUtil.writeProbesToFile(probes, outputProbeFile, FILE_OS_FLAVOR);
 			logger.debug("Probes written to " + outputProbeFile.getAbsolutePath());
 		} catch (IOException e) {
@@ -262,10 +270,41 @@ class FastQDataSimulator {
 		return qualityString.toString();
 	}
 
-	private static void createSimulatedIlluminaReads(File outputDirectory, int numberOfProbes, int readsPerUidProbePair, int uidsPerProbe, int captureTargetAndPrimersLength,
+	/**
+	 * 
+	 * @param outputDirectory
+	 * @param numberOfProbes
+	 * @param readsPerUidProbePair
+	 * @param uidsPerProbe
+	 * @param captureTargetAndPrimersLength
+	 * @param mismatchDetailsString
+	 *            for example "M40D10R5^CCCAAATTTGGGM110" represents match 40, delete 10, insert 5 randoms, insert CCCAAATTTGGG, and match 110
+	 * @param alternateProbeStrands
+	 */
+	public static void createSimulatedIlluminaReads(File outputDirectory, int numberOfProbes, int readsPerUidProbePair, int uidsPerProbe, int captureTargetAndPrimersLength,
 			String mismatchDetailsString, boolean alternateProbeStrands) {
-		FastQDataSimulator dataSimulator = new FastQDataSimulator(outputDirectory, numberOfProbes, readsPerUidProbePair, uidsPerProbe, captureTargetAndPrimersLength, mismatchDetailsString,
-				alternateProbeStrands);
+		createSimulatedIlluminaReads(outputDirectory, DEFAULT_OUTPUT_FASTQ1_NAME, DEFAULT_OUTPUT_FASTQ2_NAME, DEFAULTOUTPUT_PROBE_INFO, numberOfProbes, readsPerUidProbePair, uidsPerProbe,
+				captureTargetAndPrimersLength, mismatchDetailsString, alternateProbeStrands);
+	}
+
+	/**
+	 * 
+	 * @param outputDirectory
+	 * @param fastqOneFileName
+	 * @param fastqTwoFileName
+	 * @param probeFileName
+	 * @param numberOfProbes
+	 * @param readsPerUidProbePair
+	 * @param uidsPerProbe
+	 * @param captureTargetAndPrimersLength
+	 * @param mismatchDetailsString
+	 *            for example "M40D10R5^CCCAAATTTGGGM110" represents match 40, delete 10, insert 5 randoms, insert CCCAAATTTGGG, and match 110
+	 * @param alternateProbeStrands
+	 */
+	public static void createSimulatedIlluminaReads(File outputDirectory, String fastqOneFileName, String fastqTwoFileName, String probeFileName, int numberOfProbes, int readsPerUidProbePair,
+			int uidsPerProbe, int captureTargetAndPrimersLength, String mismatchDetailsString, boolean alternateProbeStrands) {
+		FastQDataSimulator dataSimulator = new FastQDataSimulator(outputDirectory, fastqOneFileName, fastqTwoFileName, probeFileName, numberOfProbes, readsPerUidProbePair, uidsPerProbe,
+				captureTargetAndPrimersLength, mismatchDetailsString, alternateProbeStrands);
 		dataSimulator.createSimulatedReads();
 	}
 
@@ -368,7 +407,7 @@ class FastQDataSimulator {
 
 	public static void main(String[] args) {
 		File outputDirectory = new File("C:\\Users\\heilmank\\Desktop\\simulated_data2\\");
-		createSimulatedIlluminaReads(outputDirectory, 10, 10, 10, 160, "M160", true);
+		createSimulatedIlluminaReads(outputDirectory, 10000, 10, 10, 160, "M40D10R5^CCCAAATTTGGGM110", true);
 	}
 
 }
