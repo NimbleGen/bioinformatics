@@ -27,40 +27,50 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import com.roche.mapping.datasimulator.FastQDataSimulator;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 
-public class HeatSeqSmokeTest {
+public class StressTest {
 
-	private String outputBamFileName;
+	private String outputBamFileName = "output.bam";
+	private String fastqOneFileName = "large_one.fastq";
+	private String fastqTwoFileName = "large_two.fastq";
+	private String probeInfoFileName = "probes.txt";
 	private String outputDirectory;
 
-	@BeforeClass(groups = { "smoke" })
+	private File fastqOneFile;
+	private File fastqTwoFile;
+	private File probesFile;
+
+	@BeforeClass(groups = { "stress" })
 	public void setup() {
 		File tempDir = FileUtil.getSystemSpecificTempDirectory();
 		outputDirectory = tempDir.getAbsolutePath();
-		outputBamFileName = "output.bam";
+		FastQDataSimulator.createSimulatedIlluminaReads(tempDir, fastqOneFileName, fastqTwoFileName, probeInfoFileName, 10000, 50, 50, 160, "M40D10R5^CCCAAATTTGGGM110", true);
+		fastqOneFile = new File(outputDirectory, fastqOneFileName);
+		fastqTwoFile = new File(outputDirectory, fastqTwoFileName);
+		probesFile = new File(outputDirectory, probeInfoFileName);
+
 	}
 
-	@AfterClass(groups = { "smoke" })
+	@AfterClass(groups = { "stress" })
 	public void teardown() {
 		File outputBamFile = new File(outputDirectory, outputBamFileName);
 		outputBamFile.delete();
+		fastqOneFile.delete();
+		fastqTwoFile.delete();
+		probesFile.delete();
 	}
 
-	@Test(groups = { "smoke" })
-	public void smallMapRunTest() {
-		URL fastQOneFilePath = getClass().getResource("one.fastq");
-		URL fastQTwoFilePath = getClass().getResource("two.fastq");
-		URL probeFilePath = getClass().getResource("probes.txt");
-
-		String[] args = new String[] { "--fastQOne", fastQOneFilePath.getPath(), "--fastQTwo", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--outputDir", outputDirectory,
-				"--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
+	@Test(groups = { "stress" })
+	public void largeMapRunTest() {
+		String[] args = new String[] { "--fastQOne", fastqOneFile.getAbsolutePath(), "--fastQTwo", fastqTwoFile.getAbsolutePath(), "--probe", probesFile.getAbsolutePath(), "--outputDir",
+				outputDirectory, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
 
 		PrefuppCli.runCommandLineApp(args);
 		File outputBam = new File(outputDirectory, outputBamFileName);
 		int count = 0;
 		try (final SAMFileReader samReader = new SAMFileReader(outputBam)) {
-
 			SAMRecordIterator samRecordIter = samReader.iterator();
 			while (samRecordIter.hasNext()) {
 				samRecordIter.next();
@@ -71,17 +81,16 @@ public class HeatSeqSmokeTest {
 		Assert.assertNotEquals(count, 0);
 	}
 
-	@Test(groups = { "smoke" })
-	public void smallRunTest() {
+	@Test(groups = { "stress" })
+	public void largeRunTest() {
 		String outputBamFileName = "output.bam";
 		URL fastQOneFilePath = getClass().getResource("one.fastq");
 		URL fastQTwoFilePath = getClass().getResource("two.fastq");
 		URL probeFilePath = getClass().getResource("probes.txt");
 		URL bamFilePath = getClass().getResource("mapping.bam");
-		URL bamIndexFilePath = getClass().getResource("mapping.bam.bai");
 
 		String[] args = new String[] { "--fastQOne", fastQOneFilePath.getPath(), "--fastQTwo", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--bam", bamFilePath.getPath(),
-				"--bamIndex", bamIndexFilePath.getPath(), "--outputDir", outputDirectory, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
+				"--outputDir", outputDirectory, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
 		PrefuppCli.runCommandLineApp(args);
 
 		File outputBam = new File(outputDirectory, outputBamFileName);
