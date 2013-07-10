@@ -27,23 +27,23 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.google.common.io.Files;
 
 public class HeatSeqSmokeTest {
 
 	private String outputBamFileName;
-	private String outputDirectory;
+	private String outputDirectoryPath;
 
 	@BeforeClass(groups = { "smoke" })
 	public void setup() {
-		File tempDir = FileUtil.getSystemSpecificTempDirectory();
-		outputDirectory = tempDir.getAbsolutePath();
+		File outputDirectory = Files.createTempDir();
+		outputDirectoryPath = outputDirectory.getAbsolutePath();
 		outputBamFileName = "output.bam";
 	}
 
 	@AfterClass(groups = { "smoke" })
 	public void teardown() {
-		File outputBamFile = new File(outputDirectory, outputBamFileName);
+		File outputBamFile = new File(outputDirectoryPath, outputBamFileName);
 		outputBamFile.delete();
 	}
 
@@ -53,11 +53,11 @@ public class HeatSeqSmokeTest {
 		URL fastQTwoFilePath = getClass().getResource("two.fastq");
 		URL probeFilePath = getClass().getResource("probes.txt");
 
-		String[] args = new String[] { "--fastQOne", fastQOneFilePath.getPath(), "--fastQTwo", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--outputDir", outputDirectory,
+		String[] args = new String[] { "--fastQOne", fastQOneFilePath.getPath(), "--fastQTwo", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--outputDir", outputDirectoryPath,
 				"--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
 
 		PrefuppCli.runCommandLineApp(args);
-		File outputBam = new File(outputDirectory, outputBamFileName);
+		File outputBam = new File(outputDirectoryPath, outputBamFileName);
 		int count = 0;
 		try (final SAMFileReader samReader = new SAMFileReader(outputBam)) {
 
@@ -81,10 +81,10 @@ public class HeatSeqSmokeTest {
 		URL bamIndexFilePath = getClass().getResource("mapping.bam.bai");
 
 		String[] args = new String[] { "--fastQOne", fastQOneFilePath.getPath(), "--fastQTwo", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--bam", bamFilePath.getPath(),
-				"--bamIndex", bamIndexFilePath.getPath(), "--outputDir", outputDirectory, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
+				"--bamIndex", bamIndexFilePath.getPath(), "--outputDir", outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
 		PrefuppCli.runCommandLineApp(args);
 
-		File outputBam = new File(outputDirectory, outputBamFileName);
+		File outputBam = new File(outputDirectoryPath, outputBamFileName);
 		int count = 0;
 		try (final SAMFileReader samReader = new SAMFileReader(outputBam)) {
 
