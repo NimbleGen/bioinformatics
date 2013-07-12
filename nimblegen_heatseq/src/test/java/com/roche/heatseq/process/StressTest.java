@@ -53,6 +53,7 @@ public class StressTest {
 
 	@BeforeClass(groups = { "stress" })
 	public void setup() {
+		System.out.println("trying to create a temp directory at " + System.getProperty("java.io.tmpdir"));
 		File outputDirectory = Files.createTempDir();
 		outputDirectoryPath = outputDirectory.getAbsolutePath();
 		System.out.println("outputDirectory is [" + outputDirectoryPath + "].");
