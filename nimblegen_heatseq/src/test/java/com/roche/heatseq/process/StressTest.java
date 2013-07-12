@@ -51,13 +51,17 @@ public class StressTest {
 	private File fastqTwoFile;
 	private File probesFile;
 
+	private final static int NUMBER_OF_PROBES = 100;
+	private final static int UIDS_PER_PROBE = 50;
+
 	@BeforeClass(groups = { "stress" })
 	public void setup() {
 		System.out.println("trying to create a temp directory at " + System.getProperty("java.io.tmpdir"));
 		File outputDirectory = Files.createTempDir();
 		outputDirectoryPath = outputDirectory.getAbsolutePath();
 		System.out.println("outputDirectory is [" + outputDirectoryPath + "].");
-		FastQDataSimulator.createSimulatedIlluminaReads(outputDirectory, fastqOneFileName, fastqTwoFileName, probeInfoFileName, 10, 50, 50, 160, "M40D10R5^CCCAAATTTGGGM110", true);
+		FastQDataSimulator.createSimulatedIlluminaReads(outputDirectory, fastqOneFileName, fastqTwoFileName, probeInfoFileName, NUMBER_OF_PROBES, 50, UIDS_PER_PROBE, 160, "M40D10R5^CCCAAATTTGGGM110",
+				true);
 		fastqOneFile = new File(outputDirectory, fastqOneFileName);
 		fastqTwoFile = new File(outputDirectory, fastqTwoFileName);
 		probesFile = new File(outputDirectory, probeInfoFileName);
@@ -94,8 +98,7 @@ public class StressTest {
 			}
 			samRecordIter.close();
 		}
-		Assert.assertNotEquals(count, 0);
-		throw new IllegalStateException("forcing to fail to check if directory does not get removed.");
+		Assert.assertEquals(count, NUMBER_OF_PROBES * UIDS_PER_PROBE);
 	}
 
 	@Test(groups = { "stress" })
@@ -121,7 +124,7 @@ public class StressTest {
 			}
 			samRecordIter.close();
 		}
-		Assert.assertNotEquals(count, 0);
+		Assert.assertEquals(count, NUMBER_OF_PROBES * UIDS_PER_PROBE);
 	}
 
 }
