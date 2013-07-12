@@ -17,11 +17,15 @@
 package com.roche.heatseq.process;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMRecordIterator;
 
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -30,6 +34,8 @@ import org.testng.annotations.Test;
 import com.google.common.io.Files;
 
 public class HeatSeqSmokeTest {
+
+	Logger logger = LoggerFactory.getLogger(HeatSeqSmokeTest.class);
 
 	private String outputBamFileName;
 	private String outputDirectoryPath;
@@ -43,8 +49,11 @@ public class HeatSeqSmokeTest {
 
 	@AfterClass(groups = { "smoke" })
 	public void teardown() {
-		File outputBamFile = new File(outputDirectoryPath, outputBamFileName);
-		outputBamFile.delete();
+		try {
+			FileUtils.deleteDirectory(new File(outputDirectoryPath));
+		} catch (IOException e) {
+			logger.warn(e.getMessage(), e);
+		}
 	}
 
 	@Test(groups = { "smoke" })
