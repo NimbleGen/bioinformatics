@@ -73,6 +73,8 @@ public class StressTest {
 			} catch (IOException e) {
 				logger.warn(e.getMessage(), e);
 			}
+		} else {
+			System.out.println("This test has failed so preserving files at [" + outputDirectoryPath + "].");
 		}
 	}
 
@@ -93,6 +95,7 @@ public class StressTest {
 			samRecordIter.close();
 		}
 		Assert.assertNotEquals(count, 0);
+		throw new IllegalStateException("forcing to fail to check if directory does not get removed.");
 	}
 
 	@Test(groups = { "stress" })
