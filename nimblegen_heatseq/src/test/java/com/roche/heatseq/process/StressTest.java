@@ -17,11 +17,15 @@
 package com.roche.heatseq.process;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMRecordIterator;
 
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -35,6 +39,8 @@ import com.roche.mapping.datasimulator.FastQDataSimulator;
 @Listeners(NgTestListener.class)
 public class StressTest {
 
+	Logger logger = LoggerFactory.getLogger(StressTest.class);
+
 	private String outputBamFileName = "output.bam";
 	private String fastqOneFileName = "large_one.fastq";
 	private String fastqTwoFileName = "large_two.fastq";
@@ -47,6 +53,7 @@ public class StressTest {
 
 	@BeforeClass(groups = { "stress" })
 	public void setup() {
+		System.out.println("trying to create a temp directory at " + System.getProperty("java.io.tmpdir"));
 		File outputDirectory = Files.createTempDir();
 		outputDirectoryPath = outputDirectory.getAbsolutePath();
 		System.out.println("outputDirectory is [" + outputDirectoryPath + "].");
@@ -61,7 +68,13 @@ public class StressTest {
 		boolean hasFailedTests = NgTestListener.hasFailedTests(getClass());
 		if (!hasFailedTests) {
 			File outputDirectory = new File(outputDirectoryPath);
-			outputDirectory.delete();
+			try {
+				FileUtils.deleteDirectory(outputDirectory);
+			} catch (IOException e) {
+				logger.warn(e.getMessage(), e);
+			}
+		} else {
+			System.out.println("This test has failed so preserving files at [" + outputDirectoryPath + "].");
 		}
 	}
 
@@ -82,6 +95,7 @@ public class StressTest {
 			samRecordIter.close();
 		}
 		Assert.assertNotEquals(count, 0);
+		throw new IllegalStateException("forcing to fail to check if directory does not get removed.");
 	}
 
 	@Test(groups = { "stress" })
