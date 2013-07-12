@@ -17,11 +17,15 @@
 package com.roche.heatseq.process;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMRecordIterator;
 
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -34,6 +38,8 @@ import com.roche.mapping.datasimulator.FastQDataSimulator;
 
 @Listeners(NgTestListener.class)
 public class StressTest {
+
+	Logger logger = LoggerFactory.getLogger(StressTest.class);
 
 	private String outputBamFileName = "output.bam";
 	private String fastqOneFileName = "large_one.fastq";
@@ -61,7 +67,11 @@ public class StressTest {
 		boolean hasFailedTests = NgTestListener.hasFailedTests(getClass());
 		if (!hasFailedTests) {
 			File outputDirectory = new File(outputDirectoryPath);
-			outputDirectory.delete();
+			try {
+				FileUtils.deleteDirectory(outputDirectory);
+			} catch (IOException e) {
+				logger.warn(e.getMessage(), e);
+			}
 		}
 	}
 
