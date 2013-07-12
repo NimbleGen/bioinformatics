@@ -28,9 +28,34 @@
 			<artifactId>picard</artifactId>
 		</dependency>
 	</dependencies>
-	
+
 	<build>
+		<finalName>${project.artifactId}-${project.version}-r${buildNumber}</finalName>
 		<plugins>
+			<!--This plugin's generates the build number to store in the manifest 
+				and the jar file name. -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>buildnumber-maven-plugin</artifactId>
+				<version>1.0</version>
+				<executions>
+					<execution>
+						<phase>validate</phase>
+						<goals>
+							<goal>create</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<format>{0,number}</format>
+					<items>
+						<item>buildNumber</item>
+					</items>
+					<doCheck>false</doCheck>
+					<doUpdate>false</doUpdate>
+					<revisionOnScmFailure>unknownbuild</revisionOnScmFailure>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -49,6 +74,7 @@
 					<archive>
 						<manifestEntries>
 							<Main-Class>com/roche/heatseq/process/PrefuppCli</Main-Class>
+							<Implementation-Build>${buildNumber}</Implementation-Build>
 						</manifestEntries>
 					</archive>
 				</configuration>
@@ -62,5 +88,10 @@
 				</executions>
 			</plugin>
 		</plugins>
-	</build>	
+	</build>
+	<!--This is not used, but the buildnumber-maven-plugin will throw an error if the section is not present -->
+	<scm>
+		<url>scm:git:git@github.com:bainc/NimbleGen/bioinformatics.git</url>
+		<connection>scm:git:git@github.com:bainc/NimbleGen/bioinformatics.git</connection>
+	</scm>
 </project>
