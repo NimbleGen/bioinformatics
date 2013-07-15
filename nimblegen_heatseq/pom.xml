@@ -40,7 +40,7 @@
 				<version>1.0</version>
 				<executions>
 					<execution>
-						<phase>validate</phase>
+						<phase>package</phase>
 						<goals>
 							<goal>create</goal>
 						</goals>
