@@ -82,4 +82,12 @@ public class StringUtilTest {
 		Assert.assertFalse(StringUtil.isNumeric(number));
 	}
 
+	@Test(groups = { "unit" })
+	public void testInsertStringEveryNSpaces() {
+		String baseString = "abcdefghijk";
+		String expectedResult = "abzcdzefzghzijzk";
+		String actualResult = StringUtil.insertStringEveryNSpaces(baseString, "z", 2);
+		Assert.assertEquals(actualResult, expectedResult);
+	}
+
 }
