@@ -27,8 +27,8 @@ import java.io.IOException;
  * 
  */
 public final class FileUtil {
-	
-	private static final int BYTES_PER_KB = 1024;
+
+	public static final int BYTES_PER_KB = 1024;
 	private static final int STRING_BUILDER_INITIAL_SIZE = 1000;
 
 	private FileUtil() {
@@ -86,8 +86,6 @@ public final class FileUtil {
 
 		return fileNameWithoutExtension;
 	}
-
-
 
 	/**
 	 * Simple utility to read the entire contents of a file into a string This code was taken from http://snippets.dzone.com/posts/show/1335
