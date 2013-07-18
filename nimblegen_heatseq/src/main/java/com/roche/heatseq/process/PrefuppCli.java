@@ -226,7 +226,7 @@ public class PrefuppCli {
 						shouldOutputQualityReports, shouldOutputFastq, shouldExtendReads, commandLineSignature, numProcessors, uidLength);
 			} else {
 				outputToConsole("A bam file was not provided so a mapping will be performed.");
-				File outputBamFile = new File(outputDirectory, outputBamFileName);
+				File outputBamFile = new File(outputDirectory, outputFilePrefix + outputBamFileName);
 				try {
 					FileUtil.createNewFile(outputBamFile);
 				} catch (IOException e) {

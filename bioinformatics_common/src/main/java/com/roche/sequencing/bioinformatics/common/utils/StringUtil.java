@@ -25,10 +25,10 @@ public final class StringUtil {
 
 	public static final String TAB = "\t";
 	public static final String CARRIAGE_RETURN = "\r";
-
+	public static final String NEWLINE_SYMBOL = "\n";
 	// NOTE: WINDOWS_NEWLINE = CARRIAGE_RETURN + LINE_FEED;
 	// NOTE: LINUX_NEWLINE = LINE_FEED;
-	public static final String LINUX_NEWLINE = "\n";
+	public static final String LINUX_NEWLINE = NEWLINE_SYMBOL;
 	public static final String WINDOWS_NEWLINE = CARRIAGE_RETURN + LINUX_NEWLINE;
 
 	private StringUtil() {
@@ -139,5 +139,25 @@ public final class StringUtil {
 			isNumeric = false;
 		}
 		return isNumeric;
+	}
+
+	/**
+	 * insert a string into the base string at intervals of spaces For example: insertStringEveryNSpaces("abcdefghijk","z",2) would return "abzcdzefzghzijzk"
+	 * 
+	 * @param baseString
+	 *            string that will be manipulated
+	 * @param stringToInsert
+	 * @param spaces
+	 *            number of spaces to place in between inserts
+	 * @return altered string
+	 */
+	public static String insertStringEveryNSpaces(String baseString, String stringToInsert, int spaces) {
+		StringBuilder result = new StringBuilder();
+		int i = 0;
+		for (; i + spaces < baseString.length(); i += spaces) {
+			result.append(baseString.substring(i, i + spaces) + stringToInsert);
+		}
+		result.append(baseString.substring(i, baseString.length()));
+		return result.toString();
 	}
 }
