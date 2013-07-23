@@ -17,8 +17,11 @@
 		</dependency>
 		<dependency>
 			<groupId>org.testng</groupId>
-			<artifactId>testng</artifactId>
-			<scope>test</scope>
+			<artifactId>testng</artifactId>			
+		</dependency>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>			
 		</dependency>
 	</dependencies>
 
@@ -32,7 +35,12 @@
 			<dependency>
 				<groupId>org.testng</groupId>
 				<artifactId>testng</artifactId>
-				<version>6.8</version>				
+				<version>6.8</version>
+			</dependency>
+			<dependency>
+				<groupId>commons-io</groupId>
+				<artifactId>commons-io</artifactId>
+				<version>2.4</version>
 			</dependency>
 			<dependency>
 				<groupId>com.google.guava</groupId>
@@ -180,6 +188,11 @@
 			<id>org.maven.repo1</id>
 			<name>Central Maven Repository</name>
 			<url>http://repo1.maven.org/maven2</url>
+		</repository>
+			<repository>
+			<id>biojava-maven-repo</id>
+			<name>BioJava repository</name>
+			<url>http://www.biojava.org/download/maven/</url>			
 		</repository>
 	</repositories>
 

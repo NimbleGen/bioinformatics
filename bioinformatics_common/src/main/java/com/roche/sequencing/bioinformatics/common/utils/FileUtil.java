@@ -28,7 +28,7 @@ import java.io.IOException;
  */
 public final class FileUtil {
 	
-	private static final int BYTES_PER_KB = 1024;
+	public static final int BYTES_PER_KB = 1024;
 	private static final int STRING_BUILDER_INITIAL_SIZE = 1000;
 
 	private FileUtil() {
