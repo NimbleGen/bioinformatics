@@ -26,7 +26,7 @@
 		<dependency>
 			<groupId>org.utgenome.thirdparty</groupId>
 			<artifactId>picard</artifactId>
-		</dependency>
+		</dependency>	
 	</dependencies>
 
 	<build>
@@ -89,7 +89,8 @@
 			</plugin>
 		</plugins>
 	</build>
-	<!--This is not used, but the buildnumber-maven-plugin will throw an error if the section is not present -->
+	<!--This is not used, but the buildnumber-maven-plugin will throw an error 
+		if the section is not present -->
 	<scm>
 		<url>scm:git:git@github.com:bainc/NimbleGen/bioinformatics.git</url>
 		<connection>scm:git:git@github.com:bainc/NimbleGen/bioinformatics.git</connection>

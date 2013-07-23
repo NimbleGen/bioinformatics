@@ -43,7 +43,7 @@ public class PrefuppCli {
 	private final static String BAM_EXTENSION = ".bam";
 
 	private final static String DUPLICATE_MAPPINGS_REPORT_NAME = "duplicate_mappings.txt";
-	private final static String DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME = "mappingresults.bam";
+	private final static String DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME = "mapping.reduced.bam";
 
 	private final static CommandLineOption USAGE_OPTION = new CommandLineOption("Print Usage", "usage", 'h', "Print Usage.", false, true);
 	private final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("fastQ One File", "fastQOne", null, "The first fastq file", true, false);
@@ -172,7 +172,7 @@ public class PrefuppCli {
 				}
 			}
 
-			String outputBamFileName = DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME;
+			String outputBamFileName = null;
 			if (parsedCommandLine.isOptionPresent(OUTPUT_BAM_FILE_NAME_OPTION)) {
 				outputBamFileName = parsedCommandLine.getOptionsValue(OUTPUT_BAM_FILE_NAME_OPTION);
 				if (!outputBamFileName.endsWith(BAM_EXTENSION)) {
@@ -187,6 +187,10 @@ public class PrefuppCli {
 			if (parsedCommandLine.isOptionPresent(BAM_OPTION)) {
 				String bamFileString = parsedCommandLine.getOptionsValue(BAM_OPTION);
 				File bamFile = new File(bamFileString);
+
+				if (outputBamFileName == null) {
+					outputBamFileName = FileUtil.getFileNameWithoutExtension(bamFile.getName()) + ".reduced.bam";
+				}
 
 				if (!bamFile.exists()) {
 					throw new IllegalStateException("Unable to find provided BAM file[" + bamFile.getAbsolutePath() + "].");
@@ -216,8 +220,8 @@ public class PrefuppCli {
 						SAMFileReader samReader = new SAMFileReader(bamFile);
 						BamFileUtil.createIndex(samReader, bamIndexFile);
 					} catch (Exception e) {
-						throw new IllegalStateException("Could not find or create bam index file at [" + bamFileString + ".bai].  Please provide this file using the following option:"
-								+ BAM_INDEX_OPTION.getUsage());
+						throw new IllegalStateException("Could not find or create bam index file at [" + bamIndexFile.getAbsolutePath() + "].  Please provide this file using the following option:"
+								+ BAM_INDEX_OPTION.getUsage(), e);
 					}
 
 				}
@@ -225,6 +229,10 @@ public class PrefuppCli {
 				sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tmpDirectory, saveTmpFiles,
 						shouldOutputQualityReports, shouldOutputFastq, shouldExtendReads, commandLineSignature, numProcessors, uidLength);
 			} else {
+				if (outputBamFileName == null) {
+					outputBamFileName = DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME;
+				}
+
 				outputToConsole("A bam file was not provided so a mapping will be performed.");
 				File outputBamFile = new File(outputDirectory, outputFilePrefix + outputBamFileName);
 				try {

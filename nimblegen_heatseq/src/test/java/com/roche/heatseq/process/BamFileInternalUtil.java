@@ -23,6 +23,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import net.sf.picard.fastq.FastqReader;
+import net.sf.picard.fastq.FastqRecord;
+import net.sf.picard.fastq.FastqWriter;
+import net.sf.picard.fastq.FastqWriterFactory;
 import net.sf.picard.io.IoUtil;
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileHeader.SortOrder;
@@ -30,6 +34,7 @@ import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMFileWriter;
 import net.sf.samtools.SAMFileWriterFactory;
 import net.sf.samtools.SAMRecord;
+import net.sf.samtools.SAMRecordIterator;
 
 import com.roche.mapping.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
@@ -187,15 +192,83 @@ public class BamFileInternalUtil {
 		}
 	}
 
+	public static void createSubsetBamFile(final File inputSamOrBamFile, final File outputSamOrBamFile) {
+		final SAMFileReader inputSam = new SAMFileReader(inputSamOrBamFile);
+		// BamFileUtil.createIndex(inputSam, new File(inputSamOrBamFile.getAbsolutePath() + ".bai"));
+		final SAMFileWriter outputSam = new SAMFileWriterFactory().makeSAMOrBAMWriter(inputSam.getFileHeader(), true, outputSamOrBamFile);
+
+		SAMRecordIterator iter = inputSam.queryOverlapping("chr1", 866376, 866568);
+
+		while (iter.hasNext()) {
+			final SAMRecord samRecord = iter.next();
+			outputSam.addAlignment(samRecord);
+		}
+		outputSam.close();
+		inputSam.close();
+	}
+
+	public static String[] getReadNames(File bamFile) {
+		List<String> readNames = new ArrayList<String>();
+		final SAMFileReader inputSam = new SAMFileReader(bamFile);
+		// BamFileUtil.createIndex(inputSam, new File(inputSamOrBamFile.getAbsolutePath() + ".bai"));
+
+		SAMRecordIterator iter = inputSam.iterator();
+
+		while (iter.hasNext()) {
+			final SAMRecord samRecord = iter.next();
+			readNames.add(samRecord.getReadName());
+		}
+		inputSam.close();
+		return readNames.toArray(new String[0]);
+	}
+
+	public static void filterFastqByReadNames(String[] readNames, File inputFastqOneFile, File inputFastqTwoFile, File outputFastqOneFile, File outputFastqTwoFile) {
+		final FastqWriterFactory factory = new FastqWriterFactory();
+		FastqWriter writerOne = factory.newWriter(outputFastqOneFile);
+		FastqWriter writerTwo = factory.newWriter(outputFastqTwoFile);
+		try (FastqReader fastQOneReader = new FastqReader(inputFastqOneFile)) {
+			try (FastqReader fastQTwoReader = new FastqReader(inputFastqTwoFile)) {
+
+				while (fastQOneReader.hasNext() && fastQTwoReader.hasNext()) {
+					FastqRecord fastQOneRecord = fastQOneReader.next();
+					FastqRecord fastQTwoRecord = fastQTwoReader.next();
+
+					boolean match = false;
+					readNameLoop: for (String readName : readNames) {
+						String readHeaderOne = fastQOneRecord.getReadHeader();
+						if (readHeaderOne.contains(readName)) {
+							match = true;
+							break readNameLoop;
+						}
+					}
+
+					if (match) {
+						writerOne.write(fastQOneRecord);
+						writerTwo.write(fastQTwoRecord);
+					}
+				}
+			}
+		}
+		writerOne.close();
+		writerTwo.close();
+
+	}
+
 	public static void main(String[] args) {
 
 		// File inputOne = new File("C:\\Users\\heilmank\\Desktop\\012813\\results.bam");
 		// File inputTwo = new File("C:\\Users\\heilmank\\Desktop\\012813\\MIPALA.srt_REDUCED.bam");
 		// sortOnReadName(inputTwo, outputTwo);
-		File inputOne = new File("C:\\Users\\heilmank\\Desktop\\junk\\dsHybrid.srt_REDUCED.bam");
-		File inputTwo = new File("C:\\Users\\heilmank\\Desktop\\junk\\dsHybrid.srt_REDUCED_strand.bam");
-		File outputDirectory = new File("C:\\Users\\heilmank\\Desktop\\junk");
-		splitBamFilesByMatches(inputOne, inputTwo, outputDirectory);
+		// File inputOne = new File("C:\\Users\\heilmank\\Desktop\\junk\\dsHybrid.srt_REDUCED.bam");
+		// File inputTwo = new File("C:\\Users\\heilmank\\Desktop\\junk\\dsHybrid.srt_REDUCED_strand.bam");
+		// File outputDirectory = new File("C:\\Users\\heilmank\\Desktop\\junk");
+		// splitBamFilesByMatches(inputOne, inputTwo, outputDirectory);
+
+		// createSubsetBamFile(new File("D:/Todds_problem_set/UID-57.sorted.bam"), new File("D:/Todds_problem_set/reverse_test.bam"));
+		String[] readNames = getReadNames(new File("D:/Todds_problem_set/reverse_test.bam"));
+		filterFastqByReadNames(readNames, new File("D:/Todds_problem_set/UID-57_R1.fastq"), new File("D:/Todds_problem_set/UID-57_R2.fastq"), new File("D:/Todds_problem_set/reverse_test_one.fastq"),
+				new File("D:/Todds_problem_set/reverse_test_two.fastq"));
+		// BamFileUtil.sortOnReadName(new File("D:/Todds_problem_set/reverse_test.bam"), new File("D:/Todds_problem_set/reverse_test_sorted_by_readname.bam"));
 	}
 
 }

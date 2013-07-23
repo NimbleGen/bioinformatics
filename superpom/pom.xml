@@ -188,7 +188,7 @@
 			<id>org.maven.repo1</id>
 			<name>Central Maven Repository</name>
 			<url>http://repo1.maven.org/maven2</url>
-		</repository>
+		</repository>		
 	</repositories>
 
 	<prerequisites>

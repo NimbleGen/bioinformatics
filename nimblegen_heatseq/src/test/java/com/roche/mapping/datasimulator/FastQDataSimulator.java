@@ -49,7 +49,6 @@ public class FastQDataSimulator {
 	private final static String DEFAULT_OUTPUT_FASTQ1_NAME = "one.fastq";
 	private final static String DEFAULT_OUTPUT_FASTQ2_NAME = "two.fastq";
 	private final static String DEFAULTOUTPUT_PROBE_INFO = "probes.txt";
-	private final static int UID_LENGTH = 14;
 	private final static int EXTENSION_PRIMER_LENGTH = 22;
 	private final static int LIGATION_PRIMER_LENGTH = 18;
 
@@ -70,120 +69,164 @@ public class FastQDataSimulator {
 	private final String mismatchDetailsString;
 	private final int captureTargetAndPrimersLength;
 
-	private final boolean alternateProbeStrands;
+	private final boolean includeReverseProbes;
+	private final boolean includeForwardProbes;
 
 	private final String outputFastqOneFileName;
 	private final String outputFastqTwoFileName;
 	private final String outputProbesFileName;
 
-	private FastQDataSimulator(File outputDirectory, String outputFastqOneFileName, String outputFastqTwoFileName, String outputProbesFileName, int numberOfProbes, int readsPerUidProbePair,
-			int uidsPerProbe, int captureTargetAndPrimersLength, String mismatchDetailsString, boolean alternateProbeStrands) {
+	private final int uidLength;
+
+	private FastQDataSimulator(File outputDirectory, String outputFastqOneFileName, String outputFastqTwoFileName, String outputProbesFileName, int uidLength, int numberOfProbes,
+			int readsPerUidProbePair, int uidsPerProbe, int captureTargetAndPrimersLength, String mismatchDetailsString, boolean includeReverseProbes, boolean includeForwardProbes) {
 
 		this.outputDirectory = outputDirectory;
 		this.numberOfProbes = numberOfProbes;
 		this.readsPerUidProbePair = readsPerUidProbePair;
 		this.uidsPerProbe = uidsPerProbe;
 		this.mismatchDetailsString = mismatchDetailsString;
-		this.alternateProbeStrands = alternateProbeStrands;
+		this.includeForwardProbes = includeForwardProbes;
+		this.includeReverseProbes = includeReverseProbes;
 		this.captureTargetAndPrimersLength = captureTargetAndPrimersLength;
+		this.uidLength = uidLength;
 
 		this.outputFastqOneFileName = outputFastqOneFileName;
 		this.outputFastqTwoFileName = outputFastqTwoFileName;
 		this.outputProbesFileName = outputProbesFileName;
 	}
 
-	private void write(int currentProbeLocation, int usedRecordIndex, String readHeader, String readString, String baseQualityHeader, BufferedWriter fastQOneWriter, BufferedWriter fastQTwoWriter,
-			List<Probe> probes) {
+	private void write(int currentProbeLocation, int usedRecordIndex, String forwardReadHeader, String reverseReadHeader, String readString, String baseQualityHeader, BufferedWriter fastQOneWriter,
+			BufferedWriter fastQTwoWriter, List<Probe> probes) {
 		ISequence readSequence = new IupacNucleotideCodeSequence(readString);
 
+		int probeIndex = 1;
 		if (readSequence.size() > (EXTENSION_PRIMER_LENGTH + LIGATION_PRIMER_LENGTH + MIN_CAPTURE_TARGET_READ_LENGTH)) {
 			String containerName = CONTAINER_NAME;
 
-			int extensionPrimerStart = 0;
-			int extensionPrimerStop = 0;
-			ISequence extensionPrimerSequence = null;
-			int ligationPrimerStop = 0;
-			int ligationPrimerStart = 0;
-			ISequence ligationPrimerSequence = null;
-			int captureTargetStart = 0;
-			int captureTargetStop = 0;
-			ISequence captureTargetSequence = null;
-			int featureStart = 0;
-			int featureStop = 0;
-			Strand probeStrand = null;
-
 			ISequence readStringOne = null;
-
 			ISequence readStringTwo = null;
 
-			boolean probeIsReversed = alternateProbeStrands && usedRecordIndex % 2 == 0;
-			if (probeIsReversed) {
-				extensionPrimerStop = currentProbeLocation + readSequence.size();
-				extensionPrimerStart = extensionPrimerStop - EXTENSION_PRIMER_LENGTH + 1;
-				extensionPrimerSequence = readSequence.getCompliment().subSequence(readSequence.size() - EXTENSION_PRIMER_LENGTH, readSequence.size() - 1);
-				ligationPrimerStart = currentProbeLocation;
-				ligationPrimerStop = currentProbeLocation + LIGATION_PRIMER_LENGTH - 1;
-				ligationPrimerSequence = readSequence.getCompliment().subSequence(0, LIGATION_PRIMER_LENGTH - 1);
-				captureTargetStart = ligationPrimerStop + 1;
-				captureTargetStop = extensionPrimerStop - 1;
-				captureTargetSequence = readSequence.getCompliment().subSequence(LIGATION_PRIMER_LENGTH, readSequence.size() - EXTENSION_PRIMER_LENGTH - 1);
-				featureStart = captureTargetStart;
-				featureStop = captureTargetStop;
-				probeStrand = Strand.REVERSE;
-
-				readStringOne = readSequence.getReverseCompliment().subSequence(0, INDIVIDUAL_READ_LENGTH - 1);
-
-				readStringTwo = readSequence.subSequence(readSequence.size() - INDIVIDUAL_READ_LENGTH, readSequence.size() - 1);
-
-			} else {
-				extensionPrimerStart = currentProbeLocation;
-				extensionPrimerStop = extensionPrimerStart + EXTENSION_PRIMER_LENGTH - 1;
-				extensionPrimerSequence = readSequence.subSequence(0, EXTENSION_PRIMER_LENGTH - 1);
-				ligationPrimerStop = currentProbeLocation + readSequence.size();
-				ligationPrimerStart = ligationPrimerStop - LIGATION_PRIMER_LENGTH + 1;
-				ligationPrimerSequence = readSequence.subSequence(readSequence.size() - LIGATION_PRIMER_LENGTH, readSequence.size() - 1);
-				captureTargetStart = extensionPrimerStop + 1;
-				captureTargetStop = ligationPrimerStart - 1;
-				captureTargetSequence = readSequence.subSequence(EXTENSION_PRIMER_LENGTH, readSequence.size() - LIGATION_PRIMER_LENGTH - 1);
-				featureStart = captureTargetStart;
-				featureStop = captureTargetStop;
-				probeStrand = Strand.FORWARD;
+			ISequence currentReadSequence = readSequence;
+			if (mismatchDetailsString != null && !mismatchDetailsString.isEmpty()) {
+				currentReadSequence = mutate(readSequence, mismatchDetailsString);
 			}
 
-			Probe probe = new Probe(1, containerName, extensionPrimerStart, extensionPrimerStop, extensionPrimerSequence, ligationPrimerStart, ligationPrimerStop, ligationPrimerSequence,
-					captureTargetStart, captureTargetStop, captureTargetSequence, featureStart, featureStop, probeStrand);
-			probes.add(probe);
+			// assumptions
+			// primer sequence are always listed from 5' to 3' and not from start to stop
+			// start is always at the lower coordinate regardless of strand
+			if (includeForwardProbes) {
+				int forwardExtensionPrimerStart = currentProbeLocation;
+				int forwardExtensionPrimerStop = forwardExtensionPrimerStart + EXTENSION_PRIMER_LENGTH - 1;
+				ISequence forwardExtensionPrimerSequence = readSequence.subSequence(0, EXTENSION_PRIMER_LENGTH - 1);
+				int forwardLigationPrimerStop = currentProbeLocation + readSequence.size();
+				int forwardLigationPrimerStart = forwardLigationPrimerStop - LIGATION_PRIMER_LENGTH + 1;
+				ISequence forwardLigationPrimerSequence = readSequence.subSequence(readSequence.size() - LIGATION_PRIMER_LENGTH, readSequence.size() - 1);
+				int forwardCaptureTargetStart = forwardExtensionPrimerStop + 1;
+				int forwardCaptureTargetStop = forwardLigationPrimerStart - 1;
+				ISequence forwardCaptureTargetSequence = readSequence.subSequence(EXTENSION_PRIMER_LENGTH, readSequence.size() - LIGATION_PRIMER_LENGTH - 1);
+				int forwardFeatureStart = forwardCaptureTargetStart;
+				int forwardFeatureStop = forwardCaptureTargetStop;
+				Strand forwardProbeStrand = Strand.FORWARD;
 
-			for (int j = 0; j < uidsPerProbe; j++) {
-				ISequence currentReadSequence = readSequence;
-				if (mismatchDetailsString != null && !mismatchDetailsString.isEmpty()) {
-					currentReadSequence = mutate(readSequence, mismatchDetailsString);
-				}
+				Probe forwardProbe = new Probe(probeIndex, containerName, forwardExtensionPrimerStart, forwardExtensionPrimerStop, forwardExtensionPrimerSequence, forwardLigationPrimerStart,
+						forwardLigationPrimerStop, forwardLigationPrimerSequence, forwardCaptureTargetStart, forwardCaptureTargetStop, forwardCaptureTargetSequence, forwardFeatureStart,
+						forwardFeatureStop, forwardProbeStrand);
+				probes.add(forwardProbe);
+				probeIndex++;
+
 				readStringOne = currentReadSequence.subSequence(0, INDIVIDUAL_READ_LENGTH - 1);
-				readStringTwo = currentReadSequence.subSequence(currentReadSequence.size() - INDIVIDUAL_READ_LENGTH, currentReadSequence.size() - 1).getReverseCompliment();
-				String uid = generateRandomSequence(UID_LENGTH);
-				for (int i = 0; i < readsPerUidProbePair; i++) {
-					String baseHeader = IlluminaFastQHeader.getBaseHeader(readHeader) + "0" + i + "0" + j;
-					String readOneString = readStringOne.toString();
-					String readTwoString = readStringTwo.toString();
+				readStringTwo = currentReadSequence.subSequence(readSequence.size() - INDIVIDUAL_READ_LENGTH, readSequence.size() - 1).getReverseCompliment();
 
-					String readOneQuality = generateRandomQualityScore(INDIVIDUAL_READ_LENGTH);
-					String readTwoQuality = generateRandomQualityScore(INDIVIDUAL_READ_LENGTH);
+				for (int j = 0; j < uidsPerProbe; j++) {
+					String uid = generateRandomSequence(uidLength);
+					System.out.println("forward:" + uid);
+					for (int i = 0; i < readsPerUidProbePair; i++) {
+						String baseHeader = IlluminaFastQHeader.getBaseHeader(forwardReadHeader) + "0" + i + "0" + j;
+						String readOneString = readStringOne.toString();
+						String readTwoString = readStringTwo.toString();
 
-					readOneString = uid + readOneString;
+						String readOneQuality = generateRandomQualityScore(INDIVIDUAL_READ_LENGTH);
+						String readTwoQuality = generateRandomQualityScore(INDIVIDUAL_READ_LENGTH);
 
-					readOneString = readOneString.substring(0, INDIVIDUAL_READ_LENGTH);
+						readOneString = uid + readOneString;
 
-					if (baseQualityHeader == null || baseQualityHeader.isEmpty()) {
-						baseQualityHeader = "+";
+						readOneString = readOneString.substring(0, INDIVIDUAL_READ_LENGTH);
+
+						if (baseQualityHeader == null || baseQualityHeader.isEmpty()) {
+							baseQualityHeader = "+";
+						}
+						try {
+							fastQOneWriter.write("@" + baseHeader + " 1:0:0:1" + StringUtil.NEWLINE + readOneString + StringUtil.NEWLINE + baseQualityHeader + StringUtil.NEWLINE + readOneQuality
+									+ StringUtil.NEWLINE);
+							fastQTwoWriter.write("@" + baseHeader + " 1:0:0:2" + StringUtil.NEWLINE + readTwoString + StringUtil.NEWLINE + baseQualityHeader + StringUtil.NEWLINE + readTwoQuality
+									+ StringUtil.NEWLINE);
+						} catch (IOException e) {
+							throw new IllegalStateException(e.getMessage(), e);
+						}
 					}
-					try {
-						fastQOneWriter.write("@" + baseHeader + " 1:0:0:1" + StringUtil.NEWLINE + readOneString + StringUtil.NEWLINE + baseQualityHeader + StringUtil.NEWLINE + readOneQuality
-								+ StringUtil.NEWLINE);
-						fastQTwoWriter.write("@" + baseHeader + " 1:0:0:2" + StringUtil.NEWLINE + readTwoString + StringUtil.NEWLINE + baseQualityHeader + StringUtil.NEWLINE + readTwoQuality
-								+ StringUtil.NEWLINE);
-					} catch (IOException e) {
-						throw new IllegalStateException(e.getMessage(), e);
+				}
+
+			}
+			if (includeReverseProbes) {
+				ISequence reverseComplimentReadSequence = readSequence.getReverseCompliment();
+
+				int reverseLigationPrimerStart = currentProbeLocation;
+				int reverseLigationPrimerStop = reverseLigationPrimerStart + LIGATION_PRIMER_LENGTH - 1;
+
+				ISequence reverseLigationPrimerSequence = reverseComplimentReadSequence.subSequence(reverseComplimentReadSequence.size() - LIGATION_PRIMER_LENGTH,
+						reverseComplimentReadSequence.size() - 1);
+
+				int reverseExtensionPrimerStop = currentProbeLocation + reverseComplimentReadSequence.size();
+				int reverseExtensionPrimerStart = reverseExtensionPrimerStop - EXTENSION_PRIMER_LENGTH + 1;
+
+				ISequence reverseExtensionPrimerSequence = reverseComplimentReadSequence.subSequence(0, EXTENSION_PRIMER_LENGTH - 1);
+
+				int reverseCaptureTargetStart = reverseExtensionPrimerStart - 1;
+				int reverseCaptureTargetStop = reverseLigationPrimerStop + 1;
+
+				ISequence reverseCaptureTargetSequence = reverseComplimentReadSequence.subSequence(EXTENSION_PRIMER_LENGTH, reverseComplimentReadSequence.size() - LIGATION_PRIMER_LENGTH - 1);
+				int reverseFeatureStart = reverseCaptureTargetStart;
+				int reverseFeatureStop = reverseCaptureTargetStop;
+				Strand reverseProbeStrand = Strand.REVERSE;
+
+				Probe reverseProbe = new Probe(probeIndex, containerName, reverseExtensionPrimerStart, reverseExtensionPrimerStop, reverseExtensionPrimerSequence, reverseLigationPrimerStart,
+						reverseLigationPrimerStop, reverseLigationPrimerSequence, reverseCaptureTargetStart, reverseCaptureTargetStop, reverseCaptureTargetSequence, reverseFeatureStart,
+						reverseFeatureStop, reverseProbeStrand);
+				probes.add(reverseProbe);
+				probeIndex++;
+
+				ISequence currentReverseComplimentReadSequence = currentReadSequence.getReverseCompliment();
+
+				readStringOne = currentReverseComplimentReadSequence.subSequence(0, INDIVIDUAL_READ_LENGTH - 1);
+				readStringTwo = currentReverseComplimentReadSequence.subSequence(readSequence.size() - INDIVIDUAL_READ_LENGTH, readSequence.size() - 1).getReverseCompliment();
+
+				for (int j = 0; j < uidsPerProbe; j++) {
+					String uid = generateRandomSequence(uidLength);
+					System.out.println("reverse:" + uid);
+					for (int i = 0; i < readsPerUidProbePair; i++) {
+						String baseHeader = IlluminaFastQHeader.getBaseHeader(reverseReadHeader) + "0" + i + "0" + j;
+						String readOneString = readStringOne.toString();
+						String readTwoString = readStringTwo.toString();
+
+						String readOneQuality = generateRandomQualityScore(INDIVIDUAL_READ_LENGTH);
+						String readTwoQuality = generateRandomQualityScore(INDIVIDUAL_READ_LENGTH);
+
+						readOneString = uid + readOneString;
+
+						readOneString = readOneString.substring(0, INDIVIDUAL_READ_LENGTH);
+
+						if (baseQualityHeader == null || baseQualityHeader.isEmpty()) {
+							baseQualityHeader = "+";
+						}
+						try {
+							fastQOneWriter.write("@" + baseHeader + " 1:0:0:1" + StringUtil.NEWLINE + readOneString + StringUtil.NEWLINE + baseQualityHeader + StringUtil.NEWLINE + readOneQuality
+									+ StringUtil.NEWLINE);
+							fastQTwoWriter.write("@" + baseHeader + " 1:0:0:2" + StringUtil.NEWLINE + readTwoString + StringUtil.NEWLINE + baseQualityHeader + StringUtil.NEWLINE + readTwoQuality
+									+ StringUtil.NEWLINE);
+						} catch (IOException e) {
+							throw new IllegalStateException(e.getMessage(), e);
+						}
 					}
 				}
 			}
@@ -221,9 +264,11 @@ public class FastQDataSimulator {
 
 				for (int i = 0; i < numberOfProbes; i++) {
 					String readString = generateRandomSequence(captureTargetAndPrimersLength);
-					String readHeader = "M01077:24:000000000-A20BU:1:" + i + ":" + i + ":" + i + " 1:0:0:1";
+					// need i+1 because a number like 00000 will be truncated to zero and not match when mapping whereas 10000 will not.
+					String forwardReadHeader = "M01077:24:000000000-A20BUF:" + currentProbeLocation + ":" + i + ":" + i + ":" + (i + 1) + " 1:0:0:1";
+					String reverseReadHeader = "M01077:24:000000000-A20BUR:" + currentProbeLocation + ":" + i + ":" + i + ":" + (i + 1) + " 1:0:0:1";
 					String qualityHeader = "";
-					write(currentProbeLocation, usedRecordIndex, readHeader, readString, qualityHeader, fastQOneWriter, fastQTwoWriter, probes);
+					write(currentProbeLocation, usedRecordIndex, forwardReadHeader, reverseReadHeader, readString, qualityHeader, fastQOneWriter, fastQTwoWriter, probes);
 					currentProbeLocation += PROBE_LOCATION_GAP;
 					usedRecordIndex++;
 				}
@@ -281,10 +326,10 @@ public class FastQDataSimulator {
 	 *            for example "M40D10R5^CCCAAATTTGGGM110" represents match 40, delete 10, insert 5 randoms, insert CCCAAATTTGGG, and match 110
 	 * @param alternateProbeStrands
 	 */
-	public static void createSimulatedIlluminaReads(File outputDirectory, int numberOfProbes, int readsPerUidProbePair, int uidsPerProbe, int captureTargetAndPrimersLength,
-			String mismatchDetailsString, boolean alternateProbeStrands) {
-		createSimulatedIlluminaReads(outputDirectory, DEFAULT_OUTPUT_FASTQ1_NAME, DEFAULT_OUTPUT_FASTQ2_NAME, DEFAULTOUTPUT_PROBE_INFO, numberOfProbes, readsPerUidProbePair, uidsPerProbe,
-				captureTargetAndPrimersLength, mismatchDetailsString, alternateProbeStrands);
+	public static void createSimulatedIlluminaReads(File outputDirectory, int uidLength, int numberOfProbes, int readsPerUidProbePair, int uidsPerProbe, int captureTargetAndPrimersLength,
+			String mismatchDetailsString, boolean includeForwardProbes, boolean includeReverseProbes) {
+		createSimulatedIlluminaReads(outputDirectory, DEFAULT_OUTPUT_FASTQ1_NAME, DEFAULT_OUTPUT_FASTQ2_NAME, DEFAULTOUTPUT_PROBE_INFO, uidLength, numberOfProbes, readsPerUidProbePair, uidsPerProbe,
+				captureTargetAndPrimersLength, mismatchDetailsString, includeForwardProbes, includeReverseProbes);
 	}
 
 	/**
@@ -301,10 +346,10 @@ public class FastQDataSimulator {
 	 *            for example "M40D10R5^CCCAAATTTGGGM110" represents match 40, delete 10, insert 5 randoms, insert CCCAAATTTGGG, and match 110
 	 * @param alternateProbeStrands
 	 */
-	public static void createSimulatedIlluminaReads(File outputDirectory, String fastqOneFileName, String fastqTwoFileName, String probeFileName, int numberOfProbes, int readsPerUidProbePair,
-			int uidsPerProbe, int captureTargetAndPrimersLength, String mismatchDetailsString, boolean alternateProbeStrands) {
-		FastQDataSimulator dataSimulator = new FastQDataSimulator(outputDirectory, fastqOneFileName, fastqTwoFileName, probeFileName, numberOfProbes, readsPerUidProbePair, uidsPerProbe,
-				captureTargetAndPrimersLength, mismatchDetailsString, alternateProbeStrands);
+	public static void createSimulatedIlluminaReads(File outputDirectory, String fastqOneFileName, String fastqTwoFileName, String probeFileName, int uidLength, int numberOfProbes,
+			int readsPerUidProbePair, int uidsPerProbe, int captureTargetAndPrimersLength, String mismatchDetailsString, boolean includeForwardProbes, boolean includeReverseProbes) {
+		FastQDataSimulator dataSimulator = new FastQDataSimulator(outputDirectory, fastqOneFileName, fastqTwoFileName, probeFileName, uidLength, numberOfProbes, readsPerUidProbePair, uidsPerProbe,
+				captureTargetAndPrimersLength, mismatchDetailsString, includeForwardProbes, includeReverseProbes);
 		dataSimulator.createSimulatedReads();
 	}
 
@@ -407,7 +452,7 @@ public class FastQDataSimulator {
 
 	public static void main(String[] args) {
 		File outputDirectory = new File("C:\\Users\\heilmank\\Desktop\\simulated_data2\\");
-		createSimulatedIlluminaReads(outputDirectory, 10000, 10, 10, 160, "M40D10R5^CCCAAATTTGGGM110", true);
+		createSimulatedIlluminaReads(outputDirectory, 14, 10000, 10, 10, 160, "M40D10R5^CCCAAATTTGGGM110", true, true);
 	}
 
 }

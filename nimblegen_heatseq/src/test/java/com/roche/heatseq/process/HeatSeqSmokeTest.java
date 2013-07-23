@@ -29,10 +29,13 @@ import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
 import com.google.common.io.Files;
+import com.roche.bioinformatics.common.testing.NgTestListener;
 
+@Listeners(NgTestListener.class)
 public class HeatSeqSmokeTest {
 
 	Logger logger = LoggerFactory.getLogger(HeatSeqSmokeTest.class);
@@ -49,10 +52,16 @@ public class HeatSeqSmokeTest {
 
 	@AfterClass(groups = { "smoke" })
 	public void teardown() {
-		try {
-			FileUtils.deleteDirectory(new File(outputDirectoryPath));
-		} catch (IOException e) {
-			logger.warn(e.getMessage(), e);
+		boolean hasFailedTests = NgTestListener.hasFailedTests(getClass());
+		if (!hasFailedTests) {
+			File outputDirectory = new File(outputDirectoryPath);
+			try {
+				FileUtils.deleteDirectory(outputDirectory);
+			} catch (IOException e) {
+				logger.warn(e.getMessage(), e);
+			}
+		} else {
+			System.out.println("This test has failed so preserving files at [" + outputDirectoryPath + "].");
 		}
 	}
 
@@ -91,6 +100,60 @@ public class HeatSeqSmokeTest {
 
 		String[] args = new String[] { "--fastQOne", fastQOneFilePath.getPath(), "--fastQTwo", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--bam", bamFilePath.getPath(),
 				"--bamIndex", bamIndexFilePath.getPath(), "--outputDir", outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
+		PrefuppCli.runCommandLineApp(args);
+
+		File outputBam = new File(outputDirectoryPath, outputBamFileName);
+		int count = 0;
+		try (final SAMFileReader samReader = new SAMFileReader(outputBam)) {
+
+			SAMRecordIterator samRecordIter = samReader.iterator();
+			while (samRecordIter.hasNext()) {
+				samRecordIter.next();
+				count++;
+			}
+			samRecordIter.close();
+		}
+		Assert.assertNotEquals(count, 0);
+	}
+
+	@Test(groups = { "smoke" })
+	public void smallReverseTest() {
+		String outputBamFileName = "reverse_output.bam";
+		URL fastQOneFilePath = getClass().getResource("reverse_test_one.fastq");
+		URL fastQTwoFilePath = getClass().getResource("reverse_test_two.fastq");
+		URL probeFilePath = getClass().getResource("reverse_test_probe.txt");
+		URL bamFilePath = getClass().getResource("reverse_test.bam");
+		// URL bamIndexFilePath = getClass().getResource("mapping.bam.bai");
+
+		String[] args = new String[] { "--fastQOne", fastQOneFilePath.getPath(), "--fastQTwo", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--bam", bamFilePath.getPath(),
+				"--outputDir", outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "7", "--outputReports" };
+		PrefuppCli.runCommandLineApp(args);
+
+		File outputBam = new File(outputDirectoryPath, outputBamFileName);
+		int count = 0;
+		try (final SAMFileReader samReader = new SAMFileReader(outputBam)) {
+
+			SAMRecordIterator samRecordIter = samReader.iterator();
+			while (samRecordIter.hasNext()) {
+				samRecordIter.next();
+				count++;
+			}
+			samRecordIter.close();
+		}
+		Assert.assertNotEquals(count, 0);
+	}
+
+	@Test(groups = { "smoke" })
+	public void smallFowardTest() {
+		String outputBamFileName = "reverse_output.bam";
+		URL fastQOneFilePath = getClass().getResource("reverse_test_one.fastq");
+		URL fastQTwoFilePath = getClass().getResource("reverse_test_two.fastq");
+		URL probeFilePath = getClass().getResource("forward_test_probe.txt");
+		URL bamFilePath = getClass().getResource("reverse_test.bam");
+		// URL bamIndexFilePath = getClass().getResource("mapping.bam.bai");
+
+		String[] args = new String[] { "--fastQOne", fastQOneFilePath.getPath(), "--fastQTwo", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--bam", bamFilePath.getPath(),
+				"--outputDir", outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "7", "--outputReports" };
 		PrefuppCli.runCommandLineApp(args);
 
 		File outputBam = new File(outputDirectoryPath, outputBamFileName);

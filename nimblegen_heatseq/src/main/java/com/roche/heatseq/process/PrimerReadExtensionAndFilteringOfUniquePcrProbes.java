@@ -204,10 +204,10 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					+ FileUtil.getFileExtension(applicationSettings.getBamFile());
 			File outputUnsortedBamFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + outputUnsortedBamFileName);
 
-			String outputSortedBamFileName = FileUtil.getFileNameWithoutExtension(applicationSettings.getOriginalBamFileName());
+			String outputSortedBamFileName = applicationSettings.getOutputBamFileName();
 			File outputSortedBamFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + outputSortedBamFileName);
 
-			String outputBamIndexFileName = FileUtil.getFileNameWithoutExtension(outputSortedBamFileName + ".bai");
+			String outputBamIndexFileName = outputSortedBamFileName + ".bai";
 			File outputBamIndexFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + outputBamIndexFileName);
 
 			try {
@@ -261,13 +261,14 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					int referenceSequenceIndex = referenceSequenceNamesInBam.indexOf(containerName);
 					int referenceSequenceLength = referenceSequenceLengthsInBam.get(referenceSequenceIndex);
 					if (referenceSequenceLength < probe.getStop()) {
-						throw new IllegalStateException("Probe Chromosome/Container[" + containerName + "] start[" + probe.getStart() + "] stop[" + probe.getStop()
-								+ "] found in the probe file is outside of the length[" + referenceSequenceLength + "] of reference sequence[" + containerName + "] found in the bam file.");
+						throw new IllegalStateException("Probe Chromosome/Container[" + containerName + "] start[" + probe.getStart() + "] stop[" + probe.getStop() + "] found in the probe file["
+								+ applicationSettings.getProbeFile().getAbsolutePath() + "] is outside of the length[" + referenceSequenceLength + "] of reference sequence[" + containerName
+								+ "] found in the bam file.");
 					}
 
 					// Try getting the reads for this probe here before passing them to the worker
 					Map<String, SAMRecordPair> readNameToRecordsMap = new HashMap<String, SAMRecordPair>();
-					SAMRecordIterator samRecordIter = samReader.queryContained(containerName, probe.getStart(), probe.getStop());
+					SAMRecordIterator samRecordIter = samReader.queryContained(containerName, probe.getStart() - 1000, probe.getStop() + 1000);
 					while (samRecordIter.hasNext()) {
 						SAMRecord record = samRecordIter.next();
 
@@ -279,7 +280,6 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 						boolean isFastq2 = record.getSecondOfPairFlag();
 
 						boolean readOrientationIsSuitableForProbe = (isFastq1 && recordStrandMatchesProbeStrand) || (isFastq2 && !recordStrandMatchesProbeStrand);
-
 						if (readOrientationIsSuitableForProbe) {
 
 							String readName = record.getReadName();

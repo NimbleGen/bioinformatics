@@ -91,11 +91,9 @@ public class SAMRecordUtil {
 	public static SAMRecordPair setSAMRecordsAsPair(SAMRecord samRecordFirstOfPair, SAMRecord samRecordSecondOfPair) {
 		samRecordFirstOfPair.setFirstOfPairFlag(true);
 		samRecordFirstOfPair.setProperPairFlag(true);
-		samRecordFirstOfPair.setReadNegativeStrandFlag(false);
 		samRecordFirstOfPair.setReadPairedFlag(true);
 		samRecordSecondOfPair.setSecondOfPairFlag(true);
 		samRecordSecondOfPair.setProperPairFlag(true);
-		samRecordSecondOfPair.setReadNegativeStrandFlag(true);
 		samRecordSecondOfPair.setReadPairedFlag(true);
 
 		assignMateAttributes(samRecordFirstOfPair, samRecordSecondOfPair);
