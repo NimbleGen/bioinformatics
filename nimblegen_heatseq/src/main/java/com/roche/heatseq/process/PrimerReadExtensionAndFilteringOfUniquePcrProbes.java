@@ -268,7 +268,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 					// Try getting the reads for this probe here before passing them to the worker
 					Map<String, SAMRecordPair> readNameToRecordsMap = new HashMap<String, SAMRecordPair>();
-					SAMRecordIterator samRecordIter = samReader.queryContained(containerName, probe.getStart() - 1000, probe.getStop() + 1000);
+					SAMRecordIterator samRecordIter = samReader.queryContained(containerName, probe.getStart(), probe.getStop());
 					while (samRecordIter.hasNext()) {
 						SAMRecord record = samRecordIter.next();
 
