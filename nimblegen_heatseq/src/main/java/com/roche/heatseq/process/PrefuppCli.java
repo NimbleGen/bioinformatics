@@ -71,7 +71,12 @@ public class PrefuppCli {
 	public static void main(String[] args) {
 		outputToConsole("Primer Read Extension and Filtering of Unique PCR Probes");
 
-		runCommandLineApp(args);
+		try {
+			runCommandLineApp(args);
+		} catch (IllegalStateException e) {
+			outputToConsole(e.getMessage());
+			System.exit(-1);
+		}
 	}
 
 	static void runCommandLineApp(String[] args) {
@@ -83,21 +88,13 @@ public class PrefuppCli {
 
 		boolean showUsage = parsedCommandLine.isOptionPresent(USAGE_OPTION);
 
-		// TODO - CLB - I was hitting this issue
-		// http://seqanswers.com/forums/showthread.php?t=4246 when I was mapping
-		// against the wrong
-		// switchgrass genome. We may want to make this a command line argument
-		// in case users have a similar issue.
-		// SAMFileReader.setDefaultValidationStringency(ValidationStringency.LENIENT);
-
 		if (showUsage) {
 			outputToConsole(parsedCommandLine.getCommandLineOptionsGroup().getUsage());
 		} else {
 			try {
 				CommandLineParser.throwCommandLineParsingExceptions(parsedCommandLine);
 			} catch (Exception e) {
-				outputToConsole(parsedCommandLine.getCommandLineOptionsGroup().getUsage());
-				throw e;
+				throw new IllegalStateException(parsedCommandLine.getCommandLineOptionsGroup().getUsage());
 			}
 
 			String outputDirectoryString = parsedCommandLine.getOptionsValue(OUTPUT_DIR_OPTION);
