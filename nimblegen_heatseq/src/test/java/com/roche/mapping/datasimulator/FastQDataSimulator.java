@@ -140,7 +140,6 @@ public class FastQDataSimulator {
 
 				for (int j = 0; j < uidsPerProbe; j++) {
 					String uid = generateRandomSequence(uidLength);
-					System.out.println("forward:" + uid);
 					for (int i = 0; i < readsPerUidProbePair; i++) {
 						String baseHeader = IlluminaFastQHeader.getBaseHeader(forwardReadHeader) + "0" + i + "0" + j;
 						String readOneString = readStringOne.toString();
@@ -203,7 +202,6 @@ public class FastQDataSimulator {
 
 				for (int j = 0; j < uidsPerProbe; j++) {
 					String uid = generateRandomSequence(uidLength);
-					System.out.println("reverse:" + uid);
 					for (int i = 0; i < readsPerUidProbePair; i++) {
 						String baseHeader = IlluminaFastQHeader.getBaseHeader(reverseReadHeader) + "0" + i + "0" + j;
 						String readOneString = readStringOne.toString();

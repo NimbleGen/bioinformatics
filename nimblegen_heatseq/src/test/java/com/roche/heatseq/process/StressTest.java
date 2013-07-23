@@ -55,10 +55,10 @@ public class StressTest {
 	private File fastqTwoFile;
 	private File probesFile;
 
-	private final static int NUMBER_OF_PROBES = 5;
-	private final static int UIDS_PER_PROBE = 5;
-	private final static int READS_PER_UID_PROBE_PAIR = 1;
-	private final static int UID_LENGTH = 10;
+	private final static int NUMBER_OF_PROBES = 10;
+	private final static int UIDS_PER_PROBE = 10;
+	private final static int READS_PER_UID_PROBE_PAIR = 10;
+	private final static int UID_LENGTH = 7;
 	// private final static String MUTATE_STRING = "M40D10R5^CCCAAATTTGGGM110";
 	private final static String MUTATE_STRING = "";
 
@@ -120,7 +120,7 @@ public class StressTest {
 		Assert.assertEquals(count, NUMBER_OF_PROBES * UIDS_PER_PROBE * NUMBER_OF_SAM_ENTRIES_PER_UID_READ_PAIR);
 	}
 
-	// @Test(groups = { "stress" })
+	@Test(groups = { "stress" })
 	public void largeRunTest() throws InterruptedException {
 		// make sure that this does not run in the same second as the map run test because the program records with timestamp will overlap
 		Thread.sleep(1000);

@@ -178,7 +178,7 @@ public final class ExtendReadsToPrimer {
 
 				// TODO Kurt Heilman 7/23/2013 need to examine if this logic is correct
 				if (isReversed) {
-					ISequence readAlignment = readAlignmentWithReference.getAlignmentPair().getQueryAlignment();
+					// ISequence readAlignment = readAlignmentWithReference.getAlignmentPair().getQueryAlignment();
 					ISequence referenceAlignment = readAlignmentWithReference.getAlignmentPair().getReferenceAlignment();
 					cigarString = readAlignmentWithReference.getReverseCigarString();
 					mismatchDetailsString = readAlignmentWithReference.getReverseMismatchDetailsString();
