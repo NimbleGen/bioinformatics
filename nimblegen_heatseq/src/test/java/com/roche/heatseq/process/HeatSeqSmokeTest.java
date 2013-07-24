@@ -71,7 +71,7 @@ public class HeatSeqSmokeTest {
 		URL fastQTwoFilePath = getClass().getResource("two.fastq");
 		URL probeFilePath = getClass().getResource("probes.txt");
 
-		String[] args = new String[] { "--fastQOne", fastQOneFilePath.getPath(), "--fastQTwo", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--outputDir", outputDirectoryPath,
+		String[] args = new String[] { "--r1", fastQOneFilePath.getPath(), "--r2", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--outputDir", outputDirectoryPath,
 				"--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
 
 		PrefuppCli.runCommandLineApp(args);
@@ -98,8 +98,8 @@ public class HeatSeqSmokeTest {
 		URL bamFilePath = getClass().getResource("mapping.bam");
 		URL bamIndexFilePath = getClass().getResource("mapping.bam.bai");
 
-		String[] args = new String[] { "--fastQOne", fastQOneFilePath.getPath(), "--fastQTwo", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--bam", bamFilePath.getPath(),
-				"--bamIndex", bamIndexFilePath.getPath(), "--outputDir", outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
+		String[] args = new String[] { "--r1", fastQOneFilePath.getPath(), "--r2", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--inputBam", bamFilePath.getPath(), "--bamIndex",
+				bamIndexFilePath.getPath(), "--outputDir", outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
 		PrefuppCli.runCommandLineApp(args);
 
 		File outputBam = new File(outputDirectoryPath, outputBamFileName);
@@ -125,8 +125,8 @@ public class HeatSeqSmokeTest {
 		URL bamFilePath = getClass().getResource("reverse_test.bam");
 		// URL bamIndexFilePath = getClass().getResource("mapping.bam.bai");
 
-		String[] args = new String[] { "--fastQOne", fastQOneFilePath.getPath(), "--fastQTwo", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--bam", bamFilePath.getPath(),
-				"--outputDir", outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "7", "--outputReports" };
+		String[] args = new String[] { "--r1", fastQOneFilePath.getPath(), "--r2", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--inputBam", bamFilePath.getPath(), "--outputDir",
+				outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "7", "--outputReports" };
 		PrefuppCli.runCommandLineApp(args);
 
 		File outputBam = new File(outputDirectoryPath, outputBamFileName);
@@ -152,8 +152,8 @@ public class HeatSeqSmokeTest {
 		URL bamFilePath = getClass().getResource("reverse_test.bam");
 		// URL bamIndexFilePath = getClass().getResource("mapping.bam.bai");
 
-		String[] args = new String[] { "--fastQOne", fastQOneFilePath.getPath(), "--fastQTwo", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--bam", bamFilePath.getPath(),
-				"--outputDir", outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "7", "--outputReports" };
+		String[] args = new String[] { "--r1", fastQOneFilePath.getPath(), "--r2", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--inputBam", bamFilePath.getPath(), "--outputDir",
+				outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "7", "--outputReports" };
 		PrefuppCli.runCommandLineApp(args);
 
 		File outputBam = new File(outputDirectoryPath, outputBamFileName);

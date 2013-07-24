@@ -31,7 +31,7 @@ public class CommandLineParserTest {
 		group.addOption(new CommandLineOption("bamFile", "bamFile", null, "bamfile", true, false));
 		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
 
-		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--fastQFileOne", "a", "--fastQFileTwo", "b", "--bamFile", "bam", "--flag", "--flag" }, group);
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--r1", "a", "--r2", "b", "--inputBam", "bam", "--flag", "--flag" }, group);
 	}
 
 	@Test(groups = { "integration" })
@@ -45,7 +45,7 @@ public class CommandLineParserTest {
 
 		Assert.assertFalse(group.getUsage().isEmpty());
 
-		ParsedCommandLine parsedCommandLine = CommandLineParser.parseCommandLineWithExceptions(new String[] { "--fastQFileOne", "a", "--fastQFileTwo", "b", "-b", "bam", "--flag" }, group);
+		ParsedCommandLine parsedCommandLine = CommandLineParser.parseCommandLineWithExceptions(new String[] { "--r1", "a", "--r2", "b", "-b", "bam", "--flag" }, group);
 		Assert.assertEquals(parsedCommandLine.getDuplicateArguments().size(), 0);
 		Assert.assertEquals(parsedCommandLine.getMissingRequiredOptions().length, 0);
 		Assert.assertEquals(parsedCommandLine.getNonOptionArguments().length, 0);
@@ -61,7 +61,7 @@ public class CommandLineParserTest {
 		group.addOption(new CommandLineOption("b", "b", 'b', "bamfile", true, false));
 		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
 
-		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--fastQFileOne", "a", "--fastQFileTwo", "b", "-b", "bam", "--flag", "--unrecognized" }, group);
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--r1", "a", "--r2", "b", "-b", "bam", "--flag", "--unrecognized" }, group);
 	}
 
 	@Test(groups = { "integration" }, expectedExceptions = { IllegalStateException.class })
@@ -71,7 +71,7 @@ public class CommandLineParserTest {
 		group.addOption(new CommandLineOption("b", "b", 'b', "bamfile", true, false));
 		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
 
-		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--fastQFileOne", "a", "--fastQFileTwo", "b", "-b", "bam", "--flag", "-u" }, group);
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--r1", "a", "--r2", "b", "-b", "bam", "--flag", "-u" }, group);
 	}
 
 	@Test(groups = { "integration" }, expectedExceptions = { IllegalStateException.class })
@@ -114,7 +114,7 @@ public class CommandLineParserTest {
 		group.addOption(new CommandLineOption("b", "b", 'b', "bamfile", true, false));
 		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
 
-		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--fastQFileTwo", "b", "-b", "bam", "--flag" }, group);
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--r2", "b", "-b", "bam", "--flag" }, group);
 	}
 
 	@Test(groups = { "integration" })

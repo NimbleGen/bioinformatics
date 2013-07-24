@@ -128,7 +128,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				detailReportWriter.println("probe_index" + StringUtil.TAB + "probe_container_name" + StringUtil.TAB + "probes_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
 						+ "probe_strand" + StringUtil.TAB + "total_uids" + StringUtil.TAB + "average_number_of_read_pairs_per_uid" + StringUtil.TAB + "standard_deviation_of_read_pairs_per_uid"
 						+ StringUtil.TAB + "min_number_of_read_pairs_per_uid" + StringUtil.TAB + "max_number_of_read_pairs_per_uid" + StringUtil.TAB + "uid_Of_entry_with_max_read_pairs"
-						+ StringUtil.TAB + " total_duplicate_read_pairs_removed" + StringUtil.TAB + " totalReadPairsRemainingAfterReduction" + StringUtil.TAB + " totalTimeToProcessInMs");
+						+ StringUtil.TAB + " total_duplicate_read_pairs_removed" + StringUtil.TAB + " totalReadPairsRemainingAfterReduction" + StringUtil.TAB + " totalTimeToProcess");
 				detailReportWriter.flush();
 
 				FileUtil.createNewFile(extensionErrorsReportFile);
@@ -169,7 +169,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		long stop = System.currentTimeMillis();
 
 		// Report on performance
-		logger.debug("Total time:" + (stop - start) + "ms");
+		logger.debug("Total time: " + DateUtil.convertMillisecondsToHHMMSS(stop - start));
 	}
 
 	/**
@@ -446,13 +446,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					}
 				}
 
-				List<IReadPair> readsToWrite = null;
-				if (applicationSettings.isShouldExtendReads()) {
-					List<IReadPair> extendedReads = ExtendReadsToPrimer.extendReadsToPrimers(probe, containerName, probeReductionResults.getReadPairs(), extensionErrorsWriter);
-					readsToWrite = extendedReads;
-				} else {
-					readsToWrite = probeReductionResults.getReadPairs();
-				}
+				List<IReadPair> readsToWrite = ExtendReadsToPrimer.extendReadsToPrimers(probe, containerName, probeReductionResults.getReadPairs(), extensionErrorsWriter);
 
 				writeReadsToSamFile(samWriter, readsToWrite);
 				if (fastqOneWriter != null && fastqTwoWriter != null) {
