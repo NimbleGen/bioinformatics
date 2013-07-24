@@ -63,7 +63,8 @@ class FilterByUid {
 	 *            Used to report on UID quality
 	 * @return A UidReductionResultsForAProbe containing the processing statistics and the reduced probe set
 	 */
-	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, String chromosomeName, Map<String, SAMRecordPair> readNameToRecordsMap, PrintWriter probeUidQualityWriter) {
+	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, String chromosomeName, Map<String, SAMRecordPair> readNameToRecordsMap, PrintWriter probeUidQualityWriter,
+			boolean allowVariableLengthUids) {
 		List<IReadPair> readPairs = new ArrayList<IReadPair>();
 
 		long probeProcessingStartInMs = System.currentTimeMillis();
@@ -76,7 +77,12 @@ class FilterByUid {
 			SAMRecord mate = recordPair.getSecondOfPairRecord();
 
 			if ((record != null) && (mate != null)) {
-				String uid = SAMRecordUtil.getUidAttribute(record);
+				String uid = "";
+				if (allowVariableLengthUids) {
+					uid = SAMRecordUtil.getUidAttribute(record, probe);
+				} else {
+					uid = SAMRecordUtil.getUidAttribute(record);
+				}
 				datas.add(new ReadPair(record, mate, uid));
 			}
 		}

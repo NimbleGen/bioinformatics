@@ -63,8 +63,10 @@ public class PrefuppCli {
 			"Should this utility not extend reads to the primers?  (Default: No)", false, true);
 	private final static CommandLineOption NUM_PROCESSORS_OPTION = new CommandLineOption("Number of Processors", "numProcessors", null,
 			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.", false, false);
-	private final static CommandLineOption UID_LENGTH_OPTION = new CommandLineOption("Length of UID in bases", "uidLength", null,
+	private final static CommandLineOption UID_LENGTH_OPTION = new CommandLineOption("Length of UID in Bases", "uidLength", null,
 			"Length of the Universal Identifier.  If not specified this will default to " + DEFAULT_UID_LENGTH + " bases.", false, false);
+	private final static CommandLineOption ALLOW_VARIABLE_LENGTH_UIDS_OPTION = new CommandLineOption("Allow Variable Length Uids", "allow_variable_length_uids", null,
+			"Allow Variable Length Uids (cannot be defined when uidLength is given)", false, true);
 	private final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o',
 			"Name for output bam file.  If not specified this will default to [" + DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME + "].", false, false);
 
@@ -85,17 +87,13 @@ public class PrefuppCli {
 		outputToConsole(commandLineSignature);
 		outputToConsole("");
 		ParsedCommandLine parsedCommandLine = CommandLineParser.parseCommandLine(args, getCommandLineOptionsGroup());
-
-		boolean showUsage = parsedCommandLine.isOptionPresent(USAGE_OPTION);
+		boolean noOptionsProvided = (args.length == 0);
+		boolean showUsage = parsedCommandLine.isOptionPresent(USAGE_OPTION) || noOptionsProvided;
 
 		if (showUsage) {
 			outputToConsole(parsedCommandLine.getCommandLineOptionsGroup().getUsage());
 		} else {
-			try {
-				CommandLineParser.throwCommandLineParsingExceptions(parsedCommandLine);
-			} catch (Exception e) {
-				throw new IllegalStateException(parsedCommandLine.getCommandLineOptionsGroup().getUsage());
-			}
+			CommandLineParser.throwCommandLineParsingExceptions(parsedCommandLine);
 
 			String outputDirectoryString = parsedCommandLine.getOptionsValue(OUTPUT_DIR_OPTION);
 			File outputDirectory = null;
@@ -161,12 +159,19 @@ public class PrefuppCli {
 			}
 
 			int uidLength = DEFAULT_UID_LENGTH;
-			if (parsedCommandLine.isOptionPresent(UID_LENGTH_OPTION)) {
+			boolean uidLengthOptionIsPresent = parsedCommandLine.isOptionPresent(UID_LENGTH_OPTION);
+			if (uidLengthOptionIsPresent) {
 				try {
 					uidLength = Integer.parseInt(parsedCommandLine.getOptionsValue(UID_LENGTH_OPTION));
 				} catch (NumberFormatException ex) {
 					throw new IllegalStateException("UID length specified is not an integer[" + parsedCommandLine.getOptionsValue(UID_LENGTH_OPTION) + "].");
 				}
+			}
+
+			boolean allowVariableLengthUids = parsedCommandLine.isOptionPresent(ALLOW_VARIABLE_LENGTH_UIDS_OPTION);
+			if (uidLengthOptionIsPresent && allowVariableLengthUids) {
+				throw new IllegalStateException("You must either specify a UID length using the option --" + UID_LENGTH_OPTION.getLongFormOption()
+						+ " OR indicate that variable length uids are allowed via the option --" + ALLOW_VARIABLE_LENGTH_UIDS_OPTION.getLongFormOption() + ".  Providing both options is not allowed.");
 			}
 
 			String outputBamFileName = null;
@@ -224,7 +229,7 @@ public class PrefuppCli {
 				}
 
 				sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tmpDirectory, saveTmpFiles,
-						shouldOutputQualityReports, shouldOutputFastq, shouldExtendReads, commandLineSignature, numProcessors, uidLength);
+						shouldOutputQualityReports, shouldOutputFastq, shouldExtendReads, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids);
 			} else {
 				if (outputBamFileName == null) {
 					outputBamFileName = DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME;
@@ -252,14 +257,15 @@ public class PrefuppCli {
 						APPLICATION_NAME, APPLICATION_VERSION, commandLineSignature);
 				mapFilterAndExtend.mapFilterAndExtend();
 			}
+			long end = System.currentTimeMillis();
+			outputToConsole("Processing Completed (Total time:" + (end - start) + "ms).");
 		}
-		long end = System.currentTimeMillis();
-		outputToConsole("Processing Completed (Total time:" + (end - start) + "ms).");
+
 	}
 
 	private static void sortMergeFilterAndExtendReads(File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName,
 			String outputFilePrefix, File tmpDirectory, boolean saveTmpDirectory, boolean shouldOutputQualityReports, boolean shouldOutputFastq, boolean shouldExtendReads,
-			String commandLineSignature, int numProcessors, int uidLength) {
+			String commandLineSignature, int numProcessors, int uidLength, boolean allowVariableLengthUids) {
 		File tempOutputDirectory = null;
 		File mergedBamFileSortedByCoordinates = null;
 		File indexFileForMergedBamFileSortedByCoordinates = null;
@@ -288,7 +294,7 @@ public class PrefuppCli {
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
 					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tmpDirectory, bamFile.getName(), shouldOutputQualityReports, shouldOutputFastq, shouldExtendReads,
-					commandLineSignature, APPLICATION_NAME, APPLICATION_VERSION, numProcessors);
+					commandLineSignature, APPLICATION_NAME, APPLICATION_VERSION, numProcessors, allowVariableLengthUids);
 
 			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
@@ -335,6 +341,7 @@ public class PrefuppCli {
 		group.addOption(SHOULD_NOT_EXTEND_READS_TO_PRIMERS);
 		group.addOption(NUM_PROCESSORS_OPTION);
 		group.addOption(UID_LENGTH_OPTION);
+		group.addOption(ALLOW_VARIABLE_LENGTH_UIDS_OPTION);
 
 		return group;
 	}
