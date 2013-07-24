@@ -17,6 +17,7 @@
 package com.roche.heatseq.qualityreport;
 
 import com.roche.heatseq.objects.Probe;
+import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 /**
@@ -98,7 +99,7 @@ public class ProbeProcessingStats {
 				+ probe.getProbeStrand() + StringUtil.TAB);
 		stringBuilder.append(totalUids + StringUtil.TAB + averageNumberOfReadPairsPerUid + StringUtil.TAB + standardDeviationOfReadPairsPerUid + StringUtil.TAB + minNumberOfReadPairsPerUid
 				+ StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase() + StringUtil.TAB + totalDuplicateReadPairsRemoved + StringUtil.TAB
-				+ totalReadPairsRemainingAfterReduction + StringUtil.TAB + totalTimeToProcessInMs + StringUtil.TAB);
+				+ totalReadPairsRemainingAfterReduction + StringUtil.TAB + DateUtil.convertMillisecondsToHHMMSS(totalTimeToProcessInMs) + StringUtil.TAB);
 
 		stringBuilder.append(StringUtil.NEWLINE);
 

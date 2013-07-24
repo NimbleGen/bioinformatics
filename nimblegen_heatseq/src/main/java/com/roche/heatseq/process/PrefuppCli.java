@@ -32,6 +32,7 @@ import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineParser;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
+import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 
 public class PrefuppCli {
@@ -254,7 +255,7 @@ public class PrefuppCli {
 				mapFilterAndExtend.mapFilterAndExtend();
 			}
 			long end = System.currentTimeMillis();
-			outputToConsole("Processing Completed (Total time:" + (end - start) + "ms).");
+			outputToConsole("Processing Completed (Total time: " + DateUtil.convertMillisecondsToHHMMSS(end - start) + ").");
 		}
 
 	}
@@ -294,7 +295,7 @@ public class PrefuppCli {
 			BamFileUtil.createIndexOnCoordinateSortedBamFile(samReader, indexFileForMergedBamFileSortedByCoordinates);
 			long timeAfterBuildBamIndex = System.currentTimeMillis();
 			logger.debug("done creating index for merged and sorted bam file ... result[" + indexFileForMergedBamFileSortedByCoordinates.getAbsolutePath() + "] in "
-					+ (timeAfterBuildBamIndex - timeAfterMergeUnsorted) + "ms.");
+					+ DateUtil.convertMillisecondsToHHMMSS(timeAfterBuildBamIndex - timeAfterMergeUnsorted));
 			samReader.close();
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
@@ -304,8 +305,7 @@ public class PrefuppCli {
 			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
 			long totalTimeStop = System.currentTimeMillis();
-
-			logger.debug("done (" + (totalTimeStop - totalTimeStart) + " ms)");
+			logger.debug("done - Total time: (" + DateUtil.convertMillisecondsToHHMMSS(totalTimeStop - totalTimeStart) + ")");
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
