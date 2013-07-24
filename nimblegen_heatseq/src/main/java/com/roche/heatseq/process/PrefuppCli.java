@@ -47,9 +47,9 @@ public class PrefuppCli {
 	private final static String DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME = "mapping.reduced.bam";
 
 	private final static CommandLineOption USAGE_OPTION = new CommandLineOption("Print Usage", "usage", 'h', "Print Usage.", false, true);
-	private final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("fastQ One File", "fastQOne", null, "The first fastq file", true, false);
-	private final static CommandLineOption FASTQ_TWO_OPTION = new CommandLineOption("fastQ Two File", "fastQTwo", null, "The second fastq file", true, false);
-	private final static CommandLineOption BAM_OPTION = new CommandLineOption("BAM File", "bam", null, "The BAM file", false, false);
+	private final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("fastQ One File", "r1", null, "The first fastq file", true, false);
+	private final static CommandLineOption FASTQ_TWO_OPTION = new CommandLineOption("fastQ Two File", "r2", null, "The second fastq file", true, false);
+	private final static CommandLineOption BAM_OPTION = new CommandLineOption("BAM File", "inputBam", null, "The BAM file", false, false);
 	private final static CommandLineOption PROBE_OPTION = new CommandLineOption("PROBE File", "probe", null, "The probe file", true, false);
 	private final static CommandLineOption BAM_INDEX_OPTION = new CommandLineOption("BAM Index File", "bamIndex", null, "location for BAM index File.", false, false);
 	private final static CommandLineOption OUTPUT_DIR_OPTION = new CommandLineOption("Output Directory", "outputDir", null, "location to store resultant files.", false, false);
@@ -60,8 +60,6 @@ public class PrefuppCli {
 			"Should this utility generate quality reports?  (Default: No)", false, true);
 	private final static CommandLineOption SHOULD_OUTPUT_FASTQ_OPTION = new CommandLineOption("Should Output FastQ Results", "outputFastq", 'f',
 			"Should this utility generate fastq result files?  (Default: No)", false, true);
-	private final static CommandLineOption SHOULD_NOT_EXTEND_READS_TO_PRIMERS = new CommandLineOption("Should Not Extend Reads To Primers", "doNotExtendReads", null,
-			"Should this utility not extend reads to the primers?  (Default: No)", false, true);
 	private final static CommandLineOption NUM_PROCESSORS_OPTION = new CommandLineOption("Number of Processors", "numProcessors", null,
 			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.", false, false);
 	private final static CommandLineOption UID_LENGTH_OPTION = new CommandLineOption("Length of UID in Bases", "uidLength", null,
@@ -181,7 +179,6 @@ public class PrefuppCli {
 
 			boolean shouldOutputQualityReports = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_REPORTS_OPTION);
 			boolean shouldOutputFastq = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_FASTQ_OPTION);
-			boolean shouldExtendReads = !parsedCommandLine.isOptionPresent(SHOULD_NOT_EXTEND_READS_TO_PRIMERS);
 
 			if (parsedCommandLine.isOptionPresent(BAM_OPTION)) {
 				String bamFileString = parsedCommandLine.getOptionsValue(BAM_OPTION);
@@ -226,7 +223,7 @@ public class PrefuppCli {
 				}
 
 				sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tmpDirectory, saveTmpFiles,
-						shouldOutputQualityReports, shouldOutputFastq, shouldExtendReads, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids);
+						shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids);
 			} else {
 				if (outputBamFileName == null) {
 					outputBamFileName = DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME;
@@ -261,8 +258,8 @@ public class PrefuppCli {
 	}
 
 	private static void sortMergeFilterAndExtendReads(File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName,
-			String outputFilePrefix, File tmpDirectory, boolean saveTmpDirectory, boolean shouldOutputQualityReports, boolean shouldOutputFastq, boolean shouldExtendReads,
-			String commandLineSignature, int numProcessors, int uidLength, boolean allowVariableLengthUids) {
+			String outputFilePrefix, File tmpDirectory, boolean saveTmpDirectory, boolean shouldOutputQualityReports, boolean shouldOutputFastq, String commandLineSignature, int numProcessors,
+			int uidLength, boolean allowVariableLengthUids) {
 		try {
 			Path tempOutputDirectoryPath = Files.createTempDirectory(tmpDirectory.toPath(), "nimblegen_");
 			final File tempOutputDirectory = tempOutputDirectoryPath.toFile();
@@ -299,8 +296,8 @@ public class PrefuppCli {
 			samReader.close();
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
-					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, shouldOutputFastq, shouldExtendReads, commandLineSignature,
-					APPLICATION_NAME, APPLICATION_VERSION, numProcessors, allowVariableLengthUids);
+					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, APPLICATION_NAME,
+					APPLICATION_VERSION, numProcessors, allowVariableLengthUids);
 
 			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
@@ -331,7 +328,6 @@ public class PrefuppCli {
 		group.addOption(SAVE_TMP_DIR_OPTION);
 		group.addOption(SHOULD_OUTPUT_REPORTS_OPTION);
 		group.addOption(SHOULD_OUTPUT_FASTQ_OPTION);
-		group.addOption(SHOULD_NOT_EXTEND_READS_TO_PRIMERS);
 		group.addOption(NUM_PROCESSORS_OPTION);
 		group.addOption(UID_LENGTH_OPTION);
 		group.addOption(ALLOW_VARIABLE_LENGTH_UIDS_OPTION);

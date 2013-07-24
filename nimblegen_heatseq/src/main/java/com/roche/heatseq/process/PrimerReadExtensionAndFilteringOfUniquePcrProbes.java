@@ -446,13 +446,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					}
 				}
 
-				List<IReadPair> readsToWrite = null;
-				if (applicationSettings.isShouldExtendReads()) {
-					List<IReadPair> extendedReads = ExtendReadsToPrimer.extendReadsToPrimers(probe, containerName, probeReductionResults.getReadPairs(), extensionErrorsWriter);
-					readsToWrite = extendedReads;
-				} else {
-					readsToWrite = probeReductionResults.getReadPairs();
-				}
+				List<IReadPair> readsToWrite = ExtendReadsToPrimer.extendReadsToPrimers(probe, containerName, probeReductionResults.getReadPairs(), extensionErrorsWriter);
 
 				writeReadsToSamFile(samWriter, readsToWrite);
 				if (fastqOneWriter != null && fastqTwoWriter != null) {

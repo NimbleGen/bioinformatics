@@ -36,7 +36,6 @@ public class ApplicationSettings {
 	private final String originalBamFileName;
 	private final boolean shouldOutputQualityReports;
 	private final boolean shouldOutputFastq;
-	private final boolean shouldExtendReads;
 	private final String commandLineSignature;
 	private final String programName;
 	private final String programVersion;
@@ -63,8 +62,8 @@ public class ApplicationSettings {
 	 * @param numProcessors
 	 */
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
-			String originalBamFileName, boolean shouldOutputQualityReports, boolean shouldOutputFastq, boolean shouldExtendReads, String commandLineSignature, String programName,
-			String programVersion, int numProcessors, boolean allowVariableLengthUids) {
+			String originalBamFileName, boolean shouldOutputQualityReports, boolean shouldOutputFastq, String commandLineSignature, String programName, String programVersion, int numProcessors,
+			boolean allowVariableLengthUids) {
 		super();
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;
@@ -77,7 +76,6 @@ public class ApplicationSettings {
 		this.originalBamFileName = originalBamFileName;
 		this.shouldOutputQualityReports = shouldOutputQualityReports;
 		this.shouldOutputFastq = shouldOutputFastq;
-		this.shouldExtendReads = shouldExtendReads;
 		this.commandLineSignature = commandLineSignature;
 		this.programName = programName;
 		this.programVersion = programVersion;
@@ -160,13 +158,6 @@ public class ApplicationSettings {
 	 */
 	public boolean isShouldOutputFastq() {
 		return shouldOutputFastq;
-	}
-
-	/**
-	 * @return true is the reads should be extended
-	 */
-	public boolean isShouldExtendReads() {
-		return shouldExtendReads;
 	}
 
 	/**
