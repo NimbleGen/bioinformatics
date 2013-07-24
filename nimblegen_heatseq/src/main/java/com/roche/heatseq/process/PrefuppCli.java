@@ -87,7 +87,7 @@ public class PrefuppCli {
 		outputToConsole(commandLineSignature);
 		outputToConsole("");
 		ParsedCommandLine parsedCommandLine = CommandLineParser.parseCommandLine(args, getCommandLineOptionsGroup());
-		boolean noOptionsProvided = args.length == 0;
+		boolean noOptionsProvided = (args.length == 0);
 		boolean showUsage = parsedCommandLine.isOptionPresent(USAGE_OPTION) || noOptionsProvided;
 
 		if (showUsage) {
