@@ -42,6 +42,7 @@ public class ApplicationSettings {
 	private final String programName;
 	private final String programVersion;
 	private final int numProcessors;
+	private final boolean allowVariableLengthUids;
 
 	/**
 	 * Default Constructor
@@ -65,7 +66,7 @@ public class ApplicationSettings {
 	 */
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
 			File tmpDirectory, String originalBamFileName, boolean shouldOutputQualityReports, boolean shouldOutputFastq, boolean shouldExtendReads, String commandLineSignature, String programName,
-			String programVersion, int numProcessors) {
+			String programVersion, int numProcessors, boolean allowVariableLengthUids) {
 		super();
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;
@@ -84,6 +85,7 @@ public class ApplicationSettings {
 		this.programName = programName;
 		this.programVersion = programVersion;
 		this.numProcessors = numProcessors;
+		this.allowVariableLengthUids = allowVariableLengthUids;
 	}
 
 	/**
@@ -204,4 +206,12 @@ public class ApplicationSettings {
 	public int getNumProcessors() {
 		return numProcessors;
 	}
+
+	/**
+	 * @return true if variable length uids are allowed (basically the uid length will be autodetected for each read by aligning to the extension primer and using what is left over as the uid).
+	 */
+	public boolean isAllowVariableLengthUids() {
+		return allowVariableLengthUids;
+	}
+
 }
