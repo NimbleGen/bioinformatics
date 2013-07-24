@@ -33,7 +33,6 @@ public class ApplicationSettings {
 	private final File outputDirectory;
 	private final String outputBamFileName;
 	private final String outputFilePrefix;
-	private final File tmpDirectory;
 	private final String originalBamFileName;
 	private final boolean shouldOutputQualityReports;
 	private final boolean shouldOutputFastq;
@@ -53,7 +52,6 @@ public class ApplicationSettings {
 	 * @param fastQ2File
 	 * @param outputDirectory
 	 * @param outputFilePrefix
-	 * @param tmpDirectory
 	 * @param originalBamFileName
 	 * @param shouldOutputQualityReports
 	 * @param shouldOutputFastq
@@ -75,7 +73,6 @@ public class ApplicationSettings {
 		this.outputDirectory = outputDirectory;
 		this.outputBamFileName = outputBamFileName;
 		this.outputFilePrefix = outputFilePrefix;
-		this.tmpDirectory = tmpDirectory;
 		this.originalBamFileName = originalBamFileName;
 		this.shouldOutputQualityReports = shouldOutputQualityReports;
 		this.shouldOutputFastq = shouldOutputFastq;
@@ -140,13 +137,6 @@ public class ApplicationSettings {
 	 */
 	public String getOutputFilePrefix() {
 		return outputFilePrefix;
-	}
-
-	/**
-	 * @return location to store temporary files
-	 */
-	public File getTmpDirectory() {
-		return tmpDirectory;
 	}
 
 	/**

@@ -154,10 +154,6 @@ public class PrefuppCli {
 				} catch (NumberFormatException ex) {
 					throw new IllegalStateException("Value specified for number of processors is not an integer[" + parsedCommandLine.getOptionsValue(NUM_PROCESSORS_OPTION) + "].");
 				}
-			} else {
-				// TODO - CLB, this is just here during development, eventually
-				// take this out
-				logger.debug("Number of processors not specified, we've detected[" + numProcessors + "] processors.");
 			}
 
 			int uidLength = DEFAULT_UID_LENGTH;
@@ -268,9 +264,16 @@ public class PrefuppCli {
 
 			Path tempOutputDirectoryPath = Files.createTempDirectory(tmpDirectory.toPath(), "nimblegen_");
 			tempOutputDirectory = tempOutputDirectoryPath.toFile();
-
 			mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", tempOutputDirectory);
 			indexFileForMergedBamFileSortedByCoordinates = File.createTempFile("index_of_merged_bam_sorted_by_coordinates_", ".bamindex", tempOutputDirectory);
+
+			// Make sure our tmp files are deleted when we exit
+			if (!saveTmpDirectory) {
+				tempOutputDirectory.deleteOnExit();
+				mergedBamFileSortedByCoordinates.deleteOnExit();
+				indexFileForMergedBamFileSortedByCoordinates.deleteOnExit();
+			}
+
 			long totalTimeStart = System.currentTimeMillis();
 
 			FastqAndBamFileMerger.createMergedFastqAndBamFileFromUnsortedFiles(bamFile, fastQ1WithUidsFile, fastQ2File, mergedBamFileSortedByCoordinates, uidLength);
@@ -297,18 +300,6 @@ public class PrefuppCli {
 			logger.debug("done (" + (totalTimeStop - totalTimeStart) + " ms)");
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
-		} finally {
-			if (!saveTmpDirectory) {
-				if (!mergedBamFileSortedByCoordinates.delete()) {
-					logger.warn("Could not delete temporary file[" + mergedBamFileSortedByCoordinates.getAbsolutePath() + "].");
-				}
-				if (!indexFileForMergedBamFileSortedByCoordinates.delete()) {
-					logger.warn("Could not delete temporary file[" + indexFileForMergedBamFileSortedByCoordinates.getAbsolutePath() + "].");
-				}
-				if (!tempOutputDirectory.delete()) {
-					logger.warn("Could not delete temporary directory[" + tempOutputDirectory.getAbsolutePath() + "].");
-				}
-			}
 		}
 	}
 
