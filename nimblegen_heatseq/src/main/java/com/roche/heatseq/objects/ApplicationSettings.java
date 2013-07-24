@@ -33,11 +33,9 @@ public class ApplicationSettings {
 	private final File outputDirectory;
 	private final String outputBamFileName;
 	private final String outputFilePrefix;
-	private final File tmpDirectory;
 	private final String originalBamFileName;
 	private final boolean shouldOutputQualityReports;
 	private final boolean shouldOutputFastq;
-	private final boolean shouldExtendReads;
 	private final String commandLineSignature;
 	private final String programName;
 	private final String programVersion;
@@ -54,7 +52,6 @@ public class ApplicationSettings {
 	 * @param fastQ2File
 	 * @param outputDirectory
 	 * @param outputFilePrefix
-	 * @param tmpDirectory
 	 * @param originalBamFileName
 	 * @param shouldOutputQualityReports
 	 * @param shouldOutputFastq
@@ -65,8 +62,8 @@ public class ApplicationSettings {
 	 * @param numProcessors
 	 */
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
-			File tmpDirectory, String originalBamFileName, boolean shouldOutputQualityReports, boolean shouldOutputFastq, boolean shouldExtendReads, String commandLineSignature, String programName,
-			String programVersion, int numProcessors, boolean allowVariableLengthUids) {
+			String originalBamFileName, boolean shouldOutputQualityReports, boolean shouldOutputFastq, String commandLineSignature, String programName, String programVersion, int numProcessors,
+			boolean allowVariableLengthUids) {
 		super();
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;
@@ -76,11 +73,9 @@ public class ApplicationSettings {
 		this.outputDirectory = outputDirectory;
 		this.outputBamFileName = outputBamFileName;
 		this.outputFilePrefix = outputFilePrefix;
-		this.tmpDirectory = tmpDirectory;
 		this.originalBamFileName = originalBamFileName;
 		this.shouldOutputQualityReports = shouldOutputQualityReports;
 		this.shouldOutputFastq = shouldOutputFastq;
-		this.shouldExtendReads = shouldExtendReads;
 		this.commandLineSignature = commandLineSignature;
 		this.programName = programName;
 		this.programVersion = programVersion;
@@ -145,13 +140,6 @@ public class ApplicationSettings {
 	}
 
 	/**
-	 * @return location to store temporary files
-	 */
-	public File getTmpDirectory() {
-		return tmpDirectory;
-	}
-
-	/**
 	 * @return the original BAM file name
 	 */
 	public String getOriginalBamFileName() {
@@ -170,13 +158,6 @@ public class ApplicationSettings {
 	 */
 	public boolean isShouldOutputFastq() {
 		return shouldOutputFastq;
-	}
-
-	/**
-	 * @return true is the reads should be extended
-	 */
-	public boolean isShouldExtendReads() {
-		return shouldExtendReads;
 	}
 
 	/**

@@ -277,7 +277,7 @@ public class MapperFiltererAndExtender {
 			if (ambiguousMappingWriter != null) {
 				ambiguousMappingWriter.close();
 			}
-			logger.debug("Total time:" + (end - start) + " ms.");
+			logger.debug("Total time: " + DateUtil.convertMillisecondsToHHMMSS(end - start));
 		}
 	}
 

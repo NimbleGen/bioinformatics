@@ -32,6 +32,7 @@ import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineParser;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
+import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 
 public class PrefuppCli {
@@ -46,9 +47,9 @@ public class PrefuppCli {
 	private final static String DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME = "mapping.reduced.bam";
 
 	private final static CommandLineOption USAGE_OPTION = new CommandLineOption("Print Usage", "usage", 'h', "Print Usage.", false, true);
-	private final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("fastQ One File", "fastQOne", null, "The first fastq file", true, false);
-	private final static CommandLineOption FASTQ_TWO_OPTION = new CommandLineOption("fastQ Two File", "fastQTwo", null, "The second fastq file", true, false);
-	private final static CommandLineOption BAM_OPTION = new CommandLineOption("BAM File", "bam", null, "The BAM file", false, false);
+	private final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("fastQ One File", "r1", null, "The first fastq file", true, false);
+	private final static CommandLineOption FASTQ_TWO_OPTION = new CommandLineOption("fastQ Two File", "r2", null, "The second fastq file", true, false);
+	private final static CommandLineOption BAM_OPTION = new CommandLineOption("BAM File", "inputBam", null, "The BAM file", false, false);
 	private final static CommandLineOption PROBE_OPTION = new CommandLineOption("PROBE File", "probe", null, "The probe file", true, false);
 	private final static CommandLineOption BAM_INDEX_OPTION = new CommandLineOption("BAM Index File", "bamIndex", null, "location for BAM index File.", false, false);
 	private final static CommandLineOption OUTPUT_DIR_OPTION = new CommandLineOption("Output Directory", "outputDir", null, "location to store resultant files.", false, false);
@@ -59,8 +60,6 @@ public class PrefuppCli {
 			"Should this utility generate quality reports?  (Default: No)", false, true);
 	private final static CommandLineOption SHOULD_OUTPUT_FASTQ_OPTION = new CommandLineOption("Should Output FastQ Results", "outputFastq", 'f',
 			"Should this utility generate fastq result files?  (Default: No)", false, true);
-	private final static CommandLineOption SHOULD_NOT_EXTEND_READS_TO_PRIMERS = new CommandLineOption("Should Not Extend Reads To Primers", "doNotExtendReads", null,
-			"Should this utility not extend reads to the primers?  (Default: No)", false, true);
 	private final static CommandLineOption NUM_PROCESSORS_OPTION = new CommandLineOption("Number of Processors", "numProcessors", null,
 			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.", false, false);
 	private final static CommandLineOption UID_LENGTH_OPTION = new CommandLineOption("Length of UID in Bases", "uidLength", null,
@@ -152,10 +151,6 @@ public class PrefuppCli {
 				} catch (NumberFormatException ex) {
 					throw new IllegalStateException("Value specified for number of processors is not an integer[" + parsedCommandLine.getOptionsValue(NUM_PROCESSORS_OPTION) + "].");
 				}
-			} else {
-				// TODO - CLB, this is just here during development, eventually
-				// take this out
-				logger.debug("Number of processors not specified, we've detected[" + numProcessors + "] processors.");
 			}
 
 			int uidLength = DEFAULT_UID_LENGTH;
@@ -184,7 +179,6 @@ public class PrefuppCli {
 
 			boolean shouldOutputQualityReports = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_REPORTS_OPTION);
 			boolean shouldOutputFastq = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_FASTQ_OPTION);
-			boolean shouldExtendReads = !parsedCommandLine.isOptionPresent(SHOULD_NOT_EXTEND_READS_TO_PRIMERS);
 
 			if (parsedCommandLine.isOptionPresent(BAM_OPTION)) {
 				String bamFileString = parsedCommandLine.getOptionsValue(BAM_OPTION);
@@ -229,7 +223,7 @@ public class PrefuppCli {
 				}
 
 				sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tmpDirectory, saveTmpFiles,
-						shouldOutputQualityReports, shouldOutputFastq, shouldExtendReads, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids);
+						shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids);
 			} else {
 				if (outputBamFileName == null) {
 					outputBamFileName = DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME;
@@ -258,25 +252,34 @@ public class PrefuppCli {
 				mapFilterAndExtend.mapFilterAndExtend();
 			}
 			long end = System.currentTimeMillis();
-			outputToConsole("Processing Completed (Total time:" + (end - start) + "ms).");
+			outputToConsole("Processing Completed (Total time: " + DateUtil.convertMillisecondsToHHMMSS(end - start) + ").");
 		}
 
 	}
 
 	private static void sortMergeFilterAndExtendReads(File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName,
-			String outputFilePrefix, File tmpDirectory, boolean saveTmpDirectory, boolean shouldOutputQualityReports, boolean shouldOutputFastq, boolean shouldExtendReads,
-			String commandLineSignature, int numProcessors, int uidLength, boolean allowVariableLengthUids) {
-		File tempOutputDirectory = null;
-		File mergedBamFileSortedByCoordinates = null;
-		File indexFileForMergedBamFileSortedByCoordinates = null;
-
+			String outputFilePrefix, File tmpDirectory, boolean saveTmpDirectory, boolean shouldOutputQualityReports, boolean shouldOutputFastq, String commandLineSignature, int numProcessors,
+			int uidLength, boolean allowVariableLengthUids) {
 		try {
-
 			Path tempOutputDirectoryPath = Files.createTempDirectory(tmpDirectory.toPath(), "nimblegen_");
-			tempOutputDirectory = tempOutputDirectoryPath.toFile();
+			final File tempOutputDirectory = tempOutputDirectoryPath.toFile();
+			final File mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", tempOutputDirectory);
+			final File indexFileForMergedBamFileSortedByCoordinates = File.createTempFile("index_of_merged_bam_sorted_by_coordinates_", ".bamindex", tempOutputDirectory);
 
-			mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", tempOutputDirectory);
-			indexFileForMergedBamFileSortedByCoordinates = File.createTempFile("index_of_merged_bam_sorted_by_coordinates_", ".bamindex", tempOutputDirectory);
+			// Delete our temporary directory when we shut down the JVM if the user hasn't asked us to keep it
+			if (!saveTmpDirectory) {
+				Runtime.getRuntime().addShutdownHook(new Thread() {
+					@Override
+					public void run() {
+						try {
+							FileUtil.deleteDirectory(tempOutputDirectory);
+						} catch (IOException e) {
+							outputToConsole("Couldn't delete temp directory [" + tempOutputDirectory.getAbsolutePath() + "]:" + e.getMessage());
+						}
+					}
+				});
+			}
+
 			long totalTimeStart = System.currentTimeMillis();
 
 			FastqAndBamFileMerger.createMergedFastqAndBamFileFromUnsortedFiles(bamFile, fastQ1WithUidsFile, fastQ2File, mergedBamFileSortedByCoordinates, uidLength);
@@ -286,35 +289,22 @@ public class PrefuppCli {
 			// Build bam index
 			SAMFileReader samReader = new SAMFileReader(mergedBamFileSortedByCoordinates);
 
-			indexFileForMergedBamFileSortedByCoordinates = BamFileUtil.createIndexOnCoordinateSortedBamFile(samReader, indexFileForMergedBamFileSortedByCoordinates);
+			BamFileUtil.createIndexOnCoordinateSortedBamFile(samReader, indexFileForMergedBamFileSortedByCoordinates);
 			long timeAfterBuildBamIndex = System.currentTimeMillis();
 			logger.debug("done creating index for merged and sorted bam file ... result[" + indexFileForMergedBamFileSortedByCoordinates.getAbsolutePath() + "] in "
-					+ (timeAfterBuildBamIndex - timeAfterMergeUnsorted) + "ms.");
+					+ DateUtil.convertMillisecondsToHHMMSS(timeAfterBuildBamIndex - timeAfterMergeUnsorted));
 			samReader.close();
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
-					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tmpDirectory, bamFile.getName(), shouldOutputQualityReports, shouldOutputFastq, shouldExtendReads,
-					commandLineSignature, APPLICATION_NAME, APPLICATION_VERSION, numProcessors, allowVariableLengthUids);
+					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, APPLICATION_NAME,
+					APPLICATION_VERSION, numProcessors, allowVariableLengthUids);
 
 			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
 			long totalTimeStop = System.currentTimeMillis();
-
-			logger.debug("done (" + (totalTimeStop - totalTimeStart) + " ms)");
+			logger.debug("done - Total time: (" + DateUtil.convertMillisecondsToHHMMSS(totalTimeStop - totalTimeStart) + ")");
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
-		} finally {
-			if (!saveTmpDirectory) {
-				if (!mergedBamFileSortedByCoordinates.delete()) {
-					logger.warn("Could not delete temporary file[" + mergedBamFileSortedByCoordinates.getAbsolutePath() + "].");
-				}
-				if (!indexFileForMergedBamFileSortedByCoordinates.delete()) {
-					logger.warn("Could not delete temporary file[" + indexFileForMergedBamFileSortedByCoordinates.getAbsolutePath() + "].");
-				}
-				if (!tempOutputDirectory.delete()) {
-					logger.warn("Could not delete temporary directory[" + tempOutputDirectory.getAbsolutePath() + "].");
-				}
-			}
 		}
 	}
 
@@ -338,7 +328,6 @@ public class PrefuppCli {
 		group.addOption(SAVE_TMP_DIR_OPTION);
 		group.addOption(SHOULD_OUTPUT_REPORTS_OPTION);
 		group.addOption(SHOULD_OUTPUT_FASTQ_OPTION);
-		group.addOption(SHOULD_NOT_EXTEND_READS_TO_PRIMERS);
 		group.addOption(NUM_PROCESSORS_OPTION);
 		group.addOption(UID_LENGTH_OPTION);
 		group.addOption(ALLOW_VARIABLE_LENGTH_UIDS_OPTION);

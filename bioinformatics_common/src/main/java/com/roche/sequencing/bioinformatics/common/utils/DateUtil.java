@@ -19,6 +19,7 @@ package com.roche.sequencing.bioinformatics.common.utils;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 
@@ -40,4 +41,19 @@ public class DateUtil {
 		return dateFormat.format(date);
 	}
 
+	/**
+	 * @return a milliscond duration in HH:MM:SS format
+	 */
+	public static String convertMillisecondsToHHMMSS(long milliseconds) {
+		long millisecondsLeft = milliseconds;
+		long hours = TimeUnit.MILLISECONDS.toHours(milliseconds);
+		millisecondsLeft -= TimeUnit.HOURS.toMillis(hours);
+
+		long minutes = TimeUnit.MILLISECONDS.toMinutes(millisecondsLeft);
+		millisecondsLeft -= TimeUnit.MINUTES.toMillis(minutes);
+
+		long seconds = TimeUnit.MILLISECONDS.toSeconds(millisecondsLeft);
+
+		return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+	}
 }
