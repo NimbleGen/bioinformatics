@@ -21,6 +21,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
+import org.apache.commons.io.FileUtils;
+
 /**
  * 
  * Util for working with files
@@ -129,4 +131,27 @@ public final class FileUtil {
 		return success;
 	}
 
+	/**
+	 * Recursively delete a directory. If the first attempt fails due to an IOException, garbage collect, sleep, and try one more time to get around an issue with NFS volumes.
+	 * 
+	 * @param directory
+	 *            directory to delete
+	 * @throws IOException
+	 *             in case deletion is unsuccessful
+	 */
+	public static void deleteDirectory(File directory) throws IOException {
+		try {
+			// Attempt to recursively delete directory
+			FileUtils.deleteDirectory(directory);
+		} catch (IOException e) {
+			// Directories mounted on NFS volumes may have lingering .nfsXXXX files
+			// if no streams are open, it is likely from stale objects
+			System.gc();
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e1) {
+			}
+			FileUtils.deleteDirectory(directory);
+		}
+	}
 }

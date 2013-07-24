@@ -262,22 +262,24 @@ public class PrefuppCli {
 	private static void sortMergeFilterAndExtendReads(File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName,
 			String outputFilePrefix, File tmpDirectory, boolean saveTmpDirectory, boolean shouldOutputQualityReports, boolean shouldOutputFastq, boolean shouldExtendReads,
 			String commandLineSignature, int numProcessors, int uidLength, boolean allowVariableLengthUids) {
-		File tempOutputDirectory = null;
-		File mergedBamFileSortedByCoordinates = null;
-		File indexFileForMergedBamFileSortedByCoordinates = null;
-
 		try {
-
 			Path tempOutputDirectoryPath = Files.createTempDirectory(tmpDirectory.toPath(), "nimblegen_");
-			tempOutputDirectory = tempOutputDirectoryPath.toFile();
-			mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", tempOutputDirectory);
-			indexFileForMergedBamFileSortedByCoordinates = File.createTempFile("index_of_merged_bam_sorted_by_coordinates_", ".bamindex", tempOutputDirectory);
+			final File tempOutputDirectory = tempOutputDirectoryPath.toFile();
+			final File mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", tempOutputDirectory);
+			final File indexFileForMergedBamFileSortedByCoordinates = File.createTempFile("index_of_merged_bam_sorted_by_coordinates_", ".bamindex", tempOutputDirectory);
 
-			// Make sure our tmp files are deleted when we exit
+			// Delete our temporary directory when we shut down the JVM if the user hasn't asked us to keep it
 			if (!saveTmpDirectory) {
-				tempOutputDirectory.deleteOnExit();
-				mergedBamFileSortedByCoordinates.deleteOnExit();
-				indexFileForMergedBamFileSortedByCoordinates.deleteOnExit();
+				Runtime.getRuntime().addShutdownHook(new Thread() {
+					@Override
+					public void run() {
+						try {
+							FileUtil.deleteDirectory(tempOutputDirectory);
+						} catch (IOException e) {
+							outputToConsole("Couldn't delete temp directory [" + tempOutputDirectory.getAbsolutePath() + "]:" + e.getMessage());
+						}
+					}
+				});
 			}
 
 			long totalTimeStart = System.currentTimeMillis();
@@ -289,7 +291,7 @@ public class PrefuppCli {
 			// Build bam index
 			SAMFileReader samReader = new SAMFileReader(mergedBamFileSortedByCoordinates);
 
-			indexFileForMergedBamFileSortedByCoordinates = BamFileUtil.createIndexOnCoordinateSortedBamFile(samReader, indexFileForMergedBamFileSortedByCoordinates);
+			BamFileUtil.createIndexOnCoordinateSortedBamFile(samReader, indexFileForMergedBamFileSortedByCoordinates);
 			long timeAfterBuildBamIndex = System.currentTimeMillis();
 			logger.debug("done creating index for merged and sorted bam file ... result[" + indexFileForMergedBamFileSortedByCoordinates.getAbsolutePath() + "] in "
 					+ (timeAfterBuildBamIndex - timeAfterMergeUnsorted) + "ms.");

@@ -53,9 +53,8 @@ public class BamFileUtil {
 		return sumOfQualityScores;
 	}
 
-	static File createIndexOnCoordinateSortedBamFile(SAMFileReader samReader, File outputIndexFile) {
+	static void createIndexOnCoordinateSortedBamFile(SAMFileReader samReader, File outputIndexFile) {
 		createIndex(samReader, outputIndexFile);
-		return outputIndexFile;
 	}
 
 	/**
