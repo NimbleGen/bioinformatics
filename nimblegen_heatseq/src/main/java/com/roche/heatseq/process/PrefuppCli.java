@@ -296,8 +296,8 @@ public class PrefuppCli {
 			samReader.close();
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
-					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tmpDirectory, bamFile.getName(), shouldOutputQualityReports, shouldOutputFastq, shouldExtendReads,
-					commandLineSignature, APPLICATION_NAME, APPLICATION_VERSION, numProcessors, allowVariableLengthUids);
+					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, shouldOutputFastq, shouldExtendReads, commandLineSignature,
+					APPLICATION_NAME, APPLICATION_VERSION, numProcessors, allowVariableLengthUids);
 
 			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 

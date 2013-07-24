@@ -63,7 +63,7 @@ public class ApplicationSettings {
 	 * @param numProcessors
 	 */
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
-			File tmpDirectory, String originalBamFileName, boolean shouldOutputQualityReports, boolean shouldOutputFastq, boolean shouldExtendReads, String commandLineSignature, String programName,
+			String originalBamFileName, boolean shouldOutputQualityReports, boolean shouldOutputFastq, boolean shouldExtendReads, String commandLineSignature, String programName,
 			String programVersion, int numProcessors, boolean allowVariableLengthUids) {
 		super();
 		this.probeFile = probeFile;
