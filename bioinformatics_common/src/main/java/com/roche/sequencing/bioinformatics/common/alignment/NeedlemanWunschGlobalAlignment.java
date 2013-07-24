@@ -369,4 +369,25 @@ public class NeedlemanWunschGlobalAlignment {
 	public String getMismatchDetails() {
 		return CigarStringUtil.getMismatchDetailsString(getAlignmentPair());
 	}
+
+	/**
+	 * @return the reference index of the first sequence match in this alignment, -1 if no sequence matches exist
+	 */
+	public int getIndexOfFirstMatchInReference() {
+		ISequence referenceAlignment = getAlignmentPair().getQueryAlignment();
+		boolean matchFound = false;
+		int index = 0;
+		while (index < referenceAlignment.size() && !matchFound) {
+			ICode currentCode = referenceAlignment.getCodeAt(index);
+			if (!currentCode.matches(IupacNucleotideCode.GAP)) {
+				matchFound = true;
+			} else {
+				index++;
+			}
+		}
+		if (!matchFound) {
+			index = -1;
+		}
+		return index;
+	}
 }

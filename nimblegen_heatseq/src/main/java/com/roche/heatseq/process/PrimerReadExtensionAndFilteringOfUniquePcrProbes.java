@@ -436,7 +436,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		@Override
 		public void run() {
 			try {
-				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, containerName, readNameToRecordsMap, probeUidQualityWriter);
+				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, containerName, readNameToRecordsMap, probeUidQualityWriter,
+						applicationSettings.isAllowVariableLengthUids());
 
 				if (detailReportWriter != null) {
 					synchronized (detailReportWriter) {

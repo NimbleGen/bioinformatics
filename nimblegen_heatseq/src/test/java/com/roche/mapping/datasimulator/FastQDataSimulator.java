@@ -139,7 +139,8 @@ public class FastQDataSimulator {
 				readStringTwo = currentReadSequence.subSequence(readSequence.size() - INDIVIDUAL_READ_LENGTH, readSequence.size() - 1).getReverseCompliment();
 
 				for (int j = 0; j < uidsPerProbe; j++) {
-					String uid = generateRandomSequence(uidLength);
+					int variableUidLength = randomNumberGenerator.nextInt(uidLength) + 1;
+					String uid = generateRandomSequence(variableUidLength);
 					for (int i = 0; i < readsPerUidProbePair; i++) {
 						String baseHeader = IlluminaFastQHeader.getBaseHeader(forwardReadHeader) + "0" + i + "0" + j;
 						String readOneString = readStringOne.toString();
