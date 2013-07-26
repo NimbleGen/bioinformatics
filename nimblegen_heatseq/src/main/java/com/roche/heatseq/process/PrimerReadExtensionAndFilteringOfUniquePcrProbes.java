@@ -207,20 +207,17 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			String outputSortedBamFileName = applicationSettings.getOutputBamFileName();
 			File outputSortedBamFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + outputSortedBamFileName);
 
-			String outputBamIndexFileName = outputSortedBamFileName + ".bai";
-			File outputBamIndexFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + outputBamIndexFileName);
-
 			try {
 				outputUnsortedBamFile.createNewFile();
 				outputSortedBamFile.createNewFile();
-				outputBamIndexFile.createNewFile();
 			} catch (IOException e) {
 				throw new IllegalStateException(e.getMessage(), e);
 			}
 
-			samWriter = new SAMFileWriterFactory().makeSAMOrBAMWriter(
+			// Make an unsorted BAM file writer with the fastest level of compression
+			samWriter = new SAMFileWriterFactory().makeBAMWriter(
 					getHeader(samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(), applicationSettings.getProgramVersion()),
-					false, outputUnsortedBamFile);
+					false, outputUnsortedBamFile, 0);
 
 			FastqWriter fastqOneWriter = null;
 			FastqWriter fastqTwoWriter = null;
@@ -336,9 +333,12 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			samWriter.close();
 			samReader.close();
 
+			// Sort the output BAM file,
 			BamFileUtil.sortOnCoordinates(outputUnsortedBamFile, outputSortedBamFile);
-
 			outputUnsortedBamFile.delete();
+
+			// Make index for BAM file
+			BamFileUtil.createIndex(outputSortedBamFile);
 		}
 	}
 
