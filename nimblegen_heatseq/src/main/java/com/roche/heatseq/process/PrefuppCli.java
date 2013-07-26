@@ -44,12 +44,11 @@ public class PrefuppCli {
 	private final static String BAM_EXTENSION = ".bam";
 
 	private final static String DUPLICATE_MAPPINGS_REPORT_NAME = "duplicate_mappings.txt";
-	private final static String DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME = "mapping.reduced.bam";
 
 	private final static CommandLineOption USAGE_OPTION = new CommandLineOption("Print Usage", "usage", 'h', "Print Usage.", false, true);
-	private final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("fastQ One File", "r1", null, "The first fastq file", true, false);
-	private final static CommandLineOption FASTQ_TWO_OPTION = new CommandLineOption("fastQ Two File", "r2", null, "The second fastq file", true, false);
-	private final static CommandLineOption BAM_OPTION = new CommandLineOption("BAM File", "inputBam", null, "The BAM file", false, false);
+	private final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("fastQ One File", "r1", null, "path to first input fastq file", true, false);
+	private final static CommandLineOption FASTQ_TWO_OPTION = new CommandLineOption("fastQ Two File", "r2", null, "path to second second input fastq file", true, false);
+	private final static CommandLineOption INPUT_BAM_OPTION = new CommandLineOption("Input BAM File Path", "inputBam", null, "path to input BAM file containing the aligned reads", false, false);
 	private final static CommandLineOption PROBE_OPTION = new CommandLineOption("PROBE File", "probe", null, "The probe file", true, false);
 	private final static CommandLineOption BAM_INDEX_OPTION = new CommandLineOption("BAM Index File", "bamIndex", null, "location for BAM index File.", false, false);
 	private final static CommandLineOption OUTPUT_DIR_OPTION = new CommandLineOption("Output Directory", "outputDir", null, "location to store resultant files.", false, false);
@@ -66,8 +65,7 @@ public class PrefuppCli {
 			"Length of the Universal Identifier.  If not specified this will default to " + DEFAULT_UID_LENGTH + " bases.", false, false);
 	private final static CommandLineOption ALLOW_VARIABLE_LENGTH_UIDS_OPTION = new CommandLineOption("Allow Variable Length Uids", "allow_variable_length_uids", null,
 			"Allow Variable Length Uids (cannot be defined when uidLength is given)", false, true);
-	private final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o',
-			"Name for output bam file.  If not specified this will default to [" + DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME + "].", false, false);
+	private final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o', "Name for output bam file.", true, false);
 
 	public static void main(String[] args) {
 		outputToConsole("Primer Read Extension and Filtering of Unique PCR Probes");
@@ -169,24 +167,17 @@ public class PrefuppCli {
 						+ " OR indicate that variable length uids are allowed via the option --" + ALLOW_VARIABLE_LENGTH_UIDS_OPTION.getLongFormOption() + ".  Providing both options is not allowed.");
 			}
 
-			String outputBamFileName = null;
-			if (parsedCommandLine.isOptionPresent(OUTPUT_BAM_FILE_NAME_OPTION)) {
-				outputBamFileName = parsedCommandLine.getOptionsValue(OUTPUT_BAM_FILE_NAME_OPTION);
-				if (!outputBamFileName.endsWith(BAM_EXTENSION)) {
-					outputBamFileName += BAM_EXTENSION;
-				}
+			String outputBamFileName = parsedCommandLine.getOptionsValue(OUTPUT_BAM_FILE_NAME_OPTION);
+			if (!outputBamFileName.endsWith(BAM_EXTENSION)) {
+				outputBamFileName += BAM_EXTENSION;
 			}
 
 			boolean shouldOutputQualityReports = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_REPORTS_OPTION);
 			boolean shouldOutputFastq = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_FASTQ_OPTION);
 
-			if (parsedCommandLine.isOptionPresent(BAM_OPTION)) {
-				String bamFileString = parsedCommandLine.getOptionsValue(BAM_OPTION);
+			if (parsedCommandLine.isOptionPresent(INPUT_BAM_OPTION)) {
+				String bamFileString = parsedCommandLine.getOptionsValue(INPUT_BAM_OPTION);
 				File bamFile = new File(bamFileString);
-
-				if (outputBamFileName == null) {
-					outputBamFileName = FileUtil.getFileNameWithoutExtension(bamFile.getName()) + ".reduced.bam";
-				}
 
 				if (!bamFile.exists()) {
 					throw new IllegalStateException("Unable to find provided BAM file[" + bamFile.getAbsolutePath() + "].");
@@ -225,10 +216,6 @@ public class PrefuppCli {
 				sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tmpDirectory, saveTmpFiles,
 						shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids);
 			} else {
-				if (outputBamFileName == null) {
-					outputBamFileName = DEFAULT_OUTPUT_MAPPED_BAM_FILE_NAME;
-				}
-
 				outputToConsole("A bam file was not provided so a mapping will be performed.");
 				File outputBamFile = new File(outputDirectory, outputFilePrefix + outputBamFileName);
 				try {
@@ -319,7 +306,7 @@ public class PrefuppCli {
 		group.addOption(FASTQ_ONE_OPTION);
 		group.addOption(FASTQ_TWO_OPTION);
 		group.addOption(PROBE_OPTION);
-		group.addOption(BAM_OPTION);
+		group.addOption(INPUT_BAM_OPTION);
 		group.addOption(BAM_INDEX_OPTION);
 		group.addOption(OUTPUT_DIR_OPTION);
 		group.addOption(OUTPUT_BAM_FILE_NAME_OPTION);
