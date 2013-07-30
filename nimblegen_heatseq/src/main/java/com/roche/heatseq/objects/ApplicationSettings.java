@@ -18,6 +18,8 @@ package com.roche.heatseq.objects;
 
 import java.io.File;
 
+import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
+
 /**
  * 
  * Simple Object for holding onto Various Settings used by the heat seq application
@@ -41,6 +43,7 @@ public class ApplicationSettings {
 	private final String programVersion;
 	private final int numProcessors;
 	private final boolean allowVariableLengthUids;
+	private final IAlignmentScorer alignmentScorer;
 
 	/**
 	 * Default Constructor
@@ -63,7 +66,7 @@ public class ApplicationSettings {
 	 */
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
 			String originalBamFileName, boolean shouldOutputQualityReports, boolean shouldOutputFastq, String commandLineSignature, String programName, String programVersion, int numProcessors,
-			boolean allowVariableLengthUids) {
+			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer) {
 		super();
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;
@@ -81,6 +84,7 @@ public class ApplicationSettings {
 		this.programVersion = programVersion;
 		this.numProcessors = numProcessors;
 		this.allowVariableLengthUids = allowVariableLengthUids;
+		this.alignmentScorer = alignmentScorer;
 	}
 
 	/**
@@ -195,4 +199,10 @@ public class ApplicationSettings {
 		return allowVariableLengthUids;
 	}
 
+	/**
+	 * @return an alignment scorer with penalties the user has passed in or the default values
+	 */
+	public IAlignmentScorer getAlignmentScorer() {
+		return alignmentScorer;
+	}
 }
