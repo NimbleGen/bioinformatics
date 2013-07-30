@@ -202,13 +202,13 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 			String outputUnsortedBamFileName = FileUtil.getFileNameWithoutExtension(applicationSettings.getOriginalBamFileName()) + "_UNSORTED_REDUCED."
 					+ FileUtil.getFileExtension(applicationSettings.getBamFile());
-			File outputUnsortedBamFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + outputUnsortedBamFileName);
+			File outputUnsortedBamFile = new File(applicationSettings.getOutputDirectory(), outputUnsortedBamFileName);
 
 			String outputSortedBamFileName = applicationSettings.getOutputBamFileName();
-			File outputSortedBamFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + outputSortedBamFileName);
+			File outputSortedBamFile = new File(applicationSettings.getOutputDirectory(), outputSortedBamFileName);
 
 			String outputBamIndexFileName = outputSortedBamFileName + ".bai";
-			File outputBamIndexFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + outputBamIndexFileName);
+			File outputBamIndexFile = new File(applicationSettings.getOutputDirectory(), outputBamIndexFileName);
 
 			try {
 				outputUnsortedBamFile.createNewFile();
@@ -225,8 +225,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			FastqWriter fastqOneWriter = null;
 			FastqWriter fastqTwoWriter = null;
 			if (applicationSettings.isShouldOutputFastq()) {
-				File fastqOne = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + applicationSettings.getOriginalBamFileName() + "_one.fastq");
-				File fastqTwo = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + applicationSettings.getOriginalBamFileName() + "_two.fastq");
+				File fastqOne = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOriginalBamFileName() + "_one.fastq");
+				File fastqTwo = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOriginalBamFileName() + "_two.fastq");
 				logger.debug("Output fastq files will be created at fastqone[" + fastqOne.getAbsolutePath() + "] and fastqtwo[" + fastqTwo.getAbsolutePath() + "].");
 				final FastqWriterFactory fastqWriterFactory = new FastqWriterFactory();
 				fastqOneWriter = fastqWriterFactory.newWriter(fastqOne);
