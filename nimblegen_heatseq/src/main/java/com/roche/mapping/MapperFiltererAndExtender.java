@@ -272,6 +272,10 @@ public class MapperFiltererAndExtender {
 					throw new RuntimeException(e.getMessage(), e);
 				}
 				SAMRecordUtil.createBamFile(samHeader, outputFile, samRecordPairs);
+
+				// Create the index for the SAM file
+				BamFileUtil.createIndex(outputFile);
+
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
