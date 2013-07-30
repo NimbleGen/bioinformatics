@@ -20,6 +20,7 @@ import java.io.File;
 import java.util.List;
 
 import net.sf.samtools.SAMFileHeader;
+import net.sf.samtools.SAMFileHeader.SortOrder;
 import net.sf.samtools.SAMFileWriter;
 import net.sf.samtools.SAMFileWriterFactory;
 import net.sf.samtools.SAMRecord;
@@ -134,7 +135,9 @@ public class SAMRecordUtil {
 	}
 
 	static void createBamFile(SAMFileHeader header, File outputFile, List<SAMRecordPair> records) {
-		SAMFileWriter samWriter = new SAMFileWriterFactory().makeBAMWriter(header, false, outputFile);
+		// Make an output BAM file sorted by coordinates and as compressed as possible
+		header.setSortOrder(SortOrder.coordinate);
+		SAMFileWriter samWriter = new SAMFileWriterFactory().makeBAMWriter(header, false, outputFile, 9);
 		for (SAMRecordPair pair : records) {
 			samWriter.addAlignment(pair.getFirstOfPairRecord());
 			samWriter.addAlignment(pair.getSecondOfPairRecord());
