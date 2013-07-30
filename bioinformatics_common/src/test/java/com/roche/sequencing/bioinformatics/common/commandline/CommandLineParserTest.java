@@ -25,9 +25,8 @@ public class CommandLineParserTest {
 	@Test(groups = { "integration" }, expectedExceptions = IllegalStateException.class)
 	public void duplicateArgumentTest() {
 		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
-
-		group.addOption(new CommandLineOption("fastQFileOne", "fastQFileOne", null, "The first fastq file", true, false));
-		group.addOption(new CommandLineOption("fastQFileTwo", "fastQFileTwo", null, "The second fastq file", true, false));
+		group.addOption(new CommandLineOption("fastQ One File", "r1", null, "path to first input fastq file", true, false));
+		group.addOption(new CommandLineOption("fastQ Two File", "r2", null, "path to second second input fastq file", true, false));
 		group.addOption(new CommandLineOption("bamFile", "bamFile", null, "bamfile", true, false));
 		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
 
@@ -37,9 +36,8 @@ public class CommandLineParserTest {
 	@Test(groups = { "integration" })
 	public void baseTest() {
 		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
-
-		group.addOption(new CommandLineOption("fastQFileOne", "fastQFileOne", null, "The first fastq file", true, false));
-		group.addOption(new CommandLineOption("fastQFileTwo", "fastQFileTwo", null, "The second fastq file", true, false));
+		group.addOption(new CommandLineOption("fastQ One File", "r1", null, "path to first input fastq file", true, false));
+		group.addOption(new CommandLineOption("fastQ Two File", "r2", null, "path to second second input fastq file", true, false));
 		group.addOption(new CommandLineOption("b", "b", 'b', "bamfile", true, false));
 		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
 
@@ -109,8 +107,8 @@ public class CommandLineParserTest {
 	public void missingRequiredOptionTest() {
 		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
 
-		group.addOption(new CommandLineOption("fastQFileOne", "fastQFileOne", null, "The first fastq file", true, false));
-		group.addOption(new CommandLineOption("fastQFileTwo", "fastQFileTwo", null, "The second fastq file", true, false));
+		group.addOption(new CommandLineOption("fastQ One File", "r1", null, "path to first input fastq file", true, false));
+		group.addOption(new CommandLineOption("fastQ Two File", "r2", null, "path to second second input fastq file", true, false));
 		group.addOption(new CommandLineOption("b", "b", 'b', "bamfile", true, false));
 		group.addOption(new CommandLineOption("flag", "flag", null, "a flag field", false, true));
 
