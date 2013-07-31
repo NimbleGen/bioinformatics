@@ -28,10 +28,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * 
  * @param <O>
  */
-class TallyMap<O> {
+public class TallyMap<O> {
 
 	private Map<O, Integer> objectCount;
 	private int largestCount;
+	public int sumOfAllBins = 0;
 	private Set<O> objectsWithLargestCount;
 
 	public TallyMap() {
@@ -39,7 +40,8 @@ class TallyMap<O> {
 		objectsWithLargestCount = new HashSet<O>();
 	}
 
-	void add(O object) {
+	public void add(O object) {
+		sumOfAllBins++;
 		Integer currentCount = getCount(object);
 		currentCount++;
 		if (currentCount > largestCount) {
@@ -52,7 +54,7 @@ class TallyMap<O> {
 		objectCount.put(object, currentCount);
 	}
 
-	void addAll(Collection<O> objects) {
+	public void addAll(Collection<O> objects) {
 		if (objects != null) {
 			for (O object : objects) {
 				add(object);
@@ -60,7 +62,11 @@ class TallyMap<O> {
 		}
 	}
 
-	private int getCount(O object) {
+	public int getSumOfAllBins() {
+		return sumOfAllBins;
+	}
+
+	public int getCount(O object) {
 		Integer currentCount = objectCount.get(object);
 		if (currentCount == null) {
 			currentCount = 0;
@@ -74,5 +80,16 @@ class TallyMap<O> {
 
 	public Set<O> getObjectsWithLargestCount() {
 		return objectsWithLargestCount;
+	}
+
+	public void addMultiple(O object, int numberOfAdditions) {
+		for (int i = 0; i < numberOfAdditions; i++) {
+			add(object);
+		}
+
+	}
+
+	public Map<O, Integer> getTalliesAsMap() {
+		return objectCount;
 	}
 }

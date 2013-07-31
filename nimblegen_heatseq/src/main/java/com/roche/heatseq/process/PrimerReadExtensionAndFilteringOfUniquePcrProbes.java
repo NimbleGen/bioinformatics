@@ -78,7 +78,11 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	public final static String REPORT_DIRECTORY = "/reports/";
 	private final static String DETAILS_REPORT_NAME = "processing_details.txt";
 	private final static String EXTENSION_ERRORS_REPORT_NAME = "extension_errors.txt";
-	private final static String PROBE_UID_QUALITY_REPORT_NAME = "probe_uid_quality.txt";
+	public final static String PROBE_UID_QUALITY_REPORT_NAME = "probe_uid_quality.txt";
+	public final static String UNABLE_TO_ALIGN_PRIMER_REPORT_NAME = "unable_to_align_primer_for_variable_length_uid.txt";
+	public final static String UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME = "unable_to_map_one.fastq";
+	public final static String UNABLE_TO_MAP_FASTQ_TWO_REPORT_NAME = "unable_to_map_two.fastq";
+	public final static String PRIMER_ALIGNMENT_REPORT_NAME = "extension_primer_alignment.txt";
 
 	private static volatile Semaphore primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore = null;
 
@@ -109,12 +113,17 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		File detailsReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + DETAILS_REPORT_NAME);
 		File extensionErrorsReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + EXTENSION_ERRORS_REPORT_NAME);
 		File probeUidQualityReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + PROBE_UID_QUALITY_REPORT_NAME);
+		File unableToAlignPrimerReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + UNABLE_TO_ALIGN_PRIMER_REPORT_NAME);
+		File primerAlignmentReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + PRIMER_ALIGNMENT_REPORT_NAME);
 
 		logger.debug("Creating details report file at " + detailsReportFile.getAbsolutePath());
 
 		PrintWriter detailReportWriter = null;
 		PrintWriter extensionErrorsWriter = null;
 		PrintWriter probeUidQualityWriter = null;
+		PrintWriter unableToAlignPrimerWriter = null;
+		PrintWriter primerAlignmentWriter = null;
+
 		if (applicationSettings.isShouldOutputQualityReports()) {
 			try {
 				FileUtil.createNewFile(detailsReportFile);
@@ -136,6 +145,19 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 				FileUtil.createNewFile(probeUidQualityReportFile);
 				probeUidQualityWriter = new PrintWriter(probeUidQualityReportFile);
+				probeUidQualityWriter.println("probe_id" + StringUtil.TAB + "probe_container" + StringUtil.TAB + "probe_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
+						+ "strand" + StringUtil.TAB + "uid" + StringUtil.TAB + "read_one_quality" + StringUtil.TAB + "read_two_quality" + StringUtil.TAB + "total_quality" + StringUtil.TAB
+						+ "read_name");
+
+				FileUtil.createNewFile(unableToAlignPrimerReportFile);
+				unableToAlignPrimerWriter = new PrintWriter(unableToAlignPrimerReportFile);
+				unableToAlignPrimerWriter.println("container_name" + StringUtil.TAB + "probe_start" + StringUtil.TAB + "protbe_stop" + StringUtil.TAB + "extension_primer_sequence" + StringUtil.TAB
+						+ "read_name" + StringUtil.TAB + "read_string");
+
+				FileUtil.createNewFile(primerAlignmentReportFile);
+				primerAlignmentWriter = new PrintWriter(primerAlignmentReportFile);
+				primerAlignmentWriter.println("uid_length" + StringUtil.TAB + "substituions" + StringUtil.TAB + "insertions" + StringUtil.TAB + "deletions" + StringUtil.TAB + "edit_distance"
+						+ StringUtil.TAB + "read" + StringUtil.TAB + "extension_primer" + StringUtil.TAB);
 			} catch (IOException e) {
 				throw new IllegalStateException("Could not create details report file[" + detailsReportFile.getAbsolutePath() + "].");
 			}
@@ -154,7 +176,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		}
 
 		// Actually do the work
-		filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings, probeInfo, detailReportWriter, extensionErrorsWriter, probeUidQualityWriter);
+		filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings, probeInfo, detailReportWriter, extensionErrorsWriter, probeUidQualityWriter, unableToAlignPrimerWriter, primerAlignmentWriter);
 
 		// Clean up the reports
 		if (detailReportWriter != null) {
@@ -166,6 +188,10 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		if (probeUidQualityWriter != null) {
 			probeUidQualityWriter.close();
 		}
+		if (unableToAlignPrimerWriter != null) {
+			unableToAlignPrimerWriter.close();
+		}
+
 		long stop = System.currentTimeMillis();
 
 		// Report on performance
@@ -187,18 +213,12 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	 *            Writer for reporting quality per UID
 	 */
 	private static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings, ProbesByContainerName probeInfo, PrintWriter detailReportWriter,
-			PrintWriter extensionErrorsWriter, PrintWriter probeUidQualityWriter) {
+			PrintWriter extensionErrorsWriter, PrintWriter probeUidQualityWriter, PrintWriter unableToAlignPrimerWriter, PrintWriter primerAlignmentWriter) {
 		Set<String> containerNames = probeInfo.getContainerNames();
 
 		SAMFileWriter samWriter = null;
 
 		try (SAMFileReader samReader = new SAMFileReader(applicationSettings.getBamFile(), applicationSettings.getBamFileIndex())) {
-
-			if (probeUidQualityWriter != null) {
-				probeUidQualityWriter.println("probe_id" + StringUtil.TAB + "probe_container" + StringUtil.TAB + "probe_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
-						+ "strand" + StringUtil.TAB + "uid" + StringUtil.TAB + "read_one_quality" + StringUtil.TAB + "read_two_quality" + StringUtil.TAB + "total_quality" + StringUtil.TAB
-						+ "read_name");
-			}
 
 			String outputUnsortedBamFileName = FileUtil.getFileNameWithoutExtension(applicationSettings.getOriginalBamFileName()) + "_UNSORTED_REDUCED."
 					+ FileUtil.getFileExtension(applicationSettings.getBamFile());
@@ -307,8 +327,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					}
 					samRecordIter.close();
 
-					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, containerName, applicationSettings, samWriter, extensionErrorsWriter, probeUidQualityWriter,
-							detailReportWriter, fastqOneWriter, fastqTwoWriter, readNameToRecordsMap);
+					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, applicationSettings, samWriter, extensionErrorsWriter, probeUidQualityWriter, detailReportWriter,
+							unableToAlignPrimerWriter, primerAlignmentWriter, fastqOneWriter, fastqTwoWriter, readNameToRecordsMap);
 					try {
 						// Don't execute more threads than we have processors
 						primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore.acquire();
@@ -383,12 +403,13 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	private static class PrimerReadExtensionAndFilteringOfUniquePcrProbesTask implements Runnable {
 
 		private final Probe probe;
-		private final String containerName;
 		private final ApplicationSettings applicationSettings;
 		private final SAMFileWriter samWriter;
 		private final PrintWriter extensionErrorsWriter;
 		private final PrintWriter probeUidQualityWriter;
 		private final PrintWriter detailReportWriter;
+		private final PrintWriter unableToAlignPrimerWriter;
+		private final PrintWriter primerAlignmentWriter;
 		private final FastqWriter fastqOneWriter;
 		private final FastqWriter fastqTwoWriter;
 		Map<String, SAMRecordPair> readNameToRecordsMap;
@@ -416,15 +437,17 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		 *            Writer to output reads into fastq files
 		 * @param readNameToRecordsMap
 		 */
-		PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(Probe probe, String containerName, ApplicationSettings applicationSettings, SAMFileWriter samWriter, PrintWriter extensionErrorsWriter,
-				PrintWriter probeUidQualityWriter, PrintWriter detailReportWriter, FastqWriter fastqOneWriter, FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap) {
+		PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(Probe probe, ApplicationSettings applicationSettings, SAMFileWriter samWriter, PrintWriter extensionErrorsWriter,
+				PrintWriter probeUidQualityWriter, PrintWriter detailReportWriter, PrintWriter unableToAlignPrimerWriter, PrintWriter primerAlignmentWriter, FastqWriter fastqOneWriter,
+				FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap) {
 			this.probe = probe;
-			this.containerName = containerName;
 			this.applicationSettings = applicationSettings;
 			this.samWriter = samWriter;
 			this.extensionErrorsWriter = extensionErrorsWriter;
 			this.probeUidQualityWriter = probeUidQualityWriter;
 			this.detailReportWriter = detailReportWriter;
+			this.unableToAlignPrimerWriter = unableToAlignPrimerWriter;
+			this.primerAlignmentWriter = primerAlignmentWriter;
 			this.fastqOneWriter = fastqOneWriter;
 			this.fastqTwoWriter = fastqTwoWriter;
 			this.readNameToRecordsMap = readNameToRecordsMap;
@@ -436,8 +459,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		@Override
 		public void run() {
 			try {
-				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, containerName, readNameToRecordsMap, probeUidQualityWriter,
-						applicationSettings.isAllowVariableLengthUids());
+				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, readNameToRecordsMap, probeUidQualityWriter, unableToAlignPrimerWriter,
+						primerAlignmentWriter, applicationSettings.isAllowVariableLengthUids());
 
 				if (detailReportWriter != null) {
 					synchronized (detailReportWriter) {
@@ -448,7 +471,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 				List<IReadPair> readsToWrite = null;
 				if (applicationSettings.isShouldExtendReads()) {
-					List<IReadPair> extendedReads = ExtendReadsToPrimer.extendReadsToPrimers(probe, containerName, probeReductionResults.getReadPairs(), extensionErrorsWriter);
+					List<IReadPair> extendedReads = ExtendReadsToPrimer.extendReadsToPrimers(probe, probeReductionResults.getReadPairs(), extensionErrorsWriter);
 					readsToWrite = extendedReads;
 				} else {
 					readsToWrite = probeReductionResults.getReadPairs();

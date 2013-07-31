@@ -36,7 +36,7 @@ public class CigarString {
 		return new CigarString(nonSummarizedCigarStringWithSequenceMismatches);
 	}
 
-	String getCigarString(boolean summarize, boolean includeSequenceMismatches) {
+	public String getCigarString(boolean summarize, boolean includeSequenceMismatches) {
 		String cigarString = nonSummarizedCigarString;
 		if (!includeSequenceMismatches) {
 			cigarString = CigarStringUtil.replaceSequenceMatchesAndMismatchesFromCigarString(cigarString);

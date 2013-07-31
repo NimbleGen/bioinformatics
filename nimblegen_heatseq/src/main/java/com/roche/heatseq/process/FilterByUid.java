@@ -41,7 +41,7 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 /**
  * Filter a set of reads to find the best read per UID
  */
-class FilterByUid {
+public class FilterByUid {
 	@SuppressWarnings("unused")
 	private final static Logger logger = LoggerFactory.getLogger(FilterByUid.class);
 
@@ -63,8 +63,8 @@ class FilterByUid {
 	 *            Used to report on UID quality
 	 * @return A UidReductionResultsForAProbe containing the processing statistics and the reduced probe set
 	 */
-	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, String chromosomeName, Map<String, SAMRecordPair> readNameToRecordsMap, PrintWriter probeUidQualityWriter,
-			boolean allowVariableLengthUids) {
+	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, PrintWriter probeUidQualityWriter, PrintWriter unableToAlignPrimerWriter,
+			PrintWriter primerAlignmentWriter, boolean allowVariableLengthUids) {
 		List<IReadPair> readPairs = new ArrayList<IReadPair>();
 
 		long probeProcessingStartInMs = System.currentTimeMillis();
@@ -77,13 +77,19 @@ class FilterByUid {
 			SAMRecord mate = recordPair.getSecondOfPairRecord();
 
 			if ((record != null) && (mate != null)) {
-				String uid = "";
+				String uid = null;
 				if (allowVariableLengthUids) {
-					uid = SAMRecordUtil.getUidAttribute(record, probe);
+					uid = SAMRecordUtil.getVariableLengthUid(record, probe, primerAlignmentWriter);
 				} else {
 					uid = SAMRecordUtil.getUidAttribute(record);
 				}
-				datas.add(new ReadPair(record, mate, uid));
+				if (uid != null) {
+					datas.add(new ReadPair(record, mate, uid));
+				} else {
+					unableToAlignPrimerWriter.println(probe.getContainerName() + StringUtil.TAB + probe.getStart() + StringUtil.TAB + probe.getFeatureStop() + probe.getExtensionPrimerSequence()
+							+ StringUtil.TAB + record.getReadName() + StringUtil.TAB + record.getReadString());
+				}
+
 			}
 		}
 
@@ -126,7 +132,7 @@ class FilterByUid {
 
 			totalDuplicateReadPairsRemoved += (pairsDataByUid.size() - 1);
 
-			printProbeUidQualities(probe, chromosomeName, pairsDataByUid, probeUidQualityWriter);
+			printProbeUidQualities(probe, pairsDataByUid, probeUidQualityWriter);
 
 			IReadPair bestPair = findBestData(pairsDataByUid);
 
@@ -155,9 +161,8 @@ class FilterByUid {
 		long probeProcessingStopInMs = System.currentTimeMillis();
 		int totalTimeToProcessInMs = (int) (probeProcessingStopInMs - probeProcessingStartInMs);
 
-		ProbeProcessingStats probeProcessingStats = new ProbeProcessingStats(probe, chromosomeName, totalUids, averageNumberOfReadPairsPerUid, standardDeviationOfReadPairsPerUid,
-				totalDuplicateReadPairsRemoved, totalReadPairsRemainingAfterReduction, minNumberOfReadPairsPerUid, maxNumberOfReadPairsPerUid, uidOfEntryWithMaxNumberOfReadPairs,
-				totalTimeToProcessInMs);
+		ProbeProcessingStats probeProcessingStats = new ProbeProcessingStats(probe, totalUids, averageNumberOfReadPairsPerUid, standardDeviationOfReadPairsPerUid, totalDuplicateReadPairsRemoved,
+				totalReadPairsRemainingAfterReduction, minNumberOfReadPairsPerUid, maxNumberOfReadPairsPerUid, uidOfEntryWithMaxNumberOfReadPairs, totalTimeToProcessInMs);
 
 		return new UidReductionResultsForAProbe(probeProcessingStats, readPairs);
 	}
@@ -170,7 +175,7 @@ class FilterByUid {
 	 * @param data
 	 * @param probeUidQualityWriter
 	 */
-	private static void printProbeUidQualities(Probe probe, String containerName, List<IReadPair> data, PrintWriter probeUidQualityWriter) {
+	public static void printProbeUidQualities(Probe probe, List<IReadPair> data, PrintWriter probeUidQualityWriter) {
 		if (probeUidQualityWriter != null) {
 			synchronized (probeUidQualityWriter) {
 				for (IReadPair currentPair : data) {
@@ -198,8 +203,8 @@ class FilterByUid {
 						totalQualityScore = "" + currentPair.getTotalSequenceQualityScore();
 
 					}
-					probeUidQualityWriter.println(probeIndex + StringUtil.TAB + containerName + StringUtil.TAB + probeCaptureStart + StringUtil.TAB + probeCaptureStop + StringUtil.TAB + probeStrand
-							+ StringUtil.TAB + uid.toUpperCase() + StringUtil.TAB + sequenceQualityScore + StringUtil.TAB + sequenceTwoQualityScore + StringUtil.TAB + totalQualityScore
+					probeUidQualityWriter.println(probeIndex + StringUtil.TAB + probe.getContainerName() + StringUtil.TAB + probeCaptureStart + StringUtil.TAB + probeCaptureStop + StringUtil.TAB
+							+ probeStrand + StringUtil.TAB + uid.toUpperCase() + StringUtil.TAB + sequenceQualityScore + StringUtil.TAB + sequenceTwoQualityScore + StringUtil.TAB + totalQualityScore
 							+ StringUtil.TAB + readName);
 				}
 			}

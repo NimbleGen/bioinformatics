@@ -36,6 +36,8 @@ import java.util.concurrent.TimeUnit;
 
 import net.sf.picard.fastq.FastqReader;
 import net.sf.picard.fastq.FastqRecord;
+import net.sf.picard.fastq.FastqWriter;
+import net.sf.picard.fastq.FastqWriterFactory;
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMProgramRecord;
 import net.sf.samtools.SAMReadGroupRecord;
@@ -74,9 +76,17 @@ public class MapperFiltererAndExtender {
 	private final File probeFile;
 	private final File outputFile;
 	private PrintWriter ambiguousMappingWriter;
+	private PrintWriter probeUidQualityWriter;
+	private PrintWriter unableToAlignPrimerWriter;
+	private PrintWriter primerAlignmentWriter;
+
+	private FastqWriter fastqOneUnableToMapWriter;
+	private FastqWriter fastqTwoUnableToMapWriter;
+
 	private boolean started;
 	private final int numProcessors;
 	private final int uidLength;
+	private final boolean allowVariableLengthUids;
 	private final List<SAMRecordPair> samRecordPairs;
 	private final Map<UidAndProbeReference, Set<QualityScoreAndFastQLineIndex>> uidAndProbeReferenceToFastQLineMapping;
 
@@ -98,7 +108,8 @@ public class MapperFiltererAndExtender {
 	 * @param numProcessors
 	 * @param uidLength
 	 */
-	public MapperFiltererAndExtender(File fastQOneFile, File fastQTwoFile, File probeFile, File outputFile, File ambiguousMappingFile, int numProcessors, int uidLength, String programName,
+	public MapperFiltererAndExtender(File fastQOneFile, File fastQTwoFile, File probeFile, File outputFile, File ambiguousMappingFile, File probeUidQualityFile, File unableToAlignPrimerFile,
+			File fastqOneUnableToMapFile, File fastqTwoUnableToMapFile, File primerAlignmentFile, int numProcessors, int uidLength, boolean allowVariableLengthUids, String programName,
 			String programVersion, String commandLineSignature) {
 		super();
 		samRecordPairs = new ArrayList<SAMRecordPair>();
@@ -107,20 +118,60 @@ public class MapperFiltererAndExtender {
 		this.fastQTwoFile = fastQTwoFile;
 		this.probeFile = probeFile;
 		this.outputFile = outputFile;
+
 		if (ambiguousMappingFile != null) {
 			try {
 				ambiguousMappingWriter = new PrintWriter(ambiguousMappingFile);
-				ambiguousMappingWriter.println("readName" + StringUtil.TAB + "extension_primer_start" + StringUtil.TAB + "extension_primer_stop" + StringUtil.TAB + "capture_target_start"
-						+ StringUtil.TAB + "capture_target_stop" + StringUtil.TAB + "ligation_primer_start" + StringUtil.TAB + "ligation_primer_stop" + StringUtil.TAB + "probe_strand");
+				ambiguousMappingWriter.println("readName" + StringUtil.TAB + "readString" + StringUtil.TAB + "container_name" + StringUtil.TAB + "extension_primer_start" + StringUtil.TAB
+						+ "extension_primer_stop" + StringUtil.TAB + "capture_target_start" + StringUtil.TAB + "capture_target_stop" + StringUtil.TAB + "ligation_primer_start" + StringUtil.TAB
+						+ "ligation_primer_stop" + StringUtil.TAB + "probe_strand");
 			} catch (FileNotFoundException e) {
 				throw new IllegalStateException(e);
 			}
 		}
+		if (probeUidQualityFile != null) {
+			try {
+				probeUidQualityWriter = new PrintWriter(probeUidQualityFile);
+				probeUidQualityWriter.println("probe_id" + StringUtil.TAB + "probe_container" + StringUtil.TAB + "probe_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
+						+ "strand" + StringUtil.TAB + "uid" + StringUtil.TAB + "read_one_quality" + StringUtil.TAB + "read_two_quality" + StringUtil.TAB + "total_quality" + StringUtil.TAB
+						+ "read_name" + StringUtil.TAB + "read_sequence");
+			} catch (FileNotFoundException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+		if (unableToAlignPrimerFile != null) {
+			try {
+				unableToAlignPrimerWriter = new PrintWriter(unableToAlignPrimerFile);
+				unableToAlignPrimerWriter.println("container_name" + StringUtil.TAB + "probe_start" + StringUtil.TAB + "protbe_stop" + StringUtil.TAB + "extension_primer_sequence" + StringUtil.TAB
+						+ "read_name" + StringUtil.TAB + "read_string");
+			} catch (FileNotFoundException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+
+		if (primerAlignmentFile != null) {
+			try {
+				primerAlignmentWriter = new PrintWriter(primerAlignmentFile);
+				primerAlignmentWriter.println("uid_length" + StringUtil.TAB + "substituions" + StringUtil.TAB + "insertions" + StringUtil.TAB + "deletions" + StringUtil.TAB + "edit_distance"
+						+ StringUtil.TAB + "read" + StringUtil.TAB + "extension_primer" + StringUtil.TAB + "probe_container" + StringUtil.TAB + "capture_target_start" + StringUtil.TAB
+						+ "capture_target_stop" + StringUtil.TAB + "probe_strand");
+			} catch (FileNotFoundException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+
+		final FastqWriterFactory factory = new FastqWriterFactory();
+		if (fastqOneUnableToMapFile != null && fastqTwoUnableToMapFile != null) {
+			fastqOneUnableToMapWriter = factory.newWriter(fastqOneUnableToMapFile);
+			fastqTwoUnableToMapWriter = factory.newWriter(fastqTwoUnableToMapFile);
+		}
+
 		started = false;
 		this.numProcessors = numProcessors;
 		mapFilterAndExtendSemaphore = new Semaphore(numProcessors);
 		mapReadSemaphore = new Semaphore(numProcessors);
 		this.uidLength = uidLength;
+		this.allowVariableLengthUids = allowVariableLengthUids;
 		this.programName = programName;
 		this.programVersion = programVersion;
 		this.commandLineSignature = commandLineSignature;
@@ -197,7 +248,8 @@ public class MapperFiltererAndExtender {
 							FastqRecord recordTwo = fastQTwoReader.next();
 
 							MapUidAndProbeTask mapUidAndProbeTask = new MapUidAndProbeTask(recordOne, recordTwo, probeMapper, fastqLineIndex, fastQ1PrimerLength, fastQ2PrimerLength, uidLength,
-									ambiguousMappingWriter);
+									allowVariableLengthUids, ambiguousMappingWriter, probeUidQualityWriter, unableToAlignPrimerWriter, fastqOneUnableToMapWriter, fastqTwoUnableToMapWriter,
+									primerAlignmentWriter);
 							try {
 								mapFilterAndExtendSemaphore.acquire();
 							} catch (InterruptedException e) {
@@ -277,6 +329,22 @@ public class MapperFiltererAndExtender {
 			if (ambiguousMappingWriter != null) {
 				ambiguousMappingWriter.close();
 			}
+
+			if (probeUidQualityWriter != null) {
+				probeUidQualityWriter.close();
+			}
+			if (unableToAlignPrimerWriter != null) {
+				unableToAlignPrimerWriter.close();
+			}
+			if (primerAlignmentWriter != null) {
+				primerAlignmentWriter.close();
+			}
+			if (fastqOneUnableToMapWriter != null) {
+				fastqOneUnableToMapWriter.close();
+			}
+			if (fastqTwoUnableToMapWriter != null) {
+				fastqTwoUnableToMapWriter.close();
+			}
 			logger.debug("Total time:" + (end - start) + " ms.");
 		}
 	}
@@ -295,10 +363,17 @@ public class MapperFiltererAndExtender {
 		private final int fastQOnePrimerLength;
 		private final int fastQTwoPrimerLength;
 		private final int uidLength;
+		private final boolean allowVariableLengthUids;
 		private final PrintWriter ambiguousMappingWriter;
+		private final PrintWriter probeUidQualityWriter;
+		private final PrintWriter unableToAlignPrimerWriter;
+		private final FastqWriter fastqOneUnableToMapWriter;
+		private final FastqWriter fastqTwoUnableToMapWriter;
+		private final PrintWriter primerAlignmentWriter;
 
 		public MapUidAndProbeTask(FastqRecord recordOne, FastqRecord recordTwo, SubReadProbeMapper probeMapper, int fastqLineIndex, int fastQOnePrimerLength, int fastQTwoPrimerLength, int uidLength,
-				PrintWriter ambiguousMappingWriter) {
+				boolean allowVariableLengthUids, PrintWriter ambiguousMappingWriter, PrintWriter probeUidQualityWriter, PrintWriter unableToAlignPrimerWriter, FastqWriter fastqOneUnableToMapWriter,
+				FastqWriter fastqTwoUnableToMapWriter, PrintWriter primerAlignmentWriter) {
 			super();
 			this.recordOne = recordOne;
 			this.recordTwo = recordTwo;
@@ -307,7 +382,13 @@ public class MapperFiltererAndExtender {
 			this.fastQOnePrimerLength = fastQOnePrimerLength;
 			this.fastQTwoPrimerLength = fastQTwoPrimerLength;
 			this.uidLength = uidLength;
+			this.allowVariableLengthUids = allowVariableLengthUids;
 			this.ambiguousMappingWriter = ambiguousMappingWriter;
+			this.probeUidQualityWriter = probeUidQualityWriter;
+			this.unableToAlignPrimerWriter = unableToAlignPrimerWriter;
+			this.primerAlignmentWriter = primerAlignmentWriter;
+			this.fastqOneUnableToMapWriter = fastqOneUnableToMapWriter;
+			this.fastqTwoUnableToMapWriter = fastqTwoUnableToMapWriter;
 		}
 
 		@Override
@@ -351,20 +432,76 @@ public class MapperFiltererAndExtender {
 					}
 
 					if (matchingProbes.size() == 1) {
-						int qualityScore = BamFileUtil.getQualityScore(recordOneQualityString) + BamFileUtil.getQualityScore(recordTwoQualityString);
-						UidAndProbeReference uidAndProbeKey = new UidAndProbeReference(uid, matchingProbes.get(0));
-						Set<QualityScoreAndFastQLineIndex> set = uidAndProbeReferenceToFastQLineMapping.get(uidAndProbeKey);
-						if (set == null) {
-							set = Collections.newSetFromMap(new ConcurrentHashMap<QualityScoreAndFastQLineIndex, Boolean>());
+						int sequenceOneQualityScore = BamFileUtil.getQualityScore(recordOneQualityString);
+						int sequenceTwoQualityScore = BamFileUtil.getQualityScore(recordTwoQualityString);
+						int qualityScore = sequenceOneQualityScore + sequenceTwoQualityScore;
+
+						ProbeReference matchingProbeReference = matchingProbes.get(0);
+						Probe matchingProbe = matchingProbeReference.getProbe();
+
+						if (allowVariableLengthUids) {
+							// now that we have a probe we can verify that the uid length is correct
+							ISequence extensionPrimerSequence = matchingProbe.getExtensionPrimerSequence();
+							String completeReadWithUid = recordOne.getReadString();
+							uid = SAMRecordUtil.getVariableLengthUid(completeReadWithUid, extensionPrimerSequence, primerAlignmentWriter, matchingProbe);
+
+							// the discovered uid length is not equivalent to the provided length so reset the sequence and quality string
+							if (uid.length() != uidLength) {
+								queryOneSequence = new IupacNucleotideCodeSequence(SAMRecordUtil.removeUidFromRead(recordOne.getReadString(), uid.length()));
+								queryOneSequence = queryOneSequence.subSequence(fastQOnePrimerLength, queryOneSequence.size() - 1);
+								recordOneQualityString = SAMRecordUtil.removeUidFromRead(recordOne.getBaseQualityString(), uid.length());
+								recordOneQualityString = recordOneQualityString.substring(fastQOnePrimerLength, recordOneQualityString.length());
+							}
 						}
-						set.add(new QualityScoreAndFastQLineIndex(qualityScore, fastqLineIndex));
-						uidAndProbeReferenceToFastQLineMapping.put(uidAndProbeKey, set);
+
+						if (uid != null) {
+							UidAndProbeReference uidAndProbeKey = new UidAndProbeReference(uid, matchingProbeReference);
+							Set<QualityScoreAndFastQLineIndex> set = uidAndProbeReferenceToFastQLineMapping.get(uidAndProbeKey);
+							if (set == null) {
+								set = Collections.newSetFromMap(new ConcurrentHashMap<QualityScoreAndFastQLineIndex, Boolean>());
+							}
+							set.add(new QualityScoreAndFastQLineIndex(qualityScore, fastqLineIndex));
+							uidAndProbeReferenceToFastQLineMapping.put(uidAndProbeKey, set);
+
+							if (probeUidQualityWriter != null) {
+
+								int probeIndex = matchingProbe.getIndex();
+								String probeCaptureStart = "" + matchingProbe.getCaptureTargetStart();
+								String probeCaptureStop = "" + matchingProbe.getCaptureTargetStop();
+								String probeStrand = matchingProbe.getProbeStrand().toString();
+								String readSequence = queryOneSequence.toString();
+
+								String readName = recordOne.getReadHeader();
+
+								probeUidQualityWriter.println(probeIndex + StringUtil.TAB + matchingProbe.getContainerName() + StringUtil.TAB + probeCaptureStart + StringUtil.TAB + probeCaptureStop
+										+ StringUtil.TAB + probeStrand + StringUtil.TAB + uid.toUpperCase() + StringUtil.TAB + sequenceOneQualityScore + StringUtil.TAB + sequenceTwoQualityScore
+										+ StringUtil.TAB + qualityScore + StringUtil.TAB + readName + StringUtil.TAB + readSequence);
+							}
+
+						} else {
+							if (unableToAlignPrimerWriter != null) {
+								unableToAlignPrimerWriter.println(matchingProbe.getContainerName() + StringUtil.TAB + matchingProbe.getStart() + StringUtil.TAB + matchingProbe.getStop()
+										+ matchingProbe.getExtensionPrimerSequence() + StringUtil.TAB + recordOne.getReadHeader() + StringUtil.TAB + recordOne.getReadString());
+							}
+						}
 					} else if ((matchingProbes.size() > 1) && (ambiguousMappingWriter != null)) {
 						for (ProbeReference matchingProbe : matchingProbes) {
 							Probe probe = matchingProbe.getProbe();
-							ambiguousMappingWriter.println(recordOne.getReadString() + StringUtil.TAB + probe.getExtensionPrimerStart() + StringUtil.TAB + probe.getExtensionPrimerStop()
-									+ StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB + probe.getCaptureTargetStop() + StringUtil.TAB + probe.getLigationPrimerStart() + StringUtil.TAB
-									+ probe.getLigationPrimerStop() + StringUtil.TAB + probe.getProbeStrand());
+							ambiguousMappingWriter.println(recordOne.getReadHeader() + StringUtil.TAB + recordOne.getReadString() + StringUtil.TAB + probe.getContainerName() + StringUtil.TAB
+									+ probe.getExtensionPrimerStart() + StringUtil.TAB + probe.getExtensionPrimerStop() + StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB
+									+ probe.getCaptureTargetStop() + StringUtil.TAB + probe.getLigationPrimerStart() + StringUtil.TAB + probe.getLigationPrimerStop() + StringUtil.TAB
+									+ probe.getProbeStrand());
+						}
+					} else if (matchingProbes.size() == 0) {
+						if (fastqOneUnableToMapWriter != null) {
+							synchronized (fastqOneUnableToMapWriter) {
+								fastqOneUnableToMapWriter.write(recordOne);
+							}
+						}
+						if (fastqTwoUnableToMapWriter != null) {
+							synchronized (fastqTwoUnableToMapWriter) {
+								fastqTwoUnableToMapWriter.write(recordTwo);
+							}
 						}
 					}
 

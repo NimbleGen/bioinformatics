@@ -17,6 +17,7 @@
 package com.roche.mapping;
 
 import java.io.File;
+import java.io.PrintWriter;
 import java.util.List;
 
 import net.sf.samtools.SAMFileHeader;
@@ -26,9 +27,12 @@ import net.sf.samtools.SAMRecord;
 
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.SAMRecordPair;
+import com.roche.sequencing.bioinformatics.common.alignment.CigarString;
+import com.roche.sequencing.bioinformatics.common.alignment.CigarStringUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
+import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 /**
  * Utility class for creating sam records using picard
@@ -87,17 +91,74 @@ public class SAMRecordUtil {
 
 	/**
 	 * @param record
-	 * @return the UID attribute set for this SAMRecord, null if no such attribute exists.
+	 * @param probe
+	 * @return the UID set for this SAMRecord, null if no such attribute exists.
 	 */
-	public static String getUidAttribute(SAMRecord record, Probe probe) {
+	public static String getVariableLengthUid(SAMRecord record, Probe probe, PrintWriter primerAlignmentWriter) {
 		String uid = (String) record.getAttribute(UID_SAMRECORD_ATTRIBUTE_TAG);
 		String completeReadWithUid = uid + record.getReadString();
+		ISequence extensionPrimerSequence = probe.getExtensionPrimerSequence();
+		return getVariableLengthUid(completeReadWithUid, extensionPrimerSequence, primerAlignmentWriter, probe);
+	}
+
+	/**
+	 * @param completeReadWithUid
+	 * @param extensionPrimerSequence
+	 * @return the variable length UID based on the primer alignment, null if the uid cannot be extracted
+	 */
+	public static String getVariableLengthUid(String completeReadWithUid, ISequence extensionPrimerSequence, PrintWriter primerAlignmentWriter, Probe probe) {
 		ISequence completeReadSequence = new IupacNucleotideCodeSequence(completeReadWithUid);
-		ISequence primerSequence = probe.getExtensionPrimerSequence();
-		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(completeReadSequence, primerSequence);
-		// TODO kurt heilman add report to kick out poor alignments and shorter than expected uids
+		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(completeReadSequence, extensionPrimerSequence);
 		int uidEndIndex = alignment.getIndexOfFirstMatchInReference();
-		return completeReadWithUid.substring(0, uidEndIndex);
+		String variableLengthUid = null;
+		if (uidEndIndex >= 0) {
+			variableLengthUid = completeReadWithUid.substring(0, uidEndIndex);
+		}
+
+		int uidLength = variableLengthUid.length();
+		int numberOfInsertions = 0;
+		int numberOfDeletions = 0;
+		int numberOfSubstitutions = 0;
+
+		CigarString cigarString = alignment.getCigarString();
+		String sequenceCigarString = cigarString.getCigarString(false, true);
+		sequenceCigarString.substring(uidEndIndex, sequenceCigarString.length());
+		int insertsSinceLastInsertionOrMismatch = 0;
+		for (Character character : sequenceCigarString.toCharArray()) {
+			if (character == CigarStringUtil.CIGAR_SEQUENCE_MISMATCH) {
+				numberOfSubstitutions++;
+				insertsSinceLastInsertionOrMismatch = 0;
+			} else if (character == CigarStringUtil.CIGAR_INSERTION_TO_REFERENCE) {
+				numberOfInsertions++;
+				insertsSinceLastInsertionOrMismatch = 0;
+			} else if (character == CigarStringUtil.CIGAR_DELETION_FROM_REFERENCE) {
+				numberOfDeletions++;
+			}
+		}
+		numberOfDeletions -= insertsSinceLastInsertionOrMismatch;
+
+		int editDistance = numberOfInsertions + numberOfDeletions + numberOfSubstitutions;
+
+		int editDistanceCutoff = (extensionPrimerSequence.size() / 4);
+
+		if (editDistance > 0 && editDistance < editDistanceCutoff) {
+			if (primerAlignmentWriter != null) {
+				int cutoffIndex = editDistanceCutoff + extensionPrimerSequence.size() + uidLength;
+				ISequence referenceSequence = alignment.getAlignmentPair().getReferenceAlignment().subSequence(0, cutoffIndex);
+				ISequence querySequence = alignment.getAlignmentPair().getQueryAlignment().subSequence(0, cutoffIndex);
+				String probeName = probe.getContainerName();
+				String probeCaptureStart = "" + probe.getCaptureTargetStart();
+				String probeCaptureStop = "" + probe.getCaptureTargetStop();
+				String probeStrand = "" + probe.getProbeStrand();
+				primerAlignmentWriter.println(uidLength + StringUtil.TAB + numberOfSubstitutions + StringUtil.TAB + numberOfInsertions + StringUtil.TAB + numberOfDeletions + StringUtil.TAB
+						+ editDistance + StringUtil.TAB + referenceSequence + StringUtil.TAB + querySequence + StringUtil.TAB + probeName + StringUtil.TAB + probeCaptureStart + StringUtil.TAB
+						+ probeCaptureStop + StringUtil.TAB + probeStrand);
+			}
+		} else if (editDistance >= editDistanceCutoff) {
+			variableLengthUid = null;
+		}
+
+		return variableLengthUid;
 	}
 
 	/**

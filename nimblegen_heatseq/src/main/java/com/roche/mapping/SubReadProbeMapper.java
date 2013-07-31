@@ -25,7 +25,7 @@ import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 
 class SubReadProbeMapper {
 
-	private final static int DEFAULT_COMPARISON_SEQUENCE_SIZE = 8;
+	private final static int DEFAULT_COMPARISON_SEQUENCE_SIZE = 4;
 	private final static int DEFAULT_MAX_REFERENCE_DEPTH = 1;
 	private final static int DEFAULT_MAX_QUERY_DEPTH = 8;
 	private final static int DEFAULT_MIN_HIT_THRESHOLD = 3;
