@@ -28,6 +28,8 @@ import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.ApplicationSettings;
 import com.roche.mapping.MapperFiltererAndExtender;
+import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
+import com.roche.sequencing.bioinformatics.common.alignment.SimpleAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineParser;
@@ -66,6 +68,14 @@ public class PrefuppCli {
 	private final static CommandLineOption ALLOW_VARIABLE_LENGTH_UIDS_OPTION = new CommandLineOption("Allow Variable Length Uids", "allow_variable_length_uids", null,
 			"Allow Variable Length Uids (cannot be defined when uidLength is given)", false, true);
 	private final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o', "Name for output bam file.", true, false);
+	private final static CommandLineOption MATCH_SCORE_OPTION = new CommandLineOption("Match Score", "matchScore", null,
+			"The score given to matching nucleotides when extending alignments to the primers (Default: 1)", false, false);
+	private final static CommandLineOption MISMATCH_PENALTY_OPTION = new CommandLineOption("Mismatch Penalty", "mismatchPenalty", null,
+			"The penalty subtracted for mismatched nucleotides when extending alignments to the primers (Default: 4)", false, false);
+	private final static CommandLineOption GAP_OPEN_PENALTY_OPTION = new CommandLineOption("Gap Open Penalty", "gapOpenPenalty", null,
+			"The penalty for opening a gap when extending alignments to the primers (Default: 6)", false, false);
+	private final static CommandLineOption GAP_EXTEND_PENALTY_OPTION = new CommandLineOption("Gap Extend Penalty", "gapExtendPenalty", null,
+			"The penalty for extending a gap when extending alignments to the primers (Default: 1)", false, false);
 
 	public static void main(String[] args) {
 		outputToConsole("Primer Read Extension and Filtering of Unique PCR Probes");
@@ -175,6 +185,55 @@ public class PrefuppCli {
 			boolean shouldOutputQualityReports = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_REPORTS_OPTION);
 			boolean shouldOutputFastq = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_FASTQ_OPTION);
 
+			// Set up our alignment scorer
+			int matchScore = SimpleAlignmentScorer.DEFAULT_MATCH_SCORE;
+			int mismatchPenalty = SimpleAlignmentScorer.DEFAULT_MISMATCH_PENALTY;
+			int gapOpenPenalty = SimpleAlignmentScorer.DEFAULT_GAP_OPEN_PENALTY;
+			int gapExtendPenalty = SimpleAlignmentScorer.DEFAULT_GAP_EXTEND_PENALTY;
+
+			if (parsedCommandLine.isOptionPresent(MATCH_SCORE_OPTION)) {
+				try {
+					matchScore = Integer.parseInt(parsedCommandLine.getOptionsValue(MATCH_SCORE_OPTION));
+					if (matchScore < 0) {
+						throw new IllegalStateException("Value specified for match score must be >= 0 [" + parsedCommandLine.getOptionsValue(MATCH_SCORE_OPTION) + "].");
+					}
+				} catch (NumberFormatException ex) {
+					throw new IllegalStateException("Value specified for match score is not an integer[" + parsedCommandLine.getOptionsValue(MATCH_SCORE_OPTION) + "].");
+				}
+			}
+			if (parsedCommandLine.isOptionPresent(MISMATCH_PENALTY_OPTION)) {
+				try {
+					mismatchPenalty = -Integer.parseInt(parsedCommandLine.getOptionsValue(MISMATCH_PENALTY_OPTION));
+					if (mismatchPenalty > 0) {
+						throw new IllegalStateException("Value specified for mismatch penalty must be >= 0 [" + parsedCommandLine.getOptionsValue(MISMATCH_PENALTY_OPTION) + "].");
+					}
+				} catch (NumberFormatException ex) {
+					throw new IllegalStateException("Value specified for mismatch penalty is not an integer[" + parsedCommandLine.getOptionsValue(MISMATCH_PENALTY_OPTION) + "].");
+				}
+			}
+			if (parsedCommandLine.isOptionPresent(GAP_OPEN_PENALTY_OPTION)) {
+				try {
+					gapOpenPenalty = -Integer.parseInt(parsedCommandLine.getOptionsValue(GAP_OPEN_PENALTY_OPTION));
+					if (gapOpenPenalty > 0) {
+						throw new IllegalStateException("Value specified for gap open penalty must be >= 0 [" + parsedCommandLine.getOptionsValue(GAP_OPEN_PENALTY_OPTION) + "].");
+					}
+				} catch (NumberFormatException ex) {
+					throw new IllegalStateException("Value specified for gap open penalty is not an integer[" + parsedCommandLine.getOptionsValue(GAP_OPEN_PENALTY_OPTION) + "].");
+				}
+			}
+			if (parsedCommandLine.isOptionPresent(GAP_EXTEND_PENALTY_OPTION)) {
+				try {
+					gapExtendPenalty = -Integer.parseInt(parsedCommandLine.getOptionsValue(GAP_EXTEND_PENALTY_OPTION));
+					if (gapExtendPenalty > 0) {
+						throw new IllegalStateException("Value specified for gap extend penalty must be >= 0 [" + parsedCommandLine.getOptionsValue(GAP_EXTEND_PENALTY_OPTION) + "].");
+					}
+				} catch (NumberFormatException ex) {
+					throw new IllegalStateException("Value specified for gap extend penalty not an integer[" + parsedCommandLine.getOptionsValue(GAP_EXTEND_PENALTY_OPTION) + "].");
+				}
+			}
+
+			IAlignmentScorer alignmentScorer = new SimpleAlignmentScorer(matchScore, mismatchPenalty, gapExtendPenalty, gapOpenPenalty, false);
+
 			if (parsedCommandLine.isOptionPresent(INPUT_BAM_OPTION)) {
 				String bamFileString = parsedCommandLine.getOptionsValue(INPUT_BAM_OPTION);
 				File bamFile = new File(bamFileString);
@@ -214,7 +273,7 @@ public class PrefuppCli {
 				}
 
 				sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tmpDirectory, saveTmpFiles,
-						shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids);
+						shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids, alignmentScorer);
 			} else {
 				outputToConsole("A bam file was not provided so a mapping will be performed.");
 				File outputBamFile = new File(outputDirectory, outputBamFileName);
@@ -235,7 +294,7 @@ public class PrefuppCli {
 				}
 
 				MapperFiltererAndExtender mapFilterAndExtend = new MapperFiltererAndExtender(fastQ1WithUidsFile, fastQ2File, probeFile, outputBamFile, ambiguousMappingFile, numProcessors, uidLength,
-						APPLICATION_NAME, APPLICATION_VERSION, commandLineSignature);
+						APPLICATION_NAME, APPLICATION_VERSION, commandLineSignature, alignmentScorer);
 				mapFilterAndExtend.mapFilterAndExtend();
 			}
 			long end = System.currentTimeMillis();
@@ -246,7 +305,7 @@ public class PrefuppCli {
 
 	private static void sortMergeFilterAndExtendReads(File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName,
 			String outputFilePrefix, File tmpDirectory, boolean saveTmpDirectory, boolean shouldOutputQualityReports, boolean shouldOutputFastq, String commandLineSignature, int numProcessors,
-			int uidLength, boolean allowVariableLengthUids) {
+			int uidLength, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer) {
 		try {
 			Path tempOutputDirectoryPath = Files.createTempDirectory(tmpDirectory.toPath(), "nimblegen_");
 			final File tempOutputDirectory = tempOutputDirectoryPath.toFile();
@@ -284,7 +343,7 @@ public class PrefuppCli {
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
 					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, APPLICATION_NAME,
-					APPLICATION_VERSION, numProcessors, allowVariableLengthUids);
+					APPLICATION_VERSION, numProcessors, allowVariableLengthUids, alignmentScorer);
 
 			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
@@ -318,8 +377,10 @@ public class PrefuppCli {
 		group.addOption(NUM_PROCESSORS_OPTION);
 		group.addOption(UID_LENGTH_OPTION);
 		group.addOption(ALLOW_VARIABLE_LENGTH_UIDS_OPTION);
-
+		group.addOption(MATCH_SCORE_OPTION);
+		group.addOption(MISMATCH_PENALTY_OPTION);
+		group.addOption(GAP_OPEN_PENALTY_OPTION);
+		group.addOption(GAP_EXTEND_PENALTY_OPTION);
 		return group;
 	}
-
 }

@@ -55,6 +55,7 @@ import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ProbesByContainerName;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
+import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
@@ -305,7 +306,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					samRecordIter.close();
 
 					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, containerName, applicationSettings, samWriter, extensionErrorsWriter, probeUidQualityWriter,
-							detailReportWriter, fastqOneWriter, fastqTwoWriter, readNameToRecordsMap);
+							detailReportWriter, fastqOneWriter, fastqTwoWriter, readNameToRecordsMap, applicationSettings.getAlignmentScorer());
 					try {
 						// Don't execute more threads than we have processors
 						primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore.acquire();
@@ -391,6 +392,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		private final PrintWriter detailReportWriter;
 		private final FastqWriter fastqOneWriter;
 		private final FastqWriter fastqTwoWriter;
+		private final IAlignmentScorer alignmentScorer;
 		Map<String, SAMRecordPair> readNameToRecordsMap;
 
 		/**
@@ -417,7 +419,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		 * @param readNameToRecordsMap
 		 */
 		PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(Probe probe, String containerName, ApplicationSettings applicationSettings, SAMFileWriter samWriter, PrintWriter extensionErrorsWriter,
-				PrintWriter probeUidQualityWriter, PrintWriter detailReportWriter, FastqWriter fastqOneWriter, FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap) {
+				PrintWriter probeUidQualityWriter, PrintWriter detailReportWriter, FastqWriter fastqOneWriter, FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap,
+				IAlignmentScorer alignmentScorer) {
 			this.probe = probe;
 			this.containerName = containerName;
 			this.applicationSettings = applicationSettings;
@@ -428,6 +431,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			this.fastqOneWriter = fastqOneWriter;
 			this.fastqTwoWriter = fastqTwoWriter;
 			this.readNameToRecordsMap = readNameToRecordsMap;
+			this.alignmentScorer = alignmentScorer;
 		}
 
 		/**
@@ -437,7 +441,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		public void run() {
 			try {
 				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, containerName, readNameToRecordsMap, probeUidQualityWriter,
-						applicationSettings.isAllowVariableLengthUids());
+						applicationSettings.isAllowVariableLengthUids(), alignmentScorer);
 
 				if (detailReportWriter != null) {
 					synchronized (detailReportWriter) {
@@ -446,7 +450,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					}
 				}
 
-				List<IReadPair> readsToWrite = ExtendReadsToPrimer.extendReadsToPrimers(probe, containerName, probeReductionResults.getReadPairs(), extensionErrorsWriter);
+				List<IReadPair> readsToWrite = ExtendReadsToPrimer.extendReadsToPrimers(probe, containerName, probeReductionResults.getReadPairs(), extensionErrorsWriter, alignmentScorer);
 
 				writeReadsToSamFile(samWriter, readsToWrite);
 				if (fastqOneWriter != null && fastqTwoWriter != null) {

@@ -27,6 +27,7 @@ import net.sf.samtools.SAMRecord;
 
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.SAMRecordPair;
+import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
@@ -90,12 +91,12 @@ public class SAMRecordUtil {
 	 * @param record
 	 * @return the UID attribute set for this SAMRecord, null if no such attribute exists.
 	 */
-	public static String getUidAttribute(SAMRecord record, Probe probe) {
+	public static String getUidAttribute(SAMRecord record, Probe probe, IAlignmentScorer alignmentScorer) {
 		String uid = (String) record.getAttribute(UID_SAMRECORD_ATTRIBUTE_TAG);
 		String completeReadWithUid = uid + record.getReadString();
 		ISequence completeReadSequence = new IupacNucleotideCodeSequence(completeReadWithUid);
 		ISequence primerSequence = probe.getExtensionPrimerSequence();
-		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(completeReadSequence, primerSequence);
+		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(completeReadSequence, primerSequence, alignmentScorer);
 		// TODO kurt heilman add report to kick out poor alignments and shorter than expected uids
 		int uidEndIndex = alignment.getIndexOfFirstMatchInReference();
 		return completeReadWithUid.substring(0, uidEndIndex);
