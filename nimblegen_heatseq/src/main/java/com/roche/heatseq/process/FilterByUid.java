@@ -64,13 +64,8 @@ public class FilterByUid {
 	 *            Used to report on UID quality
 	 * @return A UidReductionResultsForAProbe containing the processing statistics and the reduced probe set
 	 */
-<<<<<<< HEAD
 	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, PrintWriter probeUidQualityWriter, PrintWriter unableToAlignPrimerWriter,
-			PrintWriter primerAlignmentWriter, boolean allowVariableLengthUids) {
-=======
-	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, String chromosomeName, Map<String, SAMRecordPair> readNameToRecordsMap, PrintWriter probeUidQualityWriter,
-			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer) {
->>>>>>> master
+			PrintWriter primerAlignmentWriter, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer) {
 		List<IReadPair> readPairs = new ArrayList<IReadPair>();
 
 		long probeProcessingStartInMs = System.currentTimeMillis();
@@ -85,11 +80,7 @@ public class FilterByUid {
 			if ((record != null) && (mate != null)) {
 				String uid = null;
 				if (allowVariableLengthUids) {
-<<<<<<< HEAD
-					uid = SAMRecordUtil.getVariableLengthUid(record, probe, primerAlignmentWriter);
-=======
-					uid = SAMRecordUtil.getUidAttribute(record, probe, alignmentScorer);
->>>>>>> master
+					uid = SAMRecordUtil.getVariableLengthUid(record, probe, primerAlignmentWriter, alignmentScorer);
 				} else {
 					uid = SAMRecordUtil.getUidAttribute(record);
 				}

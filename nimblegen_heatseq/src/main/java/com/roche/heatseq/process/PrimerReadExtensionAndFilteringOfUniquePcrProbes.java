@@ -451,7 +451,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		public void run() {
 			try {
 				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, readNameToRecordsMap, probeUidQualityWriter, unableToAlignPrimerWriter,
-						primerAlignmentWriter, applicationSettings.isAllowVariableLengthUids());
+						primerAlignmentWriter, applicationSettings.isAllowVariableLengthUids(), alignmentScorer);
 				if (detailsReport != null) {
 					synchronized (detailsReport) {
 						detailsReport.writeEntry(probeReductionResults.getProbeProcessingStats());

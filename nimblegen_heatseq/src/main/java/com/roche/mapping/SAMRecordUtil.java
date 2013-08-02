@@ -28,12 +28,9 @@ import net.sf.samtools.SAMRecord;
 
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.SAMRecordPair;
-<<<<<<< HEAD
 import com.roche.sequencing.bioinformatics.common.alignment.CigarString;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarStringUtil;
-=======
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
->>>>>>> master
 import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
@@ -99,15 +96,11 @@ public class SAMRecordUtil {
 	 * @param probe
 	 * @return the UID set for this SAMRecord, null if no such attribute exists.
 	 */
-<<<<<<< HEAD
-	public static String getVariableLengthUid(SAMRecord record, Probe probe, PrintWriter primerAlignmentWriter) {
-=======
-	public static String getUidAttribute(SAMRecord record, Probe probe, IAlignmentScorer alignmentScorer) {
->>>>>>> master
+	public static String getVariableLengthUid(SAMRecord record, Probe probe, PrintWriter primerAlignmentWriter, IAlignmentScorer alignmentScorer) {
 		String uid = (String) record.getAttribute(UID_SAMRECORD_ATTRIBUTE_TAG);
 		String completeReadWithUid = uid + record.getReadString();
 		ISequence extensionPrimerSequence = probe.getExtensionPrimerSequence();
-		return getVariableLengthUid(completeReadWithUid, extensionPrimerSequence, primerAlignmentWriter, probe);
+		return getVariableLengthUid(completeReadWithUid, extensionPrimerSequence, primerAlignmentWriter, probe, alignmentScorer);
 	}
 
 	/**
@@ -115,15 +108,9 @@ public class SAMRecordUtil {
 	 * @param extensionPrimerSequence
 	 * @return the variable length UID based on the primer alignment, null if the uid cannot be extracted
 	 */
-	public static String getVariableLengthUid(String completeReadWithUid, ISequence extensionPrimerSequence, PrintWriter primerAlignmentWriter, Probe probe) {
+	public static String getVariableLengthUid(String completeReadWithUid, ISequence extensionPrimerSequence, PrintWriter primerAlignmentWriter, Probe probe, IAlignmentScorer alignmentScorer) {
 		ISequence completeReadSequence = new IupacNucleotideCodeSequence(completeReadWithUid);
-<<<<<<< HEAD
-		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(completeReadSequence, extensionPrimerSequence);
-=======
-		ISequence primerSequence = probe.getExtensionPrimerSequence();
-		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(completeReadSequence, primerSequence, alignmentScorer);
-		// TODO kurt heilman add report to kick out poor alignments and shorter than expected uids
->>>>>>> master
+		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(completeReadSequence, extensionPrimerSequence, alignmentScorer);
 		int uidEndIndex = alignment.getIndexOfFirstMatchInReference();
 		String variableLengthUid = null;
 		if (uidEndIndex >= 0) {

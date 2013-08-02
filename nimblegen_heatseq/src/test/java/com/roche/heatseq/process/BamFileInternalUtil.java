@@ -673,8 +673,8 @@ public class BamFileInternalUtil {
 			System.out.println("done creating abbreviated fastq files.");
 		}
 
-		PrefuppCli.main(new String[] { "--fastQOne", abbreviatedFastq1.getAbsolutePath(), "--fastQTwo", abbreviatedFastq2.getAbsolutePath(), "--probe", probeFile.getAbsolutePath(), "--outputDir",
-				outputDirectory.getAbsolutePath(), "--outputReports", "--allow_variable_length_uids" });
+		// PrefuppCli.main(new String[] { "--fastQOne", abbreviatedFastq1.getAbsolutePath(), "--fastQTwo", abbreviatedFastq2.getAbsolutePath(), "--probe", probeFile.getAbsolutePath(), "--outputDir",
+		// outputDirectory.getAbsolutePath(), "--outputReports", "--allow_variable_length_uids" });
 		System.out.println("done mapping.");
 		generateBlockReports(outputDirectory, blockFile);
 		System.out.println("done with block reports.");

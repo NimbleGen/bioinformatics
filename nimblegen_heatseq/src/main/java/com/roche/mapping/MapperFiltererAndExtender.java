@@ -267,7 +267,7 @@ public class MapperFiltererAndExtender {
 
 							MapUidAndProbeTask mapUidAndProbeTask = new MapUidAndProbeTask(recordOne, recordTwo, probeMapper, fastqLineIndex, fastQ1PrimerLength, fastQ2PrimerLength, uidLength,
 									allowVariableLengthUids, ambiguousMappingWriter, probeUidQualityWriter, unableToAlignPrimerWriter, fastqOneUnableToMapWriter, fastqTwoUnableToMapWriter,
-									primerAlignmentWriter);
+									primerAlignmentWriter, alignmentScorer);
 							try {
 								mapFilterAndExtendSemaphore.acquire();
 							} catch (InterruptedException e) {
@@ -450,10 +450,11 @@ public class MapperFiltererAndExtender {
 		private final FastqWriter fastqOneUnableToMapWriter;
 		private final FastqWriter fastqTwoUnableToMapWriter;
 		private final PrintWriter primerAlignmentWriter;
+		private final IAlignmentScorer alignmentScorer;
 
 		public MapUidAndProbeTask(FastqRecord recordOne, FastqRecord recordTwo, SubReadProbeMapper probeMapper, int fastqLineIndex, int fastQOnePrimerLength, int fastQTwoPrimerLength, int uidLength,
 				boolean allowVariableLengthUids, PrintWriter ambiguousMappingWriter, PrintWriter probeUidQualityWriter, PrintWriter unableToAlignPrimerWriter, FastqWriter fastqOneUnableToMapWriter,
-				FastqWriter fastqTwoUnableToMapWriter, PrintWriter primerAlignmentWriter) {
+				FastqWriter fastqTwoUnableToMapWriter, PrintWriter primerAlignmentWriter, IAlignmentScorer alignmentScorer) {
 			super();
 			this.recordOne = recordOne;
 			this.recordTwo = recordTwo;
@@ -469,6 +470,7 @@ public class MapperFiltererAndExtender {
 			this.primerAlignmentWriter = primerAlignmentWriter;
 			this.fastqOneUnableToMapWriter = fastqOneUnableToMapWriter;
 			this.fastqTwoUnableToMapWriter = fastqTwoUnableToMapWriter;
+			this.alignmentScorer = alignmentScorer;
 		}
 
 		@Override
@@ -523,7 +525,7 @@ public class MapperFiltererAndExtender {
 							// now that we have a probe we can verify that the uid length is correct
 							ISequence extensionPrimerSequence = matchingProbe.getExtensionPrimerSequence();
 							String completeReadWithUid = recordOne.getReadString();
-							uid = SAMRecordUtil.getVariableLengthUid(completeReadWithUid, extensionPrimerSequence, primerAlignmentWriter, matchingProbe);
+							uid = SAMRecordUtil.getVariableLengthUid(completeReadWithUid, extensionPrimerSequence, primerAlignmentWriter, matchingProbe, alignmentScorer);
 
 							// the discovered uid length is not equivalent to the provided length so reset the sequence and quality string
 							if (uid.length() != uidLength) {
