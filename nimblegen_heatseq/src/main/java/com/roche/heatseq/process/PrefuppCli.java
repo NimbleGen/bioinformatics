@@ -68,13 +68,13 @@ public class PrefuppCli {
 			false, true);
 	private final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o', "Name for output bam file.", true, false);
 	private final static CommandLineOption MATCH_SCORE_OPTION = new CommandLineOption("Match Score", "matchScore", null,
-			"The score given to matching nucleotides when extending alignments to the primers (Default: 1)", false, false);
+			"The score given to matching nucleotides when extending alignments to the primers (Default: " + SimpleAlignmentScorer.DEFAULT_MATCH_SCORE + ")", false, false);
 	private final static CommandLineOption MISMATCH_PENALTY_OPTION = new CommandLineOption("Mismatch Penalty", "mismatchPenalty", null,
-			"The penalty subtracted for mismatched nucleotides when extending alignments to the primers (Default: 4)", false, false);
+			"The penalty subtracted for mismatched nucleotides when extending alignments to the primers (Default: " + SimpleAlignmentScorer.DEFAULT_MISMATCH_PENALTY + ")", false, false);
 	private final static CommandLineOption GAP_OPEN_PENALTY_OPTION = new CommandLineOption("Gap Open Penalty", "gapOpenPenalty", null,
-			"The penalty for opening a gap when extending alignments to the primers (Default: 6)", false, false);
+			"The penalty for opening a gap when extending alignments to the primers (Default: " + SimpleAlignmentScorer.DEFAULT_GAP_OPEN_PENALTY + ")", false, false);
 	private final static CommandLineOption GAP_EXTEND_PENALTY_OPTION = new CommandLineOption("Gap Extend Penalty", "gapExtendPenalty", null,
-			"The penalty for extending a gap when extending alignments to the primers (Default: 1)", false, false);
+			"The penalty for extending a gap when extending alignments to the primers (Default: " + SimpleAlignmentScorer.DEFAULT_GAP_EXTEND_PENALTY + ")", false, false);
 
 	public static void main(String[] args) {
 		outputToConsole("Primer Read Extension and Filtering of Unique PCR Probes");
@@ -178,6 +178,13 @@ public class PrefuppCli {
 			}
 
 			boolean shouldOutputQualityReports = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_REPORTS_OPTION);
+			if (shouldOutputQualityReports) {
+				if (!parsedCommandLine.isOptionPresent(OUTPUT_FILE_PREFIX_OPTION)) {
+					throw new IllegalStateException("When the --" + SHOULD_OUTPUT_REPORTS_OPTION.getLongFormOption() + " option is specified the --" + OUTPUT_FILE_PREFIX_OPTION.getLongFormOption()
+							+ " option must also be specified");
+				}
+			}
+
 			boolean shouldOutputFastq = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_FASTQ_OPTION);
 
 			// Set up our alignment scorer
