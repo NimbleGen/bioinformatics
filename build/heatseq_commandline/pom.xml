@@ -17,6 +17,7 @@
 	<modules>
 		<module>../../bioinformatics_common</module>
 		<module>../../nimblegen_heatseq</module>
+		<module>../../imageexporter</module>
 	</modules>	
 	
 	
