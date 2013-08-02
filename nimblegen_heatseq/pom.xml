@@ -26,7 +26,8 @@
 		<dependency>
 			<groupId>com.roche.sequencing</groupId>
 			<artifactId>imageexporter</artifactId>
-			<version>0.0.1-SNAPSHOT</version>			
+			<version>0.0.1-SNAPSHOT</version>
+			<scope>test</scope>			
 		</dependency>
 		<dependency>
 			<groupId>org.utgenome.thirdparty</groupId>
