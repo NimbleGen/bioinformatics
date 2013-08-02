@@ -282,7 +282,7 @@ public class PrefuppCli {
 					if ((bamIndexFile == null) || !bamIndexFile.exists()) {
 						// a bam index file was not provided so create one in the default location
 						bamIndexFile = File.createTempFile("bam_index_", ".bai", tempOutputDirectory);
-						outputToConsole("A BAM Index File was not passed in and not found in the default location so creating bam index file at:" + bamIndexFile);
+						outputToConsole("A BAM Index File was not found in the default location so creating bam index file at:" + bamIndexFile);
 						try {
 							SAMFileReader samReader = new SAMFileReader(bamFile);
 							BamFileUtil.createIndex(samReader, bamIndexFile);
