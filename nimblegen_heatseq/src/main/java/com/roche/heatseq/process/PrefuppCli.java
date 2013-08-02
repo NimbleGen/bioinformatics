@@ -304,9 +304,20 @@ public class PrefuppCli {
 					}
 				}
 
+				File detailsReportFile = null;
+				if (shouldOutputQualityReports) {
+					detailsReportFile = new File(outputDirectory + PrimerReadExtensionAndFilteringOfUniquePcrProbes.REPORT_DIRECTORY,
+							PrimerReadExtensionAndFilteringOfUniquePcrProbes.DETAILS_REPORT_NAME);
+					try {
+						FileUtil.createNewFile(detailsReportFile);
+					} catch (IOException e) {
+						throw new IllegalStateException(e);
+					}
+				}
+
 				MapperFiltererAndExtender mapFilterAndExtend = new MapperFiltererAndExtender(fastQ1WithUidsFile, fastQ2File, probeFile, outputBamFile, ambiguousMappingFile, probeUidQualityFile,
-						unableToAlignPrimerFile, unableToMapFastqOneFile, unableToMapFastqTwoFile, primerAlignmentFile, numProcessors, uidLength, allowVariableLengthUids, APPLICATION_NAME,
-						APPLICATION_VERSION, commandLineSignature);
+						unableToAlignPrimerFile, unableToMapFastqOneFile, unableToMapFastqTwoFile, primerAlignmentFile, detailsReportFile, numProcessors, uidLength, allowVariableLengthUids,
+						APPLICATION_NAME, APPLICATION_VERSION, commandLineSignature);
 				mapFilterAndExtend.mapFilterAndExtend();
 			}
 			long end = System.currentTimeMillis();

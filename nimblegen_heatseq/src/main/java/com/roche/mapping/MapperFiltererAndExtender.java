@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,9 +56,12 @@ import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.process.BamFileUtil;
 import com.roche.heatseq.process.ExtendReadsToPrimer;
 import com.roche.heatseq.process.ProbeFileUtil;
+import com.roche.heatseq.qualityreport.DetailsReport;
+import com.roche.heatseq.qualityreport.ProbeProcessingStats;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
+import com.roche.sequencing.bioinformatics.common.utils.StatisticsUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 /**
@@ -79,6 +83,7 @@ public class MapperFiltererAndExtender {
 	private PrintWriter probeUidQualityWriter;
 	private PrintWriter unableToAlignPrimerWriter;
 	private PrintWriter primerAlignmentWriter;
+	private DetailsReport detailsReport;
 
 	private FastqWriter fastqOneUnableToMapWriter;
 	private FastqWriter fastqTwoUnableToMapWriter;
@@ -88,7 +93,7 @@ public class MapperFiltererAndExtender {
 	private final int uidLength;
 	private final boolean allowVariableLengthUids;
 	private final List<SAMRecordPair> samRecordPairs;
-	private final Map<UidAndProbeReference, Set<QualityScoreAndFastQLineIndex>> uidAndProbeReferenceToFastQLineMapping;
+	private final Map<ProbeReference, Map<String, Set<QualityScoreAndFastQLineIndex>>> uidAndProbeReferenceToFastQLineMapping;
 
 	private Semaphore mapFilterAndExtendSemaphore;
 	private Semaphore mapReadSemaphore;
@@ -109,11 +114,11 @@ public class MapperFiltererAndExtender {
 	 * @param uidLength
 	 */
 	public MapperFiltererAndExtender(File fastQOneFile, File fastQTwoFile, File probeFile, File outputFile, File ambiguousMappingFile, File probeUidQualityFile, File unableToAlignPrimerFile,
-			File fastqOneUnableToMapFile, File fastqTwoUnableToMapFile, File primerAlignmentFile, int numProcessors, int uidLength, boolean allowVariableLengthUids, String programName,
-			String programVersion, String commandLineSignature) {
+			File fastqOneUnableToMapFile, File fastqTwoUnableToMapFile, File primerAlignmentFile, File detailsReportFile, int numProcessors, int uidLength, boolean allowVariableLengthUids,
+			String programName, String programVersion, String commandLineSignature) {
 		super();
 		samRecordPairs = new ArrayList<SAMRecordPair>();
-		uidAndProbeReferenceToFastQLineMapping = new ConcurrentHashMap<UidAndProbeReference, Set<QualityScoreAndFastQLineIndex>>();
+		uidAndProbeReferenceToFastQLineMapping = new ConcurrentHashMap<ProbeReference, Map<String, Set<QualityScoreAndFastQLineIndex>>>();
 		this.fastQOneFile = fastQOneFile;
 		this.fastQTwoFile = fastQTwoFile;
 		this.probeFile = probeFile;
@@ -156,6 +161,14 @@ public class MapperFiltererAndExtender {
 						+ StringUtil.TAB + "read" + StringUtil.TAB + "extension_primer" + StringUtil.TAB + "probe_container" + StringUtil.TAB + "capture_target_start" + StringUtil.TAB
 						+ "capture_target_stop" + StringUtil.TAB + "probe_strand");
 			} catch (FileNotFoundException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+
+		if (detailsReportFile != null) {
+			try {
+				detailsReport = new DetailsReport(detailsReportFile);
+			} catch (IOException e) {
 				throw new IllegalStateException(e);
 			}
 		}
@@ -269,19 +282,77 @@ public class MapperFiltererAndExtender {
 					throw new RuntimeException(e.getMessage(), e);
 				}
 				logger.debug("Done mapping fastq reads to probes.");
+				// TODO calculate and print out stats
+
 				Map<Integer, ProbeReference> nonFilteredFastQLineIndexes = new HashMap<Integer, ProbeReference>();
-				for (Entry<UidAndProbeReference, Set<QualityScoreAndFastQLineIndex>> entry : uidAndProbeReferenceToFastQLineMapping.entrySet()) {
-					int maxScore = 0;
-					int maxScoreFastQLineIndex = -1;
-					ProbeReference probeReference = entry.getKey().getProbeReference();
-					Set<QualityScoreAndFastQLineIndex> qualityScoreAndFastQLineIndexes = entry.getValue();
-					for (QualityScoreAndFastQLineIndex qualityScoreAndFastQIndex : qualityScoreAndFastQLineIndexes) {
-						if (qualityScoreAndFastQIndex.getQualityScore() >= maxScore) {
-							maxScore = qualityScoreAndFastQIndex.getQualityScore();
-							maxScoreFastQLineIndex = qualityScoreAndFastQIndex.getFastQLineIndex();
-						}
+
+				List<ProbeReference> sortedProbeReferences = new ArrayList<ProbeReference>(uidAndProbeReferenceToFastQLineMapping.keySet());
+				Collections.sort(sortedProbeReferences, new Comparator<ProbeReference>() {
+					@Override
+					public int compare(ProbeReference o1, ProbeReference o2) {
+						return o1.getProbe().getContainerName().compareTo(o2.getProbe().getContainerName());
 					}
-					nonFilteredFastQLineIndexes.put(maxScoreFastQLineIndex, probeReference);
+
+				});
+
+				// loop by probe
+				for (ProbeReference probeReference : sortedProbeReferences) {
+					Map<String, Set<QualityScoreAndFastQLineIndex>> uidToQualityScoreAndFastQLineIndexes = uidAndProbeReferenceToFastQLineMapping.get(probeReference);
+					long probeProcessingStartTime = System.currentTimeMillis();
+					int totalReadPairs = 0;
+					int totalReadPairsRemainingAfterReduction = 0;
+					int maxNumberOfReadPairsPerUid = 0;
+					int minNumberOfReadPairsPerUid = Integer.MAX_VALUE;
+					String uidOfEntryWithMaxNumberOfReadPairs = null;
+
+					List<Integer> numberOfReadsPairsPerUid = new ArrayList<Integer>();
+
+					// loop by uid
+					for (Entry<String, Set<QualityScoreAndFastQLineIndex>> uidToqualityScoreAndFastQLineIndexesEntry : uidToQualityScoreAndFastQLineIndexes.entrySet()) {
+						Set<QualityScoreAndFastQLineIndex> qualityScoreAndFastQLineIndexes = uidToqualityScoreAndFastQLineIndexesEntry.getValue();
+						String uid = uidToqualityScoreAndFastQLineIndexesEntry.getKey();
+
+						int numberOfReadPairs = qualityScoreAndFastQLineIndexes.size();
+						numberOfReadsPairsPerUid.add(numberOfReadPairs);
+						if (numberOfReadPairs > maxNumberOfReadPairsPerUid) {
+							maxNumberOfReadPairsPerUid = numberOfReadPairs;
+							uidOfEntryWithMaxNumberOfReadPairs = uid;
+						}
+						minNumberOfReadPairsPerUid = Math.min(minNumberOfReadPairsPerUid, numberOfReadPairs);
+
+						int maxScore = 0;
+						int maxScoreFastQLineIndex = -1;
+						for (QualityScoreAndFastQLineIndex qualityScoreAndFastQIndex : qualityScoreAndFastQLineIndexes) {
+							if (qualityScoreAndFastQIndex.getQualityScore() >= maxScore) {
+								maxScore = qualityScoreAndFastQIndex.getQualityScore();
+								maxScoreFastQLineIndex = qualityScoreAndFastQIndex.getFastQLineIndex();
+							}
+							totalReadPairs++;
+						}
+						totalReadPairsRemainingAfterReduction++;
+						nonFilteredFastQLineIndexes.put(maxScoreFastQLineIndex, probeReference);
+					}
+
+					int totalDuplicateReadPairsRemoved = totalReadPairs - totalReadPairsRemainingAfterReduction;
+
+					double[] numberOfReadsPairsPerUidArray = new double[numberOfReadsPairsPerUid.size()];
+					for (int i = 0; i < numberOfReadsPairsPerUid.size(); i++) {
+						numberOfReadsPairsPerUidArray[i] = (double) numberOfReadsPairsPerUid.get(i);
+					}
+
+					double averageNumberOfReadPairsPerUid = StatisticsUtil.arithmeticMean(numberOfReadsPairsPerUidArray);
+					double standardDeviationOfReadPairsPerUid = StatisticsUtil.standardDeviation(numberOfReadsPairsPerUidArray);
+
+					long probeProcessingStopTime = System.currentTimeMillis();
+					int totalTimeToProcessInMs = (int) (probeProcessingStopTime - probeProcessingStartTime);
+
+					if (detailsReport != null) {
+						int totalUids = uidToQualityScoreAndFastQLineIndexes.size();
+						ProbeProcessingStats probeProcessingStats = new ProbeProcessingStats(probeReference.getProbe(), totalUids, averageNumberOfReadPairsPerUid, standardDeviationOfReadPairsPerUid,
+								totalDuplicateReadPairsRemoved, totalReadPairsRemainingAfterReduction, minNumberOfReadPairsPerUid, maxNumberOfReadPairsPerUid, uidOfEntryWithMaxNumberOfReadPairs,
+								totalTimeToProcessInMs);
+						detailsReport.writeEntry(probeProcessingStats);
+					}
 				}
 
 				executor = Executors.newFixedThreadPool(numProcessors, new ThreadFactory() {
@@ -455,13 +526,17 @@ public class MapperFiltererAndExtender {
 						}
 
 						if (uid != null) {
-							UidAndProbeReference uidAndProbeKey = new UidAndProbeReference(uid, matchingProbeReference);
-							Set<QualityScoreAndFastQLineIndex> set = uidAndProbeReferenceToFastQLineMapping.get(uidAndProbeKey);
+							Map<String, Set<QualityScoreAndFastQLineIndex>> uidToFastQLineMapping = uidAndProbeReferenceToFastQLineMapping.get(matchingProbeReference);
+							if (uidToFastQLineMapping == null) {
+								uidToFastQLineMapping = new ConcurrentHashMap<String, Set<QualityScoreAndFastQLineIndex>>();
+							}
+							Set<QualityScoreAndFastQLineIndex> set = uidToFastQLineMapping.get(uid);
 							if (set == null) {
 								set = Collections.newSetFromMap(new ConcurrentHashMap<QualityScoreAndFastQLineIndex, Boolean>());
 							}
 							set.add(new QualityScoreAndFastQLineIndex(qualityScore, fastqLineIndex));
-							uidAndProbeReferenceToFastQLineMapping.put(uidAndProbeKey, set);
+							uidToFastQLineMapping.put(uid, set);
+							uidAndProbeReferenceToFastQLineMapping.put(matchingProbeReference, uidToFastQLineMapping);
 
 							if (probeUidQualityWriter != null) {
 

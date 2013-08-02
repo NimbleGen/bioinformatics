@@ -16,10 +16,13 @@
 
 package com.roche.sequencing.bioinformatics.common.utils;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * 
@@ -127,6 +130,28 @@ public final class FileUtil {
 		}
 
 		return success;
+	}
+
+	public static int countNumberOfLinesInFile(File file) throws IOException {
+		int count = 0;
+		boolean empty = true;
+		InputStream inputStream = new BufferedInputStream(new FileInputStream(file));
+		try {
+			byte[] character = new byte[1024];
+			int readChars = 0;
+			while ((readChars = inputStream.read(character)) != -1) {
+				empty = false;
+				for (int i = 0; i < readChars; ++i) {
+					if (character[i] == StringUtil.NEWLINE_SYMBOL) {
+						++count;
+					}
+				}
+			}
+
+		} finally {
+			inputStream.close();
+		}
+		return (count == 0 && !empty) ? 1 : count;
 	}
 
 }

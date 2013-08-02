@@ -57,8 +57,6 @@ import org.apache.commons.io.FileUtils;
 import com.roche.imageexporter.Graphics2DImageExporter;
 import com.roche.imageexporter.Graphics2DImageExporter.ImageType;
 import com.roche.mapping.SAMRecordUtil;
-import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
-import com.roche.sequencing.bioinformatics.common.mapping.SimpleMapper;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
@@ -302,15 +300,8 @@ public class BamFileInternalUtil {
 		writerTwo.close();
 	}
 
-	public static void extractRandomNEntriesInFastq(int numberOfEntries, File inputFastqOneFile, File inputFastqTwoFile, File outputFastqOneFile, File outputFastqTwoFile) {
-		int totalEntries = 0;
-		try (FastqReader fastQOneReader = new FastqReader(inputFastqOneFile)) {
-			while (fastQOneReader.hasNext()) {
-				fastQOneReader.next();
-				totalEntries++;
-			}
-		}
-
+	public static void extractRandomNEntriesInFastq(int numberOfEntries, File inputFastqOneFile, File inputFastqTwoFile, File outputFastqOneFile, File outputFastqTwoFile) throws IOException {
+		int totalEntries = FileUtil.countNumberOfLinesInFile(inputFastqOneFile) / 4;
 		if (numberOfEntries > totalEntries) {
 			throw new IllegalStateException("The fastqfile[" + inputFastqOneFile.getAbsolutePath() + "] only contains " + totalEntries + " so " + numberOfEntries
 					+ " random samples can be selected from it.");
@@ -404,49 +395,20 @@ public class BamFileInternalUtil {
 	}
 
 	private static class ProbeAndUid {
-		private final String probeName;
-		private final int start;
-		private final int stop;
-		private final String strand;
+		private final Probe probe;
 		private final String uid;
 
-		public ProbeAndUid(String probeName, int start, int stop, String strand, String uid) {
+		public ProbeAndUid(String uid, Probe probe) {
 			super();
-			this.probeName = probeName;
-			this.start = start;
-			this.stop = stop;
-			this.strand = strand;
 			this.uid = uid;
-		}
-
-		public String getProbeName() {
-			return probeName;
-		}
-
-		public int getStart() {
-			return start;
-		}
-
-		public int getStop() {
-			return stop;
-		}
-
-		public String getStrand() {
-			return strand;
-		}
-
-		public String getUid() {
-			return uid;
+			this.probe = probe;
 		}
 
 		@Override
 		public int hashCode() {
 			final int prime = 31;
 			int result = 1;
-			result = prime * result + ((probeName == null) ? 0 : probeName.hashCode());
-			result = prime * result + start;
-			result = prime * result + stop;
-			result = prime * result + ((strand == null) ? 0 : strand.hashCode());
+			result = prime * result + ((probe == null) ? 0 : probe.hashCode());
 			result = prime * result + ((uid == null) ? 0 : uid.hashCode());
 			return result;
 		}
@@ -460,19 +422,10 @@ public class BamFileInternalUtil {
 			if (getClass() != obj.getClass())
 				return false;
 			ProbeAndUid other = (ProbeAndUid) obj;
-			if (probeName == null) {
-				if (other.probeName != null)
+			if (probe == null) {
+				if (other.probe != null)
 					return false;
-			} else if (!probeName.equals(other.probeName))
-				return false;
-			if (start != other.start)
-				return false;
-			if (stop != other.stop)
-				return false;
-			if (strand == null) {
-				if (other.strand != null)
-					return false;
-			} else if (!strand.equals(other.strand))
+			} else if (!probe.equals(other.probe))
 				return false;
 			if (uid == null) {
 				if (other.uid != null)
@@ -480,26 +433,6 @@ public class BamFileInternalUtil {
 			} else if (!uid.equals(other.uid))
 				return false;
 			return true;
-		}
-
-	}
-
-	private static class ReadStringAndBlock {
-		private final String readString;
-		private final String block;
-
-		public ReadStringAndBlock(String readString, String block) {
-			super();
-			this.readString = readString;
-			this.block = block;
-		}
-
-		public String getReadString() {
-			return readString;
-		}
-
-		public String getBlock() {
-			return block;
 		}
 
 	}
@@ -520,7 +453,7 @@ public class BamFileInternalUtil {
 		return probeToBlockMap;
 	}
 
-	public static void createUidBlockReport(int maxUidLength, File probeUidQualityFile, File blockFile, File uidBlockReportByRead, File uidBlockReportByBlock) throws IOException {
+	public static void createUidBlockReport(int maxUidLength, File probeUidQualityFile, File uidBlockReportByRead, File uidBlockReportByBlock, Map<Probe, String> probeToBlockMap) throws IOException {
 
 		PrintWriter uidBlockReportByReadWriter = new PrintWriter(new FileWriter(uidBlockReportByRead));
 		uidBlockReportByReadWriter.println("uid" + StringUtil.TAB + "uid_length" + StringUtil.TAB + "block_name" + StringUtil.TAB + "container_name" + StringUtil.TAB + "start" + StringUtil.TAB
@@ -537,17 +470,12 @@ public class BamFileInternalUtil {
 			List<String> probeUidQualityStart = probeHeadersToData.get(probeUidQualityHeaders[2]);
 			List<String> probeUidQualityStop = probeHeadersToData.get(probeUidQualityHeaders[3]);
 			List<String> probeUidQualityStrand = probeHeadersToData.get(probeUidQualityHeaders[4]);
-			List<String> probeReadStrings = probeHeadersToData.get(probeUidQualityHeaders[5]);
-
-			Map<Probe, String> probeToBlockMap = getProbeToBlockMap(blockFile);
 
 			Map<String, TallyMap<Integer>> uidLengthsByBlock = new HashMap<String, TallyMap<Integer>>();
 			Map<String, TallyMap<Integer>> uniqueReadPairUidLengthsByBlock = new HashMap<String, TallyMap<Integer>>();
 
-			Map<ProbeAndUid, Set<ReadStringAndBlock>> foundReads = new HashMap<ProbeAndUid, Set<ReadStringAndBlock>>();
+			Set<ProbeAndUid> foundReads = new HashSet<ProbeAndUid>();
 
-			String lastUid = null;
-			Probe lastProbe = null;
 			for (int probeUidIndex = 0; probeUidIndex < probeUidQualityContainerNames.size(); probeUidIndex++) {
 				String probeName = probeUidQualityContainerNames.get(probeUidIndex);
 				String probeStart = probeUidQualityStart.get(probeUidIndex);
@@ -557,20 +485,10 @@ public class BamFileInternalUtil {
 				Probe probe = new Probe(probeName, Integer.valueOf(probeStart), Integer.valueOf(probeStop), probeStrand);
 				String blockName = probeToBlockMap.get(probe);
 
-				if (blockName != null && !probe.equals(lastProbe) && !uid.equals(lastUid)) {
-					String readString = probeReadStrings.get(probeUidIndex);
-					ProbeAndUid probeAndUid = new ProbeAndUid(probeName, Integer.valueOf(probeStart), Integer.valueOf(probeStop), probeStrand, uid);
-					if (foundReads.containsKey(probeAndUid)) {
-						Set<ReadStringAndBlock> readStrings = foundReads.get(probeAndUid);
-
-						if (!readStrings.contains(readString)) {
-							readStrings.add(new ReadStringAndBlock(readString, blockName));
-						}
-
-					} else {
-						Set<ReadStringAndBlock> readStrings = new HashSet<ReadStringAndBlock>();
-						readStrings.add(new ReadStringAndBlock(readString, blockName));
-						foundReads.put(probeAndUid, readStrings);
+				if (blockName != null) {
+					ProbeAndUid probeAndUid = new ProbeAndUid(uid, probe);
+					if (!foundReads.contains(probeAndUid)) {
+						foundReads.add(probeAndUid);
 
 						TallyMap<Integer> uniqueBlockTallyMap = uniqueReadPairUidLengthsByBlock.get(blockName);
 						if (uniqueBlockTallyMap == null) {
@@ -588,9 +506,6 @@ public class BamFileInternalUtil {
 					}
 					blockTallyMap.add(uid.length());
 					uidLengthsByBlock.put(blockName, blockTallyMap);
-					lastProbe = probe;
-					lastUid = uid;
-
 				} else {
 					System.out.println("Could not find matching block for " + probe + ".");
 				}
@@ -642,7 +557,9 @@ public class BamFileInternalUtil {
 		PrintWriter uidBlockBaseCompositionWriter = new PrintWriter(new FileWriter(uidBlockBaseCompositionOutput));
 		try {
 			uidBlockBaseCompositionWriter.println("block" + StringUtil.TAB + "a_count" + StringUtil.TAB + "a_percent" + StringUtil.TAB + "c_count" + StringUtil.TAB + "c_percent" + StringUtil.TAB
-					+ "g_count" + StringUtil.TAB + "g_percent" + StringUtil.TAB + "t_count" + StringUtil.TAB + "t_percent" + StringUtil.TAB + "n_count" + StringUtil.TAB + "n_percent");
+					+ "g_count" + StringUtil.TAB + "g_percent" + StringUtil.TAB + "t_count" + StringUtil.TAB + "t_percent" + StringUtil.TAB + "n_count" + StringUtil.TAB + "n_percent" + StringUtil.TAB
+					+ "all_a_count" + StringUtil.TAB + "all_a_percent" + StringUtil.TAB + "all_c_count" + StringUtil.TAB + "all_c_percent" + StringUtil.TAB + "all_g_count" + StringUtil.TAB
+					+ "all_g_percent" + StringUtil.TAB + "all_t_count" + StringUtil.TAB + "all_t_percent" + StringUtil.TAB + "all_n_count" + StringUtil.TAB + "all_n_percent");
 
 			String[] probeUidQualityHeaders = new String[] { "uid", "probe_container", "probe_capture_start", "probe_capture_stop", "strand" };
 
@@ -654,27 +571,40 @@ public class BamFileInternalUtil {
 			List<String> probeUidQualityStrand = probeHeadersToData.get(probeUidQualityHeaders[4]);
 
 			Map<String, TallyMap<Character>> nucleotideCompositionByBlock = new HashMap<String, TallyMap<Character>>();
+			Map<String, TallyMap<Character>> allNucleotideCompositionByBlock = new HashMap<String, TallyMap<Character>>();
 
-			Probe lastProbe = null;
-			String lastUid = null;
+			Set<ProbeAndUid> uniqueProbeAndUidPairs = new HashSet<ProbeAndUid>();
 			for (int probeUidIndex = 0; probeUidIndex < probeUidQualityContainerNames.size(); probeUidIndex++) {
 				String uid = probeHeadersToData.get(probeUidQualityHeaders[0]).get(probeUidIndex);
 				Probe probe = new Probe(probeUidQualityContainerNames.get(probeUidIndex), Integer.valueOf(probeUidQualityStart.get(probeUidIndex)), Integer.valueOf(probeUidQualityStop
 						.get(probeUidIndex)), probeUidQualityStrand.get(probeUidIndex));
 				String blockName = probeToBlockMap.get(probe);
 				// only count unique uid nucleotides
-				if (blockName != null && !uid.equals(lastUid) && !probe.equals(lastProbe)) {
+				if (blockName != null) {
+					ProbeAndUid probeAndUid = new ProbeAndUid(uid, probe);
 
-					TallyMap<Character> blockTallyMap = nucleotideCompositionByBlock.get(blockName);
-					if (blockTallyMap == null) {
-						blockTallyMap = new TallyMap<Character>();
+					// all
+					TallyMap<Character> allBlockTallyMap = allNucleotideCompositionByBlock.get(blockName);
+					if (allBlockTallyMap == null) {
+						allBlockTallyMap = new TallyMap<Character>();
 					}
 					for (Character c : uid.toCharArray()) {
-						blockTallyMap.add(Character.toUpperCase(c));
+						allBlockTallyMap.add(Character.toUpperCase(c));
 					}
-					nucleotideCompositionByBlock.put(blockName, blockTallyMap);
-					lastProbe = probe;
-					lastUid = uid;
+					allNucleotideCompositionByBlock.put(blockName, allBlockTallyMap);
+
+					// just unique
+					if (!uniqueProbeAndUidPairs.contains(probeAndUid)) {
+						uniqueProbeAndUidPairs.add(probeAndUid);
+						TallyMap<Character> blockTallyMap = nucleotideCompositionByBlock.get(blockName);
+						if (blockTallyMap == null) {
+							blockTallyMap = new TallyMap<Character>();
+						}
+						for (Character c : uid.toCharArray()) {
+							blockTallyMap.add(Character.toUpperCase(c));
+						}
+						nucleotideCompositionByBlock.put(blockName, blockTallyMap);
+					}
 				} else {
 					System.out.println("Could not find matching block for " + probe);
 				}
@@ -701,10 +631,28 @@ public class BamFileInternalUtil {
 				double gPercent = ((double) gCount) / ((double) totalNucleotides);
 				double tPercent = ((double) tCount) / ((double) totalNucleotides);
 				double nPercent = ((double) nCount) / ((double) totalNucleotides);
+
+				TallyMap<Character> allTallyMap = allNucleotideCompositionByBlock.get(blockName);
+				int allTotalNucleotides = allTallyMap.getSumOfAllBins();
+
+				int all_aCount = allTallyMap.getCount('A');
+				int all_cCount = allTallyMap.getCount('C');
+				int all_gCount = allTallyMap.getCount('G');
+				int all_tCount = allTallyMap.getCount('T');
+				int all_nCount = allTallyMap.getCount('N');
+
+				double all_aPercent = ((double) all_aCount) / ((double) allTotalNucleotides);
+				double all_cPercent = ((double) all_cCount) / ((double) allTotalNucleotides);
+				double all_gPercent = ((double) all_gCount) / ((double) allTotalNucleotides);
+				double all_tPercent = ((double) all_tCount) / ((double) allTotalNucleotides);
+				double all_nPercent = ((double) all_nCount) / ((double) allTotalNucleotides);
+
 				DecimalFormat format = new DecimalFormat("##.##");
 				uidBlockBaseCompositionWriter.println(blockName + StringUtil.TAB + aCount + StringUtil.TAB + format.format(aPercent) + StringUtil.TAB + cCount + StringUtil.TAB
 						+ format.format(cPercent) + StringUtil.TAB + gCount + StringUtil.TAB + format.format(gPercent) + StringUtil.TAB + tCount + StringUtil.TAB + format.format(tPercent)
-						+ StringUtil.TAB + nCount + StringUtil.TAB + format.format(nPercent));
+						+ StringUtil.TAB + nCount + StringUtil.TAB + format.format(nPercent) + StringUtil.TAB + all_aCount + StringUtil.TAB + format.format(all_aPercent) + StringUtil.TAB + all_cCount
+						+ StringUtil.TAB + format.format(all_cPercent) + StringUtil.TAB + all_gCount + StringUtil.TAB + format.format(all_gPercent) + StringUtil.TAB + all_tCount + StringUtil.TAB
+						+ format.format(all_tPercent) + StringUtil.TAB + all_nCount + StringUtil.TAB + format.format(all_nPercent));
 			}
 		} finally {
 			uidBlockBaseCompositionWriter.close();
@@ -715,8 +663,8 @@ public class BamFileInternalUtil {
 		File outputDirectory = new File(baseOutputDirectory, "/" + numberOfEntries + "/");
 		FileUtils.forceMkdir(outputDirectory);
 
-		File abbreviatedFastq1 = new File(outputDirectory, FileUtil.getFileNameWithoutExtension(fastq1.getName()) + numberOfEntries + ".fastq");
-		File abbreviatedFastq2 = new File(outputDirectory, FileUtil.getFileNameWithoutExtension(fastq2.getName()) + numberOfEntries + ".fastq");
+		File abbreviatedFastq1 = new File(outputDirectory, FileUtil.getFileNameWithoutExtension(fastq1.getName()) + "_" + numberOfEntries + ".fastq");
+		File abbreviatedFastq2 = new File(outputDirectory, FileUtil.getFileNameWithoutExtension(fastq2.getName()) + "_" + numberOfEntries + ".fastq");
 
 		if (numberOfEntries == null) {
 			abbreviatedFastq1 = fastq1;
@@ -858,8 +806,8 @@ public class BamFileInternalUtil {
 		Map<Probe, String> probeToBlockMap = getProbeToBlockMap(blockFile);
 
 		try {
-			createUidBlockReport(10, new File(resultsDirectory, "/reports/probe_uid_quality.txt"), blockFile, new File(resultsDirectory, "/block_report_by_read.txt"), new File(resultsDirectory,
-					"/block_report_by_block.txt"));
+			createUidBlockReport(10, new File(resultsDirectory, "/reports/probe_uid_quality.txt"), new File(resultsDirectory, "/block_report_by_read.txt"), new File(resultsDirectory,
+					"/block_report_by_block.txt"), probeToBlockMap);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -1042,93 +990,6 @@ public class BamFileInternalUtil {
 		processRandomNEntriesAndGenerateReports(fastq1_56, fastq2_56, probeFile, blockFile, numberOfEntries, baseOutputDirectory_56);
 	}
 
-	public static void mapUnmappableAgainstEachOther(File unmappableFastq, File outputMatchingFastq) {
-		SimpleMapper<WrappedFastqRecord> fastqMapper = new SimpleMapper<WrappedFastqRecord>();
-		try (FastqReader fastQReader = new FastqReader(unmappableFastq)) {
-			while (fastQReader.hasNext()) {
-				FastqRecord record = fastQReader.next();
-				ISequence sequence = new IupacNucleotideCodeSequence(record.getReadString());
-				fastqMapper.addReferenceSequence(sequence, new WrappedFastqRecord(record));
-
-				FastqRecord reversedRecord = new FastqRecord(record.getReadHeader() + " REVERSED", record.getReadString(), "", record.getBaseQualityString());
-				fastqMapper.addReferenceSequence(sequence.getReverse(), new WrappedFastqRecord(reversedRecord));
-
-				FastqRecord reverseComplimentaryRecord = new FastqRecord(record.getReadHeader() + " REVERSE_COMPLIMENT", record.getReadString(), "" + record.getReadHeader(),
-						record.getBaseQualityString());
-				fastqMapper.addReferenceSequence(sequence.getReverseCompliment(), new WrappedFastqRecord(reverseComplimentaryRecord));
-
-				FastqRecord complimentaryRecord = new FastqRecord(record.getReadHeader() + " COMPLIMENT", record.getReadString(), "", record.getBaseQualityString());
-				fastqMapper.addReferenceSequence(sequence.getCompliment(), new WrappedFastqRecord(complimentaryRecord));
-			}
-		}
-
-		final FastqWriterFactory factory = new FastqWriterFactory();
-		FastqWriter fastqWriter = factory.newWriter(outputMatchingFastq);
-
-		try (FastqReader fastQReader = new FastqReader(unmappableFastq)) {
-			while (fastQReader.hasNext()) {
-				FastqRecord record = fastQReader.next();
-				ISequence sequence = new IupacNucleotideCodeSequence(record.getReadString());
-				fastqMapper.removeReferenceSequenceByAddress(new WrappedFastqRecord(record));
-				Set<WrappedFastqRecord> candidates = fastqMapper.getBestCandidateReferences(sequence);
-
-				if (candidates.size() > 0) {
-					fastqWriter.write(record);
-					for (WrappedFastqRecord wrappedRecordMatch : candidates) {
-						FastqRecord recordMatch = wrappedRecordMatch.getRecord();
-						NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(sequence, new IupacNucleotideCodeSequence(recordMatch.getReadString()));
-						FastqRecord newRecord = new FastqRecord(recordMatch.getReadHeader(), recordMatch.getReadString(), " MATCHES:" + record.getReadHeader() + " " + alignment.getEditDistance(),
-								recordMatch.getBaseQualityString());
-						fastqWriter.write(newRecord);
-					}
-				}
-
-				fastqMapper.addReferenceSequence(sequence, new WrappedFastqRecord(record));
-			}
-		}
-
-		fastqWriter.close();
-
-	}
-
-	public static class WrappedFastqRecord {
-		private final FastqRecord record;
-
-		public WrappedFastqRecord(FastqRecord record) {
-			this.record = record;
-		}
-
-		public FastqRecord getRecord() {
-			return record;
-		}
-
-		@Override
-		public int hashCode() {
-			final int prime = 31;
-			int result = 1;
-			result = prime * result + ((record == null) ? 0 : record.getReadHeader().hashCode());
-			return result;
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj)
-				return true;
-			if (obj == null)
-				return false;
-			if (getClass() != obj.getClass())
-				return false;
-			WrappedFastqRecord other = (WrappedFastqRecord) obj;
-			if (record == null) {
-				if (other.record != null)
-					return false;
-			} else if (!record.getReadHeader().equals(other.record.getReadHeader()))
-				return false;
-			return true;
-		}
-
-	}
-
 	public static void convertFastqToFasta(File fastqFile, File outputFastaFile) throws IOException {
 		StringBuilder fastaString = new StringBuilder();
 		try (FastqReader fastQReader = new FastqReader(fastqFile)) {
@@ -1162,16 +1023,7 @@ public class BamFileInternalUtil {
 	public static void main(String[] args) throws Exception {
 		long start = System.currentTimeMillis();
 
-		// runEntries(1000001);
-		File unmappable = new File("D:/manufacturing_test/56/1000001/reports/unable_to_map_one.fastq");
-		File unmappableOutput = new File("D:/manufacturing_test/56/1000001/reports/unmapped_one_mapped_against_unmapped_one.fastq");
-		// mapUnmappableAgainstEachOther(unmappable, unmappableOutput);
-		// runUnMappableEntries(null);
-
-		File unmappableOne = new File("D:/manufacturing_test/56/1000001/reports/unable_to_map_one.fastq");
-		File unmappableTwo = new File("D:/manufacturing_test/56/1000001/reports/unable_to_map_two.fastq");
-		File fastaOutput = new File("D:/manufacturing_test/56/1000001/reports/unable_to_map_one.fasta");
-		combinePairIntoFasta(unmappableOne, unmappableTwo, fastaOutput);
+		runEntries(null);
 
 		long stop = System.currentTimeMillis();
 		System.out.println("total time:" + (stop - start) + "ms");

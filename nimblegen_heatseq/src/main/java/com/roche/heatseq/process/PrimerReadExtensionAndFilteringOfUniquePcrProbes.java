@@ -19,10 +19,7 @@ package com.roche.heatseq.process;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +52,7 @@ import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ProbesByContainerName;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
+import com.roche.heatseq.qualityreport.DetailsReport;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
@@ -76,7 +74,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	private static Logger logger = LoggerFactory.getLogger(PrimerReadExtensionAndFilteringOfUniquePcrProbes.class);
 
 	public final static String REPORT_DIRECTORY = "/reports/";
-	private final static String DETAILS_REPORT_NAME = "processing_details.txt";
+	public final static String DETAILS_REPORT_NAME = "processing_details.txt";
 	private final static String EXTENSION_ERRORS_REPORT_NAME = "extension_errors.txt";
 	public final static String PROBE_UID_QUALITY_REPORT_NAME = "probe_uid_quality.txt";
 	public final static String UNABLE_TO_ALIGN_PRIMER_REPORT_NAME = "unable_to_align_primer_for_variable_length_uid.txt";
@@ -118,7 +116,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 		logger.debug("Creating details report file at " + detailsReportFile.getAbsolutePath());
 
-		PrintWriter detailReportWriter = null;
+		DetailsReport detailsReport = null;
 		PrintWriter extensionErrorsWriter = null;
 		PrintWriter probeUidQualityWriter = null;
 		PrintWriter unableToAlignPrimerWriter = null;
@@ -126,19 +124,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 		if (applicationSettings.isShouldOutputQualityReports()) {
 			try {
-				FileUtil.createNewFile(detailsReportFile);
-				detailReportWriter = new PrintWriter(detailsReportFile);
-				detailReportWriter.println("PREFUPP (Primer Read Extension and Filtering of Unique PCR Probes) PROCESSING DETAILS REPORT");
-				DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-				Date date = new Date();
-
-				detailReportWriter.println(dateFormat.format(date));
-				detailReportWriter.println();
-				detailReportWriter.println("probe_index" + StringUtil.TAB + "probe_container_name" + StringUtil.TAB + "probes_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
-						+ "probe_strand" + StringUtil.TAB + "total_uids" + StringUtil.TAB + "average_number_of_read_pairs_per_uid" + StringUtil.TAB + "standard_deviation_of_read_pairs_per_uid"
-						+ StringUtil.TAB + "min_number_of_read_pairs_per_uid" + StringUtil.TAB + "max_number_of_read_pairs_per_uid" + StringUtil.TAB + "uid_Of_entry_with_max_read_pairs"
-						+ StringUtil.TAB + " total_duplicate_read_pairs_removed" + StringUtil.TAB + " totalReadPairsRemainingAfterReduction" + StringUtil.TAB + " totalTimeToProcessInMs");
-				detailReportWriter.flush();
+				detailsReport = new DetailsReport(detailsReportFile);
 
 				FileUtil.createNewFile(extensionErrorsReportFile);
 				extensionErrorsWriter = new PrintWriter(extensionErrorsReportFile);
@@ -176,11 +162,11 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		}
 
 		// Actually do the work
-		filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings, probeInfo, detailReportWriter, extensionErrorsWriter, probeUidQualityWriter, unableToAlignPrimerWriter, primerAlignmentWriter);
+		filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings, probeInfo, detailsReport, extensionErrorsWriter, probeUidQualityWriter, unableToAlignPrimerWriter, primerAlignmentWriter);
 
 		// Clean up the reports
-		if (detailReportWriter != null) {
-			detailReportWriter.close();
+		if (detailsReport != null) {
+			detailsReport.close();
 		}
 		if (extensionErrorsWriter != null) {
 			extensionErrorsWriter.close();
@@ -212,7 +198,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	 * @param probeUidQualityWriter
 	 *            Writer for reporting quality per UID
 	 */
-	private static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings, ProbesByContainerName probeInfo, PrintWriter detailReportWriter,
+	private static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings, ProbesByContainerName probeInfo, DetailsReport detailsReport,
 			PrintWriter extensionErrorsWriter, PrintWriter probeUidQualityWriter, PrintWriter unableToAlignPrimerWriter, PrintWriter primerAlignmentWriter) {
 		Set<String> containerNames = probeInfo.getContainerNames();
 
@@ -327,7 +313,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					}
 					samRecordIter.close();
 
-					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, applicationSettings, samWriter, extensionErrorsWriter, probeUidQualityWriter, detailReportWriter,
+					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, applicationSettings, samWriter, extensionErrorsWriter, probeUidQualityWriter, detailsReport,
 							unableToAlignPrimerWriter, primerAlignmentWriter, fastqOneWriter, fastqTwoWriter, readNameToRecordsMap);
 					try {
 						// Don't execute more threads than we have processors
@@ -407,7 +393,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		private final SAMFileWriter samWriter;
 		private final PrintWriter extensionErrorsWriter;
 		private final PrintWriter probeUidQualityWriter;
-		private final PrintWriter detailReportWriter;
+		private final DetailsReport detailsReport;
 		private final PrintWriter unableToAlignPrimerWriter;
 		private final PrintWriter primerAlignmentWriter;
 		private final FastqWriter fastqOneWriter;
@@ -438,14 +424,14 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		 * @param readNameToRecordsMap
 		 */
 		PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(Probe probe, ApplicationSettings applicationSettings, SAMFileWriter samWriter, PrintWriter extensionErrorsWriter,
-				PrintWriter probeUidQualityWriter, PrintWriter detailReportWriter, PrintWriter unableToAlignPrimerWriter, PrintWriter primerAlignmentWriter, FastqWriter fastqOneWriter,
+				PrintWriter probeUidQualityWriter, DetailsReport detailsReport, PrintWriter unableToAlignPrimerWriter, PrintWriter primerAlignmentWriter, FastqWriter fastqOneWriter,
 				FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap) {
 			this.probe = probe;
 			this.applicationSettings = applicationSettings;
 			this.samWriter = samWriter;
 			this.extensionErrorsWriter = extensionErrorsWriter;
 			this.probeUidQualityWriter = probeUidQualityWriter;
-			this.detailReportWriter = detailReportWriter;
+			this.detailsReport = detailsReport;
 			this.unableToAlignPrimerWriter = unableToAlignPrimerWriter;
 			this.primerAlignmentWriter = primerAlignmentWriter;
 			this.fastqOneWriter = fastqOneWriter;
@@ -462,10 +448,9 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, readNameToRecordsMap, probeUidQualityWriter, unableToAlignPrimerWriter,
 						primerAlignmentWriter, applicationSettings.isAllowVariableLengthUids());
 
-				if (detailReportWriter != null) {
-					synchronized (detailReportWriter) {
-						detailReportWriter.print(probeReductionResults.getProbeProcessingStats().toReportString());
-						detailReportWriter.flush();
+				if (detailsReport != null) {
+					synchronized (detailsReport) {
+						detailsReport.writeEntry(probeReductionResults.getProbeProcessingStats());
 					}
 				}
 
