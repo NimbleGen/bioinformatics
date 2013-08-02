@@ -53,6 +53,7 @@ import com.roche.heatseq.objects.ProbesByContainerName;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
 import com.roche.heatseq.qualityreport.DetailsReport;
+import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
@@ -181,7 +182,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		long stop = System.currentTimeMillis();
 
 		// Report on performance
-		logger.debug("Total time:" + (stop - start) + "ms");
+		logger.debug("Total time: " + DateUtil.convertMillisecondsToHHMMSS(stop - start));
 	}
 
 	/**
@@ -208,31 +209,28 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 			String outputUnsortedBamFileName = FileUtil.getFileNameWithoutExtension(applicationSettings.getOriginalBamFileName()) + "_UNSORTED_REDUCED."
 					+ FileUtil.getFileExtension(applicationSettings.getBamFile());
-			File outputUnsortedBamFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + outputUnsortedBamFileName);
+			File outputUnsortedBamFile = new File(applicationSettings.getOutputDirectory(), outputUnsortedBamFileName);
 
 			String outputSortedBamFileName = applicationSettings.getOutputBamFileName();
-			File outputSortedBamFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + outputSortedBamFileName);
-
-			String outputBamIndexFileName = outputSortedBamFileName + ".bai";
-			File outputBamIndexFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + outputBamIndexFileName);
+			File outputSortedBamFile = new File(applicationSettings.getOutputDirectory(), outputSortedBamFileName);
 
 			try {
 				outputUnsortedBamFile.createNewFile();
 				outputSortedBamFile.createNewFile();
-				outputBamIndexFile.createNewFile();
 			} catch (IOException e) {
 				throw new IllegalStateException(e.getMessage(), e);
 			}
 
-			samWriter = new SAMFileWriterFactory().makeSAMOrBAMWriter(
+			// Make an unsorted BAM file writer with the fastest level of compression
+			samWriter = new SAMFileWriterFactory().makeBAMWriter(
 					getHeader(samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(), applicationSettings.getProgramVersion()),
-					false, outputUnsortedBamFile);
+					false, outputUnsortedBamFile, 0);
 
 			FastqWriter fastqOneWriter = null;
 			FastqWriter fastqTwoWriter = null;
 			if (applicationSettings.isShouldOutputFastq()) {
-				File fastqOne = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + applicationSettings.getOriginalBamFileName() + "_one.fastq");
-				File fastqTwo = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + applicationSettings.getOriginalBamFileName() + "_two.fastq");
+				File fastqOne = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOriginalBamFileName() + "_one.fastq");
+				File fastqTwo = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOriginalBamFileName() + "_two.fastq");
 				logger.debug("Output fastq files will be created at fastqone[" + fastqOne.getAbsolutePath() + "] and fastqtwo[" + fastqTwo.getAbsolutePath() + "].");
 				final FastqWriterFactory fastqWriterFactory = new FastqWriterFactory();
 				fastqOneWriter = fastqWriterFactory.newWriter(fastqOne);
@@ -314,7 +312,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					samRecordIter.close();
 
 					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, applicationSettings, samWriter, extensionErrorsWriter, probeUidQualityWriter, detailsReport,
-							unableToAlignPrimerWriter, primerAlignmentWriter, fastqOneWriter, fastqTwoWriter, readNameToRecordsMap);
+							unableToAlignPrimerWriter, primerAlignmentWriter, fastqOneWriter, fastqTwoWriter, readNameToRecordsMap, applicationSettings.getAlignmentScorer());
+
 					try {
 						// Don't execute more threads than we have processors
 						primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore.acquire();
@@ -342,9 +341,12 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			samWriter.close();
 			samReader.close();
 
+			// Sort the output BAM file,
 			BamFileUtil.sortOnCoordinates(outputUnsortedBamFile, outputSortedBamFile);
-
 			outputUnsortedBamFile.delete();
+
+			// Make index for BAM file
+			BamFileUtil.createIndex(outputSortedBamFile);
 		}
 	}
 
@@ -398,6 +400,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		private final PrintWriter primerAlignmentWriter;
 		private final FastqWriter fastqOneWriter;
 		private final FastqWriter fastqTwoWriter;
+		private final IAlignmentScorer alignmentScorer;
 		Map<String, SAMRecordPair> readNameToRecordsMap;
 
 		/**
@@ -423,9 +426,10 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		 *            Writer to output reads into fastq files
 		 * @param readNameToRecordsMap
 		 */
+
 		PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(Probe probe, ApplicationSettings applicationSettings, SAMFileWriter samWriter, PrintWriter extensionErrorsWriter,
 				PrintWriter probeUidQualityWriter, DetailsReport detailsReport, PrintWriter unableToAlignPrimerWriter, PrintWriter primerAlignmentWriter, FastqWriter fastqOneWriter,
-				FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap) {
+				FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap, IAlignmentScorer alignmentScorer) {
 			this.probe = probe;
 			this.applicationSettings = applicationSettings;
 			this.samWriter = samWriter;
@@ -437,6 +441,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			this.fastqOneWriter = fastqOneWriter;
 			this.fastqTwoWriter = fastqTwoWriter;
 			this.readNameToRecordsMap = readNameToRecordsMap;
+			this.alignmentScorer = alignmentScorer;
 		}
 
 		/**
@@ -447,20 +452,13 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			try {
 				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, readNameToRecordsMap, probeUidQualityWriter, unableToAlignPrimerWriter,
 						primerAlignmentWriter, applicationSettings.isAllowVariableLengthUids());
-
 				if (detailsReport != null) {
 					synchronized (detailsReport) {
 						detailsReport.writeEntry(probeReductionResults.getProbeProcessingStats());
 					}
 				}
 
-				List<IReadPair> readsToWrite = null;
-				if (applicationSettings.isShouldExtendReads()) {
-					List<IReadPair> extendedReads = ExtendReadsToPrimer.extendReadsToPrimers(probe, probeReductionResults.getReadPairs(), extensionErrorsWriter);
-					readsToWrite = extendedReads;
-				} else {
-					readsToWrite = probeReductionResults.getReadPairs();
-				}
+				List<IReadPair> readsToWrite = ExtendReadsToPrimer.extendReadsToPrimers(probe, probeReductionResults.getReadPairs(), extensionErrorsWriter, alignmentScorer);
 
 				writeReadsToSamFile(samWriter, readsToWrite);
 				if (fastqOneWriter != null && fastqTwoWriter != null) {

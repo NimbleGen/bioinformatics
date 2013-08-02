@@ -58,6 +58,7 @@ import com.roche.heatseq.process.ExtendReadsToPrimer;
 import com.roche.heatseq.process.ProbeFileUtil;
 import com.roche.heatseq.qualityreport.DetailsReport;
 import com.roche.heatseq.qualityreport.ProbeProcessingStats;
+import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
@@ -101,6 +102,7 @@ public class MapperFiltererAndExtender {
 	private final String programName;
 	private final String programVersion;
 	private final String commandLineSignature;
+	private final IAlignmentScorer alignmentScorer;
 
 	/**
 	 * Default constructor
@@ -115,7 +117,8 @@ public class MapperFiltererAndExtender {
 	 */
 	public MapperFiltererAndExtender(File fastQOneFile, File fastQTwoFile, File probeFile, File outputFile, File ambiguousMappingFile, File probeUidQualityFile, File unableToAlignPrimerFile,
 			File fastqOneUnableToMapFile, File fastqTwoUnableToMapFile, File primerAlignmentFile, File detailsReportFile, int numProcessors, int uidLength, boolean allowVariableLengthUids,
-			String programName, String programVersion, String commandLineSignature) {
+			String programName, String programVersion, String commandLineSignature, IAlignmentScorer alignmentScorer) {
+
 		super();
 		samRecordPairs = new ArrayList<SAMRecordPair>();
 		uidAndProbeReferenceToFastQLineMapping = new ConcurrentHashMap<ProbeReference, Map<String, Set<QualityScoreAndFastQLineIndex>>>();
@@ -123,6 +126,8 @@ public class MapperFiltererAndExtender {
 		this.fastQTwoFile = fastQTwoFile;
 		this.probeFile = probeFile;
 		this.outputFile = outputFile;
+
+		this.alignmentScorer = alignmentScorer;
 
 		if (ambiguousMappingFile != null) {
 			try {
@@ -373,7 +378,7 @@ public class MapperFiltererAndExtender {
 
 								ProbeReference probeReference = nonFilteredFastQLineIndexes.get(fastqLineIndex);
 
-								MapReadTask mapReadTask = new MapReadTask(recordOne, recordTwo, probeReference, samHeader, readGroupName);
+								MapReadTask mapReadTask = new MapReadTask(recordOne, recordTwo, probeReference, samHeader, readGroupName, alignmentScorer);
 								try {
 									mapReadSemaphore.acquire();
 								} catch (InterruptedException e) {
@@ -392,6 +397,10 @@ public class MapperFiltererAndExtender {
 					throw new RuntimeException(e.getMessage(), e);
 				}
 				SAMRecordUtil.createBamFile(samHeader, outputFile, samRecordPairs);
+
+				// Create the index for the SAM file
+				BamFileUtil.createIndex(outputFile);
+
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -416,7 +425,7 @@ public class MapperFiltererAndExtender {
 			if (fastqTwoUnableToMapWriter != null) {
 				fastqTwoUnableToMapWriter.close();
 			}
-			logger.debug("Total time:" + (end - start) + " ms.");
+			logger.debug("Total time: " + DateUtil.convertMillisecondsToHHMMSS(end - start));
 		}
 	}
 
@@ -598,14 +607,16 @@ public class MapperFiltererAndExtender {
 		private final ProbeReference probeReference;
 		private final SAMFileHeader samHeader;
 		private final String readGroupName;
+		private final IAlignmentScorer alignmentScorer;
 
-		public MapReadTask(FastqRecord recordOne, FastqRecord recordTwo, ProbeReference probeReference, SAMFileHeader samHeader, String readGroupName) {
+		public MapReadTask(FastqRecord recordOne, FastqRecord recordTwo, ProbeReference probeReference, SAMFileHeader samHeader, String readGroupName, IAlignmentScorer alignmentScorer) {
 			super();
 			this.recordOne = recordOne;
 			this.recordTwo = recordTwo;
 			this.probeReference = probeReference;
 			this.samHeader = samHeader;
 			this.readGroupName = readGroupName;
+			this.alignmentScorer = alignmentScorer;
 		}
 
 		@Override
@@ -623,7 +634,7 @@ public class MapperFiltererAndExtender {
 				String containerName = probeReference.getProbe().getContainerName();
 
 				IReadPair readPair = ExtendReadsToPrimer.extendReadPair(uid, probeReference.getProbe(), samHeader, containerName, readName, readGroupName, queryOneSequence, recordOneQualityString,
-						queryTwoSequence, recordTwoQualityString, DEFAULT_MAPPING_QUALITY, DEFAULT_MAPPING_QUALITY);
+						queryTwoSequence, recordTwoQualityString, DEFAULT_MAPPING_QUALITY, DEFAULT_MAPPING_QUALITY, alignmentScorer);
 
 				if (readPair != null) {
 					SAMRecord samRecordFirstOfPair = readPair.getRecord();

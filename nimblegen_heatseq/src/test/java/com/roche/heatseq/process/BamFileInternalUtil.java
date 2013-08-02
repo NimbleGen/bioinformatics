@@ -220,7 +220,6 @@ public class BamFileInternalUtil {
 
 	public static void createSubsetBamFile(final File inputSamOrBamFile, final File outputSamOrBamFile) {
 		final SAMFileReader inputSam = new SAMFileReader(inputSamOrBamFile);
-		// BamFileUtil.createIndex(inputSam, new File(inputSamOrBamFile.getAbsolutePath() + ".bai"));
 		final SAMFileWriter outputSam = new SAMFileWriterFactory().makeSAMOrBAMWriter(inputSam.getFileHeader(), true, outputSamOrBamFile);
 
 		SAMRecordIterator iter = inputSam.queryOverlapping("chr1", 866376, 866568);

@@ -21,6 +21,8 @@ import static org.testng.Assert.assertEquals;
 import org.testng.annotations.Test;
 
 import com.roche.mapping.SAMRecordUtil;
+import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
+import com.roche.sequencing.bioinformatics.common.alignment.SimpleAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.NucleotideCodeSequence;
 
 public class SAMRecordReadExtenderTest {
@@ -28,6 +30,7 @@ public class SAMRecordReadExtenderTest {
 	String[] readSequences = new String[] { "CTTCCTTGTTCCTCCACCTCATTCCAGGCCTAAGATCCCGTCCATCGCCACTGGGATGGTGGGGGCCCTCCTCTTGCTGCTGGTGGTGGCCCTGGGGATCG", "GGGGGGGGCTTCCTTGTTCCTCCACCTCA" };
 	Integer[] expectedStartIndexesInRead = new Integer[] { 18, null };
 	private final int uidLength = 14;
+	private final IAlignmentScorer alignmentScorer = new SimpleAlignmentScorer();
 
 	@Test(groups = { "unit" })
 	public void readExtenderTest() {
@@ -36,7 +39,7 @@ public class SAMRecordReadExtenderTest {
 			String readSequence = readSequences[i];
 			Integer expectedStartIndexInRead = expectedStartIndexesInRead[i];
 
-			Integer actualStartIndexInRead = ExtendReadsToPrimer.getPrimerEndIndexInRead(new NucleotideCodeSequence(probeSequence), new NucleotideCodeSequence(readSequence));
+			Integer actualStartIndexInRead = ExtendReadsToPrimer.getPrimerEndIndexInRead(new NucleotideCodeSequence(probeSequence), new NucleotideCodeSequence(readSequence), alignmentScorer);
 
 			assertEquals(actualStartIndexInRead, expectedStartIndexInRead);
 		}

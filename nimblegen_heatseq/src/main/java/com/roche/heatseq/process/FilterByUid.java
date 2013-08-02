@@ -35,6 +35,7 @@ import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
 import com.roche.heatseq.qualityreport.ProbeProcessingStats;
 import com.roche.mapping.SAMRecordUtil;
+import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.utils.StatisticsUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
@@ -63,8 +64,13 @@ public class FilterByUid {
 	 *            Used to report on UID quality
 	 * @return A UidReductionResultsForAProbe containing the processing statistics and the reduced probe set
 	 */
+<<<<<<< HEAD
 	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, PrintWriter probeUidQualityWriter, PrintWriter unableToAlignPrimerWriter,
 			PrintWriter primerAlignmentWriter, boolean allowVariableLengthUids) {
+=======
+	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, String chromosomeName, Map<String, SAMRecordPair> readNameToRecordsMap, PrintWriter probeUidQualityWriter,
+			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer) {
+>>>>>>> master
 		List<IReadPair> readPairs = new ArrayList<IReadPair>();
 
 		long probeProcessingStartInMs = System.currentTimeMillis();
@@ -79,7 +85,11 @@ public class FilterByUid {
 			if ((record != null) && (mate != null)) {
 				String uid = null;
 				if (allowVariableLengthUids) {
+<<<<<<< HEAD
 					uid = SAMRecordUtil.getVariableLengthUid(record, probe, primerAlignmentWriter);
+=======
+					uid = SAMRecordUtil.getUidAttribute(record, probe, alignmentScorer);
+>>>>>>> master
 				} else {
 					uid = SAMRecordUtil.getUidAttribute(record);
 				}

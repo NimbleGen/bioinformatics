@@ -53,13 +53,27 @@ public class BamFileUtil {
 		return sumOfQualityScores;
 	}
 
-	static File createIndexOnCoordinateSortedBamFile(SAMFileReader samReader, File outputIndexFile) {
+	static void createIndexOnCoordinateSortedBamFile(SAMFileReader samReader, File outputIndexFile) {
 		createIndex(samReader, outputIndexFile);
-		return outputIndexFile;
 	}
 
 	/**
-	 * Generates a BAM index file from an input BAM file
+	 * Generates a BAM index file from an input BAM file. Uses the same filename as the input file and appends a .bai to the end of the file
+	 * 
+	 * @param inputBamFile
+	 *            input BAM file
+	 * @param outputBamIndex
+	 *            File for output index file
+	 */
+	public static void createIndex(File inputBamFile) {
+		String outputBamIndexFileName = inputBamFile + ".bai";
+		File outputBamIndexFile = new File(outputBamIndexFileName);
+		final SAMFileReader reader = new SAMFileReader(IoUtil.openFileForReading(inputBamFile));
+		createIndex(reader, outputBamIndexFile);
+	}
+
+	/**
+	 * Generates a BAM index file from an input BAM file reader
 	 * 
 	 * @param reader
 	 *            SAMFileReader for input BAM file
@@ -88,7 +102,7 @@ public class BamFileUtil {
 	 * @return output
 	 */
 	public static File sortOnReadName(File input, File output) {
-		return picardSort(input, output, SortOrder.queryname);
+		return picardSortAndCompress(input, output, SortOrder.queryname);
 	}
 
 	/**
@@ -99,18 +113,18 @@ public class BamFileUtil {
 	 * @return output
 	 */
 	static File sortOnCoordinates(File input, File output) {
-		return picardSort(input, output, SortOrder.coordinate);
+		return picardSortAndCompress(input, output, SortOrder.coordinate);
 	}
 
 	/**
-	 * Use picard to sort the provided input file
+	 * Use picard to sort and compress the provided input file
 	 * 
 	 * @param input
 	 * @param output
 	 * @param sortOrder
 	 * @return
 	 */
-	private static File picardSort(File input, File output, SortOrder sortOrder) {
+	private static File picardSortAndCompress(File input, File output, SortOrder sortOrder) {
 		IoUtil.assertFileIsReadable(input);
 		IoUtil.assertFileIsWritable(output);
 
@@ -119,7 +133,7 @@ public class BamFileUtil {
 		SAMFileHeader header = reader.getFileHeader();
 		header.setSortOrder(sortOrder);
 
-		final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(header, false, output);
+		final SAMFileWriter writer = new SAMFileWriterFactory().makeBAMWriter(header, false, output, 9);
 
 		for (final SAMRecord record : reader) {
 			writer.addAlignment(record);

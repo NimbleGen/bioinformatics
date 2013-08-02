@@ -213,7 +213,8 @@ public class FastqAndBamFileMerger {
 			SAMFileHeader header = samReader.getFileHeader();
 			header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
 
-			SAMFileWriter samWriter = new SAMFileWriterFactory().makeSAMOrBAMWriter(samReader.getFileHeader(), false, outputBamFile);
+			// Make a sorted, bam file writer with the fastest level of compression
+			SAMFileWriter samWriter = new SAMFileWriterFactory().makeBAMWriter(samReader.getFileHeader(), false, outputBamFile, 0);
 
 			// Build the in-memory hash from the fastQ files.
 			int maximumHashSize = getMaximumHashSizeForMerge(unsortedBamFile, unsortedFastq1File);

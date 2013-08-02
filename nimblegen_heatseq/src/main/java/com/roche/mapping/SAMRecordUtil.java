@@ -21,14 +21,19 @@ import java.io.PrintWriter;
 import java.util.List;
 
 import net.sf.samtools.SAMFileHeader;
+import net.sf.samtools.SAMFileHeader.SortOrder;
 import net.sf.samtools.SAMFileWriter;
 import net.sf.samtools.SAMFileWriterFactory;
 import net.sf.samtools.SAMRecord;
 
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.SAMRecordPair;
+<<<<<<< HEAD
 import com.roche.sequencing.bioinformatics.common.alignment.CigarString;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarStringUtil;
+=======
+import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
+>>>>>>> master
 import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
@@ -94,7 +99,11 @@ public class SAMRecordUtil {
 	 * @param probe
 	 * @return the UID set for this SAMRecord, null if no such attribute exists.
 	 */
+<<<<<<< HEAD
 	public static String getVariableLengthUid(SAMRecord record, Probe probe, PrintWriter primerAlignmentWriter) {
+=======
+	public static String getUidAttribute(SAMRecord record, Probe probe, IAlignmentScorer alignmentScorer) {
+>>>>>>> master
 		String uid = (String) record.getAttribute(UID_SAMRECORD_ATTRIBUTE_TAG);
 		String completeReadWithUid = uid + record.getReadString();
 		ISequence extensionPrimerSequence = probe.getExtensionPrimerSequence();
@@ -108,7 +117,13 @@ public class SAMRecordUtil {
 	 */
 	public static String getVariableLengthUid(String completeReadWithUid, ISequence extensionPrimerSequence, PrintWriter primerAlignmentWriter, Probe probe) {
 		ISequence completeReadSequence = new IupacNucleotideCodeSequence(completeReadWithUid);
+<<<<<<< HEAD
 		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(completeReadSequence, extensionPrimerSequence);
+=======
+		ISequence primerSequence = probe.getExtensionPrimerSequence();
+		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(completeReadSequence, primerSequence, alignmentScorer);
+		// TODO kurt heilman add report to kick out poor alignments and shorter than expected uids
+>>>>>>> master
 		int uidEndIndex = alignment.getIndexOfFirstMatchInReference();
 		String variableLengthUid = null;
 		if (uidEndIndex >= 0) {
@@ -195,7 +210,9 @@ public class SAMRecordUtil {
 	}
 
 	static void createBamFile(SAMFileHeader header, File outputFile, List<SAMRecordPair> records) {
-		SAMFileWriter samWriter = new SAMFileWriterFactory().makeBAMWriter(header, false, outputFile);
+		// Make an output BAM file sorted by coordinates and as compressed as possible
+		header.setSortOrder(SortOrder.coordinate);
+		SAMFileWriter samWriter = new SAMFileWriterFactory().makeBAMWriter(header, false, outputFile, 9);
 		for (SAMRecordPair pair : records) {
 			samWriter.addAlignment(pair.getFirstOfPairRecord());
 			samWriter.addAlignment(pair.getSecondOfPairRecord());

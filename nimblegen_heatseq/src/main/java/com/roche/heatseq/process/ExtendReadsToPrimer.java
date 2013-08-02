@@ -33,7 +33,6 @@ import com.roche.mapping.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarString;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
-import com.roche.sequencing.bioinformatics.common.alignment.SimpleAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.ICode;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCode;
@@ -51,8 +50,6 @@ public final class ExtendReadsToPrimer {
 	private static final int PRIMER_ALIGNMENT_BUFFER = 10;
 	private static final int PRIMER_ACCEPTANCE_BUFFER = 2;
 
-	private static final IAlignmentScorer alignmentScorer = new SimpleAlignmentScorer(5, -3, -2, -5, false);
-
 	/**
 	 * We just use static methods from this class
 	 */
@@ -66,10 +63,10 @@ public final class ExtendReadsToPrimer {
 	 * @param readPair
 	 * @return UniqueProbeRepresentativeData with extended reads or null if it could not be extended
 	 */
-	private static IReadPair extendReadPair(Probe probe, IReadPair readPair) {
+	private static IReadPair extendReadPair(Probe probe, IReadPair readPair, IAlignmentScorer alignmentScorer) {
 		return extendReadPair(readPair.getUid(), probe, readPair.getSamHeader(), readPair.getContainerName(), readPair.getReadName(), readPair.getReadGroup(),
 				new IupacNucleotideCodeSequence(readPair.getSequenceOne()), readPair.getSequenceOneQualityString(), new IupacNucleotideCodeSequence(readPair.getSequenceTwo()),
-				readPair.getSequenceTwoQualityString(), readPair.getOneMappingQuality(), readPair.getTwoMappingQuality());
+				readPair.getSequenceTwoQualityString(), readPair.getOneMappingQuality(), readPair.getTwoMappingQuality(), alignmentScorer);
 	}
 
 	/**
@@ -89,7 +86,7 @@ public final class ExtendReadsToPrimer {
 	 * @return readPair that has been extended to the primers (the primers are not included in the new alignment)
 	 */
 	public static IReadPair extendReadPair(String uid, Probe probe, SAMFileHeader samHeader, String containerName, String readName, String readGroup, ISequence sequenceOne,
-			String sequenceOneQualityString, ISequence sequenceTwo, String sequenceTwoQualityString, int oneMappingQuality, int twoMappingQuality) {
+			String sequenceOneQualityString, ISequence sequenceTwo, String sequenceTwoQualityString, int oneMappingQuality, int twoMappingQuality, IAlignmentScorer alignmentScorer) {
 		IReadPair extendedReadPair = null;
 
 		try {
@@ -106,7 +103,7 @@ public final class ExtendReadsToPrimer {
 				primerReferencePositionAdjacentToSequence = probe.getExtensionPrimerStart();
 			}
 			ReadExtensionDetails readOneExtensionDetails = calculateDetailsForReadExtensionToPrimer(extensionPrimer, primerReferencePositionAdjacentToSequence, captureTargetSequence, sequenceOne,
-					false, readOneIsOnReverseStrand);
+					false, readOneIsOnReverseStrand, alignmentScorer);
 
 			if (readOneExtensionDetails != null) {
 				String readOneExtendedSequence = sequenceOne.subSequence(readOneExtensionDetails.getReadStart(), sequenceOne.size()).toString();
@@ -125,7 +122,7 @@ public final class ExtendReadsToPrimer {
 						containerName, oneMappingQuality, probe.getCaptureTargetSequence().size(), uid);
 
 				ReadExtensionDetails readTwoExtensionDetails = calculateDetailsForReadExtensionToPrimer(ligationPrimer, primerReferencePositionAdjacentToSequence, captureTargetSequence, sequenceTwo,
-						true, readTwoIsOnReverseStrand);
+						true, readTwoIsOnReverseStrand, alignmentScorer);
 
 				if (readTwoExtensionDetails != null) {
 					String readTwoExtendedBaseQualities = sequenceTwoQualityString.substring(readTwoExtensionDetails.getReadStart(), sequenceTwoQualityString.length()).toString();
@@ -154,7 +151,7 @@ public final class ExtendReadsToPrimer {
 	}
 
 	private static ReadExtensionDetails calculateDetailsForReadExtensionToPrimer(ISequence primerSequence, int primerReferencePositionAdjacentToSequence, ISequence captureSequence,
-			ISequence readSequence, boolean isLigationPrimer, boolean isReversed) {
+			ISequence readSequence, boolean isLigationPrimer, boolean isReversed, IAlignmentScorer alignmentScorer) {
 		ReadExtensionDetails readExtensionDetails = null;
 
 		if (isLigationPrimer) {
@@ -162,7 +159,7 @@ public final class ExtendReadsToPrimer {
 			captureSequence = captureSequence.getReverse();
 		}
 
-		Integer primerEndIndexInRead = getPrimerEndIndexInRead(primerSequence, readSequence);
+		Integer primerEndIndexInRead = getPrimerEndIndexInRead(primerSequence, readSequence, alignmentScorer);
 		boolean primerAlignedSuccesfully = (primerEndIndexInRead != null) && (primerEndIndexInRead >= 0) && (primerEndIndexInRead < readSequence.size());
 
 		if (primerAlignedSuccesfully) {
@@ -220,7 +217,7 @@ public final class ExtendReadsToPrimer {
 		return record;
 	}
 
-	static Integer getPrimerEndIndexInRead(ISequence primerSequence, ISequence readSequence) {
+	static Integer getPrimerEndIndexInRead(ISequence primerSequence, ISequence readSequence, IAlignmentScorer alignmentScorer) {
 		// cutoff excess sequence beyond primer
 		readSequence = readSequence.subSequence(0, Math.min(readSequence.size() - 1, primerSequence.size() + PRIMER_ALIGNMENT_BUFFER));
 		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(primerSequence, readSequence, alignmentScorer);
@@ -254,11 +251,11 @@ public final class ExtendReadsToPrimer {
 		return probeEndIndexInRead;
 	}
 
-	static List<IReadPair> extendReadsToPrimers(Probe probe, List<IReadPair> readPairs, PrintWriter extensionErrorsWriter) {
+	static List<IReadPair> extendReadsToPrimers(Probe probe, List<IReadPair> readPairs, PrintWriter extensionErrorsWriter, IAlignmentScorer alignmentScorer) {
 		List<IReadPair> extendedReadPairs = new ArrayList<IReadPair>();
 
 		for (IReadPair readPair : readPairs) {
-			IReadPair extendedReadPair = ExtendReadsToPrimer.extendReadPair(probe, readPair);
+			IReadPair extendedReadPair = ExtendReadsToPrimer.extendReadPair(probe, readPair, alignmentScorer);
 
 			if (extendedReadPair != null) {
 				extendedReadPairs.add(extendedReadPair);

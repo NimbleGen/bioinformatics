@@ -32,6 +32,7 @@ import com.roche.heatseq.objects.ProbesByContainerName;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
+import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.DelimitedFileParserUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
@@ -106,7 +107,7 @@ public final class ProbeFileUtil {
 
 		long probeParsingStopInMs = System.currentTimeMillis();
 
-		logger.debug("Done parsing probeInfo[" + probeInfoFile.getAbsolutePath() + "]  Total time:" + (probeParsingStopInMs - probeParsingStartInMs) + "ms");
+		logger.debug("Done parsing probeInfo[" + probeInfoFile.getAbsolutePath() + "]  Total time: " + DateUtil.convertMillisecondsToHHMMSS(probeParsingStopInMs - probeParsingStartInMs));
 
 		return probeInfo;
 
