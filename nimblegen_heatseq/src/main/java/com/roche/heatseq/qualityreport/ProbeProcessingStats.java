@@ -27,7 +27,6 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
  */
 public class ProbeProcessingStats {
 	private final Probe probe;
-	private final String containerName;
 	private final int totalUids;
 	private final double averageNumberOfReadPairsPerUid;
 	private final double standardDeviationOfReadPairsPerUid;
@@ -53,11 +52,10 @@ public class ProbeProcessingStats {
 	 * @param uidOfEntryWithMaxReadPairs
 	 * @param totalTimeToProcessInMs
 	 */
-	public ProbeProcessingStats(Probe probe, String containerName, int totalUids, double averageNumberOfReadPairsPerUid, double standardDeviationOfReadPairsPerUid, int totalDuplicateReadPairsRemoved,
+	public ProbeProcessingStats(Probe probe, int totalUids, double averageNumberOfReadPairsPerUid, double standardDeviationOfReadPairsPerUid, int totalDuplicateReadPairsRemoved,
 			int totalReadPairsRemainingAfterReduction, int minNumberOfReadPairsPerUid, int maxNumberOfReadPairsPerUid, String uidOfEntryWithMaxReadPairs, int totalTimeToProcessInMs) {
 		super();
 		this.probe = probe;
-		this.containerName = containerName;
 		this.totalUids = totalUids;
 		this.averageNumberOfReadPairsPerUid = averageNumberOfReadPairsPerUid;
 		this.standardDeviationOfReadPairsPerUid = standardDeviationOfReadPairsPerUid;
@@ -95,8 +93,8 @@ public class ProbeProcessingStats {
 
 	public String toReportString() {
 		StringBuilder stringBuilder = new StringBuilder();
-		stringBuilder.append((probe.getIndex() + 1) + StringUtil.TAB + containerName + StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB + probe.getCaptureTargetStop() + StringUtil.TAB
-				+ probe.getProbeStrand() + StringUtil.TAB);
+		stringBuilder.append((probe.getIndex() + 1) + StringUtil.TAB + probe.getContainerName() + StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB + probe.getCaptureTargetStop()
+				+ StringUtil.TAB + probe.getProbeStrand() + StringUtil.TAB);
 		stringBuilder.append(totalUids + StringUtil.TAB + averageNumberOfReadPairsPerUid + StringUtil.TAB + standardDeviationOfReadPairsPerUid + StringUtil.TAB + minNumberOfReadPairsPerUid
 				+ StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase() + StringUtil.TAB + totalDuplicateReadPairsRemoved + StringUtil.TAB
 				+ totalReadPairsRemainingAfterReduction + StringUtil.TAB + DateUtil.convertMillisecondsToHHMMSS(totalTimeToProcessInMs) + StringUtil.TAB);

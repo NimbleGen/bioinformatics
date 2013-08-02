@@ -25,10 +25,10 @@ public final class StringUtil {
 
 	public static final String TAB = "\t";
 	public static final String CARRIAGE_RETURN = "\r";
-	public static final String NEWLINE_SYMBOL = "\n";
+	public static final char NEWLINE_SYMBOL = '\n';
 	// NOTE: WINDOWS_NEWLINE = CARRIAGE_RETURN + LINE_FEED;
 	// NOTE: LINUX_NEWLINE = LINE_FEED;
-	public static final String LINUX_NEWLINE = NEWLINE_SYMBOL;
+	public static final String LINUX_NEWLINE = "" + NEWLINE_SYMBOL;
 	public static final String WINDOWS_NEWLINE = CARRIAGE_RETURN + LINUX_NEWLINE;
 
 	private StringUtil() {

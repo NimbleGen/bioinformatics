@@ -251,7 +251,7 @@ public final class ExtendReadsToPrimer {
 		return probeEndIndexInRead;
 	}
 
-	static List<IReadPair> extendReadsToPrimers(Probe probe, String chromosomeName, List<IReadPair> readPairs, PrintWriter extensionErrorsWriter, IAlignmentScorer alignmentScorer) {
+	static List<IReadPair> extendReadsToPrimers(Probe probe, List<IReadPair> readPairs, PrintWriter extensionErrorsWriter, IAlignmentScorer alignmentScorer) {
 		List<IReadPair> extendedReadPairs = new ArrayList<IReadPair>();
 
 		for (IReadPair readPair : readPairs) {
@@ -264,7 +264,7 @@ public final class ExtendReadsToPrimer {
 					synchronized (extensionErrorsWriter) {
 						extensionErrorsWriter.println();
 						extensionErrorsWriter.println("--------------------");
-						extensionErrorsWriter.println("PROBE " + probe.getIndex() + ": " + chromosomeName + ":" + probe.getCaptureTargetStart() + " to " + probe.getCaptureTargetStop());
+						extensionErrorsWriter.println("PROBE " + probe.getIndex() + ": " + probe.getContainerName() + ":" + probe.getCaptureTargetStart() + " to " + probe.getCaptureTargetStop());
 						extensionErrorsWriter.println();
 						extensionErrorsWriter.println("fastqOne Sequence: " + readPair.getSequenceOne());
 						extensionErrorsWriter.println(StringUtil.TAB + "mapping in reference start: " + readPair.getRecordAlignmentStart());
