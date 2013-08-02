@@ -41,6 +41,9 @@ public class CommandLineOption {
 		this.isFlag = isFlag;
 	}
 
+	/**
+	 * @return the option name
+	 */
 	public String getOptionName() {
 		return optionName;
 	}

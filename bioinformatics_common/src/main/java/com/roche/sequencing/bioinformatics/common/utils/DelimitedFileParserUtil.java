@@ -16,8 +16,13 @@
 
 package com.roche.sequencing.bioinformatics.common.utils;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,8 +36,6 @@ import java.util.Set;
  * 
  */
 public final class DelimitedFileParserUtil {
-	private static final int NUMBER_OF_ROWS_TO_LOOK_FOR_HEADER = 100;
-	private static final String LINE_FEED = StringUtil.LINUX_NEWLINE;
 	private static final String CARRIAGE_RETURN = StringUtil.CARRIAGE_RETURN;
 
 	// NOTE: WINDOWS_NEWLINE = CARRIAGE_RETURN + LINE_FEED;
@@ -50,108 +53,105 @@ public final class DelimitedFileParserUtil {
 	 * @throws IOException
 	 */
 	public static Map<String, List<String>> getHeaderNameToValuesMapFromDelimitedFile(File delimitedFile, String[] headerNames, String columnDelimiter) throws IOException {
-		String fileAsString = FileUtil.readFileAsString(delimitedFile);
-
-		String[] fileByLine = fileAsString.split(LINE_FEED);
-
-		return getHeaderNameToValuesMapFromDelimitedStrings(headerNames, columnDelimiter, fileByLine);
-	}
-
-	/**
-	 * parses all the values within an delimited file based on the provided header names.
-	 */
-	private static Map<String, List<String>> getHeaderNameToValuesMapFromDelimitedStrings(String[] headerNames, String columnDelimiter, String[] rowData) {
+		String fileName = delimitedFile.getAbsolutePath();
 		Map<String, List<String>> headerNameToValuesMap = new HashMap<String, List<String>>();
 
 		// walk down the rows until the header is found
 		boolean headerFound = false;
-		boolean keepLookingForHeader = true;
-		int currentRowIndex = 0;
-		int numberOfRows = rowData.length;
 
-		while (!headerFound && keepLookingForHeader) {
-			String currentRow = rowData[currentRowIndex];
-
-			// remove carriage return if this is a windows based file
-			if (currentRow.endsWith(CARRIAGE_RETURN)) {
-				currentRow = currentRow.substring(0, currentRow.length() - 1);
-			}
-
-			String[] parsedCurrentRow = null;
-
-			if (currentRow != null) {
-				parsedCurrentRow = currentRow.split(columnDelimiter);
-			}
-
-			if ((currentRow != null) && (parsedCurrentRow != null)) {
-				int columnCount = parsedCurrentRow.length;
-
-				Set<String> foundHeaderMatches = new HashSet<String>();
-
-				for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
-					String cellString = parsedCurrentRow[columnIndex];
-
-					if (cellString != null) {
-						headerNameLoop: for (String headerName : headerNames) {
-							boolean matchFound = cellString.toLowerCase().startsWith(headerName.toLowerCase());
-
-							if (matchFound) {
-								foundHeaderMatches.add(headerName);
-
-								break headerNameLoop;
-							}
-						}
-					}
-				}
-
-				headerFound = foundHeaderMatches.size() >= headerNames.length;
-			}
-
-			if (!headerFound) {
-				keepLookingForHeader = (currentRowIndex < numberOfRows) && (currentRowIndex < NUMBER_OF_ROWS_TO_LOOK_FOR_HEADER);
-				currentRowIndex++;
-			}
-		}
-
-		if (headerFound) {
-			String headerRow = rowData[currentRowIndex];
-			String[] parsedHeaderRow = headerRow.split(columnDelimiter);
-
-			Map<Integer, String> headerNameToColumnMap = getHeaderNameToColumnIndexMapping(headerNames, parsedHeaderRow);
-
-			while (++currentRowIndex < rowData.length) {
-				String currentRow = rowData[currentRowIndex];
-
+		InputStream fileInputStream = new FileInputStream(delimitedFile);
+		try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fileInputStream, Charset.forName("UTF-8")))) {
+			String currentRow = null;
+			while (!headerFound && ((currentRow = bufferedReader.readLine()) != null)) {
 				// remove carriage return if this is a windows based file
 				if (currentRow.endsWith(CARRIAGE_RETURN)) {
 					currentRow = currentRow.substring(0, currentRow.length() - 1);
 				}
 
-				String[] parsedCurrentRow = currentRow.split(columnDelimiter);
+				String[] parsedCurrentRow = null;
 
-				if (parsedCurrentRow != null) {
-					Map<String, String> headerNameToValueMapFromRow = parseRow(headerNameToColumnMap, parsedCurrentRow);
+				if (currentRow != null) {
+					parsedCurrentRow = currentRow.split(columnDelimiter);
+				}
 
-					for (String headerName : headerNames) {
-						String value = headerNameToValueMapFromRow.get(headerName);
+				if ((currentRow != null) && (parsedCurrentRow != null)) {
+					int columnCount = parsedCurrentRow.length;
 
-						if (value == null) {
-							value = "";
+					Set<String> foundHeaderMatches = new HashSet<String>();
+
+					for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+						String cellString = parsedCurrentRow[columnIndex];
+
+						if (cellString != null) {
+							headerNameLoop: for (String headerName : headerNames) {
+								boolean matchFound = cellString.toLowerCase().startsWith(headerName.toLowerCase());
+
+								if (matchFound) {
+									foundHeaderMatches.add(headerName);
+
+									break headerNameLoop;
+								}
+							}
+						}
+					}
+
+					headerFound = foundHeaderMatches.size() >= headerNames.length;
+				}
+			}
+
+			int linesOfData = 0;
+			if (headerFound) {
+				String headerRow = currentRow;
+				String[] parsedHeaderRow = headerRow.split(columnDelimiter);
+
+				Map<Integer, String> headerNameToColumnMap = getHeaderNameToColumnIndexMapping(headerNames, parsedHeaderRow);
+
+				while ((currentRow = bufferedReader.readLine()) != null) {
+					linesOfData++;
+					// remove carriage return if this is a windows based file
+					if (currentRow.endsWith(CARRIAGE_RETURN)) {
+						currentRow = currentRow.substring(0, currentRow.length() - 1);
+					}
+
+					String[] parsedCurrentRow = currentRow.split(columnDelimiter);
+
+					if (parsedCurrentRow != null) {
+						Map<String, String> headerNameToValueMapFromRow = parseRow(headerNameToColumnMap, parsedCurrentRow);
+
+						for (String headerName : headerNames) {
+							String value = headerNameToValueMapFromRow.get(headerName);
+
+							if (value == null) {
+								value = "";
+							}
+
+							List<String> values = headerNameToValuesMap.get(headerName);
+
+							if (values == null) {
+								values = new ArrayList<String>();
+							}
+
+							values.add(value);
+
+							headerNameToValuesMap.put(headerName, values);
 						}
 
-						List<String> values = headerNameToValuesMap.get(headerName);
-
-						if (values == null) {
-							values = new ArrayList<String>();
-						}
-
-						values.add(value);
-
-						headerNameToValuesMap.put(headerName, values);
 					}
 
 				}
+			}
 
+			// make sure all the header names were found
+			if (linesOfData > 0) {
+				StringBuilder headerNamesNotFound = new StringBuilder();
+				for (String headerName : headerNames) {
+					if (!headerNameToValuesMap.containsKey(headerName)) {
+						headerNamesNotFound.append(headerName + " ");
+					}
+				}
+				if (headerNamesNotFound.length() > 0) {
+					throw new IllegalStateException("Could not find the following header columns in file[" + fileName + "]: " + headerNamesNotFound.toString());
+				}
 			}
 		}
 

@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,8 @@ import java.util.concurrent.TimeUnit;
 
 import net.sf.picard.fastq.FastqReader;
 import net.sf.picard.fastq.FastqRecord;
+import net.sf.picard.fastq.FastqWriter;
+import net.sf.picard.fastq.FastqWriterFactory;
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMProgramRecord;
 import net.sf.samtools.SAMReadGroupRecord;
@@ -53,10 +56,13 @@ import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.process.BamFileUtil;
 import com.roche.heatseq.process.ExtendReadsToPrimer;
 import com.roche.heatseq.process.ProbeFileUtil;
+import com.roche.heatseq.qualityreport.DetailsReport;
+import com.roche.heatseq.qualityreport.ProbeProcessingStats;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
+import com.roche.sequencing.bioinformatics.common.utils.StatisticsUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 /**
@@ -75,11 +81,20 @@ public class MapperFiltererAndExtender {
 	private final File probeFile;
 	private final File outputFile;
 	private PrintWriter ambiguousMappingWriter;
+	private PrintWriter probeUidQualityWriter;
+	private PrintWriter unableToAlignPrimerWriter;
+	private PrintWriter primerAlignmentWriter;
+	private DetailsReport detailsReport;
+
+	private FastqWriter fastqOneUnableToMapWriter;
+	private FastqWriter fastqTwoUnableToMapWriter;
+
 	private boolean started;
 	private final int numProcessors;
 	private final int uidLength;
+	private final boolean allowVariableLengthUids;
 	private final List<SAMRecordPair> samRecordPairs;
-	private final Map<UidAndProbeReference, Set<QualityScoreAndFastQLineIndex>> uidAndProbeReferenceToFastQLineMapping;
+	private final Map<ProbeReference, Map<String, Set<QualityScoreAndFastQLineIndex>>> uidAndProbeReferenceToFastQLineMapping;
 
 	private Semaphore mapFilterAndExtendSemaphore;
 	private Semaphore mapReadSemaphore;
@@ -100,30 +115,81 @@ public class MapperFiltererAndExtender {
 	 * @param numProcessors
 	 * @param uidLength
 	 */
-	public MapperFiltererAndExtender(File fastQOneFile, File fastQTwoFile, File probeFile, File outputFile, File ambiguousMappingFile, int numProcessors, int uidLength, String programName,
-			String programVersion, String commandLineSignature, IAlignmentScorer alignmentScorer) {
+	public MapperFiltererAndExtender(File fastQOneFile, File fastQTwoFile, File probeFile, File outputFile, File ambiguousMappingFile, File probeUidQualityFile, File unableToAlignPrimerFile,
+			File fastqOneUnableToMapFile, File fastqTwoUnableToMapFile, File primerAlignmentFile, File detailsReportFile, int numProcessors, int uidLength, boolean allowVariableLengthUids,
+			String programName, String programVersion, String commandLineSignature, IAlignmentScorer alignmentScorer) {
+
 		super();
 		samRecordPairs = new ArrayList<SAMRecordPair>();
-		uidAndProbeReferenceToFastQLineMapping = new ConcurrentHashMap<UidAndProbeReference, Set<QualityScoreAndFastQLineIndex>>();
+		uidAndProbeReferenceToFastQLineMapping = new ConcurrentHashMap<ProbeReference, Map<String, Set<QualityScoreAndFastQLineIndex>>>();
 		this.fastQOneFile = fastQOneFile;
 		this.fastQTwoFile = fastQTwoFile;
 		this.probeFile = probeFile;
 		this.outputFile = outputFile;
+
 		this.alignmentScorer = alignmentScorer;
+
 		if (ambiguousMappingFile != null) {
 			try {
 				ambiguousMappingWriter = new PrintWriter(ambiguousMappingFile);
-				ambiguousMappingWriter.println("readName" + StringUtil.TAB + "extension_primer_start" + StringUtil.TAB + "extension_primer_stop" + StringUtil.TAB + "capture_target_start"
-						+ StringUtil.TAB + "capture_target_stop" + StringUtil.TAB + "ligation_primer_start" + StringUtil.TAB + "ligation_primer_stop" + StringUtil.TAB + "probe_strand");
+				ambiguousMappingWriter.println("readName" + StringUtil.TAB + "readString" + StringUtil.TAB + "container_name" + StringUtil.TAB + "extension_primer_start" + StringUtil.TAB
+						+ "extension_primer_stop" + StringUtil.TAB + "capture_target_start" + StringUtil.TAB + "capture_target_stop" + StringUtil.TAB + "ligation_primer_start" + StringUtil.TAB
+						+ "ligation_primer_stop" + StringUtil.TAB + "probe_strand");
 			} catch (FileNotFoundException e) {
 				throw new IllegalStateException(e);
 			}
 		}
+		if (probeUidQualityFile != null) {
+			try {
+				probeUidQualityWriter = new PrintWriter(probeUidQualityFile);
+				probeUidQualityWriter.println("probe_id" + StringUtil.TAB + "probe_container" + StringUtil.TAB + "probe_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
+						+ "strand" + StringUtil.TAB + "uid" + StringUtil.TAB + "read_one_quality" + StringUtil.TAB + "read_two_quality" + StringUtil.TAB + "total_quality" + StringUtil.TAB
+						+ "read_name" + StringUtil.TAB + "read_sequence");
+			} catch (FileNotFoundException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+		if (unableToAlignPrimerFile != null) {
+			try {
+				unableToAlignPrimerWriter = new PrintWriter(unableToAlignPrimerFile);
+				unableToAlignPrimerWriter.println("container_name" + StringUtil.TAB + "probe_start" + StringUtil.TAB + "protbe_stop" + StringUtil.TAB + "extension_primer_sequence" + StringUtil.TAB
+						+ "read_name" + StringUtil.TAB + "read_string");
+			} catch (FileNotFoundException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+
+		if (primerAlignmentFile != null) {
+			try {
+				primerAlignmentWriter = new PrintWriter(primerAlignmentFile);
+				primerAlignmentWriter.println("uid_length" + StringUtil.TAB + "substituions" + StringUtil.TAB + "insertions" + StringUtil.TAB + "deletions" + StringUtil.TAB + "edit_distance"
+						+ StringUtil.TAB + "read" + StringUtil.TAB + "extension_primer" + StringUtil.TAB + "probe_container" + StringUtil.TAB + "capture_target_start" + StringUtil.TAB
+						+ "capture_target_stop" + StringUtil.TAB + "probe_strand");
+			} catch (FileNotFoundException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+
+		if (detailsReportFile != null) {
+			try {
+				detailsReport = new DetailsReport(detailsReportFile);
+			} catch (IOException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+
+		final FastqWriterFactory factory = new FastqWriterFactory();
+		if (fastqOneUnableToMapFile != null && fastqTwoUnableToMapFile != null) {
+			fastqOneUnableToMapWriter = factory.newWriter(fastqOneUnableToMapFile);
+			fastqTwoUnableToMapWriter = factory.newWriter(fastqTwoUnableToMapFile);
+		}
+
 		started = false;
 		this.numProcessors = numProcessors;
 		mapFilterAndExtendSemaphore = new Semaphore(numProcessors);
 		mapReadSemaphore = new Semaphore(numProcessors);
 		this.uidLength = uidLength;
+		this.allowVariableLengthUids = allowVariableLengthUids;
 		this.programName = programName;
 		this.programVersion = programVersion;
 		this.commandLineSignature = commandLineSignature;
@@ -200,7 +266,8 @@ public class MapperFiltererAndExtender {
 							FastqRecord recordTwo = fastQTwoReader.next();
 
 							MapUidAndProbeTask mapUidAndProbeTask = new MapUidAndProbeTask(recordOne, recordTwo, probeMapper, fastqLineIndex, fastQ1PrimerLength, fastQ2PrimerLength, uidLength,
-									ambiguousMappingWriter);
+									allowVariableLengthUids, ambiguousMappingWriter, probeUidQualityWriter, unableToAlignPrimerWriter, fastqOneUnableToMapWriter, fastqTwoUnableToMapWriter,
+									primerAlignmentWriter, alignmentScorer);
 							try {
 								mapFilterAndExtendSemaphore.acquire();
 							} catch (InterruptedException e) {
@@ -220,19 +287,77 @@ public class MapperFiltererAndExtender {
 					throw new RuntimeException(e.getMessage(), e);
 				}
 				logger.debug("Done mapping fastq reads to probes.");
+				// TODO calculate and print out stats
+
 				Map<Integer, ProbeReference> nonFilteredFastQLineIndexes = new HashMap<Integer, ProbeReference>();
-				for (Entry<UidAndProbeReference, Set<QualityScoreAndFastQLineIndex>> entry : uidAndProbeReferenceToFastQLineMapping.entrySet()) {
-					int maxScore = 0;
-					int maxScoreFastQLineIndex = -1;
-					ProbeReference probeReference = entry.getKey().getProbeReference();
-					Set<QualityScoreAndFastQLineIndex> qualityScoreAndFastQLineIndexes = entry.getValue();
-					for (QualityScoreAndFastQLineIndex qualityScoreAndFastQIndex : qualityScoreAndFastQLineIndexes) {
-						if (qualityScoreAndFastQIndex.getQualityScore() >= maxScore) {
-							maxScore = qualityScoreAndFastQIndex.getQualityScore();
-							maxScoreFastQLineIndex = qualityScoreAndFastQIndex.getFastQLineIndex();
-						}
+
+				List<ProbeReference> sortedProbeReferences = new ArrayList<ProbeReference>(uidAndProbeReferenceToFastQLineMapping.keySet());
+				Collections.sort(sortedProbeReferences, new Comparator<ProbeReference>() {
+					@Override
+					public int compare(ProbeReference o1, ProbeReference o2) {
+						return o1.getProbe().getContainerName().compareTo(o2.getProbe().getContainerName());
 					}
-					nonFilteredFastQLineIndexes.put(maxScoreFastQLineIndex, probeReference);
+
+				});
+
+				// loop by probe
+				for (ProbeReference probeReference : sortedProbeReferences) {
+					Map<String, Set<QualityScoreAndFastQLineIndex>> uidToQualityScoreAndFastQLineIndexes = uidAndProbeReferenceToFastQLineMapping.get(probeReference);
+					long probeProcessingStartTime = System.currentTimeMillis();
+					int totalReadPairs = 0;
+					int totalReadPairsRemainingAfterReduction = 0;
+					int maxNumberOfReadPairsPerUid = 0;
+					int minNumberOfReadPairsPerUid = Integer.MAX_VALUE;
+					String uidOfEntryWithMaxNumberOfReadPairs = null;
+
+					List<Integer> numberOfReadsPairsPerUid = new ArrayList<Integer>();
+
+					// loop by uid
+					for (Entry<String, Set<QualityScoreAndFastQLineIndex>> uidToqualityScoreAndFastQLineIndexesEntry : uidToQualityScoreAndFastQLineIndexes.entrySet()) {
+						Set<QualityScoreAndFastQLineIndex> qualityScoreAndFastQLineIndexes = uidToqualityScoreAndFastQLineIndexesEntry.getValue();
+						String uid = uidToqualityScoreAndFastQLineIndexesEntry.getKey();
+
+						int numberOfReadPairs = qualityScoreAndFastQLineIndexes.size();
+						numberOfReadsPairsPerUid.add(numberOfReadPairs);
+						if (numberOfReadPairs > maxNumberOfReadPairsPerUid) {
+							maxNumberOfReadPairsPerUid = numberOfReadPairs;
+							uidOfEntryWithMaxNumberOfReadPairs = uid;
+						}
+						minNumberOfReadPairsPerUid = Math.min(minNumberOfReadPairsPerUid, numberOfReadPairs);
+
+						int maxScore = 0;
+						int maxScoreFastQLineIndex = -1;
+						for (QualityScoreAndFastQLineIndex qualityScoreAndFastQIndex : qualityScoreAndFastQLineIndexes) {
+							if (qualityScoreAndFastQIndex.getQualityScore() >= maxScore) {
+								maxScore = qualityScoreAndFastQIndex.getQualityScore();
+								maxScoreFastQLineIndex = qualityScoreAndFastQIndex.getFastQLineIndex();
+							}
+							totalReadPairs++;
+						}
+						totalReadPairsRemainingAfterReduction++;
+						nonFilteredFastQLineIndexes.put(maxScoreFastQLineIndex, probeReference);
+					}
+
+					int totalDuplicateReadPairsRemoved = totalReadPairs - totalReadPairsRemainingAfterReduction;
+
+					double[] numberOfReadsPairsPerUidArray = new double[numberOfReadsPairsPerUid.size()];
+					for (int i = 0; i < numberOfReadsPairsPerUid.size(); i++) {
+						numberOfReadsPairsPerUidArray[i] = (double) numberOfReadsPairsPerUid.get(i);
+					}
+
+					double averageNumberOfReadPairsPerUid = StatisticsUtil.arithmeticMean(numberOfReadsPairsPerUidArray);
+					double standardDeviationOfReadPairsPerUid = StatisticsUtil.standardDeviation(numberOfReadsPairsPerUidArray);
+
+					long probeProcessingStopTime = System.currentTimeMillis();
+					int totalTimeToProcessInMs = (int) (probeProcessingStopTime - probeProcessingStartTime);
+
+					if (detailsReport != null) {
+						int totalUids = uidToQualityScoreAndFastQLineIndexes.size();
+						ProbeProcessingStats probeProcessingStats = new ProbeProcessingStats(probeReference.getProbe(), totalUids, averageNumberOfReadPairsPerUid, standardDeviationOfReadPairsPerUid,
+								totalDuplicateReadPairsRemoved, totalReadPairsRemainingAfterReduction, minNumberOfReadPairsPerUid, maxNumberOfReadPairsPerUid, uidOfEntryWithMaxNumberOfReadPairs,
+								totalTimeToProcessInMs);
+						detailsReport.writeEntry(probeProcessingStats);
+					}
 				}
 
 				executor = Executors.newFixedThreadPool(numProcessors, new ThreadFactory() {
@@ -284,6 +409,22 @@ public class MapperFiltererAndExtender {
 			if (ambiguousMappingWriter != null) {
 				ambiguousMappingWriter.close();
 			}
+
+			if (probeUidQualityWriter != null) {
+				probeUidQualityWriter.close();
+			}
+			if (unableToAlignPrimerWriter != null) {
+				unableToAlignPrimerWriter.close();
+			}
+			if (primerAlignmentWriter != null) {
+				primerAlignmentWriter.close();
+			}
+			if (fastqOneUnableToMapWriter != null) {
+				fastqOneUnableToMapWriter.close();
+			}
+			if (fastqTwoUnableToMapWriter != null) {
+				fastqTwoUnableToMapWriter.close();
+			}
 			logger.debug("Total time: " + DateUtil.convertMillisecondsToHHMMSS(end - start));
 		}
 	}
@@ -302,10 +443,18 @@ public class MapperFiltererAndExtender {
 		private final int fastQOnePrimerLength;
 		private final int fastQTwoPrimerLength;
 		private final int uidLength;
+		private final boolean allowVariableLengthUids;
 		private final PrintWriter ambiguousMappingWriter;
+		private final PrintWriter probeUidQualityWriter;
+		private final PrintWriter unableToAlignPrimerWriter;
+		private final FastqWriter fastqOneUnableToMapWriter;
+		private final FastqWriter fastqTwoUnableToMapWriter;
+		private final PrintWriter primerAlignmentWriter;
+		private final IAlignmentScorer alignmentScorer;
 
 		public MapUidAndProbeTask(FastqRecord recordOne, FastqRecord recordTwo, SubReadProbeMapper probeMapper, int fastqLineIndex, int fastQOnePrimerLength, int fastQTwoPrimerLength, int uidLength,
-				PrintWriter ambiguousMappingWriter) {
+				boolean allowVariableLengthUids, PrintWriter ambiguousMappingWriter, PrintWriter probeUidQualityWriter, PrintWriter unableToAlignPrimerWriter, FastqWriter fastqOneUnableToMapWriter,
+				FastqWriter fastqTwoUnableToMapWriter, PrintWriter primerAlignmentWriter, IAlignmentScorer alignmentScorer) {
 			super();
 			this.recordOne = recordOne;
 			this.recordTwo = recordTwo;
@@ -314,7 +463,14 @@ public class MapperFiltererAndExtender {
 			this.fastQOnePrimerLength = fastQOnePrimerLength;
 			this.fastQTwoPrimerLength = fastQTwoPrimerLength;
 			this.uidLength = uidLength;
+			this.allowVariableLengthUids = allowVariableLengthUids;
 			this.ambiguousMappingWriter = ambiguousMappingWriter;
+			this.probeUidQualityWriter = probeUidQualityWriter;
+			this.unableToAlignPrimerWriter = unableToAlignPrimerWriter;
+			this.primerAlignmentWriter = primerAlignmentWriter;
+			this.fastqOneUnableToMapWriter = fastqOneUnableToMapWriter;
+			this.fastqTwoUnableToMapWriter = fastqTwoUnableToMapWriter;
+			this.alignmentScorer = alignmentScorer;
 		}
 
 		@Override
@@ -358,20 +514,80 @@ public class MapperFiltererAndExtender {
 					}
 
 					if (matchingProbes.size() == 1) {
-						int qualityScore = BamFileUtil.getQualityScore(recordOneQualityString) + BamFileUtil.getQualityScore(recordTwoQualityString);
-						UidAndProbeReference uidAndProbeKey = new UidAndProbeReference(uid, matchingProbes.get(0));
-						Set<QualityScoreAndFastQLineIndex> set = uidAndProbeReferenceToFastQLineMapping.get(uidAndProbeKey);
-						if (set == null) {
-							set = Collections.newSetFromMap(new ConcurrentHashMap<QualityScoreAndFastQLineIndex, Boolean>());
+						int sequenceOneQualityScore = BamFileUtil.getQualityScore(recordOneQualityString);
+						int sequenceTwoQualityScore = BamFileUtil.getQualityScore(recordTwoQualityString);
+						int qualityScore = sequenceOneQualityScore + sequenceTwoQualityScore;
+
+						ProbeReference matchingProbeReference = matchingProbes.get(0);
+						Probe matchingProbe = matchingProbeReference.getProbe();
+
+						if (allowVariableLengthUids) {
+							// now that we have a probe we can verify that the uid length is correct
+							ISequence extensionPrimerSequence = matchingProbe.getExtensionPrimerSequence();
+							String completeReadWithUid = recordOne.getReadString();
+							uid = SAMRecordUtil.getVariableLengthUid(completeReadWithUid, extensionPrimerSequence, primerAlignmentWriter, matchingProbe, alignmentScorer);
+
+							// the discovered uid length is not equivalent to the provided length so reset the sequence and quality string
+							if (uid.length() != uidLength) {
+								queryOneSequence = new IupacNucleotideCodeSequence(SAMRecordUtil.removeUidFromRead(recordOne.getReadString(), uid.length()));
+								queryOneSequence = queryOneSequence.subSequence(fastQOnePrimerLength, queryOneSequence.size() - 1);
+								recordOneQualityString = SAMRecordUtil.removeUidFromRead(recordOne.getBaseQualityString(), uid.length());
+								recordOneQualityString = recordOneQualityString.substring(fastQOnePrimerLength, recordOneQualityString.length());
+							}
 						}
-						set.add(new QualityScoreAndFastQLineIndex(qualityScore, fastqLineIndex));
-						uidAndProbeReferenceToFastQLineMapping.put(uidAndProbeKey, set);
+
+						if (uid != null) {
+							Map<String, Set<QualityScoreAndFastQLineIndex>> uidToFastQLineMapping = uidAndProbeReferenceToFastQLineMapping.get(matchingProbeReference);
+							if (uidToFastQLineMapping == null) {
+								uidToFastQLineMapping = new ConcurrentHashMap<String, Set<QualityScoreAndFastQLineIndex>>();
+							}
+							Set<QualityScoreAndFastQLineIndex> set = uidToFastQLineMapping.get(uid);
+							if (set == null) {
+								set = Collections.newSetFromMap(new ConcurrentHashMap<QualityScoreAndFastQLineIndex, Boolean>());
+							}
+							set.add(new QualityScoreAndFastQLineIndex(qualityScore, fastqLineIndex));
+							uidToFastQLineMapping.put(uid, set);
+							uidAndProbeReferenceToFastQLineMapping.put(matchingProbeReference, uidToFastQLineMapping);
+
+							if (probeUidQualityWriter != null) {
+
+								int probeIndex = matchingProbe.getIndex();
+								String probeCaptureStart = "" + matchingProbe.getCaptureTargetStart();
+								String probeCaptureStop = "" + matchingProbe.getCaptureTargetStop();
+								String probeStrand = matchingProbe.getProbeStrand().toString();
+								String readSequence = queryOneSequence.toString();
+
+								String readName = recordOne.getReadHeader();
+
+								probeUidQualityWriter.println(probeIndex + StringUtil.TAB + matchingProbe.getContainerName() + StringUtil.TAB + probeCaptureStart + StringUtil.TAB + probeCaptureStop
+										+ StringUtil.TAB + probeStrand + StringUtil.TAB + uid.toUpperCase() + StringUtil.TAB + sequenceOneQualityScore + StringUtil.TAB + sequenceTwoQualityScore
+										+ StringUtil.TAB + qualityScore + StringUtil.TAB + readName + StringUtil.TAB + readSequence);
+							}
+
+						} else {
+							if (unableToAlignPrimerWriter != null) {
+								unableToAlignPrimerWriter.println(matchingProbe.getContainerName() + StringUtil.TAB + matchingProbe.getStart() + StringUtil.TAB + matchingProbe.getStop()
+										+ matchingProbe.getExtensionPrimerSequence() + StringUtil.TAB + recordOne.getReadHeader() + StringUtil.TAB + recordOne.getReadString());
+							}
+						}
 					} else if ((matchingProbes.size() > 1) && (ambiguousMappingWriter != null)) {
 						for (ProbeReference matchingProbe : matchingProbes) {
 							Probe probe = matchingProbe.getProbe();
-							ambiguousMappingWriter.println(recordOne.getReadString() + StringUtil.TAB + probe.getExtensionPrimerStart() + StringUtil.TAB + probe.getExtensionPrimerStop()
-									+ StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB + probe.getCaptureTargetStop() + StringUtil.TAB + probe.getLigationPrimerStart() + StringUtil.TAB
-									+ probe.getLigationPrimerStop() + StringUtil.TAB + probe.getProbeStrand());
+							ambiguousMappingWriter.println(recordOne.getReadHeader() + StringUtil.TAB + recordOne.getReadString() + StringUtil.TAB + probe.getContainerName() + StringUtil.TAB
+									+ probe.getExtensionPrimerStart() + StringUtil.TAB + probe.getExtensionPrimerStop() + StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB
+									+ probe.getCaptureTargetStop() + StringUtil.TAB + probe.getLigationPrimerStart() + StringUtil.TAB + probe.getLigationPrimerStop() + StringUtil.TAB
+									+ probe.getProbeStrand());
+						}
+					} else if (matchingProbes.size() == 0) {
+						if (fastqOneUnableToMapWriter != null) {
+							synchronized (fastqOneUnableToMapWriter) {
+								fastqOneUnableToMapWriter.write(recordOne);
+							}
+						}
+						if (fastqTwoUnableToMapWriter != null) {
+							synchronized (fastqTwoUnableToMapWriter) {
+								fastqTwoUnableToMapWriter.write(recordTwo);
+							}
 						}
 					}
 

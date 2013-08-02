@@ -64,8 +64,8 @@ public class PrefuppCli {
 			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.", false, false);
 	private final static CommandLineOption UID_LENGTH_OPTION = new CommandLineOption("Length of UID in Bases", "uidLength", null,
 			"Length of the Universal Identifier.  If not specified this will default to " + DEFAULT_UID_LENGTH + " bases.", false, false);
-	private final static CommandLineOption ALLOW_VARIABLE_LENGTH_UIDS_OPTION = new CommandLineOption("Allow Variable Length Uids", "allow_variable_length_uids", null,
-			"Allow Variable Length Uids (cannot be defined when uidLength is given)", false, true);
+	private final static CommandLineOption ALLOW_VARIABLE_LENGTH_UIDS_OPTION = new CommandLineOption("Allow Variable Length Uids", "allow_variable_length_uids", null, "Allow Variable Length Uids",
+			false, true);
 	private final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o', "Name for output bam file.", true, false);
 	private final static CommandLineOption MATCH_SCORE_OPTION = new CommandLineOption("Match Score", "matchScore", null,
 			"The score given to matching nucleotides when extending alignments to the primers (Default: 1)", false, false);
@@ -171,10 +171,6 @@ public class PrefuppCli {
 			}
 
 			boolean allowVariableLengthUids = parsedCommandLine.isOptionPresent(ALLOW_VARIABLE_LENGTH_UIDS_OPTION);
-			if (uidLengthOptionIsPresent && allowVariableLengthUids) {
-				throw new IllegalStateException("You must either specify a UID length using the option --" + UID_LENGTH_OPTION.getLongFormOption()
-						+ " OR indicate that variable length uids are allowed via the option --" + ALLOW_VARIABLE_LENGTH_UIDS_OPTION.getLongFormOption() + ".  Providing both options is not allowed.");
-			}
 
 			String outputBamFileName = parsedCommandLine.getOptionsValue(OUTPUT_BAM_FILE_NAME_OPTION);
 			if (!outputBamFileName.endsWith(BAM_EXTENSION)) {
@@ -316,8 +312,76 @@ public class PrefuppCli {
 					}
 				}
 
-				MapperFiltererAndExtender mapFilterAndExtend = new MapperFiltererAndExtender(fastQ1WithUidsFile, fastQ2File, probeFile, outputBamFile, ambiguousMappingFile, numProcessors, uidLength,
+				File probeUidQualityFile = null;
+				if (shouldOutputQualityReports) {
+					probeUidQualityFile = new File(outputDirectory + PrimerReadExtensionAndFilteringOfUniquePcrProbes.REPORT_DIRECTORY,
+							PrimerReadExtensionAndFilteringOfUniquePcrProbes.PROBE_UID_QUALITY_REPORT_NAME);
+					try {
+						FileUtil.createNewFile(probeUidQualityFile);
+					} catch (IOException e) {
+						throw new IllegalStateException(e);
+					}
+				}
+
+				File unableToAlignPrimerFile = null;
+				if (shouldOutputQualityReports) {
+					unableToAlignPrimerFile = new File(outputDirectory + PrimerReadExtensionAndFilteringOfUniquePcrProbes.REPORT_DIRECTORY,
+							PrimerReadExtensionAndFilteringOfUniquePcrProbes.UNABLE_TO_ALIGN_PRIMER_REPORT_NAME);
+					try {
+						FileUtil.createNewFile(unableToAlignPrimerFile);
+					} catch (IOException e) {
+						throw new IllegalStateException(e);
+					}
+				}
+
+				File unableToMapFastqOneFile = null;
+				if (shouldOutputQualityReports) {
+					unableToMapFastqOneFile = new File(outputDirectory + PrimerReadExtensionAndFilteringOfUniquePcrProbes.REPORT_DIRECTORY,
+							PrimerReadExtensionAndFilteringOfUniquePcrProbes.UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME);
+					try {
+						FileUtil.createNewFile(unableToMapFastqOneFile);
+					} catch (IOException e) {
+						throw new IllegalStateException(e);
+					}
+				}
+
+				File unableToMapFastqTwoFile = null;
+				if (shouldOutputQualityReports) {
+					unableToMapFastqTwoFile = new File(outputDirectory + PrimerReadExtensionAndFilteringOfUniquePcrProbes.REPORT_DIRECTORY,
+							PrimerReadExtensionAndFilteringOfUniquePcrProbes.UNABLE_TO_MAP_FASTQ_TWO_REPORT_NAME);
+					try {
+						FileUtil.createNewFile(unableToMapFastqOneFile);
+					} catch (IOException e) {
+						throw new IllegalStateException(e);
+					}
+				}
+
+				File primerAlignmentFile = null;
+				if (shouldOutputQualityReports) {
+					primerAlignmentFile = new File(outputDirectory + PrimerReadExtensionAndFilteringOfUniquePcrProbes.REPORT_DIRECTORY,
+							PrimerReadExtensionAndFilteringOfUniquePcrProbes.PRIMER_ALIGNMENT_REPORT_NAME);
+					try {
+						FileUtil.createNewFile(primerAlignmentFile);
+					} catch (IOException e) {
+						throw new IllegalStateException(e);
+					}
+				}
+
+				File detailsReportFile = null;
+				if (shouldOutputQualityReports) {
+					detailsReportFile = new File(outputDirectory + PrimerReadExtensionAndFilteringOfUniquePcrProbes.REPORT_DIRECTORY,
+							PrimerReadExtensionAndFilteringOfUniquePcrProbes.DETAILS_REPORT_NAME);
+					try {
+						FileUtil.createNewFile(detailsReportFile);
+					} catch (IOException e) {
+						throw new IllegalStateException(e);
+					}
+				}
+
+				MapperFiltererAndExtender mapFilterAndExtend = new MapperFiltererAndExtender(fastQ1WithUidsFile, fastQ2File, probeFile, outputBamFile, ambiguousMappingFile, probeUidQualityFile,
+						unableToAlignPrimerFile, unableToMapFastqOneFile, unableToMapFastqTwoFile, primerAlignmentFile, detailsReportFile, numProcessors, uidLength, allowVariableLengthUids,
 						APPLICATION_NAME, APPLICATION_VERSION, commandLineSignature, alignmentScorer);
+
 				mapFilterAndExtend.mapFilterAndExtend();
 			}
 			long end = System.currentTimeMillis();

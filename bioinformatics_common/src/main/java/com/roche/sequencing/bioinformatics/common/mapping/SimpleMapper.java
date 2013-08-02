@@ -19,6 +19,7 @@ package com.roche.sequencing.bioinformatics.common.mapping;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -91,6 +92,26 @@ public class SimpleMapper<O> {
 		} else {
 			throw new IllegalStateException("comparison sequence size[" + comparisonSequenceSize + "] must be less than the size of all sequences -- the current sequence size is "
 					+ referenceSequence.size() + ".");
+		}
+	}
+
+	/**
+	 * Add a reference sequence with its associated unique identifier/key/sequence address
+	 * 
+	 * @param referenceSequence
+	 * @param sequenceAddress
+	 */
+	public void removeReferenceSequenceByAddress(O sequenceAddress) {
+		for (Entry<ISequence, Set<O>> entry : sequenceSliceToReferenceAddressMap.entrySet()) {
+			Set<O> set = entry.getValue();
+			if (set.contains(sequenceAddress)) {
+				if (set.size() == 1) {
+					sequenceSliceToReferenceAddressMap.remove(entry.getKey());
+				} else {
+					set.remove(sequenceAddress);
+					sequenceSliceToReferenceAddressMap.put(entry.getKey(), set);
+				}
+			}
 		}
 	}
 
