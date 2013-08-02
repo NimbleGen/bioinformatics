@@ -88,8 +88,8 @@ public class CigarStringUtilTest {
 
 	@Test(groups = { "integration" })
 	public void editDistanceTest() {
-		ISequence sequenceOne = new IupacNucleotideCodeSequence("CATT");
-		ISequence sequenceTwo = new IupacNucleotideCodeSequence("CACT");
+		ISequence sequenceOne = new IupacNucleotideCodeSequence("CATTCCG");
+		ISequence sequenceTwo = new IupacNucleotideCodeSequence("CACTCCG");
 		NeedlemanWunschGlobalAlignment globalAlignment = new NeedlemanWunschGlobalAlignment(sequenceOne, sequenceTwo);
 		AlignmentPair alignmentPair = globalAlignment.getAlignmentPair();
 		CigarString cigarString = CigarStringUtil.getCigarString(alignmentPair);
