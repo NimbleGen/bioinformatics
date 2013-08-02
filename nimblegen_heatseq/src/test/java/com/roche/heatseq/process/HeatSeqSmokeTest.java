@@ -72,7 +72,7 @@ public class HeatSeqSmokeTest {
 		URL probeFilePath = getClass().getResource("probes.txt");
 
 		String[] args = new String[] { "--r1", fastQOneFilePath.getPath(), "--r2", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--outputDir", outputDirectoryPath,
-				"--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
+				"--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports", "--outputPrefix", "prefix" };
 
 		PrefuppCli.runCommandLineApp(args);
 		File outputBam = new File(outputDirectoryPath, outputBamFileName);
@@ -98,7 +98,7 @@ public class HeatSeqSmokeTest {
 		URL bamFilePath = getClass().getResource("mapping.bam");
 
 		String[] args = new String[] { "--r1", fastQOneFilePath.getPath(), "--r2", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--inputBam", bamFilePath.getPath(), "--outputDir",
-				outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports" };
+				outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports", "--outputPrefix", "prefix" };
 		PrefuppCli.runCommandLineApp(args);
 
 		File outputBam = new File(outputDirectoryPath, outputBamFileName);
@@ -125,7 +125,7 @@ public class HeatSeqSmokeTest {
 		// URL bamIndexFilePath = getClass().getResource("mapping.bam.bai");
 
 		String[] args = new String[] { "--r1", fastQOneFilePath.getPath(), "--r2", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--inputBam", bamFilePath.getPath(), "--outputDir",
-				outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "7", "--outputReports" };
+				outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "7", "--outputReports", "--outputPrefix", "prefix" };
 		PrefuppCli.runCommandLineApp(args);
 
 		File outputBam = new File(outputDirectoryPath, outputBamFileName);
@@ -152,7 +152,7 @@ public class HeatSeqSmokeTest {
 		// URL bamIndexFilePath = getClass().getResource("mapping.bam.bai");
 
 		String[] args = new String[] { "--r1", fastQOneFilePath.getPath(), "--r2", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--inputBam", bamFilePath.getPath(), "--outputDir",
-				outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "7", "--outputReports" };
+				outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "7", "--outputReports", "--outputPrefix", "prefix" };
 		PrefuppCli.runCommandLineApp(args);
 
 		File outputBam = new File(outputDirectoryPath, outputBamFileName);

@@ -95,7 +95,7 @@ public class StressTest {
 	@Test(groups = { "stress" })
 	public void largeMapRunTest() {
 		String[] args = new String[] { "--r1", fastqOneFile.getAbsolutePath(), "--r2", fastqTwoFile.getAbsolutePath(), "--probe", probesFile.getAbsolutePath(), "--outputDir", outputDirectoryPath,
-				"--outputBamFileName", mappingOutputBamFileName, "--uidLength", "" + UID_LENGTH, "--outputReports" };
+				"--outputBamFileName", mappingOutputBamFileName, "--uidLength", "" + UID_LENGTH, "--outputReports", "--outputPrefix", "prefix" };
 
 		PrefuppCli.runCommandLineApp(args);
 		File outputBam = new File(outputDirectoryPath, mappingOutputBamFileName);
@@ -129,7 +129,7 @@ public class StressTest {
 
 		String[] args = new String[] { "--r1", fastqOneFile.getAbsolutePath(), "--r2", fastqTwoFile.getAbsolutePath(), "--probe", probesFile.getAbsolutePath(), "--inputBam",
 				new File(outputDirectoryPath, mappingOutputBamFileName).getAbsolutePath(), "--outputDir", outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength",
-				"" + UID_LENGTH, "--outputReports" };
+				"" + UID_LENGTH, "--outputReports", "--outputPrefix", "prefix" };
 		PrefuppCli.runCommandLineApp(args);
 
 		File outputBam = new File(outputDirectoryPath, outputBamFileName);
