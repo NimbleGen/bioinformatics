@@ -10,7 +10,6 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class TabDelimitedFileWriter implements AutoCloseable {
 
-	// !!! Maybe just want this for doubles? Check on this
 	private static final DecimalFormat decimalFormat = new DecimalFormat("##.##");
 	private PrintWriter printWriter = null;
 	private int columnCount = -1;
