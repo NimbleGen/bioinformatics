@@ -172,6 +172,9 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		if (unableToAlignPrimerWriter != null) {
 			unableToAlignPrimerWriter.close();
 		}
+		if (primerAlignmentWriter != null) {
+			primerAlignmentWriter.close();
+		}
 
 		long stop = System.currentTimeMillis();
 
