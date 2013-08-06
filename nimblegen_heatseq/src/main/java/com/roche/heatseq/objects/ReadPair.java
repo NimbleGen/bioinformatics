@@ -127,7 +127,7 @@ public class ReadPair implements IReadPair {
 	}
 
 	@Override
-	public String getContainerName() {
+	public String getSequenceName() {
 		return record.getReferenceName();
 	}
 

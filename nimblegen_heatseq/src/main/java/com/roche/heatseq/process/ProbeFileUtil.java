@@ -28,7 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.objects.ProbesByContainerName;
+import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
@@ -54,10 +54,10 @@ public final class ProbeFileUtil {
 	 * @return an object representing all of the information found in a probeInfoFile
 	 * @throws IOException
 	 */
-	public static ProbesByContainerName parseProbeInfoFile(File probeInfoFile) throws IOException {
+	public static ProbesBySequenceName parseProbeInfoFile(File probeInfoFile) throws IOException {
 		long probeParsingStartInMs = System.currentTimeMillis();
 		Map<String, List<String>> headerNameToValues = DelimitedFileParserUtil.getHeaderNameToValuesMapFromDelimitedFile(probeInfoFile, PROBE_INFO_HEADER_NAMES, StringUtil.TAB);
-		ProbesByContainerName probeInfo = new ProbesByContainerName();
+		ProbesBySequenceName probeInfo = new ProbesBySequenceName();
 
 		int numberOfEntries = 0;
 		Iterator<List<String>> iter = headerNameToValues.values().iterator();
@@ -69,7 +69,7 @@ public final class ProbeFileUtil {
 		for (int i = 0; i < numberOfEntries; i++) {
 			int headerIndex = 0;
 
-			String containerName = headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i);
+			String sequenceName = headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i);
 			int extensionPrimerStart = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 			int extensionPrimerStop = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 
@@ -98,10 +98,10 @@ public final class ProbeFileUtil {
 
 			String probeStrandAsString = headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i);
 			Strand probeStrand = Strand.fromString(probeStrandAsString);
-			Probe probe = new Probe(i, containerName, extensionPrimerStart, extensionPrimerStop, extensionPrimerSequence, ligationPrimerStart, ligationPrimerStop, ligationPrimerSequence,
+			Probe probe = new Probe(i, sequenceName, extensionPrimerStart, extensionPrimerStop, extensionPrimerSequence, ligationPrimerStart, ligationPrimerStop, ligationPrimerSequence,
 					captureTargetStart, captureTargetStop, captureTargetSequence, featureStart, featureStop, probeStrand);
 
-			probeInfo.addProbe(containerName, probe);
+			probeInfo.addProbe(sequenceName, probe);
 
 		}
 
@@ -157,7 +157,7 @@ public final class ProbeFileUtil {
 		for (Probe probe : probes) {
 			StringBuilder lineBuilder = new StringBuilder();
 
-			lineBuilder.append(probe.getContainerName() + StringUtil.TAB);
+			lineBuilder.append(probe.getSequenceName() + StringUtil.TAB);
 			lineBuilder.append(probe.getExtensionPrimerStart() + StringUtil.TAB);
 			lineBuilder.append(probe.getExtensionPrimerStop() + StringUtil.TAB);
 			lineBuilder.append(probe.getExtensionPrimerSequence() + StringUtil.TAB);
