@@ -45,15 +45,15 @@ public class Probe {
 	private final int featureStop;
 	private final Strand probeStrand;
 
-	private final String containerName;
+	private final String sequenceName;
 
 	private Integer hashCode;
 
-	public Probe(int probeIndex, String containerName, int extensionPrimerStart, int extensionPrimerStop, ISequence extensionPrimerSequence, int ligationPrimerStart, int ligationPrimerStop,
+	public Probe(int probeIndex, String sequenceName, int extensionPrimerStart, int extensionPrimerStop, ISequence extensionPrimerSequence, int ligationPrimerStart, int ligationPrimerStop,
 			ISequence ligationPrimerSequence, int captureTargetStart, int captureTargetStop, ISequence captureTargetSequence, int featureStart, int featureStop, Strand probeStrand) {
 		super();
 		this.probeIndex = probeIndex;
-		this.containerName = containerName;
+		this.sequenceName = sequenceName;
 		this.extensionPrimerStart = extensionPrimerStart;
 		this.extensionPrimerStop = extensionPrimerStop;
 		this.extensionPrimerSequence = extensionPrimerSequence;
@@ -218,8 +218,8 @@ public class Probe {
 		return stop;
 	}
 
-	public String getContainerName() {
-		return containerName;
+	public String getSequenceName() {
+		return sequenceName;
 	}
 
 	@Override
@@ -230,7 +230,7 @@ public class Probe {
 			result = prime * result + ((captureTargetSequence == null) ? 0 : captureTargetSequence.hashCode());
 			result = prime * result + captureTargetStart;
 			result = prime * result + captureTargetStop;
-			result = prime * result + ((containerName == null) ? 0 : containerName.hashCode());
+			result = prime * result + ((sequenceName == null) ? 0 : sequenceName.hashCode());
 			result = prime * result + ((extensionPrimerSequence == null) ? 0 : extensionPrimerSequence.hashCode());
 			result = prime * result + extensionPrimerStart;
 			result = prime * result + extensionPrimerStop;
@@ -263,10 +263,10 @@ public class Probe {
 			return false;
 		if (captureTargetStop != other.captureTargetStop)
 			return false;
-		if (containerName == null) {
-			if (other.containerName != null)
+		if (sequenceName == null) {
+			if (other.sequenceName != null)
 				return false;
-		} else if (!containerName.equals(other.containerName))
+		} else if (!sequenceName.equals(other.sequenceName))
 			return false;
 		if (extensionPrimerSequence == null) {
 			if (other.extensionPrimerSequence != null)
@@ -300,7 +300,7 @@ public class Probe {
 		return "Probe [extensionPrimerStart=" + extensionPrimerStart + ", extensionPrimerStop=" + extensionPrimerStop + ", extensionPrimerSequence=" + extensionPrimerSequence
 				+ ", ligationPrimerStart=" + ligationPrimerStart + ", ligationPrimerStop=" + ligationPrimerStop + ", ligationPrimerSequence=" + ligationPrimerSequence + ", captureTargetStart="
 				+ captureTargetStart + ", captureTargetStop=" + captureTargetStop + ", captureTargetSequence=" + captureTargetSequence + ", featureStart=" + featureStart + ", featureStop="
-				+ featureStop + ", probeStrand=" + probeStrand + ", containerName=" + containerName + "]";
+				+ featureStop + ", probeStrand=" + probeStrand + ", sequenceName=" + sequenceName + "]";
 	}
 
 }

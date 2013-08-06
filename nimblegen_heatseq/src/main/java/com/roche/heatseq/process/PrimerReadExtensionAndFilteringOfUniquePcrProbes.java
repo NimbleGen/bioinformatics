@@ -49,7 +49,7 @@ import com.roche.heatseq.objects.ApplicationSettings;
 import com.roche.heatseq.objects.IReadPair;
 import com.roche.heatseq.objects.IlluminaFastQHeader;
 import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.objects.ProbesByContainerName;
+import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
 import com.roche.heatseq.qualityreport.DetailsReport;
@@ -57,7 +57,6 @@ import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
-import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 /*
  * Class to get reads for each probe from a merged BAM file, determine which read to use for each UID, extend the reads to the target primers, and output the reduced and extended reads to a new BAM file
@@ -74,7 +73,6 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 	private static Logger logger = LoggerFactory.getLogger(PrimerReadExtensionAndFilteringOfUniquePcrProbes.class);
 
-	public final static String REPORT_DIRECTORY = "/reports/";
 	public final static String DETAILS_REPORT_NAME = "processing_details.txt";
 	private final static String EXTENSION_ERRORS_REPORT_NAME = "extension_errors.txt";
 	public final static String PROBE_UID_QUALITY_REPORT_NAME = "probe_uid_quality.txt";
@@ -109,19 +107,19 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		long start = System.currentTimeMillis();
 
 		// Set up the reports files
-		File detailsReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + DETAILS_REPORT_NAME);
-		File extensionErrorsReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + EXTENSION_ERRORS_REPORT_NAME);
-		File probeUidQualityReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + PROBE_UID_QUALITY_REPORT_NAME);
-		File unableToAlignPrimerReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + UNABLE_TO_ALIGN_PRIMER_REPORT_NAME);
-		File primerAlignmentReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + PRIMER_ALIGNMENT_REPORT_NAME);
+		File detailsReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + DETAILS_REPORT_NAME);
+		File extensionErrorsReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + EXTENSION_ERRORS_REPORT_NAME);
+		File probeUidQualityReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + PROBE_UID_QUALITY_REPORT_NAME);
+		File unableToAlignPrimerReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + UNABLE_TO_ALIGN_PRIMER_REPORT_NAME);
+		File primerAlignmentReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + PRIMER_ALIGNMENT_REPORT_NAME);
 
 		logger.debug("Creating details report file at " + detailsReportFile.getAbsolutePath());
 
 		DetailsReport detailsReport = null;
 		PrintWriter extensionErrorsWriter = null;
-		PrintWriter probeUidQualityWriter = null;
-		PrintWriter unableToAlignPrimerWriter = null;
-		PrintWriter primerAlignmentWriter = null;
+		TabDelimitedFileWriter probeUidQualityWriter = null;
+		TabDelimitedFileWriter unableToAlignPrimerWriter = null;
+		TabDelimitedFileWriter primerAlignmentWriter = null;
 
 		if (applicationSettings.isShouldOutputQualityReports()) {
 			try {
@@ -131,27 +129,23 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				extensionErrorsWriter = new PrintWriter(extensionErrorsReportFile);
 
 				FileUtil.createNewFile(probeUidQualityReportFile);
-				probeUidQualityWriter = new PrintWriter(probeUidQualityReportFile);
-				probeUidQualityWriter.println("probe_id" + StringUtil.TAB + "probe_container" + StringUtil.TAB + "probe_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
-						+ "strand" + StringUtil.TAB + "uid" + StringUtil.TAB + "read_one_quality" + StringUtil.TAB + "read_two_quality" + StringUtil.TAB + "total_quality" + StringUtil.TAB
-						+ "read_name");
+				probeUidQualityWriter = new TabDelimitedFileWriter(probeUidQualityReportFile, new String[] { "probe_id", "probe_sequence_name", "probe_capture_start", "probe_capture_stop", "strand",
+						"uid", "read_one_quality", "read_two_quality", "total_quality", "read_name" });
 
 				FileUtil.createNewFile(unableToAlignPrimerReportFile);
-				unableToAlignPrimerWriter = new PrintWriter(unableToAlignPrimerReportFile);
-				unableToAlignPrimerWriter.println("container_name" + StringUtil.TAB + "probe_start" + StringUtil.TAB + "protbe_stop" + StringUtil.TAB + "extension_primer_sequence" + StringUtil.TAB
-						+ "read_name" + StringUtil.TAB + "read_string");
+				unableToAlignPrimerWriter = new TabDelimitedFileWriter(unableToAlignPrimerReportFile, new String[] { "sequence_name", "probe_start", "probe_stop", "extension_primer_sequence",
+						"read_name", "read_string" });
 
 				FileUtil.createNewFile(primerAlignmentReportFile);
-				primerAlignmentWriter = new PrintWriter(primerAlignmentReportFile);
-				primerAlignmentWriter.println("uid_length" + StringUtil.TAB + "substituions" + StringUtil.TAB + "insertions" + StringUtil.TAB + "deletions" + StringUtil.TAB + "edit_distance"
-						+ StringUtil.TAB + "read" + StringUtil.TAB + "extension_primer" + StringUtil.TAB);
+				primerAlignmentWriter = new TabDelimitedFileWriter(primerAlignmentReportFile, new String[] { "uid_length", "substituions", "insertions", "deletions", "edit_distance", "read",
+						"extension_primer" });
 			} catch (IOException e) {
-				throw new IllegalStateException("Could not create details report file[" + detailsReportFile.getAbsolutePath() + "].");
+				throw new IllegalStateException("Could not create report file.", e);
 			}
 		}
 
 		// Parse the input probe file
-		ProbesByContainerName probeInfo = null;
+		ProbesBySequenceName probeInfo = null;
 		try {
 			probeInfo = ProbeFileUtil.parseProbeInfoFile(applicationSettings.getProbeFile());
 		} catch (IOException e) {
@@ -191,7 +185,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	 * @param applicationSettings
 	 *            The context the application is running under
 	 * @param probeInfo
-	 *            All the probes in the input probe file, by container
+	 *            All the probes in the input probe file, by sequence
 	 * @param detailReportWriter
 	 *            Writer for reporting detailed processing information
 	 * @param extensionErrorsWriter
@@ -199,9 +193,9 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	 * @param probeUidQualityWriter
 	 *            Writer for reporting quality per UID
 	 */
-	private static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings, ProbesByContainerName probeInfo, DetailsReport detailsReport,
-			PrintWriter extensionErrorsWriter, PrintWriter probeUidQualityWriter, PrintWriter unableToAlignPrimerWriter, PrintWriter primerAlignmentWriter) {
-		Set<String> containerNames = probeInfo.getContainerNames();
+	private static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings, ProbesBySequenceName probeInfo, DetailsReport detailsReport,
+			PrintWriter extensionErrorsWriter, TabDelimitedFileWriter probeUidQualityWriter, TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter) {
+		Set<String> sequenceNames = probeInfo.getSequenceNames();
 
 		SAMFileWriter samWriter = null;
 
@@ -247,32 +241,30 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 			// Make an executor to handle processing the data for each probe in parallel
 			ExecutorService executor = Executors.newFixedThreadPool(applicationSettings.getNumProcessors());
-			for (String containerName : containerNames) {
+			for (String sequenceName : sequenceNames) {
 
-				if (!referenceSequenceNamesInBam.contains(containerName)) {
-					throw new IllegalStateException(
-							"Chromosome/Container["
-									+ containerName
-									+ "] from probe file is not present as a reference sequence in the bam file.  Please make sure your probe container/chromosome names match bam file reference sequence names.");
+				if (!referenceSequenceNamesInBam.contains(sequenceName)) {
+					throw new IllegalStateException("Sequence[" + sequenceName
+							+ "] from probe file is not present as a reference sequence in the bam file.  Please make sure your probe sequence names match bam file reference sequence names.");
 				}
 
-				List<Probe> probes = probeInfo.getProbesByContainerName(containerName);
+				List<Probe> probes = probeInfo.getProbesBySequenceName(sequenceName);
 
 				int totalProbes = probes.size();
-				logger.debug("Beginning processing " + containerName + " with " + totalProbes + " PROBES ");
+				logger.debug("Beginning processing " + sequenceName + " with " + totalProbes + " PROBES ");
 
 				for (Probe probe : probes) {
-					int referenceSequenceIndex = referenceSequenceNamesInBam.indexOf(containerName);
+					int referenceSequenceIndex = referenceSequenceNamesInBam.indexOf(sequenceName);
 					int referenceSequenceLength = referenceSequenceLengthsInBam.get(referenceSequenceIndex);
 					if (referenceSequenceLength < probe.getStop()) {
-						throw new IllegalStateException("Probe Chromosome/Container[" + containerName + "] start[" + probe.getStart() + "] stop[" + probe.getStop() + "] found in the probe file["
-								+ applicationSettings.getProbeFile().getAbsolutePath() + "] is outside of the length[" + referenceSequenceLength + "] of reference sequence[" + containerName
+						throw new IllegalStateException("Probe Sequence[" + sequenceName + "] start[" + probe.getStart() + "] stop[" + probe.getStop() + "] found in the probe file["
+								+ applicationSettings.getProbeFile().getAbsolutePath() + "] is outside of the length[" + referenceSequenceLength + "] of reference sequence[" + sequenceName
 								+ "] found in the bam file.");
 					}
 
 					// Try getting the reads for this probe here before passing them to the worker
 					Map<String, SAMRecordPair> readNameToRecordsMap = new HashMap<String, SAMRecordPair>();
-					SAMRecordIterator samRecordIter = samReader.queryContained(containerName, probe.getStart(), probe.getStop());
+					SAMRecordIterator samRecordIter = samReader.queryContained(sequenceName, probe.getStart(), probe.getStop());
 					while (samRecordIter.hasNext()) {
 						SAMRecord record = samRecordIter.next();
 
@@ -360,7 +352,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	 * @param programVersion
 	 * @return
 	 */
-	private static SAMFileHeader getHeader(SAMFileHeader originalHeader, ProbesByContainerName probeInfo, String commandLineSignature, String programName, String programVersion) {
+	private static SAMFileHeader getHeader(SAMFileHeader originalHeader, ProbesBySequenceName probeInfo, String commandLineSignature, String programName, String programVersion) {
 		SAMFileHeader newHeader = new SAMFileHeader();
 
 		newHeader.setReadGroups(originalHeader.getReadGroups());
@@ -376,7 +368,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 		SAMSequenceDictionary sequenceDictionary = new SAMSequenceDictionary();
 		for (SAMSequenceRecord oldSequenceRecord : originalHeader.getSequenceDictionary().getSequences()) {
-			if (probeInfo.containsContainerName(oldSequenceRecord.getSequenceName())) {
+			if (probeInfo.containsSequenceName(oldSequenceRecord.getSequenceName())) {
 				SAMSequenceRecord newSequenceRecord = new SAMSequenceRecord(oldSequenceRecord.getSequenceName(), oldSequenceRecord.getSequenceLength());
 				sequenceDictionary.addSequence(newSequenceRecord);
 			}
@@ -394,10 +386,10 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		private final ApplicationSettings applicationSettings;
 		private final SAMFileWriter samWriter;
 		private final PrintWriter extensionErrorsWriter;
-		private final PrintWriter probeUidQualityWriter;
+		private final TabDelimitedFileWriter probeUidQualityWriter;
 		private final DetailsReport detailsReport;
-		private final PrintWriter unableToAlignPrimerWriter;
-		private final PrintWriter primerAlignmentWriter;
+		private final TabDelimitedFileWriter unableToAlignPrimerWriter;
+		private final TabDelimitedFileWriter primerAlignmentWriter;
 		private final FastqWriter fastqOneWriter;
 		private final FastqWriter fastqTwoWriter;
 		private final IAlignmentScorer alignmentScorer;
@@ -408,8 +400,6 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		 * 
 		 * @param probe
 		 *            The probe we're processing information for
-		 * @param containerName
-		 *            The reference container the probe is part of
 		 * @param applicationSettings
 		 *            The context the application is running under
 		 * @param samWriter
@@ -428,8 +418,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		 */
 
 		PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(Probe probe, ApplicationSettings applicationSettings, SAMFileWriter samWriter, PrintWriter extensionErrorsWriter,
-				PrintWriter probeUidQualityWriter, DetailsReport detailsReport, PrintWriter unableToAlignPrimerWriter, PrintWriter primerAlignmentWriter, FastqWriter fastqOneWriter,
-				FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap, IAlignmentScorer alignmentScorer) {
+				TabDelimitedFileWriter probeUidQualityWriter, DetailsReport detailsReport, TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter,
+				FastqWriter fastqOneWriter, FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap, IAlignmentScorer alignmentScorer) {
 			this.probe = probe;
 			this.applicationSettings = applicationSettings;
 			this.samWriter = samWriter;
