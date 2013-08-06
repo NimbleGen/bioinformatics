@@ -131,7 +131,7 @@ public class MapperFiltererAndExtender {
 		try {
 			if (ambiguousMappingFile != null) {
 				try {
-					ambiguousMappingWriter = new TabDelimitedFileWriter(ambiguousMappingFile, new String[] { "readName", "readString", "sequence_name", "extension_primer_start",
+					ambiguousMappingWriter = new TabDelimitedFileWriter(ambiguousMappingFile, new String[] { "read_name", "read_string", "sequence_name", "extension_primer_start",
 							"extension_primer_stop", "capture_target_start", "capture_target_stop", "ligation_primer_start", "ligation_primer_stop", "probe_strand" });
 				} catch (FileNotFoundException e) {
 					throw new IllegalStateException(e);
