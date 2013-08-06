@@ -438,15 +438,15 @@ public class BamFileInternalUtil {
 
 	private static Map<Probe, String> getProbeToBlockMap(File blockFile) throws IOException {
 		Map<Probe, String> probeToBlockMap = new HashMap<Probe, String>();
-		String[] uidBlockHeaders = new String[] { "container_name", "capture_start", "capture_stop", "strand", "block" };
+		String[] uidBlockHeaders = new String[] { "sequence_name", "capture_start", "capture_stop", "strand", "block" };
 		Map<String, List<String>> blockHeadersToData = DelimitedFileParserUtil.getHeaderNameToValuesMapFromDelimitedFile(blockFile, uidBlockHeaders, StringUtil.TAB);
-		List<String> blockContainerNames = blockHeadersToData.get(uidBlockHeaders[0]);
+		List<String> blockSequenceNames = blockHeadersToData.get(uidBlockHeaders[0]);
 		List<String> blockStart = blockHeadersToData.get(uidBlockHeaders[1]);
 		List<String> blockStop = blockHeadersToData.get(uidBlockHeaders[2]);
 		List<String> blockStrand = blockHeadersToData.get(uidBlockHeaders[3]);
 		List<String> blockNames = blockHeadersToData.get(uidBlockHeaders[4]);
-		for (int blockIndex = 0; blockIndex < blockContainerNames.size(); blockIndex++) {
-			probeToBlockMap.put(new Probe(blockContainerNames.get(blockIndex), Integer.valueOf(blockStart.get(blockIndex)), Integer.valueOf(blockStop.get(blockIndex)), blockStrand.get(blockIndex)),
+		for (int blockIndex = 0; blockIndex < blockSequenceNames.size(); blockIndex++) {
+			probeToBlockMap.put(new Probe(blockSequenceNames.get(blockIndex), Integer.valueOf(blockStart.get(blockIndex)), Integer.valueOf(blockStop.get(blockIndex)), blockStrand.get(blockIndex)),
 					blockNames.get(blockIndex));
 		}
 		return probeToBlockMap;
@@ -455,17 +455,17 @@ public class BamFileInternalUtil {
 	public static void createUidBlockReport(int maxUidLength, File probeUidQualityFile, File uidBlockReportByRead, File uidBlockReportByBlock, Map<Probe, String> probeToBlockMap) throws IOException {
 
 		PrintWriter uidBlockReportByReadWriter = new PrintWriter(new FileWriter(uidBlockReportByRead));
-		uidBlockReportByReadWriter.println("uid" + StringUtil.TAB + "uid_length" + StringUtil.TAB + "block_name" + StringUtil.TAB + "container_name" + StringUtil.TAB + "start" + StringUtil.TAB
+		uidBlockReportByReadWriter.println("uid" + StringUtil.TAB + "uid_length" + StringUtil.TAB + "block_name" + StringUtil.TAB + "sequence_name" + StringUtil.TAB + "start" + StringUtil.TAB
 				+ "stop");
 
 		PrintWriter uidBlockReportByBlockWriter = new PrintWriter(new FileWriter(uidBlockReportByBlock));
 
 		try {
-			String[] probeUidQualityHeaders = new String[] { "uid", "probe_container", "probe_capture_start", "probe_capture_stop", "strand", "read_sequence" };
+			String[] probeUidQualityHeaders = new String[] { "uid", "probe_sequence_name", "probe_capture_start", "probe_capture_stop", "strand", "read_sequence" };
 
 			Map<String, List<String>> probeHeadersToData = DelimitedFileParserUtil.getHeaderNameToValuesMapFromDelimitedFile(probeUidQualityFile, probeUidQualityHeaders, StringUtil.TAB);
 
-			List<String> probeUidQualityContainerNames = probeHeadersToData.get(probeUidQualityHeaders[1]);
+			List<String> probeUidQualitySequenceNames = probeHeadersToData.get(probeUidQualityHeaders[1]);
 			List<String> probeUidQualityStart = probeHeadersToData.get(probeUidQualityHeaders[2]);
 			List<String> probeUidQualityStop = probeHeadersToData.get(probeUidQualityHeaders[3]);
 			List<String> probeUidQualityStrand = probeHeadersToData.get(probeUidQualityHeaders[4]);
@@ -475,8 +475,8 @@ public class BamFileInternalUtil {
 
 			Set<ProbeAndUid> foundReads = new HashSet<ProbeAndUid>();
 
-			for (int probeUidIndex = 0; probeUidIndex < probeUidQualityContainerNames.size(); probeUidIndex++) {
-				String probeName = probeUidQualityContainerNames.get(probeUidIndex);
+			for (int probeUidIndex = 0; probeUidIndex < probeUidQualitySequenceNames.size(); probeUidIndex++) {
+				String probeName = probeUidQualitySequenceNames.get(probeUidIndex);
 				String probeStart = probeUidQualityStart.get(probeUidIndex);
 				String probeStop = probeUidQualityStop.get(probeUidIndex);
 				String probeStrand = probeUidQualityStrand.get(probeUidIndex);
@@ -497,7 +497,7 @@ public class BamFileInternalUtil {
 						uniqueReadPairUidLengthsByBlock.put(blockName, uniqueBlockTallyMap);
 					}
 
-					uidBlockReportByReadWriter.println(uid + StringUtil.TAB + uid.length() + StringUtil.TAB + blockName + StringUtil.TAB + probeUidQualityContainerNames.get(probeUidIndex)
+					uidBlockReportByReadWriter.println(uid + StringUtil.TAB + uid.length() + StringUtil.TAB + blockName + StringUtil.TAB + probeUidQualitySequenceNames.get(probeUidIndex)
 							+ StringUtil.TAB + probeStart + StringUtil.TAB + probeStop);
 					TallyMap<Integer> blockTallyMap = uidLengthsByBlock.get(blockName);
 					if (blockTallyMap == null) {
@@ -560,11 +560,11 @@ public class BamFileInternalUtil {
 					+ "all_a_count" + StringUtil.TAB + "all_a_percent" + StringUtil.TAB + "all_c_count" + StringUtil.TAB + "all_c_percent" + StringUtil.TAB + "all_g_count" + StringUtil.TAB
 					+ "all_g_percent" + StringUtil.TAB + "all_t_count" + StringUtil.TAB + "all_t_percent" + StringUtil.TAB + "all_n_count" + StringUtil.TAB + "all_n_percent");
 
-			String[] probeUidQualityHeaders = new String[] { "uid", "probe_container", "probe_capture_start", "probe_capture_stop", "strand" };
+			String[] probeUidQualityHeaders = new String[] { "uid", "probe_sequence_name", "probe_capture_start", "probe_capture_stop", "strand" };
 
 			Map<String, List<String>> probeHeadersToData = DelimitedFileParserUtil.getHeaderNameToValuesMapFromDelimitedFile(probeUidQualityFile, probeUidQualityHeaders, StringUtil.TAB);
 
-			List<String> probeUidQualityContainerNames = probeHeadersToData.get(probeUidQualityHeaders[1]);
+			List<String> probeUidQualitySequenceNames = probeHeadersToData.get(probeUidQualityHeaders[1]);
 			List<String> probeUidQualityStart = probeHeadersToData.get(probeUidQualityHeaders[2]);
 			List<String> probeUidQualityStop = probeHeadersToData.get(probeUidQualityHeaders[3]);
 			List<String> probeUidQualityStrand = probeHeadersToData.get(probeUidQualityHeaders[4]);
@@ -573,9 +573,9 @@ public class BamFileInternalUtil {
 			Map<String, TallyMap<Character>> allNucleotideCompositionByBlock = new HashMap<String, TallyMap<Character>>();
 
 			Set<ProbeAndUid> uniqueProbeAndUidPairs = new HashSet<ProbeAndUid>();
-			for (int probeUidIndex = 0; probeUidIndex < probeUidQualityContainerNames.size(); probeUidIndex++) {
+			for (int probeUidIndex = 0; probeUidIndex < probeUidQualitySequenceNames.size(); probeUidIndex++) {
 				String uid = probeHeadersToData.get(probeUidQualityHeaders[0]).get(probeUidIndex);
-				Probe probe = new Probe(probeUidQualityContainerNames.get(probeUidIndex), Integer.valueOf(probeUidQualityStart.get(probeUidIndex)), Integer.valueOf(probeUidQualityStop
+				Probe probe = new Probe(probeUidQualitySequenceNames.get(probeUidIndex), Integer.valueOf(probeUidQualityStart.get(probeUidIndex)), Integer.valueOf(probeUidQualityStop
 						.get(probeUidIndex)), probeUidQualityStrand.get(probeUidIndex));
 				String blockName = probeToBlockMap.get(probe);
 				// only count unique uid nucleotides
@@ -824,19 +824,19 @@ public class BamFileInternalUtil {
 	}
 
 	private static void addBlockToExtensionPrimerAlignmentReport(File extensionPrimerAlignmentReportFile, Map<Probe, String> probeToBlockMap, File outputFile) throws IOException {
-		String[] extensionPrimerHeaders = new String[] { "probe_container", "capture_target_start", "capture_target_stop", "probe_strand" };
+		String[] extensionPrimerHeaders = new String[] { "probe_sequence_name", "capture_target_start", "capture_target_stop", "probe_strand" };
 
 		Map<String, List<String>> primerHeadersToData = DelimitedFileParserUtil.getHeaderNameToValuesMapFromDelimitedFile(extensionPrimerAlignmentReportFile, extensionPrimerHeaders, StringUtil.TAB);
 
-		List<String> probeUidQualityContainerNames = primerHeadersToData.get(extensionPrimerHeaders[0]);
+		List<String> probeUidQualitySequenceNames = primerHeadersToData.get(extensionPrimerHeaders[0]);
 		List<String> probeUidQualityStart = primerHeadersToData.get(extensionPrimerHeaders[1]);
 		List<String> probeUidQualityStop = primerHeadersToData.get(extensionPrimerHeaders[2]);
 		List<String> probeUidQualityStrand = primerHeadersToData.get(extensionPrimerHeaders[3]);
 
 		List<String> blockNameByLine = new ArrayList<String>();
 
-		for (int probeUidIndex = 0; probeUidIndex < probeUidQualityContainerNames.size(); probeUidIndex++) {
-			String probeName = probeUidQualityContainerNames.get(probeUidIndex);
+		for (int probeUidIndex = 0; probeUidIndex < probeUidQualitySequenceNames.size(); probeUidIndex++) {
+			String probeName = probeUidQualitySequenceNames.get(probeUidIndex);
 			String probeStart = probeUidQualityStart.get(probeUidIndex);
 			String probeStop = probeUidQualityStop.get(probeUidIndex);
 			String probeStrand = probeUidQualityStrand.get(probeUidIndex);

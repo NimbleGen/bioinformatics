@@ -57,7 +57,6 @@ public class FilterByUid {
 	 * Filter a set of reads to find the best read per UID
 	 * 
 	 * @param probe
-	 * @param chromosomeName
 	 * @param readNameToRecordsMap
 	 *            The reads that aligned within the probe target area
 	 * @param probeUidQualityWriter
@@ -87,7 +86,7 @@ public class FilterByUid {
 				if (uid != null) {
 					datas.add(new ReadPair(record, mate, uid));
 				} else {
-					unableToAlignPrimerWriter.println(probe.getContainerName() + StringUtil.TAB + probe.getStart() + StringUtil.TAB + probe.getFeatureStop() + probe.getExtensionPrimerSequence()
+					unableToAlignPrimerWriter.println(probe.getSequenceName() + StringUtil.TAB + probe.getStart() + StringUtil.TAB + probe.getFeatureStop() + probe.getExtensionPrimerSequence()
 							+ StringUtil.TAB + record.getReadName() + StringUtil.TAB + record.getReadString());
 				}
 
@@ -172,7 +171,6 @@ public class FilterByUid {
 	 * Report on the probe UID qualities
 	 * 
 	 * @param probe
-	 * @param containerName
 	 * @param data
 	 * @param probeUidQualityWriter
 	 */
@@ -204,7 +202,7 @@ public class FilterByUid {
 						totalQualityScore = "" + currentPair.getTotalSequenceQualityScore();
 
 					}
-					probeUidQualityWriter.println(probeIndex + StringUtil.TAB + probe.getContainerName() + StringUtil.TAB + probeCaptureStart + StringUtil.TAB + probeCaptureStop + StringUtil.TAB
+					probeUidQualityWriter.println(probeIndex + StringUtil.TAB + probe.getSequenceName() + StringUtil.TAB + probeCaptureStart + StringUtil.TAB + probeCaptureStop + StringUtil.TAB
 							+ probeStrand + StringUtil.TAB + uid.toUpperCase() + StringUtil.TAB + sequenceQualityScore + StringUtil.TAB + sequenceTwoQualityScore + StringUtil.TAB + totalQualityScore
 							+ StringUtil.TAB + readName);
 				}

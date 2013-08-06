@@ -53,7 +53,7 @@ public class FastQDataSimulator {
 	private final static int LIGATION_PRIMER_LENGTH = 18;
 
 	private final static int PROBE_LOCATION_GAP = 1000;
-	private final static String CONTAINER_NAME = "chr1";
+	private final static String SEQUENCE_NAME = "chr1";
 
 	private final static int INDIVIDUAL_READ_LENGTH = 120;
 
@@ -102,7 +102,7 @@ public class FastQDataSimulator {
 
 		int probeIndex = 1;
 		if (readSequence.size() > (EXTENSION_PRIMER_LENGTH + LIGATION_PRIMER_LENGTH + MIN_CAPTURE_TARGET_READ_LENGTH)) {
-			String containerName = CONTAINER_NAME;
+			String sequenceName = SEQUENCE_NAME;
 
 			ISequence readStringOne = null;
 			ISequence readStringTwo = null;
@@ -129,7 +129,7 @@ public class FastQDataSimulator {
 				int forwardFeatureStop = forwardCaptureTargetStop;
 				Strand forwardProbeStrand = Strand.FORWARD;
 
-				Probe forwardProbe = new Probe(probeIndex, containerName, forwardExtensionPrimerStart, forwardExtensionPrimerStop, forwardExtensionPrimerSequence, forwardLigationPrimerStart,
+				Probe forwardProbe = new Probe(probeIndex, sequenceName, forwardExtensionPrimerStart, forwardExtensionPrimerStop, forwardExtensionPrimerSequence, forwardLigationPrimerStart,
 						forwardLigationPrimerStop, forwardLigationPrimerSequence, forwardCaptureTargetStart, forwardCaptureTargetStop, forwardCaptureTargetSequence, forwardFeatureStart,
 						forwardFeatureStop, forwardProbeStrand);
 				probes.add(forwardProbe);
@@ -190,7 +190,7 @@ public class FastQDataSimulator {
 				int reverseFeatureStop = reverseCaptureTargetStop;
 				Strand reverseProbeStrand = Strand.REVERSE;
 
-				Probe reverseProbe = new Probe(probeIndex, containerName, reverseExtensionPrimerStart, reverseExtensionPrimerStop, reverseExtensionPrimerSequence, reverseLigationPrimerStart,
+				Probe reverseProbe = new Probe(probeIndex, sequenceName, reverseExtensionPrimerStart, reverseExtensionPrimerStop, reverseExtensionPrimerSequence, reverseLigationPrimerStart,
 						reverseLigationPrimerStop, reverseLigationPrimerSequence, reverseCaptureTargetStart, reverseCaptureTargetStop, reverseCaptureTargetSequence, reverseFeatureStart,
 						reverseFeatureStop, reverseProbeStrand);
 				probes.add(reverseProbe);

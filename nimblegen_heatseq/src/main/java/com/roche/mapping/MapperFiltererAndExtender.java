@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
 import com.roche.heatseq.objects.IReadPair;
 import com.roche.heatseq.objects.IlluminaFastQHeader;
 import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.objects.ProbesByContainerName;
+import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.process.BamFileUtil;
 import com.roche.heatseq.process.ExtendReadsToPrimer;
@@ -132,7 +132,7 @@ public class MapperFiltererAndExtender {
 		if (ambiguousMappingFile != null) {
 			try {
 				ambiguousMappingWriter = new PrintWriter(ambiguousMappingFile);
-				ambiguousMappingWriter.println("readName" + StringUtil.TAB + "readString" + StringUtil.TAB + "container_name" + StringUtil.TAB + "extension_primer_start" + StringUtil.TAB
+				ambiguousMappingWriter.println("readName" + StringUtil.TAB + "readString" + StringUtil.TAB + "sequence_name" + StringUtil.TAB + "extension_primer_start" + StringUtil.TAB
 						+ "extension_primer_stop" + StringUtil.TAB + "capture_target_start" + StringUtil.TAB + "capture_target_stop" + StringUtil.TAB + "ligation_primer_start" + StringUtil.TAB
 						+ "ligation_primer_stop" + StringUtil.TAB + "probe_strand");
 			} catch (FileNotFoundException e) {
@@ -142,7 +142,7 @@ public class MapperFiltererAndExtender {
 		if (probeUidQualityFile != null) {
 			try {
 				probeUidQualityWriter = new PrintWriter(probeUidQualityFile);
-				probeUidQualityWriter.println("probe_id" + StringUtil.TAB + "probe_container" + StringUtil.TAB + "probe_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
+				probeUidQualityWriter.println("probe_id" + StringUtil.TAB + "probe_sequence_name" + StringUtil.TAB + "probe_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
 						+ "strand" + StringUtil.TAB + "uid" + StringUtil.TAB + "read_one_quality" + StringUtil.TAB + "read_two_quality" + StringUtil.TAB + "total_quality" + StringUtil.TAB
 						+ "read_name" + StringUtil.TAB + "read_sequence");
 			} catch (FileNotFoundException e) {
@@ -152,7 +152,7 @@ public class MapperFiltererAndExtender {
 		if (unableToAlignPrimerFile != null) {
 			try {
 				unableToAlignPrimerWriter = new PrintWriter(unableToAlignPrimerFile);
-				unableToAlignPrimerWriter.println("container_name" + StringUtil.TAB + "probe_start" + StringUtil.TAB + "protbe_stop" + StringUtil.TAB + "extension_primer_sequence" + StringUtil.TAB
+				unableToAlignPrimerWriter.println("sequence_name" + StringUtil.TAB + "probe_start" + StringUtil.TAB + "protbe_stop" + StringUtil.TAB + "extension_primer_sequence" + StringUtil.TAB
 						+ "read_name" + StringUtil.TAB + "read_string");
 			} catch (FileNotFoundException e) {
 				throw new IllegalStateException(e);
@@ -163,7 +163,7 @@ public class MapperFiltererAndExtender {
 			try {
 				primerAlignmentWriter = new PrintWriter(primerAlignmentFile);
 				primerAlignmentWriter.println("uid_length" + StringUtil.TAB + "substituions" + StringUtil.TAB + "insertions" + StringUtil.TAB + "deletions" + StringUtil.TAB + "edit_distance"
-						+ StringUtil.TAB + "read" + StringUtil.TAB + "extension_primer" + StringUtil.TAB + "probe_container" + StringUtil.TAB + "capture_target_start" + StringUtil.TAB
+						+ StringUtil.TAB + "read" + StringUtil.TAB + "extension_primer" + StringUtil.TAB + "probe_sequence_name" + StringUtil.TAB + "capture_target_start" + StringUtil.TAB
 						+ "capture_target_stop" + StringUtil.TAB + "probe_strand");
 			} catch (FileNotFoundException e) {
 				throw new IllegalStateException(e);
@@ -213,25 +213,25 @@ public class MapperFiltererAndExtender {
 			started = true;
 			long start = System.currentTimeMillis();
 			try {
-				ProbesByContainerName probesByContainerName = ProbeFileUtil.parseProbeInfoFile(probeFile);
+				ProbesBySequenceName probesBySequenceName = ProbeFileUtil.parseProbeInfoFile(probeFile);
 				SubReadProbeMapper probeMapper = new SubReadProbeMapper();
-				probeMapper.addProbes(probesByContainerName);
+				probeMapper.addProbes(probesBySequenceName);
 				SAMFileHeader samHeader = SAMRecordUtil.createSAMFileHeader();
 
 				Integer fastQ1PrimerLength = null;
 				Integer fastQ2PrimerLength = null;
 
-				for (String containerName : probesByContainerName.getContainerNames()) {
+				for (String sequenceName : probesBySequenceName.getSequenceNames()) {
 					int sequenceLength = 0;
-					for (Probe probe : probesByContainerName.getProbesByContainerName(containerName)) {
-						// TODO Kurt Heilman 6/21/2013 pull chromosome/container length from probe info file if we change the format to include container/chromosome length
+					for (Probe probe : probesBySequenceName.getProbesBySequenceName(sequenceName)) {
+						// TODO Kurt Heilman 6/21/2013 pull sequence length from probe info file if we change the format to include sequence length
 						sequenceLength = Math.max(sequenceLength, probe.getStop() + 1);
 						if (fastQ1PrimerLength == null && fastQ2PrimerLength == null) {
 							fastQ1PrimerLength = probe.getExtensionPrimerSequence().size();
 							fastQ2PrimerLength = probe.getLigationPrimerSequence().size();
 						}
 					}
-					SAMSequenceRecord sequenceRecord = new SAMSequenceRecord(containerName, sequenceLength);
+					SAMSequenceRecord sequenceRecord = new SAMSequenceRecord(sequenceName, sequenceLength);
 					samHeader.addSequence(sequenceRecord);
 				}
 				String readGroupName = fastQOneFile.getName() + "_and_" + fastQTwoFile.getName();
@@ -295,7 +295,7 @@ public class MapperFiltererAndExtender {
 				Collections.sort(sortedProbeReferences, new Comparator<ProbeReference>() {
 					@Override
 					public int compare(ProbeReference o1, ProbeReference o2) {
-						return o1.getProbe().getContainerName().compareTo(o2.getProbe().getContainerName());
+						return o1.getProbe().getSequenceName().compareTo(o2.getProbe().getSequenceName());
 					}
 
 				});
@@ -559,21 +559,21 @@ public class MapperFiltererAndExtender {
 
 								String readName = recordOne.getReadHeader();
 
-								probeUidQualityWriter.println(probeIndex + StringUtil.TAB + matchingProbe.getContainerName() + StringUtil.TAB + probeCaptureStart + StringUtil.TAB + probeCaptureStop
+								probeUidQualityWriter.println(probeIndex + StringUtil.TAB + matchingProbe.getSequenceName() + StringUtil.TAB + probeCaptureStart + StringUtil.TAB + probeCaptureStop
 										+ StringUtil.TAB + probeStrand + StringUtil.TAB + uid.toUpperCase() + StringUtil.TAB + sequenceOneQualityScore + StringUtil.TAB + sequenceTwoQualityScore
 										+ StringUtil.TAB + qualityScore + StringUtil.TAB + readName + StringUtil.TAB + readSequence);
 							}
 
 						} else {
 							if (unableToAlignPrimerWriter != null) {
-								unableToAlignPrimerWriter.println(matchingProbe.getContainerName() + StringUtil.TAB + matchingProbe.getStart() + StringUtil.TAB + matchingProbe.getStop()
+								unableToAlignPrimerWriter.println(matchingProbe.getSequenceName() + StringUtil.TAB + matchingProbe.getStart() + StringUtil.TAB + matchingProbe.getStop()
 										+ matchingProbe.getExtensionPrimerSequence() + StringUtil.TAB + recordOne.getReadHeader() + StringUtil.TAB + recordOne.getReadString());
 							}
 						}
 					} else if ((matchingProbes.size() > 1) && (ambiguousMappingWriter != null)) {
 						for (ProbeReference matchingProbe : matchingProbes) {
 							Probe probe = matchingProbe.getProbe();
-							ambiguousMappingWriter.println(recordOne.getReadHeader() + StringUtil.TAB + recordOne.getReadString() + StringUtil.TAB + probe.getContainerName() + StringUtil.TAB
+							ambiguousMappingWriter.println(recordOne.getReadHeader() + StringUtil.TAB + recordOne.getReadString() + StringUtil.TAB + probe.getSequenceName() + StringUtil.TAB
 									+ probe.getExtensionPrimerStart() + StringUtil.TAB + probe.getExtensionPrimerStop() + StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB
 									+ probe.getCaptureTargetStop() + StringUtil.TAB + probe.getLigationPrimerStart() + StringUtil.TAB + probe.getLigationPrimerStop() + StringUtil.TAB
 									+ probe.getProbeStrand());
@@ -633,9 +633,9 @@ public class MapperFiltererAndExtender {
 
 				IlluminaFastQHeader illuminaReadHeader = IlluminaFastQHeader.parseIlluminaFastQHeader(recordOne.getReadHeader());
 				String readName = illuminaReadHeader.getBaseHeader();
-				String containerName = probeReference.getProbe().getContainerName();
+				String sequenceName = probeReference.getProbe().getSequenceName();
 
-				IReadPair readPair = ExtendReadsToPrimer.extendReadPair(uid, probeReference.getProbe(), samHeader, containerName, readName, readGroupName, queryOneSequence, recordOneQualityString,
+				IReadPair readPair = ExtendReadsToPrimer.extendReadPair(uid, probeReference.getProbe(), samHeader, sequenceName, readName, readGroupName, queryOneSequence, recordOneQualityString,
 						queryTwoSequence, recordTwoQualityString, DEFAULT_MAPPING_QUALITY, DEFAULT_MAPPING_QUALITY, alignmentScorer);
 
 				if (readPair != null) {

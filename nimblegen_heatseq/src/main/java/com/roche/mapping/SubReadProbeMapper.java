@@ -19,7 +19,7 @@ package com.roche.mapping;
 import java.util.Set;
 
 import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.objects.ProbesByContainerName;
+import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.sequencing.bioinformatics.common.mapping.SimpleMapper;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 
@@ -42,11 +42,11 @@ class SubReadProbeMapper {
 	/**
 	 * Add the probes that the query sequence will be mapped against.
 	 * 
-	 * @param probesByContainerName
+	 * @param probesBySequenceName
 	 */
-	void addProbes(ProbesByContainerName probesByContainerName) {
-		for (String containerName : probesByContainerName.getContainerNames()) {
-			for (Probe probe : probesByContainerName.getProbesByContainerName(containerName)) {
+	void addProbes(ProbesBySequenceName probesBySequenceName) {
+		for (String sequenceName : probesBySequenceName.getSequenceNames()) {
+			for (Probe probe : probesBySequenceName.getProbesBySequenceName(sequenceName)) {
 				ISequence sequence = probe.getCaptureTargetSequence();
 				simpleMapper.addReferenceSequence(sequence, new ProbeReference(probe, false));
 				ISequence oppositeStrandSequence = sequence.getReverseCompliment();

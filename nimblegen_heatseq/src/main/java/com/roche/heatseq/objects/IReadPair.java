@@ -59,7 +59,7 @@ public interface IReadPair {
 
 	int getMateAlignmentEnd();
 
-	String getContainerName();
+	String getSequenceName();
 
 	int getOneMappingQuality();
 

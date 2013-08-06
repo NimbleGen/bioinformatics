@@ -148,7 +148,7 @@ public class SAMRecordUtil {
 				int cutoffIndex = editDistanceCutoff + extensionPrimerSequence.size() + uidLength;
 				ISequence referenceSequence = alignment.getAlignmentPair().getReferenceAlignment().subSequence(0, cutoffIndex);
 				ISequence querySequence = alignment.getAlignmentPair().getQueryAlignment().subSequence(0, cutoffIndex);
-				String probeName = probe.getContainerName();
+				String probeName = probe.getSequenceName();
 				String probeCaptureStart = "" + probe.getCaptureTargetStart();
 				String probeCaptureStop = "" + probe.getCaptureTargetStop();
 				String probeStrand = "" + probe.getProbeStrand();

@@ -49,7 +49,7 @@ import com.roche.heatseq.objects.ApplicationSettings;
 import com.roche.heatseq.objects.IReadPair;
 import com.roche.heatseq.objects.IlluminaFastQHeader;
 import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.objects.ProbesByContainerName;
+import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
 import com.roche.heatseq.qualityreport.DetailsReport;
@@ -132,13 +132,13 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 				FileUtil.createNewFile(probeUidQualityReportFile);
 				probeUidQualityWriter = new PrintWriter(probeUidQualityReportFile);
-				probeUidQualityWriter.println("probe_id" + StringUtil.TAB + "probe_container" + StringUtil.TAB + "probe_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
+				probeUidQualityWriter.println("probe_id" + StringUtil.TAB + "probe_sequence_name" + StringUtil.TAB + "probe_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
 						+ "strand" + StringUtil.TAB + "uid" + StringUtil.TAB + "read_one_quality" + StringUtil.TAB + "read_two_quality" + StringUtil.TAB + "total_quality" + StringUtil.TAB
 						+ "read_name");
 
 				FileUtil.createNewFile(unableToAlignPrimerReportFile);
 				unableToAlignPrimerWriter = new PrintWriter(unableToAlignPrimerReportFile);
-				unableToAlignPrimerWriter.println("container_name" + StringUtil.TAB + "probe_start" + StringUtil.TAB + "protbe_stop" + StringUtil.TAB + "extension_primer_sequence" + StringUtil.TAB
+				unableToAlignPrimerWriter.println("sequence_name" + StringUtil.TAB + "probe_start" + StringUtil.TAB + "protbe_stop" + StringUtil.TAB + "extension_primer_sequence" + StringUtil.TAB
 						+ "read_name" + StringUtil.TAB + "read_string");
 
 				FileUtil.createNewFile(primerAlignmentReportFile);
@@ -151,7 +151,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		}
 
 		// Parse the input probe file
-		ProbesByContainerName probeInfo = null;
+		ProbesBySequenceName probeInfo = null;
 		try {
 			probeInfo = ProbeFileUtil.parseProbeInfoFile(applicationSettings.getProbeFile());
 		} catch (IOException e) {
@@ -191,7 +191,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	 * @param applicationSettings
 	 *            The context the application is running under
 	 * @param probeInfo
-	 *            All the probes in the input probe file, by container
+	 *            All the probes in the input probe file, by sequence
 	 * @param detailReportWriter
 	 *            Writer for reporting detailed processing information
 	 * @param extensionErrorsWriter
@@ -199,9 +199,9 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	 * @param probeUidQualityWriter
 	 *            Writer for reporting quality per UID
 	 */
-	private static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings, ProbesByContainerName probeInfo, DetailsReport detailsReport,
+	private static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings, ProbesBySequenceName probeInfo, DetailsReport detailsReport,
 			PrintWriter extensionErrorsWriter, PrintWriter probeUidQualityWriter, PrintWriter unableToAlignPrimerWriter, PrintWriter primerAlignmentWriter) {
-		Set<String> containerNames = probeInfo.getContainerNames();
+		Set<String> sequenceNames = probeInfo.getSequenceNames();
 
 		SAMFileWriter samWriter = null;
 
@@ -247,32 +247,30 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 			// Make an executor to handle processing the data for each probe in parallel
 			ExecutorService executor = Executors.newFixedThreadPool(applicationSettings.getNumProcessors());
-			for (String containerName : containerNames) {
+			for (String sequenceName : sequenceNames) {
 
-				if (!referenceSequenceNamesInBam.contains(containerName)) {
-					throw new IllegalStateException(
-							"Chromosome/Container["
-									+ containerName
-									+ "] from probe file is not present as a reference sequence in the bam file.  Please make sure your probe container/chromosome names match bam file reference sequence names.");
+				if (!referenceSequenceNamesInBam.contains(sequenceName)) {
+					throw new IllegalStateException("Sequence[" + sequenceName
+							+ "] from probe file is not present as a reference sequence in the bam file.  Please make sure your probe sequence names match bam file reference sequence names.");
 				}
 
-				List<Probe> probes = probeInfo.getProbesByContainerName(containerName);
+				List<Probe> probes = probeInfo.getProbesBySequenceName(sequenceName);
 
 				int totalProbes = probes.size();
-				logger.debug("Beginning processing " + containerName + " with " + totalProbes + " PROBES ");
+				logger.debug("Beginning processing " + sequenceName + " with " + totalProbes + " PROBES ");
 
 				for (Probe probe : probes) {
-					int referenceSequenceIndex = referenceSequenceNamesInBam.indexOf(containerName);
+					int referenceSequenceIndex = referenceSequenceNamesInBam.indexOf(sequenceName);
 					int referenceSequenceLength = referenceSequenceLengthsInBam.get(referenceSequenceIndex);
 					if (referenceSequenceLength < probe.getStop()) {
-						throw new IllegalStateException("Probe Chromosome/Container[" + containerName + "] start[" + probe.getStart() + "] stop[" + probe.getStop() + "] found in the probe file["
-								+ applicationSettings.getProbeFile().getAbsolutePath() + "] is outside of the length[" + referenceSequenceLength + "] of reference sequence[" + containerName
+						throw new IllegalStateException("Probe Sequence[" + sequenceName + "] start[" + probe.getStart() + "] stop[" + probe.getStop() + "] found in the probe file["
+								+ applicationSettings.getProbeFile().getAbsolutePath() + "] is outside of the length[" + referenceSequenceLength + "] of reference sequence[" + sequenceName
 								+ "] found in the bam file.");
 					}
 
 					// Try getting the reads for this probe here before passing them to the worker
 					Map<String, SAMRecordPair> readNameToRecordsMap = new HashMap<String, SAMRecordPair>();
-					SAMRecordIterator samRecordIter = samReader.queryContained(containerName, probe.getStart(), probe.getStop());
+					SAMRecordIterator samRecordIter = samReader.queryContained(sequenceName, probe.getStart(), probe.getStop());
 					while (samRecordIter.hasNext()) {
 						SAMRecord record = samRecordIter.next();
 
@@ -360,7 +358,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	 * @param programVersion
 	 * @return
 	 */
-	private static SAMFileHeader getHeader(SAMFileHeader originalHeader, ProbesByContainerName probeInfo, String commandLineSignature, String programName, String programVersion) {
+	private static SAMFileHeader getHeader(SAMFileHeader originalHeader, ProbesBySequenceName probeInfo, String commandLineSignature, String programName, String programVersion) {
 		SAMFileHeader newHeader = new SAMFileHeader();
 
 		newHeader.setReadGroups(originalHeader.getReadGroups());
@@ -376,7 +374,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 		SAMSequenceDictionary sequenceDictionary = new SAMSequenceDictionary();
 		for (SAMSequenceRecord oldSequenceRecord : originalHeader.getSequenceDictionary().getSequences()) {
-			if (probeInfo.containsContainerName(oldSequenceRecord.getSequenceName())) {
+			if (probeInfo.containsSequenceName(oldSequenceRecord.getSequenceName())) {
 				SAMSequenceRecord newSequenceRecord = new SAMSequenceRecord(oldSequenceRecord.getSequenceName(), oldSequenceRecord.getSequenceLength());
 				sequenceDictionary.addSequence(newSequenceRecord);
 			}
@@ -408,8 +406,6 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		 * 
 		 * @param probe
 		 *            The probe we're processing information for
-		 * @param containerName
-		 *            The reference container the probe is part of
 		 * @param applicationSettings
 		 *            The context the application is running under
 		 * @param samWriter

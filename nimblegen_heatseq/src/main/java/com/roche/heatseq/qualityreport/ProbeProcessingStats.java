@@ -41,7 +41,6 @@ public class ProbeProcessingStats {
 	 * Constructor
 	 * 
 	 * @param probe
-	 * @param containerName
 	 * @param totalUids
 	 * @param averageNumberOfReadPairsPerUid
 	 * @param standardDeviationOfReadPairsPerUid
@@ -93,7 +92,7 @@ public class ProbeProcessingStats {
 
 	public String toReportString() {
 		StringBuilder stringBuilder = new StringBuilder();
-		stringBuilder.append((probe.getIndex() + 1) + StringUtil.TAB + probe.getContainerName() + StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB + probe.getCaptureTargetStop()
+		stringBuilder.append((probe.getIndex() + 1) + StringUtil.TAB + probe.getSequenceName() + StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB + probe.getCaptureTargetStop()
 				+ StringUtil.TAB + probe.getProbeStrand() + StringUtil.TAB);
 		stringBuilder.append(totalUids + StringUtil.TAB + averageNumberOfReadPairsPerUid + StringUtil.TAB + standardDeviationOfReadPairsPerUid + StringUtil.TAB + minNumberOfReadPairsPerUid
 				+ StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase() + StringUtil.TAB + totalDuplicateReadPairsRemoved + StringUtil.TAB
