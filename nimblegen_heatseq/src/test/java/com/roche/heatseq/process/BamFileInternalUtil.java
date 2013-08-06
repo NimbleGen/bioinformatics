@@ -62,10 +62,11 @@ import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.DelimitedFileParserUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
-import com.roche.sequencing.bioinformatics.common.utils.NumberFormatUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class BamFileInternalUtil {
+
+	public static final DecimalFormat decimalFormat = new DecimalFormat(",###.00");
 
 	public static void splitBamFilesByMatches(File bamFileOne, File bamFileTwo, File outputDirectory) {
 		IoUtil.assertFileIsReadable(bamFileOne);
@@ -790,7 +791,7 @@ public class BamFileInternalUtil {
 				graphics.setPaint(Color.BLACK);
 				graphics.drawRect(currentX, currentY, columnWidth, rowHeight);
 				graphics.drawString(block, currentX + 4, currentY + textHeight);
-				graphics.drawString("" + NumberFormatUtil.formatDouble(value, 2), currentX + 4, currentY + ((2 * textHeight) + 5));
+				graphics.drawString("" + decimalFormat.format(value), currentX + 4, currentY + ((2 * textHeight) + 5));
 
 				currentX += columnWidth;
 			}
@@ -847,7 +848,7 @@ public class BamFileInternalUtil {
 				blockNameByLine.add("NOT_FOUND");
 			}
 		}
-		// if file doesnt exists, then create it
+		// if file doesn't exists, then create it
 		if (!outputFile.exists()) {
 			outputFile.createNewFile();
 		}
