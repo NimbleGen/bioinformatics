@@ -138,7 +138,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 				FileUtil.createNewFile(primerAlignmentReportFile);
 				primerAlignmentWriter = new TabDelimitedFileWriter(primerAlignmentReportFile, new String[] { "uid_length", "substituions", "insertions", "deletions", "edit_distance", "read",
-						"extension_primer" });
+						"extension_primer", "probe_name", "probe_capture_start", "probe_capture_stop", "probe_strand" });
 			} catch (IOException e) {
 				throw new IllegalStateException("Could not create report file.", e);
 			}
