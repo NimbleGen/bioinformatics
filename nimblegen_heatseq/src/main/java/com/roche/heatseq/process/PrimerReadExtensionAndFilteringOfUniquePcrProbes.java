@@ -57,7 +57,6 @@ import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
-import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 /*
  * Class to get reads for each probe from a merged BAM file, determine which read to use for each UID, extend the reads to the target primers, and output the reduced and extended reads to a new BAM file
@@ -74,7 +73,6 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 	private static Logger logger = LoggerFactory.getLogger(PrimerReadExtensionAndFilteringOfUniquePcrProbes.class);
 
-	public final static String REPORT_DIRECTORY = "/reports/";
 	public final static String DETAILS_REPORT_NAME = "processing_details.txt";
 	private final static String EXTENSION_ERRORS_REPORT_NAME = "extension_errors.txt";
 	public final static String PROBE_UID_QUALITY_REPORT_NAME = "probe_uid_quality.txt";
@@ -109,19 +107,19 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		long start = System.currentTimeMillis();
 
 		// Set up the reports files
-		File detailsReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + DETAILS_REPORT_NAME);
-		File extensionErrorsReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + EXTENSION_ERRORS_REPORT_NAME);
-		File probeUidQualityReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + PROBE_UID_QUALITY_REPORT_NAME);
-		File unableToAlignPrimerReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + UNABLE_TO_ALIGN_PRIMER_REPORT_NAME);
-		File primerAlignmentReportFile = new File(applicationSettings.getOutputDirectory(), REPORT_DIRECTORY + applicationSettings.getOutputFilePrefix() + PRIMER_ALIGNMENT_REPORT_NAME);
+		File detailsReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + DETAILS_REPORT_NAME);
+		File extensionErrorsReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + EXTENSION_ERRORS_REPORT_NAME);
+		File probeUidQualityReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + PROBE_UID_QUALITY_REPORT_NAME);
+		File unableToAlignPrimerReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + UNABLE_TO_ALIGN_PRIMER_REPORT_NAME);
+		File primerAlignmentReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + PRIMER_ALIGNMENT_REPORT_NAME);
 
 		logger.debug("Creating details report file at " + detailsReportFile.getAbsolutePath());
 
 		DetailsReport detailsReport = null;
 		PrintWriter extensionErrorsWriter = null;
-		PrintWriter probeUidQualityWriter = null;
-		PrintWriter unableToAlignPrimerWriter = null;
-		PrintWriter primerAlignmentWriter = null;
+		TabDelimitedFileWriter probeUidQualityWriter = null;
+		TabDelimitedFileWriter unableToAlignPrimerWriter = null;
+		TabDelimitedFileWriter primerAlignmentWriter = null;
 
 		if (applicationSettings.isShouldOutputQualityReports()) {
 			try {
@@ -131,22 +129,18 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				extensionErrorsWriter = new PrintWriter(extensionErrorsReportFile);
 
 				FileUtil.createNewFile(probeUidQualityReportFile);
-				probeUidQualityWriter = new PrintWriter(probeUidQualityReportFile);
-				probeUidQualityWriter.println("probe_id" + StringUtil.TAB + "probe_sequence_name" + StringUtil.TAB + "probe_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
-						+ "strand" + StringUtil.TAB + "uid" + StringUtil.TAB + "read_one_quality" + StringUtil.TAB + "read_two_quality" + StringUtil.TAB + "total_quality" + StringUtil.TAB
-						+ "read_name");
+				probeUidQualityWriter = new TabDelimitedFileWriter(probeUidQualityReportFile, new String[] { "probe_id", "probe_sequence_name", "probe_capture_start", "probe_capture_stop", "strand",
+						"uid", "read_one_quality", "read_two_quality", "total_quality", "read_name" });
 
 				FileUtil.createNewFile(unableToAlignPrimerReportFile);
-				unableToAlignPrimerWriter = new PrintWriter(unableToAlignPrimerReportFile);
-				unableToAlignPrimerWriter.println("sequence_name" + StringUtil.TAB + "probe_start" + StringUtil.TAB + "protbe_stop" + StringUtil.TAB + "extension_primer_sequence" + StringUtil.TAB
-						+ "read_name" + StringUtil.TAB + "read_string");
+				unableToAlignPrimerWriter = new TabDelimitedFileWriter(unableToAlignPrimerReportFile, new String[] { "sequence_name", "probe_start", "probe_stop", "extension_primer_sequence",
+						"read_name", "read_string" });
 
 				FileUtil.createNewFile(primerAlignmentReportFile);
-				primerAlignmentWriter = new PrintWriter(primerAlignmentReportFile);
-				primerAlignmentWriter.println("uid_length" + StringUtil.TAB + "substituions" + StringUtil.TAB + "insertions" + StringUtil.TAB + "deletions" + StringUtil.TAB + "edit_distance"
-						+ StringUtil.TAB + "read" + StringUtil.TAB + "extension_primer" + StringUtil.TAB);
+				primerAlignmentWriter = new TabDelimitedFileWriter(primerAlignmentReportFile, new String[] { "uid_length", "substituions", "insertions", "deletions", "edit_distance", "read",
+						"extension_primer" });
 			} catch (IOException e) {
-				throw new IllegalStateException("Could not create details report file[" + detailsReportFile.getAbsolutePath() + "].");
+				throw new IllegalStateException("Could not create report file.", e);
 			}
 		}
 
@@ -200,7 +194,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	 *            Writer for reporting quality per UID
 	 */
 	private static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings, ProbesBySequenceName probeInfo, DetailsReport detailsReport,
-			PrintWriter extensionErrorsWriter, PrintWriter probeUidQualityWriter, PrintWriter unableToAlignPrimerWriter, PrintWriter primerAlignmentWriter) {
+			PrintWriter extensionErrorsWriter, TabDelimitedFileWriter probeUidQualityWriter, TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter) {
 		Set<String> sequenceNames = probeInfo.getSequenceNames();
 
 		SAMFileWriter samWriter = null;
@@ -392,10 +386,10 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		private final ApplicationSettings applicationSettings;
 		private final SAMFileWriter samWriter;
 		private final PrintWriter extensionErrorsWriter;
-		private final PrintWriter probeUidQualityWriter;
+		private final TabDelimitedFileWriter probeUidQualityWriter;
 		private final DetailsReport detailsReport;
-		private final PrintWriter unableToAlignPrimerWriter;
-		private final PrintWriter primerAlignmentWriter;
+		private final TabDelimitedFileWriter unableToAlignPrimerWriter;
+		private final TabDelimitedFileWriter primerAlignmentWriter;
 		private final FastqWriter fastqOneWriter;
 		private final FastqWriter fastqTwoWriter;
 		private final IAlignmentScorer alignmentScorer;
@@ -424,8 +418,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		 */
 
 		PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(Probe probe, ApplicationSettings applicationSettings, SAMFileWriter samWriter, PrintWriter extensionErrorsWriter,
-				PrintWriter probeUidQualityWriter, DetailsReport detailsReport, PrintWriter unableToAlignPrimerWriter, PrintWriter primerAlignmentWriter, FastqWriter fastqOneWriter,
-				FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap, IAlignmentScorer alignmentScorer) {
+				TabDelimitedFileWriter probeUidQualityWriter, DetailsReport detailsReport, TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter,
+				FastqWriter fastqOneWriter, FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap, IAlignmentScorer alignmentScorer) {
 			this.probe = probe;
 			this.applicationSettings = applicationSettings;
 			this.samWriter = samWriter;

@@ -19,7 +19,6 @@ package com.roche.mapping;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -56,6 +55,7 @@ import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.process.BamFileUtil;
 import com.roche.heatseq.process.ExtendReadsToPrimer;
 import com.roche.heatseq.process.ProbeFileUtil;
+import com.roche.heatseq.process.TabDelimitedFileWriter;
 import com.roche.heatseq.qualityreport.DetailsReport;
 import com.roche.heatseq.qualityreport.ProbeProcessingStats;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
@@ -63,7 +63,6 @@ import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StatisticsUtil;
-import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 /**
  * 
@@ -80,10 +79,10 @@ public class MapperFiltererAndExtender {
 	private final File fastQTwoFile;
 	private final File probeFile;
 	private final File outputFile;
-	private PrintWriter ambiguousMappingWriter;
-	private PrintWriter probeUidQualityWriter;
-	private PrintWriter unableToAlignPrimerWriter;
-	private PrintWriter primerAlignmentWriter;
+	private TabDelimitedFileWriter ambiguousMappingWriter;
+	private TabDelimitedFileWriter probeUidQualityWriter;
+	private TabDelimitedFileWriter unableToAlignPrimerWriter;
+	private TabDelimitedFileWriter primerAlignmentWriter;
 	private DetailsReport detailsReport;
 
 	private FastqWriter fastqOneUnableToMapWriter;
@@ -129,53 +128,46 @@ public class MapperFiltererAndExtender {
 
 		this.alignmentScorer = alignmentScorer;
 
-		if (ambiguousMappingFile != null) {
-			try {
-				ambiguousMappingWriter = new PrintWriter(ambiguousMappingFile);
-				ambiguousMappingWriter.println("readName" + StringUtil.TAB + "readString" + StringUtil.TAB + "sequence_name" + StringUtil.TAB + "extension_primer_start" + StringUtil.TAB
-						+ "extension_primer_stop" + StringUtil.TAB + "capture_target_start" + StringUtil.TAB + "capture_target_stop" + StringUtil.TAB + "ligation_primer_start" + StringUtil.TAB
-						+ "ligation_primer_stop" + StringUtil.TAB + "probe_strand");
-			} catch (FileNotFoundException e) {
-				throw new IllegalStateException(e);
+		try {
+			if (ambiguousMappingFile != null) {
+				try {
+					ambiguousMappingWriter = new TabDelimitedFileWriter(ambiguousMappingFile, new String[] { "readName", "readString", "sequence_name", "extension_primer_start",
+							"extension_primer_stop", "capture_target_start", "capture_target_stop", "ligation_primer_start", "ligation_primer_stop", "probe_strand" });
+				} catch (FileNotFoundException e) {
+					throw new IllegalStateException(e);
+				}
 			}
-		}
-		if (probeUidQualityFile != null) {
-			try {
-				probeUidQualityWriter = new PrintWriter(probeUidQualityFile);
-				probeUidQualityWriter.println("probe_id" + StringUtil.TAB + "probe_sequence_name" + StringUtil.TAB + "probe_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
-						+ "strand" + StringUtil.TAB + "uid" + StringUtil.TAB + "read_one_quality" + StringUtil.TAB + "read_two_quality" + StringUtil.TAB + "total_quality" + StringUtil.TAB
-						+ "read_name" + StringUtil.TAB + "read_sequence");
-			} catch (FileNotFoundException e) {
-				throw new IllegalStateException(e);
+			if (probeUidQualityFile != null) {
+				try {
+					probeUidQualityWriter = new TabDelimitedFileWriter(probeUidQualityFile, new String[] { "probe_id", "probe_sequence_name", "probe_capture_start", "probe_capture_stop", "strand",
+							"uid", "read_one_quality", "read_two_quality", "total_quality", "read_name", "read_sequence" });
+				} catch (FileNotFoundException e) {
+					throw new IllegalStateException(e);
+				}
 			}
-		}
-		if (unableToAlignPrimerFile != null) {
-			try {
-				unableToAlignPrimerWriter = new PrintWriter(unableToAlignPrimerFile);
-				unableToAlignPrimerWriter.println("sequence_name" + StringUtil.TAB + "probe_start" + StringUtil.TAB + "protbe_stop" + StringUtil.TAB + "extension_primer_sequence" + StringUtil.TAB
-						+ "read_name" + StringUtil.TAB + "read_string");
-			} catch (FileNotFoundException e) {
-				throw new IllegalStateException(e);
+			if (unableToAlignPrimerFile != null) {
+				try {
+					unableToAlignPrimerWriter = new TabDelimitedFileWriter(unableToAlignPrimerFile, new String[] { "sequence_name", "probe_start", "probe_stop", "extension_primer_sequence",
+							"read_name", "read_string" });
+				} catch (FileNotFoundException e) {
+					throw new IllegalStateException(e);
+				}
 			}
-		}
 
-		if (primerAlignmentFile != null) {
-			try {
-				primerAlignmentWriter = new PrintWriter(primerAlignmentFile);
-				primerAlignmentWriter.println("uid_length" + StringUtil.TAB + "substituions" + StringUtil.TAB + "insertions" + StringUtil.TAB + "deletions" + StringUtil.TAB + "edit_distance"
-						+ StringUtil.TAB + "read" + StringUtil.TAB + "extension_primer" + StringUtil.TAB + "probe_sequence_name" + StringUtil.TAB + "capture_target_start" + StringUtil.TAB
-						+ "capture_target_stop" + StringUtil.TAB + "probe_strand");
-			} catch (FileNotFoundException e) {
-				throw new IllegalStateException(e);
+			if (primerAlignmentFile != null) {
+				try {
+					primerAlignmentWriter = new TabDelimitedFileWriter(primerAlignmentFile, new String[] { "uid_length", "substituions", "insertions", "deletions", "edit_distance", "read",
+							"extension_primer", "probe_sequence_name", "capture_target_start", "capture_target_stop", "probe_strand" });
+				} catch (FileNotFoundException e) {
+					throw new IllegalStateException(e);
+				}
 			}
-		}
 
-		if (detailsReportFile != null) {
-			try {
+			if (detailsReportFile != null) {
 				detailsReport = new DetailsReport(detailsReportFile);
-			} catch (IOException e) {
-				throw new IllegalStateException(e);
 			}
+		} catch (IOException e) {
+			throw new IllegalStateException("Could not create report file.", e);
 		}
 
 		final FastqWriterFactory factory = new FastqWriterFactory();
@@ -444,17 +436,17 @@ public class MapperFiltererAndExtender {
 		private final int fastQTwoPrimerLength;
 		private final int uidLength;
 		private final boolean allowVariableLengthUids;
-		private final PrintWriter ambiguousMappingWriter;
-		private final PrintWriter probeUidQualityWriter;
-		private final PrintWriter unableToAlignPrimerWriter;
+		private final TabDelimitedFileWriter ambiguousMappingWriter;
+		private final TabDelimitedFileWriter probeUidQualityWriter;
+		private final TabDelimitedFileWriter unableToAlignPrimerWriter;
 		private final FastqWriter fastqOneUnableToMapWriter;
 		private final FastqWriter fastqTwoUnableToMapWriter;
-		private final PrintWriter primerAlignmentWriter;
+		private final TabDelimitedFileWriter primerAlignmentWriter;
 		private final IAlignmentScorer alignmentScorer;
 
 		public MapUidAndProbeTask(FastqRecord recordOne, FastqRecord recordTwo, SubReadProbeMapper probeMapper, int fastqLineIndex, int fastQOnePrimerLength, int fastQTwoPrimerLength, int uidLength,
-				boolean allowVariableLengthUids, PrintWriter ambiguousMappingWriter, PrintWriter probeUidQualityWriter, PrintWriter unableToAlignPrimerWriter, FastqWriter fastqOneUnableToMapWriter,
-				FastqWriter fastqTwoUnableToMapWriter, PrintWriter primerAlignmentWriter, IAlignmentScorer alignmentScorer) {
+				boolean allowVariableLengthUids, TabDelimitedFileWriter ambiguousMappingWriter, TabDelimitedFileWriter probeUidQualityWriter, TabDelimitedFileWriter unableToAlignPrimerWriter,
+				FastqWriter fastqOneUnableToMapWriter, FastqWriter fastqTwoUnableToMapWriter, TabDelimitedFileWriter primerAlignmentWriter, IAlignmentScorer alignmentScorer) {
 			super();
 			this.recordOne = recordOne;
 			this.recordTwo = recordTwo;
@@ -558,25 +550,22 @@ public class MapperFiltererAndExtender {
 								String readSequence = queryOneSequence.toString();
 
 								String readName = recordOne.getReadHeader();
-
-								probeUidQualityWriter.println(probeIndex + StringUtil.TAB + matchingProbe.getSequenceName() + StringUtil.TAB + probeCaptureStart + StringUtil.TAB + probeCaptureStop
-										+ StringUtil.TAB + probeStrand + StringUtil.TAB + uid.toUpperCase() + StringUtil.TAB + sequenceOneQualityScore + StringUtil.TAB + sequenceTwoQualityScore
-										+ StringUtil.TAB + qualityScore + StringUtil.TAB + readName + StringUtil.TAB + readSequence);
+								probeUidQualityWriter.writeLine(probeIndex, matchingProbe.getSequenceName(), probeCaptureStart, probeCaptureStop, probeStrand, uid.toUpperCase(),
+										sequenceOneQualityScore, sequenceTwoQualityScore, qualityScore, readName, readSequence);
 							}
 
 						} else {
 							if (unableToAlignPrimerWriter != null) {
-								unableToAlignPrimerWriter.println(matchingProbe.getSequenceName() + StringUtil.TAB + matchingProbe.getStart() + StringUtil.TAB + matchingProbe.getStop()
-										+ matchingProbe.getExtensionPrimerSequence() + StringUtil.TAB + recordOne.getReadHeader() + StringUtil.TAB + recordOne.getReadString());
+								unableToAlignPrimerWriter.writeLine(matchingProbe.getSequenceName(), matchingProbe.getStart(), matchingProbe.getStop(), matchingProbe.getExtensionPrimerSequence(),
+										recordOne.getReadHeader(), recordOne.getReadString());
 							}
 						}
 					} else if ((matchingProbes.size() > 1) && (ambiguousMappingWriter != null)) {
 						for (ProbeReference matchingProbe : matchingProbes) {
 							Probe probe = matchingProbe.getProbe();
-							ambiguousMappingWriter.println(recordOne.getReadHeader() + StringUtil.TAB + recordOne.getReadString() + StringUtil.TAB + probe.getSequenceName() + StringUtil.TAB
-									+ probe.getExtensionPrimerStart() + StringUtil.TAB + probe.getExtensionPrimerStop() + StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB
-									+ probe.getCaptureTargetStop() + StringUtil.TAB + probe.getLigationPrimerStart() + StringUtil.TAB + probe.getLigationPrimerStop() + StringUtil.TAB
-									+ probe.getProbeStrand());
+							ambiguousMappingWriter.writeLine(recordOne.getReadHeader(), recordOne.getReadString(), probe.getSequenceName(), probe.getExtensionPrimerStart(),
+									probe.getExtensionPrimerStop(), probe.getCaptureTargetStart(), probe.getCaptureTargetStop(), probe.getLigationPrimerStart(), probe.getLigationPrimerStop(),
+									probe.getProbeStrand());
 						}
 					} else if (matchingProbes.size() == 0) {
 						if (fastqOneUnableToMapWriter != null) {

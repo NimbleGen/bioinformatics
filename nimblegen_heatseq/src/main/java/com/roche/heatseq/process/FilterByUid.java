@@ -16,7 +16,6 @@
 
 package com.roche.heatseq.process;
 
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,7 +36,6 @@ import com.roche.heatseq.qualityreport.ProbeProcessingStats;
 import com.roche.mapping.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.utils.StatisticsUtil;
-import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 /**
  * Filter a set of reads to find the best read per UID
@@ -63,8 +61,8 @@ public class FilterByUid {
 	 *            Used to report on UID quality
 	 * @return A UidReductionResultsForAProbe containing the processing statistics and the reduced probe set
 	 */
-	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, PrintWriter probeUidQualityWriter, PrintWriter unableToAlignPrimerWriter,
-			PrintWriter primerAlignmentWriter, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer) {
+	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, TabDelimitedFileWriter probeUidQualityWriter,
+			TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer) {
 		List<IReadPair> readPairs = new ArrayList<IReadPair>();
 
 		long probeProcessingStartInMs = System.currentTimeMillis();
@@ -86,10 +84,9 @@ public class FilterByUid {
 				if (uid != null) {
 					datas.add(new ReadPair(record, mate, uid));
 				} else {
-					unableToAlignPrimerWriter.println(probe.getSequenceName() + StringUtil.TAB + probe.getStart() + StringUtil.TAB + probe.getFeatureStop() + probe.getExtensionPrimerSequence()
-							+ StringUtil.TAB + record.getReadName() + StringUtil.TAB + record.getReadString());
+					unableToAlignPrimerWriter.writeLine(probe.getSequenceName(), probe.getStart(), probe.getFeatureStop(), probe.getExtensionPrimerSequence(), record.getReadName(),
+							record.getReadString());
 				}
-
 			}
 		}
 
@@ -174,7 +171,7 @@ public class FilterByUid {
 	 * @param data
 	 * @param probeUidQualityWriter
 	 */
-	public static void printProbeUidQualities(Probe probe, List<IReadPair> data, PrintWriter probeUidQualityWriter) {
+	public static void printProbeUidQualities(Probe probe, List<IReadPair> data, TabDelimitedFileWriter probeUidQualityWriter) {
 		if (probeUidQualityWriter != null) {
 			synchronized (probeUidQualityWriter) {
 				for (IReadPair currentPair : data) {
@@ -202,9 +199,8 @@ public class FilterByUid {
 						totalQualityScore = "" + currentPair.getTotalSequenceQualityScore();
 
 					}
-					probeUidQualityWriter.println(probeIndex + StringUtil.TAB + probe.getSequenceName() + StringUtil.TAB + probeCaptureStart + StringUtil.TAB + probeCaptureStop + StringUtil.TAB
-							+ probeStrand + StringUtil.TAB + uid.toUpperCase() + StringUtil.TAB + sequenceQualityScore + StringUtil.TAB + sequenceTwoQualityScore + StringUtil.TAB + totalQualityScore
-							+ StringUtil.TAB + readName);
+					probeUidQualityWriter.writeLine(probeIndex, probe.getSequenceName(), probeCaptureStart, probeCaptureStop, probeStrand, uid.toUpperCase(), sequenceQualityScore,
+							sequenceTwoQualityScore, totalQualityScore, readName);
 				}
 			}
 		}

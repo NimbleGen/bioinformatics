@@ -311,7 +311,7 @@ public class PrefuppCli {
 
 				File ambiguousMappingFile = null;
 				if (shouldOutputQualityReports) {
-					ambiguousMappingFile = new File(outputDirectory + PrimerReadExtensionAndFilteringOfUniquePcrProbes.REPORT_DIRECTORY, DUPLICATE_MAPPINGS_REPORT_NAME);
+					ambiguousMappingFile = new File(outputDirectory, outputFilePrefix + DUPLICATE_MAPPINGS_REPORT_NAME);
 					try {
 						FileUtil.createNewFile(ambiguousMappingFile);
 					} catch (IOException e) {
@@ -321,8 +321,7 @@ public class PrefuppCli {
 
 				File probeUidQualityFile = null;
 				if (shouldOutputQualityReports) {
-					probeUidQualityFile = new File(outputDirectory + PrimerReadExtensionAndFilteringOfUniquePcrProbes.REPORT_DIRECTORY,
-							PrimerReadExtensionAndFilteringOfUniquePcrProbes.PROBE_UID_QUALITY_REPORT_NAME);
+					probeUidQualityFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.PROBE_UID_QUALITY_REPORT_NAME);
 					try {
 						FileUtil.createNewFile(probeUidQualityFile);
 					} catch (IOException e) {
@@ -332,8 +331,7 @@ public class PrefuppCli {
 
 				File unableToAlignPrimerFile = null;
 				if (shouldOutputQualityReports) {
-					unableToAlignPrimerFile = new File(outputDirectory + PrimerReadExtensionAndFilteringOfUniquePcrProbes.REPORT_DIRECTORY,
-							PrimerReadExtensionAndFilteringOfUniquePcrProbes.UNABLE_TO_ALIGN_PRIMER_REPORT_NAME);
+					unableToAlignPrimerFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.UNABLE_TO_ALIGN_PRIMER_REPORT_NAME);
 					try {
 						FileUtil.createNewFile(unableToAlignPrimerFile);
 					} catch (IOException e) {
@@ -343,8 +341,7 @@ public class PrefuppCli {
 
 				File unableToMapFastqOneFile = null;
 				if (shouldOutputQualityReports) {
-					unableToMapFastqOneFile = new File(outputDirectory + PrimerReadExtensionAndFilteringOfUniquePcrProbes.REPORT_DIRECTORY,
-							PrimerReadExtensionAndFilteringOfUniquePcrProbes.UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME);
+					unableToMapFastqOneFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME);
 					try {
 						FileUtil.createNewFile(unableToMapFastqOneFile);
 					} catch (IOException e) {
@@ -354,8 +351,7 @@ public class PrefuppCli {
 
 				File unableToMapFastqTwoFile = null;
 				if (shouldOutputQualityReports) {
-					unableToMapFastqTwoFile = new File(outputDirectory + PrimerReadExtensionAndFilteringOfUniquePcrProbes.REPORT_DIRECTORY,
-							PrimerReadExtensionAndFilteringOfUniquePcrProbes.UNABLE_TO_MAP_FASTQ_TWO_REPORT_NAME);
+					unableToMapFastqTwoFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.UNABLE_TO_MAP_FASTQ_TWO_REPORT_NAME);
 					try {
 						FileUtil.createNewFile(unableToMapFastqOneFile);
 					} catch (IOException e) {
@@ -365,8 +361,7 @@ public class PrefuppCli {
 
 				File primerAlignmentFile = null;
 				if (shouldOutputQualityReports) {
-					primerAlignmentFile = new File(outputDirectory + PrimerReadExtensionAndFilteringOfUniquePcrProbes.REPORT_DIRECTORY,
-							PrimerReadExtensionAndFilteringOfUniquePcrProbes.PRIMER_ALIGNMENT_REPORT_NAME);
+					primerAlignmentFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.PRIMER_ALIGNMENT_REPORT_NAME);
 					try {
 						FileUtil.createNewFile(primerAlignmentFile);
 					} catch (IOException e) {
@@ -376,8 +371,7 @@ public class PrefuppCli {
 
 				File detailsReportFile = null;
 				if (shouldOutputQualityReports) {
-					detailsReportFile = new File(outputDirectory + PrimerReadExtensionAndFilteringOfUniquePcrProbes.REPORT_DIRECTORY,
-							PrimerReadExtensionAndFilteringOfUniquePcrProbes.DETAILS_REPORT_NAME);
+					detailsReportFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.DETAILS_REPORT_NAME);
 					try {
 						FileUtil.createNewFile(detailsReportFile);
 					} catch (IOException e) {
