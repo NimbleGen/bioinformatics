@@ -26,6 +26,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,6 +47,141 @@ public final class DelimitedFileParserUtil {
 	}
 
 	/**
+	 * Advances the buffered reader to the header line and returns the header line as a string
+	 * 
+	 * @param delimitedFile
+	 * @param headerNames
+	 * @param columnDelimiter
+	 * @param reader
+	 * @return
+	 * @throws IOException
+	 */
+	private static String findHeaderLine(File delimitedFile, String[] headerNames, String columnDelimiter, BufferedReader reader) throws IOException {
+		// walk down the rows until the header is found
+		boolean headerFound = false;
+
+		String headerLine = null;
+
+		String currentRow = null;
+		while (!headerFound && ((currentRow = reader.readLine()) != null)) {
+			// remove carriage return if this is a windows based file
+			if (currentRow.endsWith(CARRIAGE_RETURN)) {
+				currentRow = currentRow.substring(0, currentRow.length() - 1);
+			}
+
+			String[] parsedCurrentRow = null;
+
+			if (currentRow != null) {
+				parsedCurrentRow = currentRow.split(columnDelimiter);
+			}
+
+			if ((currentRow != null) && (parsedCurrentRow != null)) {
+				int columnCount = parsedCurrentRow.length;
+
+				Set<String> foundHeaderMatches = new HashSet<String>();
+
+				for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+					String cellString = parsedCurrentRow[columnIndex];
+
+					if (cellString != null) {
+						headerNameLoop: for (String headerName : headerNames) {
+							boolean matchFound = cellString.toLowerCase().startsWith(headerName.toLowerCase());
+
+							if (matchFound) {
+								foundHeaderMatches.add(headerName);
+
+								break headerNameLoop;
+							}
+						}
+					}
+				}
+
+				headerFound = foundHeaderMatches.size() >= headerNames.length;
+			}
+		}
+		if (headerFound) {
+			headerLine = currentRow;
+		}
+
+		return headerLine;
+	}
+
+	private static class DelimitedFileLineIterator implements Iterator<Map<String, String>> {
+
+		private final BufferedReader reader;
+		private final String columnDelimiter;
+		private final Map<Integer, String> headerNameToColumnMap;
+		private String nextLine;
+
+		public DelimitedFileLineIterator(String columnDelimiter, BufferedReader reader, Map<Integer, String> headerNameToColumnMap) throws IOException {
+			this.columnDelimiter = columnDelimiter;
+			this.reader = reader;
+			this.headerNameToColumnMap = headerNameToColumnMap;
+			this.nextLine = reader.readLine();
+		}
+
+		@Override
+		public boolean hasNext() {
+			boolean hasNext = nextLine != null;
+			if (!hasNext) {
+				try {
+					reader.close();
+				} catch (IOException e) {
+					throw new IllegalStateException(e.getMessage(), e);
+				}
+			}
+			return hasNext;
+		}
+
+		@Override
+		public Map<String, String> next() {
+			Map<String, String> headerNameToValueMapFromRow = null;
+			String currentRow = nextLine;
+
+			try {
+				nextLine = reader.readLine();
+			} catch (IOException e) {
+				throw new IllegalStateException(e.getMessage(), e);
+			}
+
+			if (currentRow.endsWith(CARRIAGE_RETURN)) {
+				currentRow = currentRow.substring(0, currentRow.length() - 1);
+			}
+
+			String[] parsedCurrentRow = currentRow.split(columnDelimiter);
+
+			if (parsedCurrentRow != null) {
+				headerNameToValueMapFromRow = parseRow(headerNameToColumnMap, parsedCurrentRow);
+			}
+
+			return headerNameToValueMapFromRow;
+		}
+
+		@Override
+		public void remove() {
+			throw new IllegalStateException("This method is not implemented.");
+		}
+
+	}
+
+	public static Iterator<Map<String, String>> getHeaderNameToValueMapRowIteratorFromDelimitedFile(File delimitedFile, String[] headerNames, String columnDelimiter) throws IOException {
+		InputStream fileInputStream = new FileInputStream(delimitedFile);
+		DelimitedFileLineIterator delimitedFileLineIterator = null;
+		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fileInputStream, Charset.forName("UTF-8")));
+
+		String headerLine = findHeaderLine(delimitedFile, headerNames, columnDelimiter, bufferedReader);
+		boolean headerFound = headerLine != null;
+		if (headerFound) {
+			String[] parsedHeaderRow = headerLine.split(columnDelimiter);
+
+			Map<Integer, String> headerNameToColumnMap = getHeaderNameToColumnIndexMapping(headerNames, parsedHeaderRow);
+			delimitedFileLineIterator = new DelimitedFileLineIterator(columnDelimiter, bufferedReader, headerNameToColumnMap);
+		}
+
+		return delimitedFileLineIterator;
+	}
+
+	/**
 	 * @param delimitedFile
 	 * @param headerNames
 	 * @param columnDelimiter
@@ -56,56 +192,17 @@ public final class DelimitedFileParserUtil {
 		String fileName = delimitedFile.getAbsolutePath();
 		Map<String, List<String>> headerNameToValuesMap = new HashMap<String, List<String>>();
 
-		// walk down the rows until the header is found
-		boolean headerFound = false;
-
 		InputStream fileInputStream = new FileInputStream(delimitedFile);
 		try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fileInputStream, Charset.forName("UTF-8")))) {
-			String currentRow = null;
-			while (!headerFound && ((currentRow = bufferedReader.readLine()) != null)) {
-				// remove carriage return if this is a windows based file
-				if (currentRow.endsWith(CARRIAGE_RETURN)) {
-					currentRow = currentRow.substring(0, currentRow.length() - 1);
-				}
 
-				String[] parsedCurrentRow = null;
-
-				if (currentRow != null) {
-					parsedCurrentRow = currentRow.split(columnDelimiter);
-				}
-
-				if ((currentRow != null) && (parsedCurrentRow != null)) {
-					int columnCount = parsedCurrentRow.length;
-
-					Set<String> foundHeaderMatches = new HashSet<String>();
-
-					for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
-						String cellString = parsedCurrentRow[columnIndex];
-
-						if (cellString != null) {
-							headerNameLoop: for (String headerName : headerNames) {
-								boolean matchFound = cellString.toLowerCase().startsWith(headerName.toLowerCase());
-
-								if (matchFound) {
-									foundHeaderMatches.add(headerName);
-
-									break headerNameLoop;
-								}
-							}
-						}
-					}
-
-					headerFound = foundHeaderMatches.size() >= headerNames.length;
-				}
-			}
-
+			String headerLine = findHeaderLine(delimitedFile, headerNames, columnDelimiter, bufferedReader);
+			boolean headerFound = headerLine != null;
 			int linesOfData = 0;
 			if (headerFound) {
-				String headerRow = currentRow;
-				String[] parsedHeaderRow = headerRow.split(columnDelimiter);
+				String[] parsedHeaderRow = headerLine.split(columnDelimiter);
 
 				Map<Integer, String> headerNameToColumnMap = getHeaderNameToColumnIndexMapping(headerNames, parsedHeaderRow);
-
+				String currentRow = null;
 				while ((currentRow = bufferedReader.readLine()) != null) {
 					linesOfData++;
 					// remove carriage return if this is a windows based file
@@ -139,6 +236,12 @@ public final class DelimitedFileParserUtil {
 					}
 
 				}
+			} else {
+				StringBuilder headerNamesAsString = new StringBuilder();
+				for (String headerName : headerNames) {
+					headerNamesAsString.append(headerName + " ");
+				}
+				throw new IllegalStateException("Could not find header containing header names[" + headerNamesAsString.toString() + "] in file[" + delimitedFile.getAbsolutePath() + "].");
 			}
 
 			// make sure all the header names were found

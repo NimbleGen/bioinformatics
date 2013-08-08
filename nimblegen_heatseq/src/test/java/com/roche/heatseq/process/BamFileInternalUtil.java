@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -53,6 +54,8 @@ import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMRecordIterator;
 
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.roche.imageexporter.Graphics2DImageExporter;
 import com.roche.imageexporter.Graphics2DImageExporter.ImageType;
@@ -60,11 +63,14 @@ import com.roche.mapping.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
+import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.DelimitedFileParserUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class BamFileInternalUtil {
+
+	private static Logger logger = LoggerFactory.getLogger(BamFileInternalUtil.class);
 
 	public static final DecimalFormat decimalFormat = new DecimalFormat(",###.00");
 
@@ -464,24 +470,21 @@ public class BamFileInternalUtil {
 		try {
 			String[] probeUidQualityHeaders = new String[] { "uid", "probe_sequence_name", "probe_capture_start", "probe_capture_stop", "strand", "read_sequence" };
 
-			Map<String, List<String>> probeHeadersToData = DelimitedFileParserUtil.getHeaderNameToValuesMapFromDelimitedFile(probeUidQualityFile, probeUidQualityHeaders, StringUtil.TAB);
-
-			List<String> probeUidQualitySequenceNames = probeHeadersToData.get(probeUidQualityHeaders[1]);
-			List<String> probeUidQualityStart = probeHeadersToData.get(probeUidQualityHeaders[2]);
-			List<String> probeUidQualityStop = probeHeadersToData.get(probeUidQualityHeaders[3]);
-			List<String> probeUidQualityStrand = probeHeadersToData.get(probeUidQualityHeaders[4]);
+			Iterator<Map<String, String>> probeHeadersToData = DelimitedFileParserUtil.getHeaderNameToValueMapRowIteratorFromDelimitedFile(probeUidQualityFile, probeUidQualityHeaders, StringUtil.TAB);
 
 			Map<String, TallyMap<Integer>> uidLengthsByBlock = new HashMap<String, TallyMap<Integer>>();
 			Map<String, TallyMap<Integer>> uniqueReadPairUidLengthsByBlock = new HashMap<String, TallyMap<Integer>>();
 
 			Set<ProbeAndUid> foundReads = new HashSet<ProbeAndUid>();
 
-			for (int probeUidIndex = 0; probeUidIndex < probeUidQualitySequenceNames.size(); probeUidIndex++) {
-				String probeName = probeUidQualitySequenceNames.get(probeUidIndex);
-				String probeStart = probeUidQualityStart.get(probeUidIndex);
-				String probeStop = probeUidQualityStop.get(probeUidIndex);
-				String probeStrand = probeUidQualityStrand.get(probeUidIndex);
-				String uid = probeHeadersToData.get(probeUidQualityHeaders[0]).get(probeUidIndex);
+			int probeUidIndex = 0;
+			while (probeHeadersToData.hasNext()) {
+				Map<String, String> headerNameToValueMap = probeHeadersToData.next();
+				String probeName = headerNameToValueMap.get(probeUidQualityHeaders[1]);
+				String probeStart = headerNameToValueMap.get(probeUidQualityHeaders[2]);
+				String probeStop = headerNameToValueMap.get(probeUidQualityHeaders[3]);
+				String probeStrand = headerNameToValueMap.get(probeUidQualityHeaders[4]);
+				String uid = headerNameToValueMap.get(probeUidQualityHeaders[0]);
 				Probe probe = new Probe(probeName, Integer.valueOf(probeStart), Integer.valueOf(probeStop), probeStrand);
 				String blockName = probeToBlockMap.get(probe);
 
@@ -498,8 +501,8 @@ public class BamFileInternalUtil {
 						uniqueReadPairUidLengthsByBlock.put(blockName, uniqueBlockTallyMap);
 					}
 
-					uidBlockReportByReadWriter.println(uid + StringUtil.TAB + uid.length() + StringUtil.TAB + blockName + StringUtil.TAB + probeUidQualitySequenceNames.get(probeUidIndex)
-							+ StringUtil.TAB + probeStart + StringUtil.TAB + probeStop);
+					uidBlockReportByReadWriter.println(uid + StringUtil.TAB + uid.length() + StringUtil.TAB + blockName + StringUtil.TAB + probeName + StringUtil.TAB + probeStart + StringUtil.TAB
+							+ probeStop);
 					TallyMap<Integer> blockTallyMap = uidLengthsByBlock.get(blockName);
 					if (blockTallyMap == null) {
 						blockTallyMap = new TallyMap<Integer>();
@@ -513,6 +516,7 @@ public class BamFileInternalUtil {
 					System.out.println("probe uid index:" + probeUidIndex);
 					uidBlockReportByReadWriter.flush();
 				}
+				probeUidIndex++;
 			}
 
 			StringBuilder byBlockHeader = new StringBuilder();
@@ -659,7 +663,8 @@ public class BamFileInternalUtil {
 		}
 	}
 
-	public static void processRandomNEntriesAndGenerateReports(File fastq1, File fastq2, File probeFile, File blockFile, Integer numberOfEntries, File baseOutputDirectory) throws Exception {
+	public static void processRandomNEntriesAndGenerateReports(File fastq1, File fastq2, File probeFile, File blockFile, Integer numberOfEntries, File baseOutputDirectory, String reportPrefix)
+			throws Exception {
 		File outputDirectory = new File(baseOutputDirectory, "/" + numberOfEntries + "/");
 		FileUtils.forceMkdir(outputDirectory);
 
@@ -674,10 +679,10 @@ public class BamFileInternalUtil {
 			System.out.println("done creating abbreviated fastq files.");
 		}
 
-		// PrefuppCli.main(new String[] { "--fastQOne", abbreviatedFastq1.getAbsolutePath(), "--fastQTwo", abbreviatedFastq2.getAbsolutePath(), "--probe", probeFile.getAbsolutePath(), "--outputDir",
-		// outputDirectory.getAbsolutePath(), "--outputReports", "--allow_variable_length_uids" });
+		PrefuppCli.main(new String[] { "--r1", abbreviatedFastq1.getAbsolutePath(), "--r2", abbreviatedFastq2.getAbsolutePath(), "--probe", probeFile.getAbsolutePath(), "--outputDir",
+				outputDirectory.getAbsolutePath(), "--outputBamFileName", "mapping.reduced.bam", "--outputPrefix", reportPrefix, "--outputReports", "--allow_variable_length_uids" });
 		System.out.println("done mapping.");
-		generateBlockReports(outputDirectory, blockFile);
+		generateBlockReports(outputDirectory, reportPrefix, blockFile);
 		System.out.println("done with block reports.");
 
 		Map<String, Double> totalReadMapByBlock = getTotalReadsMapByBlock(new File(outputDirectory, "/block_report_by_block.txt"), false);
@@ -686,7 +691,7 @@ public class BamFileInternalUtil {
 		Map<String, Double> valuesByName = getTotalReadsMapByBlock(new File(outputDirectory, "/block_report_by_block.txt"), true);
 		generateHeatMapFrom(valuesByName, "Unique (by Probe/UID) Reads per Block", new File(outputDirectory, "unique_reads_heatmap.pdf"), ImageType.PDF);
 
-		Map<String, Double> editDistanceByBlock = getAverageEditDistanceByBlock(new File(outputDirectory, "/reports/extension_primer_alignment_with_blocks.txt"), new File(outputDirectory,
+		Map<String, Double> editDistanceByBlock = getAverageEditDistanceByBlock(new File(outputDirectory, "/extension_primer_alignment_with_blocks.txt"), new File(outputDirectory,
 				"/block_report_by_block.txt"));
 		generateHeatMapFrom(editDistanceByBlock, "Average Edit Distance for Mapped Reads per Block", new File(outputDirectory, "average_edit_distance_heatmap.pdf"), ImageType.PDF);
 
@@ -802,25 +807,25 @@ public class BamFileInternalUtil {
 
 	}
 
-	private static void generateBlockReports(File resultsDirectory, File blockFile) throws IOException {
+	private static void generateBlockReports(File resultsDirectory, String reportPrefix, File blockFile) throws IOException {
 		Map<Probe, String> probeToBlockMap = getProbeToBlockMap(blockFile);
 
 		try {
-			createUidBlockReport(10, new File(resultsDirectory, "/reports/probe_uid_quality.txt"), new File(resultsDirectory, "/block_report_by_read.txt"), new File(resultsDirectory,
+			createUidBlockReport(10, new File(resultsDirectory, reportPrefix + "probe_uid_quality.txt"), new File(resultsDirectory, "/block_report_by_read.txt"), new File(resultsDirectory,
 					"/block_report_by_block.txt"), probeToBlockMap);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
 		try {
-			createUidBlockBaseNucleotideCompositionReport(new File(resultsDirectory, "/reports/probe_uid_quality.txt"), probeToBlockMap, new File(resultsDirectory,
+			createUidBlockBaseNucleotideCompositionReport(new File(resultsDirectory, reportPrefix + "probe_uid_quality.txt"), probeToBlockMap, new File(resultsDirectory,
 					"/unique_nucleotide_composition_by_block.txt"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
-		addBlockToExtensionPrimerAlignmentReport(new File(resultsDirectory, "/reports/extension_primer_alignment.txt"), probeToBlockMap, new File(resultsDirectory,
-				"/reports/extension_primer_alignment_with_blocks.txt"));
+		addBlockToExtensionPrimerAlignmentReport(new File(resultsDirectory, reportPrefix + "extension_primer_alignment.txt"), probeToBlockMap, new File(resultsDirectory,
+				"/extension_primer_alignment_with_blocks.txt"));
 
 	}
 
@@ -850,7 +855,11 @@ public class BamFileInternalUtil {
 		}
 		// if file doesn't exists, then create it
 		if (!outputFile.exists()) {
-			outputFile.createNewFile();
+			try {
+				outputFile.createNewFile();
+			} catch (IOException e) {
+				logger.warn("Could not create outputFile[" + outputFile.getAbsolutePath() + "].", e);
+			}
 		}
 
 		FileWriter fw = new FileWriter(outputFile);
@@ -969,25 +978,16 @@ public class BamFileInternalUtil {
 		File fastq1_56 = new File("D:/manufacturing_test/UID-57_R1.fastq");
 		File fastq2_56 = new File("D:/manufacturing_test/UID-57_R2.fastq");
 
+		String reportPrefix = "all_";
+
 		File baseOutputDirectory_56 = new File("D:/manufacturing_test/56/");
-		processRandomNEntriesAndGenerateReports(fastq1_56, fastq2_56, probeFile, blockFile, numberOfEntries, baseOutputDirectory_56);
+		processRandomNEntriesAndGenerateReports(fastq1_56, fastq2_56, probeFile, blockFile, numberOfEntries, baseOutputDirectory_56, reportPrefix);
 
 		File fastq1_57 = new File("D:/manufacturing_test/UID-56_R1.fastq");
 		File fastq2_57 = new File("D:/manufacturing_test/UID-56_R2.fastq");
 		File baseOutputDirectory_57 = new File("D:/manufacturing_test/57/");
-		processRandomNEntriesAndGenerateReports(fastq1_57, fastq2_57, probeFile, blockFile, numberOfEntries, baseOutputDirectory_57);
+		processRandomNEntriesAndGenerateReports(fastq1_57, fastq2_57, probeFile, blockFile, numberOfEntries, baseOutputDirectory_57, reportPrefix);
 
-	}
-
-	private static void runUnMappableEntries(Integer numberOfEntries) throws Exception {
-		File probeFile = new File("D:/manufacturing_test/HS_EXOME_picked_mip_probe_arms_80k.txt");
-		File blockFile = new File("D:/manufacturing_test/80k_block_assignment.txt");
-
-		File fastq1_56 = new File("D:/manufacturing_test/56/10000000/reports/unable_to_map_one.fastq");
-		File fastq2_56 = new File("D:/manufacturing_test/56/10000000/reports/unable_to_map_two.fastq");
-
-		File baseOutputDirectory_56 = new File("D:/manufacturing_test/56/");
-		processRandomNEntriesAndGenerateReports(fastq1_56, fastq2_56, probeFile, blockFile, numberOfEntries, baseOutputDirectory_56);
 	}
 
 	public static void convertFastqToFasta(File fastqFile, File outputFastaFile) throws IOException {
@@ -1026,7 +1026,7 @@ public class BamFileInternalUtil {
 		runEntries(null);
 
 		long stop = System.currentTimeMillis();
-		System.out.println("total time:" + (stop - start) + "ms");
+		System.out.println("total time:" + DateUtil.convertMillisecondsToHHMMSS(stop - start));
 	}
 
 }
