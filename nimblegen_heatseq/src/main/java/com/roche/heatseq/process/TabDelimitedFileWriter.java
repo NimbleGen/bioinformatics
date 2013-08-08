@@ -26,14 +26,16 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 		this.columnCount = headers.length;
 		this.printWriter = new PrintWriter(new FileWriter(outputFile));
 		boolean firstHeader = true;
-		for (String header : headers) {
-			if (!firstHeader) {
-				printWriter.write(StringUtil.TAB);
+		synchronized (this) {
+			for (String header : headers) {
+				if (!firstHeader) {
+					printWriter.write(StringUtil.TAB);
+				}
+				firstHeader = false;
+				printWriter.write(header);
 			}
-			firstHeader = false;
-			printWriter.write(header);
+			printWriter.println();
 		}
-		printWriter.println();
 	}
 
 	/**
