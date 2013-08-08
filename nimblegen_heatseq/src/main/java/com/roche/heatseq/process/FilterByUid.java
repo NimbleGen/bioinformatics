@@ -173,35 +173,33 @@ public class FilterByUid {
 	 */
 	public static void printProbeUidQualities(Probe probe, List<IReadPair> data, TabDelimitedFileWriter probeUidQualityWriter) {
 		if (probeUidQualityWriter != null) {
-			synchronized (probeUidQualityWriter) {
-				for (IReadPair currentPair : data) {
-					int probeIndex = -1;
-					String probeCaptureStart = "";
-					String probeCaptureStop = "";
-					String probeStrand = "";
-					String uid = "";
-					String sequenceQualityScore = "";
-					String sequenceTwoQualityScore = "";
-					String totalQualityScore = "";
-					String readName = "";
+			for (IReadPair currentPair : data) {
+				int probeIndex = -1;
+				String probeCaptureStart = "";
+				String probeCaptureStop = "";
+				String probeStrand = "";
+				String uid = "";
+				String sequenceQualityScore = "";
+				String sequenceTwoQualityScore = "";
+				String totalQualityScore = "";
+				String readName = "";
 
-					if (currentPair != null) {
-						probeIndex = probe.getIndex();
-						probeCaptureStart = "" + probe.getCaptureTargetStart();
-						probeCaptureStop = "" + probe.getCaptureTargetStop();
-						probeStrand = probe.getProbeStrand().toString();
+				if (currentPair != null) {
+					probeIndex = probe.getIndex();
+					probeCaptureStart = "" + probe.getCaptureTargetStart();
+					probeCaptureStop = "" + probe.getCaptureTargetStop();
+					probeStrand = probe.getProbeStrand().toString();
 
-						uid = "" + currentPair.getUid();
-						readName = currentPair.getReadName();
+					uid = "" + currentPair.getUid();
+					readName = currentPair.getReadName();
 
-						sequenceQualityScore = "" + currentPair.getSequenceOneQualityScore();
-						sequenceTwoQualityScore = "" + currentPair.getSequenceTwoQualityScore();
-						totalQualityScore = "" + currentPair.getTotalSequenceQualityScore();
+					sequenceQualityScore = "" + currentPair.getSequenceOneQualityScore();
+					sequenceTwoQualityScore = "" + currentPair.getSequenceTwoQualityScore();
+					totalQualityScore = "" + currentPair.getTotalSequenceQualityScore();
 
-					}
-					probeUidQualityWriter.writeLine(probeIndex, probe.getSequenceName(), probeCaptureStart, probeCaptureStop, probeStrand, uid.toUpperCase(), sequenceQualityScore,
-							sequenceTwoQualityScore, totalQualityScore, readName);
 				}
+				probeUidQualityWriter.writeLine(probeIndex, probe.getSequenceName(), probeCaptureStart, probeCaptureStop, probeStrand, uid.toUpperCase(), sequenceQualityScore,
+						sequenceTwoQualityScore, totalQualityScore, readName);
 			}
 		}
 	}
