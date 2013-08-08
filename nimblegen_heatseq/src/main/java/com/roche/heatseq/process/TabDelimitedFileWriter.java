@@ -22,10 +22,8 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 	 * @throws IOException
 	 */
 	public TabDelimitedFileWriter(File outputFile, String[] headers) throws IOException {
-
 		// Keep track of how many columns we should expect to see
 		this.columnCount = headers.length;
-
 		this.printWriter = new PrintWriter(new FileWriter(outputFile));
 		boolean firstHeader = true;
 		synchronized (this) {
@@ -46,16 +44,16 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 	 * @param values
 	 */
 	public void writeLine(Object... values) {
-		if (printWriter == null) {
-			throw new IllegalArgumentException("Trying to write a line to a writer thas has been closed");
-		}
-
-		if (values.length != columnCount) {
-			throw new IllegalArgumentException("Passed in " + values.length + " values to a writer with " + columnCount + " columns.");
-		}
-
-		boolean firstValue = true;
 		synchronized (this) {
+			if (printWriter == null) {
+				throw new IllegalArgumentException("Trying to write a line to a writer thas has been closed");
+			}
+
+			if (values.length != columnCount) {
+				throw new IllegalArgumentException("Passed in " + values.length + " values to a writer with " + columnCount + " columns.");
+			}
+
+			boolean firstValue = true;
 			for (Object value : values) {
 				if (!firstValue) {
 					printWriter.write(StringUtil.TAB);
@@ -78,10 +76,12 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 	 * Close the underlying print writer. Once a TabDelimitedFileWriter has been closed it can no longer be written to.
 	 */
 	public void close() {
-		if (printWriter != null) {
-			printWriter.flush();
-			printWriter.close();
+		synchronized (this) {
+			if (printWriter != null) {
+				printWriter.flush();
+				printWriter.close();
+			}
+			printWriter = null;
 		}
-		printWriter = null;
 	}
 }
