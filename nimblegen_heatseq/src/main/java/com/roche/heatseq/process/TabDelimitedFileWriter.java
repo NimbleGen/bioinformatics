@@ -28,14 +28,16 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 
 		this.printWriter = new PrintWriter(new FileWriter(outputFile));
 		boolean firstHeader = true;
-		for (String header : headers) {
-			if (!firstHeader) {
-				printWriter.write(StringUtil.TAB);
+		synchronized (this) {
+			for (String header : headers) {
+				if (!firstHeader) {
+					printWriter.write(StringUtil.TAB);
+				}
+				firstHeader = false;
+				printWriter.write(header);
 			}
-			firstHeader = false;
-			printWriter.write(header);
+			printWriter.println();
 		}
-		printWriter.println();
 	}
 
 	/**
@@ -53,21 +55,23 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 		}
 
 		boolean firstValue = true;
-		for (Object value : values) {
-			if (!firstValue) {
-				printWriter.write(StringUtil.TAB);
-			}
-			firstValue = false;
+		synchronized (this) {
+			for (Object value : values) {
+				if (!firstValue) {
+					printWriter.write(StringUtil.TAB);
+				}
+				firstValue = false;
 
-			if (value instanceof Number) {
-				// We want all numeric values to be formatted
-				printWriter.write(decimalFormat.format(value));
-			} else {
-				// Convert the value to a string
-				printWriter.write(value.toString());
+				if (value instanceof Number) {
+					// We want all numeric values to be formatted
+					printWriter.write(decimalFormat.format(value));
+				} else {
+					// Convert the value to a string
+					printWriter.write(value.toString());
+				}
 			}
+			printWriter.println();
 		}
-		printWriter.println();
 	}
 
 	/**
