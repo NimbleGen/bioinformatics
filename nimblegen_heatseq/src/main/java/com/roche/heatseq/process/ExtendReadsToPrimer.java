@@ -106,36 +106,36 @@ public final class ExtendReadsToPrimer {
 					false, readOneIsOnReverseStrand, alignmentScorer);
 
 			if (readOneExtensionDetails != null) {
-				String readOneExtendedSequence = sequenceOne.subSequence(readOneExtensionDetails.getReadStart(), sequenceOne.size()).toString();
+				ISequence readOneExtendedSequence = sequenceOne.subSequence(readOneExtensionDetails.getReadStart(), sequenceOne.size());
 				String readOneExtendedBaseQualities = sequenceOneQualityString.substring(readOneExtensionDetails.getReadStart(), sequenceOneQualityString.length()).toString();
 				int readOneReferenceLength = probe.getCaptureTargetSequence().size();
 				primerReferencePositionAdjacentToSequence = probe.getLigationPrimerStart();
 				if (readOneIsOnReverseStrand) {
-					readOneExtendedSequence = StringUtil.reverse(readOneExtendedSequence);
+					readOneExtendedSequence = readOneExtendedSequence.getReverseCompliment();
 					readOneExtendedBaseQualities = StringUtil.reverse(readOneExtendedBaseQualities);
 					readOneReferenceLength = -readOneReferenceLength;
 					primerReferencePositionAdjacentToSequence = probe.getLigationPrimerStop();
 				}
 
 				SAMRecord readOneExtendedRecord = extendRecord(samHeader, readName, readGroup, readOneIsOnReverseStrand, readOneExtensionDetails.getAlignmentCigarString(),
-						readOneExtensionDetails.getMismatchDetailsString(), readOneExtensionDetails.getAlignmentStartInReference(), readOneExtendedSequence, readOneExtendedBaseQualities,
+						readOneExtensionDetails.getMismatchDetailsString(), readOneExtensionDetails.getAlignmentStartInReference(), readOneExtendedSequence.toString(), readOneExtendedBaseQualities,
 						sequenceName, oneMappingQuality, probe.getCaptureTargetSequence().size(), uid);
 
 				ReadExtensionDetails readTwoExtensionDetails = calculateDetailsForReadExtensionToPrimer(ligationPrimer, primerReferencePositionAdjacentToSequence, captureTargetSequence, sequenceTwo,
 						true, readTwoIsOnReverseStrand, alignmentScorer);
 
 				if (readTwoExtensionDetails != null) {
-					String readTwoExtendedBaseQualities = sequenceTwoQualityString.substring(readTwoExtensionDetails.getReadStart(), sequenceTwoQualityString.length()).toString();
-					String readTwoExtendedSequence = sequenceTwo.subSequence(readTwoExtensionDetails.getReadStart(), sequenceTwo.size()).toString();
+					String readTwoExtendedBaseQualities = sequenceTwoQualityString.substring(readTwoExtensionDetails.getReadStart(), sequenceTwoQualityString.length());
+					ISequence readTwoExtendedSequence = sequenceTwo.subSequence(readTwoExtensionDetails.getReadStart(), sequenceTwo.size()).getCompliment();
 					int readTwoReferenceLength = probe.getCaptureTargetSequence().size();
 					if (readTwoIsOnReverseStrand) {
-						readTwoExtendedSequence = StringUtil.reverse(readTwoExtendedSequence);
+						readTwoExtendedSequence = readTwoExtendedSequence.getReverseCompliment();
 						readTwoExtendedBaseQualities = StringUtil.reverse(readTwoExtendedBaseQualities);
 						readTwoReferenceLength = -readTwoReferenceLength;
 					}
 					SAMRecord readTwoExtendedRecord = extendRecord(samHeader, readName, readGroup, readTwoIsOnReverseStrand, readTwoExtensionDetails.getAlignmentCigarString(),
-							readTwoExtensionDetails.getMismatchDetailsString(), readTwoExtensionDetails.getAlignmentStartInReference(), readTwoExtendedSequence, readTwoExtendedBaseQualities,
-							sequenceName, twoMappingQuality, readTwoReferenceLength, uid);
+							readTwoExtensionDetails.getMismatchDetailsString(), readTwoExtensionDetails.getAlignmentStartInReference(), readTwoExtendedSequence.toString(),
+							readTwoExtendedBaseQualities, sequenceName, twoMappingQuality, readTwoReferenceLength, uid);
 
 					SAMRecordUtil.setSAMRecordsAsPair(readOneExtendedRecord, readTwoExtendedRecord);
 
@@ -175,13 +175,12 @@ public final class ExtendReadsToPrimer {
 
 				// TODO Kurt Heilman 7/23/2013 need to examine if this logic is correct
 				if (isReversed) {
-					// ISequence readAlignment = readAlignmentWithReference.getAlignmentPair().getQueryAlignment();
-					ISequence referenceAlignment = readAlignmentWithReference.getAlignmentPair().getReferenceAlignment();
+					ISequence referenceAlignment = readAlignmentWithReference.getAlignmentPair().getReferenceAlignmentWithoutTerminalInserts();
 					cigarString = readAlignmentWithReference.getReverseCigarString();
 					mismatchDetailsString = readAlignmentWithReference.getReverseMismatchDetailsString();
 					alignmentStartInReference = primerReferencePositionAdjacentToSequence - referenceAlignment.size();
 				} else {
-					alignmentStartInReference = primerReferencePositionAdjacentToSequence;
+					alignmentStartInReference = primerReferencePositionAdjacentToSequence + 1;
 				}
 
 				readExtensionDetails = new ReadExtensionDetails(alignmentStartInReference, captureTargetStartIndexInRead, cigarString, mismatchDetailsString);
