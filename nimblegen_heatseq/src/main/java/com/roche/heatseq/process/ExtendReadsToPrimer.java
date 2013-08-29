@@ -263,7 +263,7 @@ public final class ExtendReadsToPrimer {
 					synchronized (extensionErrorsWriter) {
 						extensionErrorsWriter.println();
 						extensionErrorsWriter.println("--------------------");
-						extensionErrorsWriter.println("PROBE " + probe.getIndex() + ": " + probe.getSequenceName() + ":" + probe.getCaptureTargetStart() + " to " + probe.getCaptureTargetStop());
+						extensionErrorsWriter.println("PROBE " + probe.getProbeId() + ": " + probe.getSequenceName() + ":" + probe.getCaptureTargetStart() + " to " + probe.getCaptureTargetStop());
 						extensionErrorsWriter.println();
 						extensionErrorsWriter.println("fastqOne Sequence: " + readPair.getSequenceOne());
 						extensionErrorsWriter.println(StringUtil.TAB + "mapping in reference start: " + readPair.getRecordAlignmentStart());

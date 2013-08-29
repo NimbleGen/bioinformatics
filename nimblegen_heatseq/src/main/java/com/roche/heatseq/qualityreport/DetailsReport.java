@@ -23,7 +23,7 @@ public class DetailsReport {
 
 		detailsReportWriter.println(dateFormat.format(date));
 		detailsReportWriter.println();
-		detailsReportWriter.println("probe_index" + StringUtil.TAB + "probe_sequence_name" + StringUtil.TAB + "probes_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
+		detailsReportWriter.println("probe_id" + StringUtil.TAB + "probe_sequence_name" + StringUtil.TAB + "probes_capture_start" + StringUtil.TAB + "probe_capture_stop" + StringUtil.TAB
 				+ "probe_strand" + StringUtil.TAB + "total_uids" + StringUtil.TAB + "average_number_of_read_pairs_per_uid" + StringUtil.TAB + "standard_deviation_of_read_pairs_per_uid"
 				+ StringUtil.TAB + "min_number_of_read_pairs_per_uid" + StringUtil.TAB + "max_number_of_read_pairs_per_uid" + StringUtil.TAB + "uid_Of_entry_with_max_read_pairs" + StringUtil.TAB
 				+ " total_duplicate_read_pairs_removed" + StringUtil.TAB + " totalReadPairsRemainingAfterReduction" + StringUtil.TAB + " totalTimeToProcessInMs");
