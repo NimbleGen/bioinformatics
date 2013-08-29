@@ -39,9 +39,8 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 public final class ProbeFileUtil {
 	private final static Logger logger = LoggerFactory.getLogger(ProbeFileUtil.class);
 
-	private final static String[] PROBE_INFO_HEADER_NAMES = new String[] { "chr", "ext_probe_start", "ext_probe_stop", "ext_probe_sequence", "ext_copy_count", "lig_probe_start", "lig_probe_stop",
-			"lig_probe_sequence", "lig_copy_count", "mip_target_start_position", "mip_target_stop_position", "mip_target_sequence", "feature_start_position", "feature_stop_position",
-			"feature_mip_count", "probe_strand" };
+	private final static String[] PROBE_INFO_HEADER_NAMES = new String[] { "probe_id", "chromosome", "probe_strand", "ext_probe_start", "ext_probe_stop", "ext_probe_sequence", "lig_probe_start",
+			"lig_probe_stop", "lig_probe_sequence", "target_start_position", "target_stop_position", "target_sequence", "annotation" };
 
 	private ProbeFileUtil() {
 		throw new AssertionError();
@@ -69,37 +68,32 @@ public final class ProbeFileUtil {
 		for (int i = 0; i < numberOfEntries; i++) {
 			int headerIndex = 0;
 
+			String probeId = headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i);
+
 			String sequenceName = headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i);
+
+			String probeStrandAsString = headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i);
+			Strand probeStrand = Strand.fromString(probeStrandAsString);
+
 			int extensionPrimerStart = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 			int extensionPrimerStop = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 
 			ISequence extensionPrimerSequence = new IupacNucleotideCodeSequence(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
-
-			// ext copy count
-			headerIndex++;
 
 			int ligationPrimerStart = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 			int ligationPrimerStop = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 
 			ISequence ligationPrimerSequence = new IupacNucleotideCodeSequence(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 
-			// lig copy count
-			headerIndex++;
-
 			int captureTargetStart = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 			int captureTargetStop = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 			ISequence captureTargetSequence = new IupacNucleotideCodeSequence(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 
-			int featureStart = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
-			int featureStop = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
-
-			// mip count
+			// annotation
 			headerIndex++;
 
-			String probeStrandAsString = headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i);
-			Strand probeStrand = Strand.fromString(probeStrandAsString);
-			Probe probe = new Probe(i, sequenceName, extensionPrimerStart, extensionPrimerStop, extensionPrimerSequence, ligationPrimerStart, ligationPrimerStop, ligationPrimerSequence,
-					captureTargetStart, captureTargetStop, captureTargetSequence, featureStart, featureStop, probeStrand);
+			Probe probe = new Probe(probeId, sequenceName, extensionPrimerStart, extensionPrimerStop, extensionPrimerSequence, ligationPrimerStart, ligationPrimerStop, ligationPrimerSequence,
+					captureTargetStart, captureTargetStop, captureTargetSequence, probeStrand);
 
 			probeInfo.addProbe(sequenceName, probe);
 
@@ -157,25 +151,21 @@ public final class ProbeFileUtil {
 		for (Probe probe : probes) {
 			StringBuilder lineBuilder = new StringBuilder();
 
+			lineBuilder.append(probe.getProbeId() + StringUtil.TAB);
+
 			lineBuilder.append(probe.getSequenceName() + StringUtil.TAB);
+			lineBuilder.append(probe.getProbeStrand().getSymbol());
 			lineBuilder.append(probe.getExtensionPrimerStart() + StringUtil.TAB);
 			lineBuilder.append(probe.getExtensionPrimerStop() + StringUtil.TAB);
 			lineBuilder.append(probe.getExtensionPrimerSequence() + StringUtil.TAB);
-			// ext_copy_count
-			lineBuilder.append(0 + StringUtil.TAB);
 			lineBuilder.append(probe.getLigationPrimerStart() + StringUtil.TAB);
 			lineBuilder.append(probe.getLigationPrimerStop() + StringUtil.TAB);
 			lineBuilder.append(probe.getLigationPrimerSequence() + StringUtil.TAB);
-			// lig_copy_count
-			lineBuilder.append(0 + StringUtil.TAB);
 			lineBuilder.append(probe.getCaptureTargetStart() + StringUtil.TAB);
 			lineBuilder.append(probe.getCaptureTargetStop() + StringUtil.TAB);
 			lineBuilder.append(probe.getCaptureTargetSequence() + StringUtil.TAB);
-			lineBuilder.append(probe.getFeatureStart() + StringUtil.TAB);
-			lineBuilder.append(probe.getFeatureStop() + StringUtil.TAB);
-			// feature_mip_count
-			lineBuilder.append(0 + StringUtil.TAB);
-			lineBuilder.append(probe.getProbeStrand().getSymbol());
+			// annotation
+			lineBuilder.append("" + StringUtil.TAB);
 
 			String line = lineBuilder.toString();
 			probeWriter.write(line + newLine);

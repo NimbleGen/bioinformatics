@@ -84,7 +84,7 @@ public class FilterByUid {
 				if (uid != null) {
 					datas.add(new ReadPair(record, mate, uid));
 				} else {
-					unableToAlignPrimerWriter.writeLine(probe.getSequenceName(), probe.getStart(), probe.getFeatureStop(), probe.getExtensionPrimerSequence(), record.getReadName(),
+					unableToAlignPrimerWriter.writeLine(probe.getProbeId(), probe.getSequenceName(), probe.getStart(), probe.getStop(), probe.getExtensionPrimerSequence(), record.getReadName(),
 							record.getReadString());
 				}
 			}
@@ -174,7 +174,7 @@ public class FilterByUid {
 	public static void printProbeUidQualities(Probe probe, List<IReadPair> data, TabDelimitedFileWriter probeUidQualityWriter) {
 		if (probeUidQualityWriter != null) {
 			for (IReadPair currentPair : data) {
-				int probeIndex = -1;
+				String probeId = "";
 				String probeCaptureStart = "";
 				String probeCaptureStop = "";
 				String probeStrand = "";
@@ -185,7 +185,7 @@ public class FilterByUid {
 				String readName = "";
 
 				if (currentPair != null) {
-					probeIndex = probe.getIndex();
+					probeId = probe.getProbeId();
 					probeCaptureStart = "" + probe.getCaptureTargetStart();
 					probeCaptureStop = "" + probe.getCaptureTargetStop();
 					probeStrand = probe.getProbeStrand().toString();
@@ -198,8 +198,8 @@ public class FilterByUid {
 					totalQualityScore = "" + currentPair.getTotalSequenceQualityScore();
 
 				}
-				probeUidQualityWriter.writeLine(probeIndex, probe.getSequenceName(), probeCaptureStart, probeCaptureStop, probeStrand, uid.toUpperCase(), sequenceQualityScore,
-						sequenceTwoQualityScore, totalQualityScore, readName);
+				probeUidQualityWriter.writeLine(probeId, probe.getSequenceName(), probeCaptureStart, probeCaptureStop, probeStrand, uid.toUpperCase(), sequenceQualityScore, sequenceTwoQualityScore,
+						totalQualityScore, readName);
 			}
 		}
 	}

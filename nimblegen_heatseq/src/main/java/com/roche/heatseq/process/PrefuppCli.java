@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import net.sf.samtools.SAMFileReader;
+import net.sf.samtools.SAMFileReader.ValidationStringency;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,6 +76,8 @@ public class PrefuppCli {
 			"The penalty for opening a gap when extending alignments to the primers (Default: " + SimpleAlignmentScorer.DEFAULT_GAP_OPEN_PENALTY + ")", false, false);
 	private final static CommandLineOption GAP_EXTEND_PENALTY_OPTION = new CommandLineOption("Gap Extend Penalty", "gapExtendPenalty", null,
 			"The penalty for extending a gap when extending alignments to the primers (Default: " + SimpleAlignmentScorer.DEFAULT_GAP_EXTEND_PENALTY + ")", false, false);
+	private final static CommandLineOption LENIENT_VALIDATION_STRINGENCY = new CommandLineOption("Lenient Validation Stringency", "lenientValidation", null,
+			"Use a lenient validation stringency for all SAM files read by this program.", false, true);
 
 	public static void main(String[] args) {
 		outputToConsole("Primer Read Extension and Filtering of Unique PCR Probes");
@@ -234,6 +237,11 @@ public class PrefuppCli {
 				}
 			}
 
+			boolean useLenientValidation = parsedCommandLine.isOptionPresent(LENIENT_VALIDATION_STRINGENCY);
+			if (useLenientValidation) {
+				SAMFileReader.setDefaultValidationStringency(ValidationStringency.LENIENT);
+			}
+
 			IAlignmentScorer alignmentScorer = new SimpleAlignmentScorer(matchScore, mismatchPenalty, gapExtendPenalty, gapOpenPenalty, false);
 
 			if (parsedCommandLine.isOptionPresent(INPUT_BAM_OPTION)) {
@@ -380,7 +388,7 @@ public class PrefuppCli {
 				}
 
 				MapperFiltererAndExtender mapFilterAndExtend = new MapperFiltererAndExtender(fastQ1WithUidsFile, fastQ2File, probeFile, outputBamFile, ambiguousMappingFile, probeUidQualityFile,
-						unableToAlignPrimerFile, unableToMapFastqOneFile, unableToMapFastqTwoFile, primerAlignmentFile, detailsReportFile, numProcessors, uidLength, allowVariableLengthUids,
+						unableToAlignPrimerFile, unableToMapFastqOneFile, unableToMapFastqTwoFile, primerAlignmentFile, detailsReportFile, numProcessors, uidLength, useLenientValidation,
 						APPLICATION_NAME, APPLICATION_VERSION, commandLineSignature, alignmentScorer);
 
 				mapFilterAndExtend.mapFilterAndExtend();
@@ -453,6 +461,7 @@ public class PrefuppCli {
 		group.addOption(MISMATCH_PENALTY_OPTION);
 		group.addOption(GAP_OPEN_PENALTY_OPTION);
 		group.addOption(GAP_EXTEND_PENALTY_OPTION);
+		group.addOption(LENIENT_VALIDATION_STRINGENCY);
 		return group;
 	}
 }
