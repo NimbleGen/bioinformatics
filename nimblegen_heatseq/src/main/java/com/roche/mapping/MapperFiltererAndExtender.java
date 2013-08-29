@@ -543,14 +543,13 @@ public class MapperFiltererAndExtender {
 
 							if (probeUidQualityWriter != null) {
 
-								int probeIndex = matchingProbe.getIndex();
 								String probeCaptureStart = "" + matchingProbe.getCaptureTargetStart();
 								String probeCaptureStop = "" + matchingProbe.getCaptureTargetStop();
 								String probeStrand = matchingProbe.getProbeStrand().toString();
 								String readSequence = queryOneSequence.toString();
 
 								String readName = recordOne.getReadHeader();
-								probeUidQualityWriter.writeLine(probeIndex, matchingProbe.getSequenceName(), probeCaptureStart, probeCaptureStop, probeStrand, uid.toUpperCase(),
+								probeUidQualityWriter.writeLine(matchingProbe.getProbeId(), matchingProbe.getSequenceName(), probeCaptureStart, probeCaptureStop, probeStrand, uid.toUpperCase(),
 										sequenceOneQualityScore, sequenceTwoQualityScore, qualityScore, readName, readSequence);
 							}
 

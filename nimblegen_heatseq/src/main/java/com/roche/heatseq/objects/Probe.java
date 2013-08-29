@@ -28,7 +28,8 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
  * 
  */
 public class Probe {
-	private final int probeIndex;
+	private final String probeId;
+
 	private final int extensionPrimerStart;
 	private final int extensionPrimerStop;
 	private final ISequence extensionPrimerSequence;
@@ -41,18 +42,16 @@ public class Probe {
 	private final int captureTargetStop;
 	private final ISequence captureTargetSequence;
 
-	private final int featureStart;
-	private final int featureStop;
 	private final Strand probeStrand;
 
 	private final String sequenceName;
 
 	private Integer hashCode;
 
-	public Probe(int probeIndex, String sequenceName, int extensionPrimerStart, int extensionPrimerStop, ISequence extensionPrimerSequence, int ligationPrimerStart, int ligationPrimerStop,
-			ISequence ligationPrimerSequence, int captureTargetStart, int captureTargetStop, ISequence captureTargetSequence, int featureStart, int featureStop, Strand probeStrand) {
+	public Probe(String probeId, String sequenceName, int extensionPrimerStart, int extensionPrimerStop, ISequence extensionPrimerSequence, int ligationPrimerStart, int ligationPrimerStop,
+			ISequence ligationPrimerSequence, int captureTargetStart, int captureTargetStop, ISequence captureTargetSequence, Strand probeStrand) {
 		super();
-		this.probeIndex = probeIndex;
+		this.probeId = probeId;
 		this.sequenceName = sequenceName;
 		this.extensionPrimerStart = extensionPrimerStart;
 		this.extensionPrimerStop = extensionPrimerStop;
@@ -63,13 +62,11 @@ public class Probe {
 		this.captureTargetStart = captureTargetStart;
 		this.captureTargetStop = captureTargetStop;
 		this.captureTargetSequence = captureTargetSequence;
-		this.featureStart = featureStart;
-		this.featureStop = featureStop;
 		this.probeStrand = probeStrand;
 	}
 
-	public int getIndex() {
-		return this.probeIndex;
+	public String getProbeId() {
+		return this.probeId;
 	}
 
 	public int getStart() {
@@ -122,14 +119,6 @@ public class Probe {
 
 	public ISequence getCaptureTargetSequence() {
 		return captureTargetSequence;
-	}
-
-	public int getFeatureStart() {
-		return featureStart;
-	}
-
-	public int getFeatureStop() {
-		return featureStop;
 	}
 
 	public Strand getProbeStrand() {
@@ -234,8 +223,6 @@ public class Probe {
 			result = prime * result + ((extensionPrimerSequence == null) ? 0 : extensionPrimerSequence.hashCode());
 			result = prime * result + extensionPrimerStart;
 			result = prime * result + extensionPrimerStop;
-			result = prime * result + featureStart;
-			result = prime * result + featureStop;
 			result = prime * result + ((ligationPrimerSequence == null) ? 0 : ligationPrimerSequence.hashCode());
 			result = prime * result + ligationPrimerStart;
 			result = prime * result + ligationPrimerStop;
@@ -277,10 +264,6 @@ public class Probe {
 			return false;
 		if (extensionPrimerStop != other.extensionPrimerStop)
 			return false;
-		if (featureStart != other.featureStart)
-			return false;
-		if (featureStop != other.featureStop)
-			return false;
 		if (ligationPrimerSequence == null) {
 			if (other.ligationPrimerSequence != null)
 				return false;
@@ -297,10 +280,10 @@ public class Probe {
 
 	@Override
 	public String toString() {
-		return "Probe [extensionPrimerStart=" + extensionPrimerStart + ", extensionPrimerStop=" + extensionPrimerStop + ", extensionPrimerSequence=" + extensionPrimerSequence
+		return "Probe [probeId=" + probeId + ", extensionPrimerStart=" + extensionPrimerStart + ", extensionPrimerStop=" + extensionPrimerStop + ", extensionPrimerSequence=" + extensionPrimerSequence
 				+ ", ligationPrimerStart=" + ligationPrimerStart + ", ligationPrimerStop=" + ligationPrimerStop + ", ligationPrimerSequence=" + ligationPrimerSequence + ", captureTargetStart="
-				+ captureTargetStart + ", captureTargetStop=" + captureTargetStop + ", captureTargetSequence=" + captureTargetSequence + ", featureStart=" + featureStart + ", featureStop="
-				+ featureStop + ", probeStrand=" + probeStrand + ", sequenceName=" + sequenceName + "]";
+				+ captureTargetStart + ", captureTargetStop=" + captureTargetStop + ", captureTargetSequence=" + captureTargetSequence + ", probeStrand=" + probeStrand + ", sequenceName="
+				+ sequenceName + "]";
 	}
 
 }

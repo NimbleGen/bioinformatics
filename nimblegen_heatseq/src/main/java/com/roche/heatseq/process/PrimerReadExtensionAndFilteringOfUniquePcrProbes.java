@@ -132,9 +132,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				probeUidQualityWriter = new TabDelimitedFileWriter(probeUidQualityReportFile, new String[] { "probe_id", "probe_sequence_name", "probe_capture_start", "probe_capture_stop", "strand",
 						"uid", "read_one_quality", "read_two_quality", "total_quality", "read_name" });
 
-				FileUtil.createNewFile(unableToAlignPrimerReportFile);
-				unableToAlignPrimerWriter = new TabDelimitedFileWriter(unableToAlignPrimerReportFile, new String[] { "sequence_name", "probe_start", "probe_stop", "extension_primer_sequence",
-						"read_name", "read_string" });
+				unableToAlignPrimerWriter = new TabDelimitedFileWriter(unableToAlignPrimerReportFile, new String[] { "probe_id", "sequence_name", "probe_start", "probe_stop",
+						"extension_primer_sequence", "read_name", "read_string" });
 
 				FileUtil.createNewFile(primerAlignmentReportFile);
 				primerAlignmentWriter = new TabDelimitedFileWriter(primerAlignmentReportFile, new String[] { "uid_length", "substituions", "insertions", "deletions", "edit_distance", "read",
