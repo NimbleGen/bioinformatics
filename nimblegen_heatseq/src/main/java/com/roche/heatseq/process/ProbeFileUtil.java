@@ -152,9 +152,8 @@ public final class ProbeFileUtil {
 			StringBuilder lineBuilder = new StringBuilder();
 
 			lineBuilder.append(probe.getProbeId() + StringUtil.TAB);
-
 			lineBuilder.append(probe.getSequenceName() + StringUtil.TAB);
-			lineBuilder.append(probe.getProbeStrand().getSymbol());
+			lineBuilder.append(probe.getProbeStrand().getSymbol() + StringUtil.TAB);
 			lineBuilder.append(probe.getExtensionPrimerStart() + StringUtil.TAB);
 			lineBuilder.append(probe.getExtensionPrimerStop() + StringUtil.TAB);
 			lineBuilder.append(probe.getExtensionPrimerSequence() + StringUtil.TAB);
