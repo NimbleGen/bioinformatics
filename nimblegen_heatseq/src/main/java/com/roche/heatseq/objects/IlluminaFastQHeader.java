@@ -281,6 +281,9 @@ public class IlluminaFastQHeader {
 		int indexOfSpaceAfterSixthColon = -1;
 		if (indexOfSixthColon != -1) {
 			indexOfSpaceAfterSixthColon = readHeader.indexOf(' ', indexOfSixthColon);
+			if (indexOfSpaceAfterSixthColon == -1) {
+				indexOfSpaceAfterSixthColon = readHeader.length();
+			}
 		}
 
 		// If everything was formatted
@@ -319,5 +322,9 @@ public class IlluminaFastQHeader {
 			throw new IllegalStateException("Could not parse read header[" + readHeader + "].");
 		}
 		return uniqueId;
+	}
+
+	public static void main(String[] args) {
+		System.out.println(getBaseHeader("@M01077:35:000000000-A3J96:1:1102:13646:7860"));
 	}
 }
