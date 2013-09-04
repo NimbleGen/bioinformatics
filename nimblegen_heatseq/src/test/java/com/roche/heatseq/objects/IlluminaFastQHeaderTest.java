@@ -42,4 +42,14 @@ public class IlluminaFastQHeaderTest {
 
 	}
 
+	@Test(groups = { "unit" })
+	public void baseHeaderTest() {
+		IlluminaFastQHeader.getBaseHeader("@M01077:35:000000000-A3J96:1:1102:13646:7860");
+	}
+
+	@Test(groups = { "unit" })
+	public void uniqueIdForReadHeaderTest() {
+		IlluminaFastQHeader.getUniqueIdForReadHeader("@M01077:35:000000000-A3J96:1:1102:13646:7860");
+	}
+
 }
