@@ -39,8 +39,8 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 public final class ProbeFileUtil {
 	private final static Logger logger = LoggerFactory.getLogger(ProbeFileUtil.class);
 
-	private final static String[] PROBE_INFO_HEADER_NAMES = new String[] { "probe_id", "chromosome", "probe_strand", "ext_probe_start", "ext_probe_stop", "ext_probe_sequence", "lig_probe_start",
-			"lig_probe_stop", "lig_probe_sequence", "target_start_position", "target_stop_position", "target_sequence", "annotation" };
+	private final static String[] PROBE_INFO_HEADER_NAMES = new String[] { "probe_id", "chromosome", "probe_strand", "ext_start", "ext_stop", "ext_sequence", "lig_start", "lig_stop", "lig_sequence",
+			"target_start", "target_stop", "target_sequence", "annotation" };
 
 	private ProbeFileUtil() {
 		throw new AssertionError();
