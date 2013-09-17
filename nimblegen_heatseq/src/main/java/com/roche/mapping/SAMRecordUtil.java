@@ -43,6 +43,7 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
 public class SAMRecordUtil {
 
 	public static final String UID_SAMRECORD_ATTRIBUTE_TAG = "UI";
+	public static final String PROBE_ID_SAMRECORD_ATTRIBUTE_TAG = "PI";
 	public static final String MISMATCH_DETAILS_ATTRIBUTE_TAG = "MD";
 	public static final String READ_GROUP_ATTRIBUTE_TAG = "RG";
 	public static final String EDIT_DISTANCE_ATTRIBUTE_TAG = "NM";
@@ -79,6 +80,16 @@ public class SAMRecordUtil {
 	 */
 	public static void setSamRecordUidAttribute(SAMRecord record, String uid) {
 		record.setAttribute(UID_SAMRECORD_ATTRIBUTE_TAG, uid);
+	}
+
+	/**
+	 * Set the probeId attribute for this SAMRecord
+	 * 
+	 * @param record
+	 * @param uid
+	 */
+	public static void setSamRecordProbeIdAttribute(SAMRecord record, String probeId) {
+		record.setAttribute(PROBE_ID_SAMRECORD_ATTRIBUTE_TAG, probeId);
 	}
 
 	/**
