@@ -119,7 +119,7 @@ public final class ExtendReadsToPrimer {
 
 				SAMRecord readOneExtendedRecord = extendRecord(samHeader, readName, readGroup, readOneIsOnReverseStrand, readOneExtensionDetails.getAlignmentCigarString(),
 						readOneExtensionDetails.getMismatchDetailsString(), readOneExtensionDetails.getAlignmentStartInReference(), readOneExtendedSequence.toString(), readOneExtendedBaseQualities,
-						sequenceName, oneMappingQuality, probe.getCaptureTargetSequence().size(), uid);
+						sequenceName, oneMappingQuality, probe.getCaptureTargetSequence().size(), uid, probe.getProbeId());
 
 				ReadExtensionDetails readTwoExtensionDetails = calculateDetailsForReadExtensionToPrimer(ligationPrimer, primerReferencePositionAdjacentToSequence, captureTargetSequence, sequenceTwo,
 						true, readTwoIsOnReverseStrand, alignmentScorer);
@@ -135,7 +135,7 @@ public final class ExtendReadsToPrimer {
 					}
 					SAMRecord readTwoExtendedRecord = extendRecord(samHeader, readName, readGroup, readTwoIsOnReverseStrand, readTwoExtensionDetails.getAlignmentCigarString(),
 							readTwoExtensionDetails.getMismatchDetailsString(), readTwoExtensionDetails.getAlignmentStartInReference(), readTwoExtendedSequence.toString(),
-							readTwoExtendedBaseQualities, sequenceName, twoMappingQuality, readTwoReferenceLength, uid);
+							readTwoExtendedBaseQualities, sequenceName, twoMappingQuality, readTwoReferenceLength, uid, probe.getProbeId());
 
 					SAMRecordUtil.setSAMRecordsAsPair(readOneExtendedRecord, readTwoExtendedRecord);
 
@@ -191,7 +191,7 @@ public final class ExtendReadsToPrimer {
 	}
 
 	private static SAMRecord extendRecord(SAMFileHeader samHeader, String readName, String readGroup, boolean isNegativeStrand, CigarString cigarString, String mdString,
-			int alignmentStartInReference, String readString, String baseQualityString, String sequenceName, int mappingQuality, int referenceLength, String uid) {
+			int alignmentStartInReference, String readString, String baseQualityString, String sequenceName, int mappingQuality, int referenceLength, String uid, String probeId) {
 		if (readString.length() != baseQualityString.length()) {
 			throw new IllegalStateException("SAMRecord read[" + readString + "] length[" + readString.length() + "] and base quality[" + baseQualityString + "] length[" + baseQualityString.length()
 					+ "] must be the same.");
@@ -207,7 +207,8 @@ public final class ExtendReadsToPrimer {
 		record.setAlignmentStart(alignmentStartInReference);
 		record.setReadString(readString);
 		record.setBaseQualityString(baseQualityString);
-		record.setAttribute(SAMRecordUtil.UID_SAMRECORD_ATTRIBUTE_TAG, uid);
+		SAMRecordUtil.setSamRecordUidAttribute(record, uid);
+		SAMRecordUtil.setSamRecordProbeIdAttribute(record, probeId);
 		if (mdString != null && !mdString.isEmpty()) {
 			record.setAttribute(SAMRecordUtil.MISMATCH_DETAILS_ATTRIBUTE_TAG, mdString);
 		}
