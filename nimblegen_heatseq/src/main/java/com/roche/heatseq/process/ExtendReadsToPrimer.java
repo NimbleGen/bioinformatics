@@ -173,16 +173,15 @@ public final class ExtendReadsToPrimer {
 				String mismatchDetailsString = readAlignmentWithReference.getMismatchDetailsString();
 				int alignmentStartInReference = 0;
 
-				// TODO Kurt Heilman 7/23/2013 need to examine if this logic is correct
+				ISequence referenceAlignment = readAlignmentWithReference.getAlignmentPair().getReferenceAlignmentWithoutEndingInserts();
 				if (isReversed) {
-					ISequence referenceAlignment = readAlignmentWithReference.getAlignmentPair().getReferenceAlignmentWithoutTerminalInserts();
 					cigarString = readAlignmentWithReference.getReverseCigarString();
 					mismatchDetailsString = readAlignmentWithReference.getReverseMismatchDetailsString();
 					alignmentStartInReference = primerReferencePositionAdjacentToSequence - referenceAlignment.size();
 				} else {
-					alignmentStartInReference = primerReferencePositionAdjacentToSequence + 1;
+					int offset = readAlignmentWithReference.getAlignmentPair().getFirstNonInsertMatchInReference();
+					alignmentStartInReference = primerReferencePositionAdjacentToSequence + offset + 1;
 				}
-
 				readExtensionDetails = new ReadExtensionDetails(alignmentStartInReference, captureTargetStartIndexInRead, cigarString, mismatchDetailsString);
 			}
 		}

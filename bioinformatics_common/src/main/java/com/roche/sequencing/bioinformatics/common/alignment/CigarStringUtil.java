@@ -40,8 +40,8 @@ public class CigarStringUtil {
 	}
 
 	static CigarString getCigarString(AlignmentPair alignmentPair) {
-		ISequence referenceSequenceAlignment = alignmentPair.getReferenceAlignmentWithoutTerminalInserts();
-		ISequence querySequenceAlignment = alignmentPair.getQueryAlignmentWithoutTerminalInserts();
+		ISequence referenceSequenceAlignment = alignmentPair.getReferenceAlignmentWithoutEndingAndBeginningInserts();
+		ISequence querySequenceAlignment = alignmentPair.getQueryAlignmentWithoutEndingAndBeginningInserts();
 
 		StringBuilder cigarStringBuilder = new StringBuilder();
 
@@ -70,8 +70,8 @@ public class CigarStringUtil {
 	}
 
 	static String getMismatchDetailsString(AlignmentPair alignmentPair) {
-		ISequence referenceAlignmentSequence = alignmentPair.getReferenceAlignmentWithoutTerminalInserts();
-		ISequence queryAlignmentSequence = alignmentPair.getQueryAlignmentWithoutTerminalInserts();
+		ISequence referenceAlignmentSequence = alignmentPair.getReferenceAlignmentWithoutEndingAndBeginningInserts();
+		ISequence queryAlignmentSequence = alignmentPair.getQueryAlignmentWithoutEndingAndBeginningInserts();
 		CigarString cigarString = getCigarString(alignmentPair);
 		return getMismatchDetailsString(referenceAlignmentSequence, queryAlignmentSequence, cigarString);
 	}

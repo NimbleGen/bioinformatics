@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMFileReader.ValidationStringency;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,8 +77,10 @@ public class PrefuppCli {
 			"The penalty for opening a gap when extending alignments to the primers (Default: " + SimpleAlignmentScorer.DEFAULT_GAP_OPEN_PENALTY + ")", false, false);
 	private final static CommandLineOption GAP_EXTEND_PENALTY_OPTION = new CommandLineOption("Gap Extend Penalty", "gapExtendPenalty", null,
 			"The penalty for extending a gap when extending alignments to the primers (Default: " + SimpleAlignmentScorer.DEFAULT_GAP_EXTEND_PENALTY + ")", false, false);
-	private final static CommandLineOption LENIENT_VALIDATION_STRINGENCY = new CommandLineOption("Lenient Validation Stringency", "lenientValidation", null,
+	private final static CommandLineOption LENIENT_VALIDATION_STRINGENCY_OPTION = new CommandLineOption("Lenient Validation Stringency", "lenientValidation", null,
 			"Use a lenient validation stringency for all SAM files read by this program.", false, true);
+	private final static CommandLineOption NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION = new CommandLineOption("Reads Are Not Trimmed To Within Capture Target", "readsNotTrimmedWithinCaptureTarget",
+			null, "The reads have not been trimmed to an area within the capture target.", false, true);
 
 	public static void main(String[] args) {
 		outputToConsole("Primer Read Extension and Filtering of Unique PCR Probes");
@@ -108,8 +111,15 @@ public class PrefuppCli {
 			File outputDirectory = null;
 			if (outputDirectoryString != null) {
 				outputDirectory = new File(outputDirectoryString);
-				if (!outputDirectory.exists() || !outputDirectory.isDirectory()) {
-					throw new IllegalStateException("Unable to find provided output directory[" + outputDirectory.getAbsolutePath() + "].");
+				if (!outputDirectory.exists()) {
+					try {
+						FileUtils.forceMkdir(outputDirectory);
+					} catch (IOException e) {
+						throw new IllegalStateException("Could not create provided output directory[" + outputDirectory.getAbsolutePath() + "].", e);
+					}
+				}
+				if (!outputDirectory.isDirectory()) {
+					throw new IllegalStateException("Provided output directory[" + outputDirectory.getAbsolutePath() + "] is not valid.");
 				}
 			} else {
 				// current working directory
@@ -237,10 +247,12 @@ public class PrefuppCli {
 				}
 			}
 
-			boolean useLenientValidation = parsedCommandLine.isOptionPresent(LENIENT_VALIDATION_STRINGENCY);
+			boolean useLenientValidation = parsedCommandLine.isOptionPresent(LENIENT_VALIDATION_STRINGENCY_OPTION);
 			if (useLenientValidation) {
 				SAMFileReader.setDefaultValidationStringency(ValidationStringency.LENIENT);
 			}
+
+			boolean notTrimmedToWithinCaptureTarget = parsedCommandLine.isOptionPresent(LENIENT_VALIDATION_STRINGENCY_OPTION);
 
 			IAlignmentScorer alignmentScorer = new SimpleAlignmentScorer(matchScore, mismatchPenalty, gapExtendPenalty, gapOpenPenalty, false);
 
@@ -303,7 +315,7 @@ public class PrefuppCli {
 					}
 
 					sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tempOutputDirectory,
-							shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids, alignmentScorer);
+							shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget);
 
 				} catch (Exception e) {
 					throw new IllegalStateException(e.getMessage(), e);
@@ -401,7 +413,7 @@ public class PrefuppCli {
 
 	private static void sortMergeFilterAndExtendReads(File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName,
 			String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputQualityReports, boolean shouldOutputFastq, String commandLineSignature, int numProcessors, int uidLength,
-			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer) {
+			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinCaptureTarget) {
 		try {
 
 			final File mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", tempOutputDirectory);
@@ -424,7 +436,7 @@ public class PrefuppCli {
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
 					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, APPLICATION_NAME,
-					APPLICATION_VERSION, numProcessors, allowVariableLengthUids, alignmentScorer);
+					APPLICATION_VERSION, numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget);
 
 			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
@@ -461,7 +473,8 @@ public class PrefuppCli {
 		group.addOption(MISMATCH_PENALTY_OPTION);
 		group.addOption(GAP_OPEN_PENALTY_OPTION);
 		group.addOption(GAP_EXTEND_PENALTY_OPTION);
-		group.addOption(LENIENT_VALIDATION_STRINGENCY);
+		group.addOption(LENIENT_VALIDATION_STRINGENCY_OPTION);
+		group.addOption(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
 		return group;
 	}
 }

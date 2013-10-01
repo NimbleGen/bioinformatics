@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -243,6 +244,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 			// Make an executor to handle processing the data for each probe in parallel
 			ExecutorService executor = Executors.newFixedThreadPool(applicationSettings.getNumProcessors());
+
+			int unmappableProbes = 0;
 			for (String sequenceName : sequenceNames) {
 
 				if (!referenceSequenceNamesInBam.contains(sequenceName)) {
@@ -266,7 +269,14 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 					// Try getting the reads for this probe here before passing them to the worker
 					Map<String, SAMRecordPair> readNameToRecordsMap = new HashMap<String, SAMRecordPair>();
-					SAMRecordIterator samRecordIter = samReader.queryContained(sequenceName, probe.getStart(), probe.getStop());
+
+					SAMRecordIterator samRecordIter = null;
+					if (applicationSettings.isNotTrimmedWithinTheCaptureTargetSequence()) {
+						samRecordIter = samReader.queryContained(sequenceName, probe.getCaptureTargetStart(), probe.getCaptureTargetStop());
+					} else {
+						samRecordIter = samReader.queryContained(sequenceName, probe.getStart(), probe.getStop());
+					}
+
 					while (samRecordIter.hasNext()) {
 						SAMRecord record = samRecordIter.next();
 
@@ -305,8 +315,21 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					}
 					samRecordIter.close();
 
+					// remove any records that don't have both pairs
+					Map<String, SAMRecordPair> readNameToCompleteRecordsMap = new HashMap<String, SAMRecordPair>();
+					for (Entry<String, SAMRecordPair> entry : readNameToRecordsMap.entrySet()) {
+						SAMRecordPair pair = entry.getValue();
+						if (pair.getFirstOfPairRecord() != null && pair.getSecondOfPairRecord() != null) {
+							readNameToCompleteRecordsMap.put(entry.getKey(), pair);
+						}
+					}
+
+					if (readNameToCompleteRecordsMap.size() == 0) {
+						unmappableProbes++;
+					}
+
 					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, applicationSettings, samWriter, extensionErrorsWriter, probeUidQualityWriter, detailsReport,
-							unableToAlignPrimerWriter, primerAlignmentWriter, fastqOneWriter, fastqTwoWriter, readNameToRecordsMap, applicationSettings.getAlignmentScorer());
+							unableToAlignPrimerWriter, primerAlignmentWriter, fastqOneWriter, fastqTwoWriter, readNameToCompleteRecordsMap, applicationSettings.getAlignmentScorer());
 
 					try {
 						// Don't execute more threads than we have processors
@@ -317,6 +340,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					executor.execute(worker);
 				}
 			}
+
+			logger.debug("total unmappable probes:" + unmappableProbes);
 
 			// Wait until all our threads are done processing.
 			executor.shutdown();
@@ -444,9 +469,11 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			try {
 				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, readNameToRecordsMap, probeUidQualityWriter, unableToAlignPrimerWriter,
 						primerAlignmentWriter, applicationSettings.isAllowVariableLengthUids(), alignmentScorer);
-				if (detailsReport != null) {
-					synchronized (detailsReport) {
+				synchronized (detailsReport) {
+					if (detailsReport != null) {
 						detailsReport.writeEntry(probeReductionResults.getProbeProcessingStats());
+					} else {
+						detailsReport.writeBlankEntry(probe);
 					}
 				}
 

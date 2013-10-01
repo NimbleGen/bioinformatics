@@ -7,6 +7,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import com.roche.heatseq.objects.Probe;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
@@ -32,6 +33,13 @@ public class DetailsReport {
 
 	public void writeEntry(ProbeProcessingStats probeProcessingStats) {
 		detailsReportWriter.print(probeProcessingStats.toReportString());
+		detailsReportWriter.flush();
+	}
+
+	public void writeBlankEntry(Probe probe) {
+		detailsReportWriter.print(probe.getProbeId() + StringUtil.TAB + probe.getSequenceName() + StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB + probe.getCaptureTargetStop()
+				+ StringUtil.TAB + probe.getProbeStrand().getSymbol() + StringUtil.TAB + 0 + StringUtil.TAB + 0 + StringUtil.TAB + "NaN" + StringUtil.TAB + "0" + StringUtil.TAB + "0" + StringUtil.TAB
+				+ "" + StringUtil.TAB + "0" + StringUtil.TAB + "0" + StringUtil.TAB + "0:00:00");
 		detailsReportWriter.flush();
 	}
 

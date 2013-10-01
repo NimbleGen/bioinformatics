@@ -134,7 +134,6 @@ public class SAMRecordUtil {
 
 		CigarString cigarString = alignment.getCigarString();
 		String sequenceCigarString = cigarString.getCigarString(false, true);
-		sequenceCigarString.substring(uidEndIndex, sequenceCigarString.length());
 		int insertsSinceLastInsertionOrMismatch = 0;
 		for (Character character : sequenceCigarString.toCharArray()) {
 			if (character == CigarStringUtil.CIGAR_SEQUENCE_MISMATCH) {
