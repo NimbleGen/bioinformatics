@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import net.sf.samtools.SAMRecord;
 
@@ -62,7 +63,7 @@ public class FilterByUid {
 	 * @return A UidReductionResultsForAProbe containing the processing statistics and the reduced probe set
 	 */
 	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, TabDelimitedFileWriter probeUidQualityWriter,
-			TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer) {
+			TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, Set<String> distinctUids) {
 		List<IReadPair> readPairs = new ArrayList<IReadPair>();
 
 		long probeProcessingStartInMs = System.currentTimeMillis();
@@ -82,6 +83,7 @@ public class FilterByUid {
 					uid = SAMRecordUtil.getUidAttribute(record);
 				}
 				if (uid != null) {
+					distinctUids.add(uid);
 					datas.add(new ReadPair(record, mate, uid));
 				} else {
 					unableToAlignPrimerWriter.writeLine(probe.getProbeId(), probe.getSequenceName(), probe.getStart(), probe.getStop(), probe.getExtensionPrimerSequence(), record.getReadName(),

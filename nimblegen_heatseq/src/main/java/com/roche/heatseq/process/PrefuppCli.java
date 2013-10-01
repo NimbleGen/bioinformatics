@@ -42,7 +42,7 @@ import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 public class PrefuppCli {
 	private final static Logger logger = LoggerFactory.getLogger(PrefuppCli.class);
 
-	private final static String APPLICATION_NAME = "prefupp";
+	public final static String APPLICATION_NAME = "prefupp";
 	private final static String APPLICATION_VERSION = "1.0.0";
 	public final static int DEFAULT_UID_LENGTH = 7;
 	private final static String BAM_EXTENSION = ".bam";
@@ -399,11 +399,22 @@ public class PrefuppCli {
 					}
 				}
 
+				File summaryReportFile = null;
+				if (shouldOutputQualityReports) {
+					summaryReportFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.SUMMARY_REPORT_NAME);
+					try {
+						FileUtil.createNewFile(summaryReportFile);
+					} catch (IOException e) {
+						throw new IllegalStateException(e);
+					}
+				}
+
 				MapperFiltererAndExtender mapFilterAndExtend = new MapperFiltererAndExtender(fastQ1WithUidsFile, fastQ2File, probeFile, outputBamFile, ambiguousMappingFile, probeUidQualityFile,
-						unableToAlignPrimerFile, unableToMapFastqOneFile, unableToMapFastqTwoFile, primerAlignmentFile, detailsReportFile, numProcessors, uidLength, useLenientValidation,
-						APPLICATION_NAME, APPLICATION_VERSION, commandLineSignature, alignmentScorer);
+						unableToAlignPrimerFile, unableToMapFastqOneFile, unableToMapFastqTwoFile, primerAlignmentFile, detailsReportFile, summaryReportFile, numProcessors, uidLength,
+						useLenientValidation, APPLICATION_NAME, APPLICATION_VERSION, commandLineSignature, alignmentScorer);
 
 				mapFilterAndExtend.mapFilterAndExtend();
+
 			}
 			long end = System.currentTimeMillis();
 			outputToConsole("Processing Completed (Total time: " + DateUtil.convertMillisecondsToHHMMSS(end - start) + ").");
@@ -436,7 +447,7 @@ public class PrefuppCli {
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
 					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, APPLICATION_NAME,
-					APPLICATION_VERSION, numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget);
+					APPLICATION_VERSION, numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, uidLength);
 
 			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 

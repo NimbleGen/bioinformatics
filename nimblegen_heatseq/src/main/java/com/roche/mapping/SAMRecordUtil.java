@@ -19,8 +19,11 @@ package com.roche.mapping;
 import java.io.File;
 import java.util.List;
 
+import net.sf.samtools.AbstractBAMFileIndex;
+import net.sf.samtools.BAMIndexMetaData;
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileHeader.SortOrder;
+import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMFileWriter;
 import net.sf.samtools.SAMFileWriterFactory;
 import net.sf.samtools.SAMRecord;
@@ -213,5 +216,43 @@ public class SAMRecordUtil {
 			samWriter.addAlignment(pair.getSecondOfPairRecord());
 		}
 		samWriter.close();
+	}
+
+	public static SamReadCount countReads(SAMFileReader samFileReader) {
+		int totalUnmappedReads = 0;
+		int totalMappedReads = 0;
+		AbstractBAMFileIndex bamIndex = (AbstractBAMFileIndex) samFileReader.getIndex();
+
+		for (int referenceIndex = 0; referenceIndex < bamIndex.getNumberOfReferences(); referenceIndex++) {
+			BAMIndexMetaData metaData = bamIndex.getMetaData(referenceIndex);
+			totalMappedReads += metaData.getAlignedRecordCount();
+			totalUnmappedReads += metaData.getUnalignedRecordCount();
+		}
+
+		return new SamReadCount(totalUnmappedReads, totalMappedReads);
+	}
+
+	public static class SamReadCount {
+		private final int totalUnmappedReads;
+		private final int totalMappedReads;
+
+		public SamReadCount(int totalUnmappedReads, int totalMappedReads) {
+			super();
+			this.totalUnmappedReads = totalUnmappedReads;
+			this.totalMappedReads = totalMappedReads;
+		}
+
+		public int getTotalUnmappedReads() {
+			return totalUnmappedReads;
+		}
+
+		public int getTotalMappedReads() {
+			return totalMappedReads;
+		}
+
+		public int getTotalReads() {
+			return totalMappedReads + totalUnmappedReads;
+		}
+
 	}
 }

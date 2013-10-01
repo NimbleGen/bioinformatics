@@ -45,6 +45,7 @@ public class ApplicationSettings {
 	private final boolean allowVariableLengthUids;
 	private final IAlignmentScorer alignmentScorer;
 	private final boolean notTrimmedToWithinTheCaptureTargetSequence;
+	private final int uidLength;
 
 	/**
 	 * Default Constructor
@@ -67,7 +68,7 @@ public class ApplicationSettings {
 	 */
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
 			String originalBamFileName, boolean shouldOutputQualityReports, boolean shouldOutputFastq, String commandLineSignature, String programName, String programVersion, int numProcessors,
-			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinTheCaptureTargetSequence) {
+			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinTheCaptureTargetSequence, int uidLength) {
 		super();
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;
@@ -87,6 +88,7 @@ public class ApplicationSettings {
 		this.allowVariableLengthUids = allowVariableLengthUids;
 		this.alignmentScorer = alignmentScorer;
 		this.notTrimmedToWithinTheCaptureTargetSequence = notTrimmedToWithinTheCaptureTargetSequence;
+		this.uidLength = uidLength;
 	}
 
 	/**
@@ -213,6 +215,13 @@ public class ApplicationSettings {
 	 */
 	public boolean isNotTrimmedWithinTheCaptureTargetSequence() {
 		return notTrimmedToWithinTheCaptureTargetSequence;
+	}
+
+	/**
+	 * @return uid length as set by the user
+	 */
+	public int getUidLength() {
+		return uidLength;
 	}
 
 }
