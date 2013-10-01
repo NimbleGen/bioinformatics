@@ -12,7 +12,28 @@ public class DetailsReport {
 
 	private final PrintWriter detailsReportWriter;
 
+	private int duplicateReadPairsRemoved;
+	private int probesWithNoMappedReadPairs;
+	private int totalReadPairsAfterReduction;
+
+	private int maxNumberOfUidsPerProbe;
+	private int sumOfProbeDistinctUids;
+	private int totalNonZeroProbes;
+	private int totalProbes;
+	private double sumOfAverageNumberOfReadPairsPerProbeUid;
+
 	public DetailsReport(File detailsReportFile) throws IOException {
+		duplicateReadPairsRemoved = 0;
+		probesWithNoMappedReadPairs = 0;
+		totalReadPairsAfterReduction = 0;
+
+		maxNumberOfUidsPerProbe = 0;
+		sumOfProbeDistinctUids = 0;
+		totalNonZeroProbes = 0;
+		totalProbes = 0;
+
+		sumOfAverageNumberOfReadPairsPerProbeUid = 0;
+
 		FileUtil.createNewFile(detailsReportFile);
 		detailsReportWriter = new PrintWriter(detailsReportFile);
 		detailsReportWriter.println("probe_id" + StringUtil.TAB + "chromosome" + StringUtil.TAB + "target_start" + StringUtil.TAB + "target_stop" + StringUtil.TAB + "probe_strand" + StringUtil.TAB
@@ -23,15 +44,60 @@ public class DetailsReport {
 	}
 
 	public void writeEntry(ProbeProcessingStats probeProcessingStats) {
+		duplicateReadPairsRemoved += probeProcessingStats.getTotalDuplicateReadPairsRemoved();
+		if (probeProcessingStats.getTotalUids() == 0) {
+			probesWithNoMappedReadPairs++;
+		}
+		totalReadPairsAfterReduction += probeProcessingStats.getTotalReadPairsRemainingAfterReduction();
+		maxNumberOfUidsPerProbe = Math.max(maxNumberOfUidsPerProbe, probeProcessingStats.getTotalUids());
+		sumOfProbeDistinctUids += probeProcessingStats.getTotalUids();
+
+		sumOfAverageNumberOfReadPairsPerProbeUid += probeProcessingStats.getAverageNumberOfReadPairsPerUid();
+
 		detailsReportWriter.print(probeProcessingStats.toReportString());
 		detailsReportWriter.flush();
+		totalProbes++;
+		totalNonZeroProbes++;
 	}
 
 	public void writeBlankEntry(Probe probe) {
+		probesWithNoMappedReadPairs++;
 		detailsReportWriter.print(probe.getProbeId() + StringUtil.TAB + probe.getSequenceName() + StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB + probe.getCaptureTargetStop()
 				+ StringUtil.TAB + probe.getProbeStrand().getSymbol() + StringUtil.TAB + 0 + StringUtil.TAB + 0 + StringUtil.TAB + "NaN" + StringUtil.TAB + "0" + StringUtil.TAB + "0" + StringUtil.TAB
 				+ "" + StringUtil.TAB + "0" + StringUtil.TAB + "0" + StringUtil.TAB + "0:00:00");
 		detailsReportWriter.flush();
+		totalProbes++;
+	}
+
+	public int getDuplicateReadPairsRemoved() {
+		return duplicateReadPairsRemoved;
+	}
+
+	public int getProbesWithNoMappedReadPairs() {
+		return probesWithNoMappedReadPairs;
+	}
+
+	public int getTotalReadPairsAfterReduction() {
+		return totalReadPairsAfterReduction;
+	}
+
+	public int getMaxNumberOfUidsPerProbe() {
+		return maxNumberOfUidsPerProbe;
+	}
+
+	public double getAverageNumberOfReadPairsPerProbeUid() {
+		double averageNumberOfReadPairsPerUid = (double) sumOfAverageNumberOfReadPairsPerProbeUid / (double) totalNonZeroProbes;
+		return averageNumberOfReadPairsPerUid;
+	}
+
+	public double getAverageNumberOfUidsPerProbeWithAssignedReads() {
+		double averageNumberOfUids = (double) sumOfProbeDistinctUids / (double) totalNonZeroProbes;
+		return averageNumberOfUids;
+	}
+
+	public double getAverageNumberOfUidsPerProbe() {
+		double averageNumberOfUids = (double) sumOfProbeDistinctUids / (double) totalProbes;
+		return averageNumberOfUids;
 	}
 
 	public void close() {
