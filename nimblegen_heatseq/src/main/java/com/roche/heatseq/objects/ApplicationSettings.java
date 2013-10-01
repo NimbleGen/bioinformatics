@@ -44,6 +44,7 @@ public class ApplicationSettings {
 	private final int numProcessors;
 	private final boolean allowVariableLengthUids;
 	private final IAlignmentScorer alignmentScorer;
+	private final boolean notTrimmedToWithinTheCaptureTargetSequence;
 
 	/**
 	 * Default Constructor
@@ -66,7 +67,7 @@ public class ApplicationSettings {
 	 */
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
 			String originalBamFileName, boolean shouldOutputQualityReports, boolean shouldOutputFastq, String commandLineSignature, String programName, String programVersion, int numProcessors,
-			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer) {
+			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinTheCaptureTargetSequence) {
 		super();
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;
@@ -85,6 +86,7 @@ public class ApplicationSettings {
 		this.numProcessors = numProcessors;
 		this.allowVariableLengthUids = allowVariableLengthUids;
 		this.alignmentScorer = alignmentScorer;
+		this.notTrimmedToWithinTheCaptureTargetSequence = notTrimmedToWithinTheCaptureTargetSequence;
 	}
 
 	/**
@@ -205,4 +207,12 @@ public class ApplicationSettings {
 	public IAlignmentScorer getAlignmentScorer() {
 		return alignmentScorer;
 	}
+
+	/**
+	 * @return true if the user has indicated that the reads have not been trimmed to be within the capture target sequence
+	 */
+	public boolean isNotTrimmedWithinTheCaptureTargetSequence() {
+		return notTrimmedToWithinTheCaptureTargetSequence;
+	}
+
 }

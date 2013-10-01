@@ -65,15 +65,22 @@ public class AlignmentPair {
 	/**
 	 * @return the reference sequence alignment with no beginning or ending gaps
 	 */
-	public ISequence getReferenceAlignmentWithoutTerminalInserts() {
+	public ISequence getReferenceAlignmentWithoutEndingAndBeginningInserts() {
 		return referenceAlignment.subSequence(firstNonDeletionIndex, lastNonDeletionIndex);
 	}
 
 	/**
 	 * @return the query sequence alignment with no beginning or ending gaps
 	 */
-	public ISequence getQueryAlignmentWithoutTerminalInserts() {
+	public ISequence getQueryAlignmentWithoutEndingAndBeginningInserts() {
 		return queryAlignment.subSequence(firstNonDeletionIndex, lastNonDeletionIndex);
+	}
+
+	/**
+	 * @return the reference sequence alignment with no beginning or ending gaps
+	 */
+	public ISequence getReferenceAlignmentWithoutEndingInserts() {
+		return referenceAlignment.subSequence(0, lastNonDeletionIndex);
 	}
 
 	/**
@@ -101,7 +108,12 @@ public class AlignmentPair {
 	 * @return the reverse of the mismatch details string
 	 */
 	public String getReverseMismatchDetailsString() {
-		return CigarStringUtil.getMismatchDetailsString(getReferenceAlignmentWithoutTerminalInserts().getReverse(), getQueryAlignmentWithoutTerminalInserts().getReverse(), getReverseCigarString());
+		return CigarStringUtil.getMismatchDetailsString(getReferenceAlignmentWithoutEndingAndBeginningInserts().getReverse(), getQueryAlignmentWithoutEndingAndBeginningInserts().getReverse(),
+				getReverseCigarString());
+	}
+
+	public int getFirstNonInsertMatchInReference() {
+		return firstNonDeletionIndex;
 	}
 
 }
