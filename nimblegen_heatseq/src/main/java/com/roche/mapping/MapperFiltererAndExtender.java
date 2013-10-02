@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -58,7 +59,9 @@ import com.roche.heatseq.process.ProbeFileUtil;
 import com.roche.heatseq.process.TabDelimitedFileWriter;
 import com.roche.heatseq.qualityreport.DetailsReport;
 import com.roche.heatseq.qualityreport.ProbeProcessingStats;
+import com.roche.heatseq.qualityreport.SummaryReport;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
+import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
@@ -84,6 +87,7 @@ public class MapperFiltererAndExtender {
 	private TabDelimitedFileWriter unableToAlignPrimerWriter;
 	private TabDelimitedFileWriter primerAlignmentWriter;
 	private DetailsReport detailsReport;
+	private SummaryReport summaryReport;
 
 	private FastqWriter fastqOneUnableToMapWriter;
 	private FastqWriter fastqTwoUnableToMapWriter;
@@ -115,8 +119,8 @@ public class MapperFiltererAndExtender {
 	 * @param uidLength
 	 */
 	public MapperFiltererAndExtender(File fastQOneFile, File fastQTwoFile, File probeFile, File outputFile, File ambiguousMappingFile, File probeUidQualityFile, File unableToAlignPrimerFile,
-			File fastqOneUnableToMapFile, File fastqTwoUnableToMapFile, File primerAlignmentFile, File detailsReportFile, int numProcessors, int uidLength, boolean allowVariableLengthUids,
-			String programName, String programVersion, String commandLineSignature, IAlignmentScorer alignmentScorer) {
+			File fastqOneUnableToMapFile, File fastqTwoUnableToMapFile, File primerAlignmentFile, File detailsReportFile, File summaryReportFile, int numProcessors, int uidLength,
+			boolean allowVariableLengthUids, String programName, String programVersion, String commandLineSignature, IAlignmentScorer alignmentScorer) {
 
 		super();
 		samRecordPairs = new ArrayList<SAMRecordPair>();
@@ -166,6 +170,10 @@ public class MapperFiltererAndExtender {
 			if (detailsReportFile != null) {
 				detailsReport = new DetailsReport(detailsReportFile);
 			}
+
+			if (summaryReportFile != null) {
+				summaryReport = new SummaryReport(summaryReportFile, uidLength);
+			}
 		} catch (IOException e) {
 			throw new IllegalStateException("Could not create report file.", e);
 		}
@@ -204,6 +212,14 @@ public class MapperFiltererAndExtender {
 		if (!started) {
 			started = true;
 			long start = System.currentTimeMillis();
+
+			TallyMap<String> readNamesToDistinctProbeAssignmentCount = new TallyMap<String>();
+			Set<String> distinctUids = new ConcurrentSkipListSet<String>();
+
+			int totalProbes = 0;
+			int totalMappedReads = 0;
+			int totalReads = 0;
+
 			try {
 				ProbesBySequenceName probesBySequenceName = ProbeFileUtil.parseProbeInfoFile(probeFile);
 				SubReadProbeMapper probeMapper = new SubReadProbeMapper();
@@ -216,6 +232,7 @@ public class MapperFiltererAndExtender {
 				for (String sequenceName : probesBySequenceName.getSequenceNames()) {
 					int sequenceLength = 0;
 					for (Probe probe : probesBySequenceName.getProbesBySequenceName(sequenceName)) {
+						totalProbes++;
 						// TODO Kurt Heilman 6/21/2013 pull sequence length from probe info file if we change the format to include sequence length
 						sequenceLength = Math.max(sequenceLength, probe.getStop() + 1);
 						if (fastQ1PrimerLength == null && fastQ2PrimerLength == null) {
@@ -256,6 +273,8 @@ public class MapperFiltererAndExtender {
 						while (fastQOneReader.hasNext() && fastQTwoReader.hasNext()) {
 							FastqRecord recordOne = fastQOneReader.next();
 							FastqRecord recordTwo = fastQTwoReader.next();
+
+							totalReads += 2;
 
 							MapUidAndProbeTask mapUidAndProbeTask = new MapUidAndProbeTask(recordOne, recordTwo, probeMapper, fastqLineIndex, fastQ1PrimerLength, fastQ2PrimerLength, uidLength,
 									allowVariableLengthUids, ambiguousMappingWriter, probeUidQualityWriter, unableToAlignPrimerWriter, fastqOneUnableToMapWriter, fastqTwoUnableToMapWriter,
@@ -308,7 +327,7 @@ public class MapperFiltererAndExtender {
 					for (Entry<String, Set<QualityScoreAndFastQLineIndex>> uidToqualityScoreAndFastQLineIndexesEntry : uidToQualityScoreAndFastQLineIndexes.entrySet()) {
 						Set<QualityScoreAndFastQLineIndex> qualityScoreAndFastQLineIndexes = uidToqualityScoreAndFastQLineIndexesEntry.getValue();
 						String uid = uidToqualityScoreAndFastQLineIndexesEntry.getKey();
-
+						distinctUids.add(uid);
 						int numberOfReadPairs = qualityScoreAndFastQLineIndexes.size();
 						numberOfReadsPairsPerUid.add(numberOfReadPairs);
 						if (numberOfReadPairs > maxNumberOfReadPairsPerUid) {
@@ -330,6 +349,7 @@ public class MapperFiltererAndExtender {
 						nonFilteredFastQLineIndexes.put(maxScoreFastQLineIndex, probeReference);
 					}
 
+					totalMappedReads += 2 * totalReadPairs;
 					int totalDuplicateReadPairsRemoved = totalReadPairs - totalReadPairsRemainingAfterReduction;
 
 					double[] numberOfReadsPairsPerUidArray = new double[numberOfReadsPairsPerUid.size()];
@@ -369,7 +389,7 @@ public class MapperFiltererAndExtender {
 							if (nonFilteredFastQLineIndexes.containsKey(fastqLineIndex)) {
 
 								ProbeReference probeReference = nonFilteredFastQLineIndexes.get(fastqLineIndex);
-
+								readNamesToDistinctProbeAssignmentCount.add(recordOne.getReadHeader());
 								MapReadTask mapReadTask = new MapReadTask(recordOne, recordTwo, probeReference, samHeader, readGroupName, alignmentScorer);
 								try {
 									mapReadSemaphore.acquire();
@@ -398,6 +418,32 @@ public class MapperFiltererAndExtender {
 			}
 			long end = System.currentTimeMillis();
 
+			if (summaryReport != null) {
+				summaryReport.setProcessingTimeInMs(end - start);
+				summaryReport.setDuplicateReadPairsRemoved(detailsReport.getDuplicateReadPairsRemoved());
+				summaryReport.setProbesWithNoMappedReadPairs(detailsReport.getProbesWithNoMappedReadPairs());
+				summaryReport.setTotalReadPairsAfterReduction(detailsReport.getTotalReadPairsAfterReduction());
+
+				summaryReport.setAverageUidsPerProbe(detailsReport.getAverageNumberOfUidsPerProbe());
+				summaryReport.setAverageUidsPerProbeWithReads(detailsReport.getAverageNumberOfUidsPerProbeWithAssignedReads());
+				summaryReport.setMaxUidsPerProbe(detailsReport.getMaxNumberOfUidsPerProbe());
+				summaryReport.setAverageNumberOfReadPairsPerProbeUid(detailsReport.getAverageNumberOfReadPairsPerProbeUid());
+
+				int readPairsAssignedToMultipleProbes = 0;
+				for (int counts : readNamesToDistinctProbeAssignmentCount.getTalliesAsMap().values()) {
+					if (counts > 1) {
+						readPairsAssignedToMultipleProbes++;
+					}
+				}
+				summaryReport.setReadPairsAssignedToMultipleProbes(readPairsAssignedToMultipleProbes);
+				summaryReport.setDistinctUidsFound(distinctUids.size());
+				summaryReport.setTotalProbes(totalProbes);
+				// TODO
+
+				summaryReport.setUnmappedReads(totalReads - totalMappedReads);
+				summaryReport.setMappedReads(totalMappedReads);
+			}
+
 			if (ambiguousMappingWriter != null) {
 				ambiguousMappingWriter.close();
 			}
@@ -417,6 +463,13 @@ public class MapperFiltererAndExtender {
 			if (fastqTwoUnableToMapWriter != null) {
 				fastqTwoUnableToMapWriter.close();
 			}
+			if (detailsReport != null) {
+				detailsReport.close();
+			}
+			if (summaryReport != null) {
+				summaryReport.close();
+			}
+
 			logger.debug("Total time: " + DateUtil.convertMillisecondsToHHMMSS(end - start));
 		}
 	}
