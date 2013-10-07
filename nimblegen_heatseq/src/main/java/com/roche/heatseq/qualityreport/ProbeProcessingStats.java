@@ -16,6 +16,8 @@
 
 package com.roche.heatseq.qualityreport;
 
+import java.text.DecimalFormat;
+
 import com.roche.heatseq.objects.Probe;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
@@ -36,6 +38,9 @@ public class ProbeProcessingStats {
 	private final int maxNumberOfReadPairsPerUid;
 	private final String uidOfEntryWithMaxReadPairs;
 	private final int totalTimeToProcessInMs;
+	private final double onTargetDuplicateRate;
+	private final String uidComposition;
+	private final String uidCompositionByPosition;
 
 	/**
 	 * Constructor
@@ -52,7 +57,8 @@ public class ProbeProcessingStats {
 	 * @param totalTimeToProcessInMs
 	 */
 	public ProbeProcessingStats(Probe probe, int totalUids, double averageNumberOfReadPairsPerUid, double standardDeviationOfReadPairsPerUid, int totalDuplicateReadPairsRemoved,
-			int totalReadPairsRemainingAfterReduction, int minNumberOfReadPairsPerUid, int maxNumberOfReadPairsPerUid, String uidOfEntryWithMaxReadPairs, int totalTimeToProcessInMs) {
+			int totalReadPairsRemainingAfterReduction, int minNumberOfReadPairsPerUid, int maxNumberOfReadPairsPerUid, String uidOfEntryWithMaxReadPairs, int totalTimeToProcessInMs,
+			String uidComposition, String uidCompositionByPosition) {
 		super();
 		this.probe = probe;
 		this.totalUids = totalUids;
@@ -64,6 +70,9 @@ public class ProbeProcessingStats {
 		this.maxNumberOfReadPairsPerUid = maxNumberOfReadPairsPerUid;
 		this.uidOfEntryWithMaxReadPairs = uidOfEntryWithMaxReadPairs;
 		this.totalTimeToProcessInMs = totalTimeToProcessInMs;
+		this.uidComposition = uidComposition;
+		this.uidCompositionByPosition = uidCompositionByPosition;
+		this.onTargetDuplicateRate = (double) totalDuplicateReadPairsRemoved / (double) (totalDuplicateReadPairsRemoved + totalReadPairsRemainingAfterReduction);
 	}
 
 	public int getTotalUids() {
@@ -91,16 +100,17 @@ public class ProbeProcessingStats {
 	}
 
 	public String toReportString() {
+		DecimalFormat formatter = new DecimalFormat("0.00");
 		StringBuilder stringBuilder = new StringBuilder();
 		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + probe.getSequenceName() + StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB + probe.getCaptureTargetStop()
 				+ StringUtil.TAB + probe.getProbeStrand() + StringUtil.TAB);
 		stringBuilder.append(totalUids + StringUtil.TAB + averageNumberOfReadPairsPerUid + StringUtil.TAB + standardDeviationOfReadPairsPerUid + StringUtil.TAB + minNumberOfReadPairsPerUid
 				+ StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase() + StringUtil.TAB + totalDuplicateReadPairsRemoved + StringUtil.TAB
-				+ totalReadPairsRemainingAfterReduction + StringUtil.TAB + DateUtil.convertMillisecondsToHHMMSS(totalTimeToProcessInMs) + StringUtil.TAB);
+				+ totalReadPairsRemainingAfterReduction + StringUtil.TAB + formatter.format(onTargetDuplicateRate) + StringUtil.TAB + DateUtil.convertMillisecondsToHHMMSS(totalTimeToProcessInMs)
+				+ StringUtil.TAB + uidComposition + StringUtil.TAB + uidCompositionByPosition);
 
 		stringBuilder.append(StringUtil.NEWLINE);
 
 		return stringBuilder.toString();
 	}
-
 }

@@ -66,7 +66,7 @@ public enum Strand {
 	/**
 	 * @return the symbol associated with this strand ("+" for FORWARD and "-" for REVERSE
 	 */
-	public Object getSymbol() {
+	public String getSymbol() {
 		return symbol;
 	}
 }

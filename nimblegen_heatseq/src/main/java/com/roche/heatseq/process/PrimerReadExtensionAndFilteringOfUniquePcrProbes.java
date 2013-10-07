@@ -20,12 +20,13 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -55,11 +56,13 @@ import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
 import com.roche.heatseq.qualityreport.DetailsReport;
+import com.roche.heatseq.qualityreport.NucleotideCompositionUtil;
 import com.roche.heatseq.qualityreport.SummaryReport;
 import com.roche.mapping.SAMRecordUtil;
 import com.roche.mapping.SAMRecordUtil.SamReadCount;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
+import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
@@ -87,6 +90,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	public final static String UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME = "unable_to_map_one.fastq";
 	public final static String UNABLE_TO_MAP_FASTQ_TWO_REPORT_NAME = "unable_to_map_two.fastq";
 	public final static String PRIMER_ALIGNMENT_REPORT_NAME = "extension_primer_alignment.txt";
+	public final static String UNIQUE_PROBE_TALLIES_REPORT_NAME = "unique_probe_tallies.txt";
+	public final static String PROBE_COVERAGE_REPORT_NAME = "probe_coverage.bed";
 
 	private static volatile Semaphore primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore = null;
 
@@ -120,6 +125,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		File probeUidQualityReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + PROBE_UID_QUALITY_REPORT_NAME);
 		File unableToAlignPrimerReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + UNABLE_TO_ALIGN_PRIMER_REPORT_NAME);
 		File primerAlignmentReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + PRIMER_ALIGNMENT_REPORT_NAME);
+		File uniqueProbeTalliesReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + UNIQUE_PROBE_TALLIES_REPORT_NAME);
+		File probeCoverageReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + PROBE_COVERAGE_REPORT_NAME);
 
 		logger.debug("Creating details report file at " + detailsReportFile.getAbsolutePath());
 
@@ -129,6 +136,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		TabDelimitedFileWriter probeUidQualityWriter = null;
 		TabDelimitedFileWriter unableToAlignPrimerWriter = null;
 		TabDelimitedFileWriter primerAlignmentWriter = null;
+		TabDelimitedFileWriter uniqueProbeTalliesWriter = null;
+		TabDelimitedFileWriter probeCoverageWriter = null;
 
 		if (applicationSettings.isShouldOutputQualityReports()) {
 			try {
@@ -147,6 +156,13 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				FileUtil.createNewFile(primerAlignmentReportFile);
 				primerAlignmentWriter = new TabDelimitedFileWriter(primerAlignmentReportFile, new String[] { "uid_length", "substituions", "insertions", "deletions", "edit_distance", "read",
 						"extension_primer", "probe_name", "probe_capture_start", "probe_capture_stop", "probe_strand" });
+
+				FileUtil.createNewFile(uniqueProbeTalliesReportFile);
+				uniqueProbeTalliesWriter = new TabDelimitedFileWriter(uniqueProbeTalliesReportFile);
+
+				FileUtil.createNewFile(probeCoverageReportFile);
+				probeCoverageWriter = new TabDelimitedFileWriter(probeCoverageReportFile);
+
 			} catch (IOException e) {
 				throw new IllegalStateException("Could not create report file.", e);
 			}
@@ -166,7 +182,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 		// Actually do the work
 		filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings, probeInfo, detailsReport, summaryReport, extensionErrorsWriter, probeUidQualityWriter, unableToAlignPrimerWriter,
-				primerAlignmentWriter);
+				primerAlignmentWriter, uniqueProbeTalliesWriter, probeCoverageWriter);
 
 		// Clean up the reports
 		if (summaryReport != null) {
@@ -186,6 +202,12 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		}
 		if (primerAlignmentWriter != null) {
 			primerAlignmentWriter.close();
+		}
+		if (uniqueProbeTalliesWriter != null) {
+			uniqueProbeTalliesWriter.close();
+		}
+		if (probeCoverageReportFile != null) {
+			probeCoverageWriter.close();
 		}
 
 		long stop = System.currentTimeMillis();
@@ -209,13 +231,14 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	 *            Writer for reporting quality per UID
 	 */
 	private static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings, ProbesBySequenceName probeInfo, DetailsReport detailsReport, SummaryReport summaryReport,
-			PrintWriter extensionErrorsWriter, TabDelimitedFileWriter probeUidQualityWriter, TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter) {
+			PrintWriter extensionErrorsWriter, TabDelimitedFileWriter probeUidQualityWriter, TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter,
+			TabDelimitedFileWriter uniqueProbeTalliesWriter, TabDelimitedFileWriter probeCoverageWriter) {
 		long start = System.currentTimeMillis();
 
 		Set<String> sequenceNames = probeInfo.getSequenceNames();
 
 		TallyMap<String> readNamesToDistinctProbeAssignmentCount = new TallyMap<String>();
-		Set<String> distinctUids = new ConcurrentSkipListSet<String>();
+		Set<ISequence> distinctUids = Collections.newSetFromMap(new ConcurrentHashMap<ISequence, Boolean>());
 
 		SAMFileWriter samWriter = null;
 
@@ -350,7 +373,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					}
 
 					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, applicationSettings, samWriter, extensionErrorsWriter, probeUidQualityWriter, detailsReport,
-							unableToAlignPrimerWriter, primerAlignmentWriter, fastqOneWriter, fastqTwoWriter, readNameToCompleteRecordsMap, applicationSettings.getAlignmentScorer(), distinctUids);
+							unableToAlignPrimerWriter, primerAlignmentWriter, uniqueProbeTalliesWriter, probeCoverageWriter, fastqOneWriter, fastqTwoWriter, readNameToCompleteRecordsMap,
+							applicationSettings.getAlignmentScorer(), distinctUids);
 
 					try {
 						// Don't execute more threads than we have processors
@@ -389,6 +413,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			long end = System.currentTimeMillis();
 
 			if (summaryReport != null) {
+				summaryReport.setUidComposition(NucleotideCompositionUtil.getNucleotideComposition(distinctUids));
+				summaryReport.setUidCompositionByBase(NucleotideCompositionUtil.getNucleotideCompositionByPosition(distinctUids));
 				summaryReport.setProcessingTimeInMs(end - start);
 				summaryReport.setDuplicateReadPairsRemoved(detailsReport.getDuplicateReadPairsRemoved());
 				summaryReport.setProbesWithNoMappedReadPairs(detailsReport.getProbesWithNoMappedReadPairs());
@@ -460,10 +486,12 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		private final DetailsReport detailsReport;
 		private final TabDelimitedFileWriter unableToAlignPrimerWriter;
 		private final TabDelimitedFileWriter primerAlignmentWriter;
+		private final TabDelimitedFileWriter uniqueProbeTalliesWriter;
+		private final TabDelimitedFileWriter probeCoverageWriter;
 		private final FastqWriter fastqOneWriter;
 		private final FastqWriter fastqTwoWriter;
 		private final IAlignmentScorer alignmentScorer;
-		private final Set<String> distinctUids;
+		private final Set<ISequence> distinctUids;
 		Map<String, SAMRecordPair> readNameToRecordsMap;
 
 		/**
@@ -490,7 +518,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 		PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(Probe probe, ApplicationSettings applicationSettings, SAMFileWriter samWriter, PrintWriter extensionErrorsWriter,
 				TabDelimitedFileWriter probeUidQualityWriter, DetailsReport detailsReport, TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter,
-				FastqWriter fastqOneWriter, FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap, IAlignmentScorer alignmentScorer, Set<String> distinctUids) {
+				TabDelimitedFileWriter uniqueProbeTalliesWriter, TabDelimitedFileWriter probeCoverageWriter, FastqWriter fastqOneWriter, FastqWriter fastqTwoWriter,
+				Map<String, SAMRecordPair> readNameToRecordsMap, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids) {
 			this.probe = probe;
 			this.applicationSettings = applicationSettings;
 			this.samWriter = samWriter;
@@ -499,6 +528,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			this.detailsReport = detailsReport;
 			this.unableToAlignPrimerWriter = unableToAlignPrimerWriter;
 			this.primerAlignmentWriter = primerAlignmentWriter;
+			this.uniqueProbeTalliesWriter = uniqueProbeTalliesWriter;
+			this.probeCoverageWriter = probeCoverageWriter;
 			this.fastqOneWriter = fastqOneWriter;
 			this.fastqTwoWriter = fastqTwoWriter;
 			this.readNameToRecordsMap = readNameToRecordsMap;
@@ -513,7 +544,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		public void run() {
 			try {
 				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, readNameToRecordsMap, probeUidQualityWriter, unableToAlignPrimerWriter,
-						primerAlignmentWriter, applicationSettings.isAllowVariableLengthUids(), alignmentScorer, distinctUids);
+						primerAlignmentWriter, uniqueProbeTalliesWriter, probeCoverageWriter, applicationSettings.isAllowVariableLengthUids(), alignmentScorer, distinctUids);
 				synchronized (detailsReport) {
 					if (detailsReport != null) {
 						detailsReport.writeEntry(probeReductionResults.getProbeProcessingStats());

@@ -278,7 +278,7 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 
 		@Override
 		public boolean hasNext() {
-			return currentIndex < size();
+			return currentIndex < (size() - 1);
 		}
 
 		@Override
