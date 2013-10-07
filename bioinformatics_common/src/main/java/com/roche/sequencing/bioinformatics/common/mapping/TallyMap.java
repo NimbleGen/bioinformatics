@@ -41,17 +41,7 @@ public class TallyMap<O> {
 	}
 
 	public void add(O object) {
-		sumOfAllBins++;
-		Integer currentCount = getCount(object);
-		currentCount++;
-		if (currentCount > largestCount) {
-			largestCount = currentCount;
-			objectsWithLargestCount.clear();
-			objectsWithLargestCount.add(object);
-		} else if (currentCount == largestCount) {
-			objectsWithLargestCount.add(object);
-		}
-		objectCount.put(object, currentCount);
+		addMultiple(object, 1);
 	}
 
 	public void addAll(Collection<O> objects) {
@@ -83,13 +73,24 @@ public class TallyMap<O> {
 	}
 
 	public void addMultiple(O object, int numberOfAdditions) {
-		for (int i = 0; i < numberOfAdditions; i++) {
-			add(object);
+		sumOfAllBins += numberOfAdditions;
+		Integer currentCount = getCount(object);
+		currentCount += numberOfAdditions;
+		if (currentCount > largestCount) {
+			largestCount = currentCount;
+			objectsWithLargestCount.clear();
+			objectsWithLargestCount.add(object);
+		} else if (currentCount == largestCount) {
+			objectsWithLargestCount.add(object);
 		}
-
+		objectCount.put(object, currentCount);
 	}
 
 	public Map<O, Integer> getTalliesAsMap() {
 		return objectCount;
+	}
+
+	public Set<O> getObjects() {
+		return objectCount.keySet();
 	}
 }

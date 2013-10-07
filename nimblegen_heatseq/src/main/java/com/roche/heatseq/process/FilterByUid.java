@@ -17,7 +17,10 @@
 package com.roche.heatseq.process;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -33,9 +36,12 @@ import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ReadPair;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
+import com.roche.heatseq.qualityreport.NucleotideCompositionUtil;
 import com.roche.heatseq.qualityreport.ProbeProcessingStats;
 import com.roche.mapping.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
+import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
+import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.StatisticsUtil;
 
 /**
@@ -63,7 +69,8 @@ public class FilterByUid {
 	 * @return A UidReductionResultsForAProbe containing the processing statistics and the reduced probe set
 	 */
 	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, TabDelimitedFileWriter probeUidQualityWriter,
-			TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, Set<String> distinctUids) {
+			TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter, TabDelimitedFileWriter uniqueProbeTalliesWriter,
+			TabDelimitedFileWriter probeCoverageWriter, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids) {
 		List<IReadPair> readPairs = new ArrayList<IReadPair>();
 
 		long probeProcessingStartInMs = System.currentTimeMillis();
@@ -83,7 +90,7 @@ public class FilterByUid {
 					uid = SAMRecordUtil.getUidAttribute(record);
 				}
 				if (uid != null) {
-					distinctUids.add(uid);
+					distinctUids.add(new IupacNucleotideCodeSequence(uid));
 					datas.add(new ReadPair(record, mate, uid));
 				} else {
 					unableToAlignPrimerWriter.writeLine(probe.getProbeId(), probe.getSequenceName(), probe.getStart(), probe.getStop(), probe.getExtensionPrimerSequence(), record.getReadName(),
@@ -115,7 +122,10 @@ public class FilterByUid {
 		int[] sizeByUid = new int[uidToDataMap.size()];
 		int i = 0;
 
+		Set<ISequence> uids = new HashSet<ISequence>();
 		for (String uid : uidToDataMap.keySet()) {
+			uids.add(new IupacNucleotideCodeSequence(uid));
+
 			List<IReadPair> pairsDataByUid = uidToDataMap.get(uid);
 
 			int readPairsByUid = pairsDataByUid.size();
@@ -157,11 +167,46 @@ public class FilterByUid {
 			standardDeviationOfReadPairsPerUid = StatisticsUtil.standardDeviation(sizeByUid);
 		}
 
+		if (uniqueProbeTalliesWriter != null) {
+			String[] line = new String[uidToDataMap.size() + 1];
+			line[0] = probe.getProbeId();
+			int columnIndex = 1;
+
+			List<Integer> uidCounts = new ArrayList<Integer>();
+
+			for (List<IReadPair> readsByUid : uidToDataMap.values()) {
+				uidCounts.add(readsByUid.size());
+			}
+
+			Collections.sort(uidCounts, new Comparator<Integer>() {
+
+				@Override
+				public int compare(Integer o1, Integer o2) {
+					return o2.compareTo(o1);
+				}
+			});
+
+			for (int uidCount : uidCounts) {
+				line[columnIndex] = "" + uidCount;
+				columnIndex++;
+			}
+			uniqueProbeTalliesWriter.writeLine((Object[]) line);
+		}
+
+		if (probeCoverageWriter != null) {
+			probeCoverageWriter.writeLine((Object[]) new String[] { probe.getSequenceName(), "" + probe.getStart(), "" + probe.getStop(), "" + probe.getProbeId(), "" + totalUids,
+					probe.getProbeStrand().getSymbol(), "" + probe.getCaptureTargetStart(), "" + probe.getCaptureTargetStop(), "", "", "", "" });
+		}
+
 		long probeProcessingStopInMs = System.currentTimeMillis();
 		int totalTimeToProcessInMs = (int) (probeProcessingStopInMs - probeProcessingStartInMs);
 
+		String uidComposition = NucleotideCompositionUtil.getNucleotideComposition(uids);
+		String uidCompositionByPosition = NucleotideCompositionUtil.getNucleotideCompositionByPosition(uids);
+
 		ProbeProcessingStats probeProcessingStats = new ProbeProcessingStats(probe, totalUids, averageNumberOfReadPairsPerUid, standardDeviationOfReadPairsPerUid, totalDuplicateReadPairsRemoved,
-				totalReadPairsRemainingAfterReduction, minNumberOfReadPairsPerUid, maxNumberOfReadPairsPerUid, uidOfEntryWithMaxNumberOfReadPairs, totalTimeToProcessInMs);
+				totalReadPairsRemainingAfterReduction, minNumberOfReadPairsPerUid, maxNumberOfReadPairsPerUid, uidOfEntryWithMaxNumberOfReadPairs, totalTimeToProcessInMs, uidComposition,
+				uidCompositionByPosition);
 
 		return new UidReductionResultsForAProbe(probeProcessingStats, readPairs);
 	}
