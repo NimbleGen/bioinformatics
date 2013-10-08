@@ -13,6 +13,17 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 	private static final DecimalFormat decimalFormat = new DecimalFormat("##.##");
 	private PrintWriter printWriter = null;
 	private int columnCount = -1;
+	private final boolean shouldValidateColumnCount;
+
+	/**
+	 * Make a tab delimited file writer with the provided output file
+	 * 
+	 * @param outputFile
+	 * @throws IOException
+	 */
+	public TabDelimitedFileWriter(File outputFile) throws IOException {
+		this(outputFile, new String[0], false);
+	}
 
 	/**
 	 * Make a tab delimited file writer with the provided output file and header line
@@ -22,6 +33,10 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 	 * @throws IOException
 	 */
 	public TabDelimitedFileWriter(File outputFile, String[] headers) throws IOException {
+		this(outputFile, headers, true);
+	}
+
+	private TabDelimitedFileWriter(File outputFile, String[] headers, boolean shouldValidateColumnCount) throws IOException {
 		// Keep track of how many columns we should expect to see
 		this.columnCount = headers.length;
 		this.printWriter = new PrintWriter(new FileWriter(outputFile));
@@ -36,6 +51,7 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 			}
 			printWriter.println();
 		}
+		this.shouldValidateColumnCount = false;
 	}
 
 	/**
@@ -49,7 +65,7 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 				throw new IllegalArgumentException("Trying to write a line to a writer thas has been closed");
 			}
 
-			if (values.length != columnCount) {
+			if (shouldValidateColumnCount && values.length != columnCount) {
 				throw new IllegalArgumentException("Passed in " + values.length + " values to a writer with " + columnCount + " columns.");
 			}
 
@@ -60,15 +76,18 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 				}
 				firstValue = false;
 
-				if (value instanceof Number) {
-					// We want all numeric values to be formatted
-					printWriter.write(decimalFormat.format(value));
-				} else {
-					// Convert the value to a string
-					printWriter.write(value.toString());
+				if (value != null) {
+					if (value instanceof Number) {
+						// We want all numeric values to be formatted
+						printWriter.write(decimalFormat.format(value));
+					} else {
+						// Convert the value to a string
+						printWriter.write(value.toString());
+					}
 				}
 			}
 			printWriter.println();
+			printWriter.flush();
 		}
 	}
 

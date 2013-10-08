@@ -389,6 +389,26 @@ public class PrefuppCli {
 					}
 				}
 
+				File uniqueProbeTalliesFile = null;
+				if (shouldOutputQualityReports) {
+					uniqueProbeTalliesFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.UNIQUE_PROBE_TALLIES_REPORT_NAME);
+					try {
+						FileUtil.createNewFile(uniqueProbeTalliesFile);
+					} catch (IOException e) {
+						throw new IllegalStateException(e);
+					}
+				}
+
+				File probeCoverageFile = null;
+				if (shouldOutputQualityReports) {
+					probeCoverageFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.PROBE_COVERAGE_REPORT_NAME);
+					try {
+						FileUtil.createNewFile(probeCoverageFile);
+					} catch (IOException e) {
+						throw new IllegalStateException(e);
+					}
+				}
+
 				File detailsReportFile = null;
 				if (shouldOutputQualityReports) {
 					detailsReportFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.DETAILS_REPORT_NAME);
@@ -410,8 +430,8 @@ public class PrefuppCli {
 				}
 
 				MapperFiltererAndExtender mapFilterAndExtend = new MapperFiltererAndExtender(fastQ1WithUidsFile, fastQ2File, probeFile, outputBamFile, ambiguousMappingFile, probeUidQualityFile,
-						unableToAlignPrimerFile, unableToMapFastqOneFile, unableToMapFastqTwoFile, primerAlignmentFile, detailsReportFile, summaryReportFile, numProcessors, uidLength,
-						useLenientValidation, APPLICATION_NAME, APPLICATION_VERSION, commandLineSignature, alignmentScorer);
+						unableToAlignPrimerFile, unableToMapFastqOneFile, unableToMapFastqTwoFile, primerAlignmentFile, uniqueProbeTalliesFile, probeCoverageFile, detailsReportFile,
+						summaryReportFile, numProcessors, uidLength, useLenientValidation, APPLICATION_NAME, APPLICATION_VERSION, commandLineSignature, alignmentScorer);
 
 				mapFilterAndExtend.mapFilterAndExtend();
 
