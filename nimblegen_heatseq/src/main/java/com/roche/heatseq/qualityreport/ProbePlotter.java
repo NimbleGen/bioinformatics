@@ -38,6 +38,7 @@ import com.roche.heatseq.process.TabDelimitedFileWriter;
 import com.roche.imageexporter.Graphics2DImageExporter;
 import com.roche.imageexporter.Graphics2DImageExporter.ImageType;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
+import com.roche.sequencing.bioinformatics.common.statistics.RunningStats;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.DelimitedFileParserUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
@@ -48,15 +49,17 @@ public class ProbePlotter {
 
 	public static void main(String[] args) {
 		try {
-			generateReadSubSampleReport(new File("D:/liang/mapped_results2/report_unique_probe_tallies1.txt"), new File("D:/liang/mapped_results2/report_prefupp_summary1.txt"), new File(
-					"D:/liang/mapped_results2/report_read_subsampling9.txt"), new int[] { 1, 10, 20, 50, 100 }, new double[] { 0.01, 0.1, 1, 10, 30 });
+			generateReadSubSampleReport(new File("D:/liang/results/report_unique_probe_tallies.txt"), new File("D:/liang/results/report_prefupp_summary.txt"), new File(
+					"D:/liang/results/report_read_subsampling.txt"), new File("D:/liang/results/report_probe_subsampling.txt"), new int[] { 1, 10, 20, 50, 100 },
+					new double[] { 0.01, 0.1, 1, 10, 100 });
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 
-	public static void generateReadSubSampleReport(File probeTalliesReportFile, File summaryReportFile, File outputReportFile, int[] coverageDepths, double[] percentSizes) throws IOException {
+	public static void generateReadSubSampleReport(File probeTalliesReportFile, File summaryReportFile, File outputSummaryReportFile, File outputProbeReportFile, int[] coverageDepths,
+			double[] percentSizes) throws IOException {
 
 		int totalRawReads = 0;
 
@@ -94,14 +97,19 @@ public class ProbePlotter {
 			}
 		}
 
-		TabDelimitedFileWriter readSubSampleReport = new TabDelimitedFileWriter(outputReportFile, header);
+		String[] probeReportHeader = new String[] { "orig_raw_reads", "percent_of_orig", "sub_sampled_raw_reads", "number_of_simulations", "mean_occurences", "margin_of_error", "st_dev_occurrences",
+				"upper_bound_occurrences", "lower_bound_occurrences" };
+		TabDelimitedFileWriter probeSubSampleReport = new TabDelimitedFileWriter(outputProbeReportFile, probeReportHeader);
+
+		TabDelimitedFileWriter readSubSampleReport = new TabDelimitedFileWriter(outputSummaryReportFile, header);
 		long start = System.currentTimeMillis();
 
 		try {
 			Map<String, int[]> probeTallies = loadProbeTallies(probeTalliesReportFile);
 
 			for (double percentSizeOfOriginal : percentSizes) {
-				CoverageAndDuplicateRate coverageAndDuplicateRate = getCoverageAndDuplicateRateForEachDesiredCoverageDepth(probeTallies, totalRawReads, percentSizeOfOriginal, coverageDepths);
+				CoverageAndDuplicateRate coverageAndDuplicateRate = getCoverageAndDuplicateRateForEachDesiredCoverageDepth(probeTallies, totalRawReads, percentSizeOfOriginal, coverageDepths,
+						probeSubSampleReport);
 				double lowerBoundsOnTargetReads = coverageAndDuplicateRate.getLowerBoundsOnTargetReads();
 				double upperBoundsOnTargetReads = coverageAndDuplicateRate.getUpperBoundsOnTargetReads();
 
@@ -138,6 +146,7 @@ public class ProbePlotter {
 			}
 
 			readSubSampleReport.close();
+			probeSubSampleReport.close();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -161,7 +170,11 @@ public class ProbePlotter {
 				}
 				int[] values = new int[probeAndValues.length - 1];
 				for (int i = 1; i < probeAndValues.length; i++) {
-					values[i - 1] = Integer.parseInt(probeAndValues[i]);
+					String uidNameAndCount = probeAndValues[i];
+					String[] nameAndCount = uidNameAndCount.split(":");
+					if (nameAndCount.length == 2) {
+						values[i - 1] = Integer.parseInt(nameAndCount[1]);
+					}
 				}
 				probeTallies.put(probe, values);
 			}
@@ -273,8 +286,9 @@ public class ProbePlotter {
 	}
 
 	public static CoverageAndDuplicateRate getCoverageAndDuplicateRateForEachDesiredCoverageDepth(Map<String, int[]> uniqueReadTalliesByProbe, int totalRawReads, double percentSizeOfOriginal,
-			int[] desiredCoverageDepths) {
-		return getCoverageAndDuplicateRateForEachDesiredCoverageDepth(uniqueReadTalliesByProbe, totalRawReads, percentSizeOfOriginal, desiredCoverageDepths, Confidence._99_9, randomSeed);
+			int[] desiredCoverageDepths, TabDelimitedFileWriter probeSubSampleReport) {
+		return getCoverageAndDuplicateRateForEachDesiredCoverageDepth(uniqueReadTalliesByProbe, totalRawReads, percentSizeOfOriginal, desiredCoverageDepths, Confidence._99_9, randomSeed,
+				probeSubSampleReport);
 	}
 
 	private static interface IRead {
@@ -328,7 +342,7 @@ public class ProbePlotter {
 	}
 
 	public static CoverageAndDuplicateRate getCoverageAndDuplicateRateForEachDesiredCoverageDepth(Map<String, int[]> uniqueReadTalliesByProbe, int totalRawReads, double percentSizeOfOriginal,
-			int[] desiredCoverageDepths, Confidence confidence, long randomSeed) {
+			int[] desiredCoverageDepths, Confidence confidence, long randomSeed, TabDelimitedFileWriter probeSubSampleReport) {
 
 		Random random = new Random(randomSeed);
 
@@ -355,14 +369,11 @@ public class ProbePlotter {
 		// the precision comes from the number of simulations which are based on the subsample size
 		int numberOfSimulations = (int) Math.ceil((double) 1000 / (double) percentSizeOfOriginal);
 
-		double uniqueReadsFirstMoment = 0.0;
-		double uniqueReadsSecondMoment = 0.0;
+		RunningStats uniqueReadsRunningStats = new RunningStats();
 
-		double onTargetFirstMoment = 0.0;
-		double onTargetSecondMoment = 0.0;
+		RunningStats onTargetReadsRunningStats = new RunningStats();
 
-		TallyMap<String> sumOfFirstMomentOfUniqueReadsByProbe = new TallyMap<String>();
-		TallyMap<String> sumOfSecondMomentOfUniqueReadsByProbe = new TallyMap<String>();
+		Map<String, RunningStats> runningStatsByProbe = new HashMap<String, RunningStats>();
 
 		for (int simulationNumber = 0; simulationNumber < numberOfSimulations; simulationNumber++) {
 			TallyMap<IRead> uniqueReadTally = subSample(allReads, percentSizeOfOriginal, random);
@@ -374,38 +385,41 @@ public class ProbePlotter {
 				occurenceOfUniqueReadInSimulation--;
 			}
 
-			uniqueReadsFirstMoment += (double) occurenceOfUniqueReadInSimulation / (double) numberOfSimulations;
-			uniqueReadsSecondMoment += (double) (Math.pow(occurenceOfUniqueReadInSimulation, 2)) / (double) numberOfSimulations;
+			uniqueReadsRunningStats.addValue((double) occurenceOfUniqueReadInSimulation);
 
-			onTargetFirstMoment += (double) onTargetReads / (double) numberOfSimulations;
-			onTargetSecondMoment += (double) (Math.pow(onTargetReads, 2)) / (double) numberOfSimulations;
+			onTargetReadsRunningStats.addValue((double) onTargetReads);
 
 			// split the numberOfUniqueReads up by probe
+			TallyMap<String> occurencesByProbe = new TallyMap<String>();
+
 			for (Entry<IRead, Integer> entry : uniqueReadTally.getTalliesAsMap().entrySet()) {
 				IRead read = entry.getKey();
 				if (read instanceof UniqueRead) {
-					sumOfFirstMomentOfUniqueReadsByProbe.addMultiple(((UniqueRead) read).getProbeName(), entry.getValue());
-					sumOfSecondMomentOfUniqueReadsByProbe.addMultiple(((UniqueRead) read).getProbeName(), (int) Math.pow(entry.getValue(), 2));
+					int occurrences = entry.getValue();
+					occurencesByProbe.addMultiple(((UniqueRead) read).getProbeName(), occurrences);
 				}
 			}
+
+			for (String probeName : uniqueReadTalliesByProbe.keySet()) {
+				int occurrences = occurencesByProbe.getCount(probeName);
+				RunningStats runningStats = runningStatsByProbe.get(probeName);
+				if (runningStats == null) {
+					runningStats = new RunningStats();
+				}
+				runningStats.addValue(occurrences);
+				runningStatsByProbe.put(probeName, runningStats);
+			}
+
 		}
 
-		double meanOfUniqueReads = uniqueReadsFirstMoment;
-		double varianceOfUniqueReads = uniqueReadsSecondMoment - Math.pow(uniqueReadsFirstMoment, 2);
-		// In reality the variance can never be less than 0, but since precision errors occur with doubles
-		// it happens here. If we are less than 0 just set the variance to 0;
-		varianceOfUniqueReads = Math.max(varianceOfUniqueReads, 0.0);
-		double standardDeviationOfUniqueReads = Math.sqrt(varianceOfUniqueReads);
+		double meanOfUniqueReads = uniqueReadsRunningStats.getCurrentMean();
+		double standardDeviationOfUniqueReads = uniqueReadsRunningStats.getCurrentStandardDeviation();
 
 		double lowerBoundsOfUniqueReads = meanOfUniqueReads - (standardDeviationOfUniqueReads * confidence.standardDeviationsAwayFromTheMean);
 		double upperBoundsOfUniqueReads = meanOfUniqueReads + (standardDeviationOfUniqueReads * confidence.standardDeviationsAwayFromTheMean);
 
-		double meanOfOnTargetReads = onTargetFirstMoment;
-		double varianceOfOnTargetReads = onTargetSecondMoment - Math.pow(onTargetFirstMoment, 2);
-		// In reality the variance can never be less than 0, but since precision errors occur with doubles
-		// it happens here. If we are less than 0 just set the variance to 0;
-		varianceOfOnTargetReads = Math.max(varianceOfOnTargetReads, 0.0);
-		double standardDeviationOfOnTargetReads = Math.sqrt(varianceOfOnTargetReads);
+		double meanOfOnTargetReads = onTargetReadsRunningStats.getCurrentMean();
+		double standardDeviationOfOnTargetReads = onTargetReadsRunningStats.getCurrentStandardDeviation();
 
 		double lowerBoundsOnTargetReads = meanOfOnTargetReads - (standardDeviationOfOnTargetReads * confidence.standardDeviationsAwayFromTheMean);
 		double upperBoundsOnTargetReads = meanOfOnTargetReads + (standardDeviationOfOnTargetReads * confidence.standardDeviationsAwayFromTheMean);
@@ -413,17 +427,27 @@ public class ProbePlotter {
 		double[] lowerBoundsOfUniqueReadsByProbe = new double[totalProbes];
 		double[] upperBoundsOfUniqueReadsByProbe = new double[totalProbes];
 
+		int totalSubSampledRawReads = (int) ((double) totalRawReads * (double) percentSizeOfOriginal / 100.0);
+
 		int probeIndex = 0;
 		for (String probeName : uniqueReadTalliesByProbe.keySet()) {
-			double meanOfUniqueReadsByProbe = (double) sumOfFirstMomentOfUniqueReadsByProbe.getCount(probeName) / (double) totalProbes;
-			double varianceOfUniqueReadsByProbe = (double) sumOfSecondMomentOfUniqueReadsByProbe.getCount(probeName) / (double) totalProbes - Math.pow(meanOfUniqueReadsByProbe, 2);
-			// In reality the variance can never be less than 0, but since precision errors occur with doubles
-			// it happens here. If we are less than 0 just set the variance to 0;
-			varianceOfUniqueReadsByProbe = Math.max(varianceOfUniqueReadsByProbe, 0.0);
-			double standardDeviationOfUniqueReadsByProbe = Math.sqrt(varianceOfUniqueReadsByProbe);
+			RunningStats runningStats = runningStatsByProbe.get(probeName);
+			if (runningStats != null) {
+				double meanOfUniqueReadsByProbe = runningStats.getCurrentMean();
+				double standardDeviationOfUniqueReadsByProbe = runningStats.getCurrentStandardDeviation();
 
-			lowerBoundsOfUniqueReadsByProbe[probeIndex] = meanOfUniqueReadsByProbe - (standardDeviationOfUniqueReadsByProbe * confidence.standardDeviationsAwayFromTheMean);
-			upperBoundsOfUniqueReadsByProbe[probeIndex] = meanOfUniqueReadsByProbe + (standardDeviationOfUniqueReadsByProbe * confidence.standardDeviationsAwayFromTheMean);
+				double standardErrorAboutTheMean = (standardDeviationOfUniqueReadsByProbe * confidence.standardDeviationsAwayFromTheMean);
+				lowerBoundsOfUniqueReadsByProbe[probeIndex] = Math.max(meanOfUniqueReadsByProbe - standardErrorAboutTheMean, 0.0);
+				upperBoundsOfUniqueReadsByProbe[probeIndex] = meanOfUniqueReadsByProbe + standardErrorAboutTheMean;
+				if (probeSubSampleReport != null) {
+					probeSubSampleReport.writeLine(totalRawReads, percentSizeOfOriginal, totalSubSampledRawReads, numberOfSimulations, meanOfUniqueReadsByProbe, standardErrorAboutTheMean,
+							standardDeviationOfUniqueReadsByProbe, lowerBoundsOfUniqueReadsByProbe[probeIndex], upperBoundsOfUniqueReadsByProbe[probeIndex]);
+				}
+			} else {
+				if (probeSubSampleReport != null) {
+					probeSubSampleReport.writeLine(totalRawReads, percentSizeOfOriginal, totalSubSampledRawReads, numberOfSimulations, "NaN", "NaN", "NaN", "NaN", "NaN");
+				}
+			}
 
 			probeIndex++;
 		}

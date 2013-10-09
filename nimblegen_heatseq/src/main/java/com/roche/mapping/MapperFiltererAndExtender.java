@@ -526,9 +526,15 @@ public class MapperFiltererAndExtender {
 			if (fastqTwoUnableToMapWriter != null) {
 				fastqTwoUnableToMapWriter.close();
 			}
+
+			if (probeCoverageWriter != null) {
+				probeCoverageWriter.close();
+			}
+
 			if (detailsReport != null) {
 				detailsReport.close();
 			}
+
 			if (summaryReport != null) {
 				summaryReport.close();
 			}
