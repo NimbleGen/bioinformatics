@@ -92,6 +92,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	public final static String PRIMER_ALIGNMENT_REPORT_NAME = "extension_primer_alignment.txt";
 	public final static String UNIQUE_PROBE_TALLIES_REPORT_NAME = "unique_probe_tallies.txt";
 	public final static String PROBE_COVERAGE_REPORT_NAME = "probe_coverage.bed";
+	public final static String MAPPED_OFF_TARGET_READS_REPORT_NAME = "mapped_off_target_reads.bed";
 
 	private static volatile Semaphore primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore = null;
 
@@ -127,6 +128,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		File primerAlignmentReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + PRIMER_ALIGNMENT_REPORT_NAME);
 		File uniqueProbeTalliesReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + UNIQUE_PROBE_TALLIES_REPORT_NAME);
 		File probeCoverageReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + PROBE_COVERAGE_REPORT_NAME);
+		File mappedOffTargetReadsReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + MAPPED_OFF_TARGET_READS_REPORT_NAME);
 
 		logger.debug("Creating details report file at " + detailsReportFile.getAbsolutePath());
 
@@ -138,6 +140,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		TabDelimitedFileWriter primerAlignmentWriter = null;
 		TabDelimitedFileWriter uniqueProbeTalliesWriter = null;
 		TabDelimitedFileWriter probeCoverageWriter = null;
+		TabDelimitedFileWriter mappedOffTargetReadsWriter = null;
 
 		if (applicationSettings.isShouldOutputQualityReports()) {
 			try {
@@ -163,6 +166,9 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				FileUtil.createNewFile(probeCoverageReportFile);
 				probeCoverageWriter = new TabDelimitedFileWriter(probeCoverageReportFile);
 
+				FileUtil.createNewFile(mappedOffTargetReadsReportFile);
+				mappedOffTargetReadsWriter = new TabDelimitedFileWriter(mappedOffTargetReadsReportFile);
+
 			} catch (IOException e) {
 				throw new IllegalStateException("Could not create report file.", e);
 			}
@@ -182,7 +188,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 		// Actually do the work
 		filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings, probeInfo, detailsReport, summaryReport, extensionErrorsWriter, probeUidQualityWriter, unableToAlignPrimerWriter,
-				primerAlignmentWriter, uniqueProbeTalliesWriter, probeCoverageWriter);
+				primerAlignmentWriter, uniqueProbeTalliesWriter, probeCoverageWriter, mappedOffTargetReadsWriter);
 
 		// Clean up the reports
 		if (summaryReport != null) {
@@ -232,7 +238,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	 */
 	private static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings, ProbesBySequenceName probeInfo, DetailsReport detailsReport, SummaryReport summaryReport,
 			PrintWriter extensionErrorsWriter, TabDelimitedFileWriter probeUidQualityWriter, TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter,
-			TabDelimitedFileWriter uniqueProbeTalliesWriter, TabDelimitedFileWriter probeCoverageWriter) {
+			TabDelimitedFileWriter uniqueProbeTalliesWriter, TabDelimitedFileWriter probeCoverageWriter, TabDelimitedFileWriter mappedOffTargetReadsWriter) {
 		long start = System.currentTimeMillis();
 
 		Set<String> sequenceNames = probeInfo.getSequenceNames();
@@ -401,6 +407,22 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				fastqTwoWriter.close();
 			}
 			samWriter.close();
+
+			SAMRecordIterator samRecordIter = samReader.iterator();
+			while (samRecordIter.hasNext()) {
+				SAMRecord record = samRecordIter.next();
+				Set<String> mappedReadNames = readNamesToDistinctProbeAssignmentCount.getTalliesAsMap().keySet();
+				String readName = record.getReadName();
+				if (!record.getReadUnmappedFlag() && !mappedReadNames.contains(readName)) {
+					String strandString = "+";
+					if (record.getReadNegativeStrandFlag()) {
+						strandString = "-";
+					}
+					mappedOffTargetReadsWriter.writeLine(record.getReferenceName(), record.getAlignmentStart(), record.getAlignmentEnd(), readName, "", strandString);
+				}
+			}
+			samRecordIter.close();
+
 			samReader.close();
 
 			// Sort the output BAM file,

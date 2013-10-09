@@ -14,7 +14,7 @@
  *   limitations under the License.
  */
 
-package com.roche.heatseq.qualityreport;
+package com.roche.mapping.datasimulator;
 
 import java.awt.Color;
 import java.awt.FontMetrics;

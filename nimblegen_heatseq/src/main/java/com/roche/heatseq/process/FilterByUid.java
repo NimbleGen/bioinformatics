@@ -172,22 +172,22 @@ public class FilterByUid {
 			line[0] = probe.getProbeId();
 			int columnIndex = 1;
 
-			List<Integer> uidCounts = new ArrayList<Integer>();
+			List<UidNameToCountPair> uidCounts = new ArrayList<UidNameToCountPair>();
 
-			for (List<IReadPair> readsByUid : uidToDataMap.values()) {
-				uidCounts.add(readsByUid.size());
+			for (Entry<String, List<IReadPair>> readsByUid : uidToDataMap.entrySet()) {
+				uidCounts.add(new UidNameToCountPair(readsByUid.getKey(), readsByUid.getValue().size()));
 			}
 
-			Collections.sort(uidCounts, new Comparator<Integer>() {
+			Collections.sort(uidCounts, new Comparator<UidNameToCountPair>() {
 
 				@Override
-				public int compare(Integer o1, Integer o2) {
-					return o2.compareTo(o1);
+				public int compare(UidNameToCountPair o1, UidNameToCountPair o2) {
+					return Integer.compare(o2.getCount(), o1.getCount());
 				}
 			});
 
-			for (int uidCount : uidCounts) {
-				line[columnIndex] = "" + uidCount;
+			for (UidNameToCountPair uidNameAndCount : uidCounts) {
+				line[columnIndex] = uidNameAndCount.getUidName() + ":" + uidNameAndCount.getCount();
 				columnIndex++;
 			}
 			uniqueProbeTalliesWriter.writeLine((Object[]) line);
@@ -210,6 +210,26 @@ public class FilterByUid {
 
 		return new UidReductionResultsForAProbe(probeProcessingStats, readPairs);
 	}
+
+	private static class UidNameToCountPair {
+		private final String uidName;
+		private final int count;
+
+		public UidNameToCountPair(String uidName, int count) {
+			super();
+			this.uidName = uidName;
+			this.count = count;
+		}
+
+		public String getUidName() {
+			return uidName;
+		}
+
+		public int getCount() {
+			return count;
+		}
+
+	};
 
 	/**
 	 * Report on the probe UID qualities
