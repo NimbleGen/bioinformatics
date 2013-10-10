@@ -37,6 +37,9 @@ public class SummaryReport {
 	private String uidCompositionByBase;
 	private String uidComposition;
 
+	private String weightedUidCompositionByBase;
+	private String weightedUidComposition;
+
 	private double averageNumberOfReadPairsPerProbeUid;
 
 	public SummaryReport(File summaryReportFile, int uidLength) throws IOException {
@@ -48,7 +51,8 @@ public class SummaryReport {
 				+ StringUtil.TAB + "total_read_pairs_after_reduction" + StringUtil.TAB + "distinct_uids_found" + StringUtil.TAB + "possible_unique_uids_of_length_" + uidLength + StringUtil.TAB
 				+ "uid_ratio" + StringUtil.TAB + "average_uids_per_probe" + StringUtil.TAB + "average_uids_per_probes_with_reads" + StringUtil.TAB + "max_uids_per_probe" + StringUtil.TAB
 				+ "average_read_pairs_per_probe_uid" + StringUtil.TAB + "on-target_duplicate_rate" + StringUtil.TAB + "probe-specific_reads" + StringUtil.TAB + "probe-specific_to_total_reads_ratio"
-				+ StringUtil.TAB + "uid_nucleotide_composition" + StringUtil.TAB + "uid_nucleotide_composition_by_base");
+				+ StringUtil.TAB + "unique_uid_nucleotide_composition" + StringUtil.TAB + "unique_uid_nucleotide_composition_by_base" + StringUtil.TAB + "weighted_uid_nucleotide_composition"
+				+ StringUtil.TAB + "weighted_uid_nucleotide_composition_by_base");
 		detailsReportWriter.flush();
 	}
 
@@ -108,7 +112,15 @@ public class SummaryReport {
 		this.uidCompositionByBase = uidCompositionByBase;
 	}
 
-	public void setUidComposition(String uidComposition) {
+	public void setUidComposition(String weightedUidComposition) {
+		this.weightedUidComposition = weightedUidComposition;
+	}
+
+	public void setWeightedUidCompositionByBase(String weightedUidCompositionByBase) {
+		this.weightedUidCompositionByBase = weightedUidCompositionByBase;
+	}
+
+	public void setWeightedUidComposition(String uidComposition) {
 		this.uidComposition = uidComposition;
 	}
 
@@ -124,7 +136,8 @@ public class SummaryReport {
 				+ totalProbes + StringUtil.TAB + totalReadPairsAfterReduction + StringUtil.TAB + distinctUidsFound + StringUtil.TAB + theoreticalUniqueUids + StringUtil.TAB
 				+ formatter.format(uidRatio) + StringUtil.TAB + formatter.format(averageUidsPerProbe) + StringUtil.TAB + formatter.format(averageUidsPerProbeWithReads) + StringUtil.TAB
 				+ maxUidsPerProbe + StringUtil.TAB + formatter.format(averageNumberOfReadPairsPerProbeUid) + StringUtil.TAB + formatter.format(onTargetDuplicateRate) + StringUtil.TAB
-				+ probeSpecificReads + StringUtil.TAB + formatter.format(probeSpecificToTotalReadsRatio) + StringUtil.TAB + uidComposition + StringUtil.TAB + uidCompositionByBase);
+				+ probeSpecificReads + StringUtil.TAB + formatter.format(probeSpecificToTotalReadsRatio) + StringUtil.TAB + uidComposition + StringUtil.TAB + uidCompositionByBase + StringUtil.TAB
+				+ weightedUidComposition + StringUtil.TAB + weightedUidCompositionByBase);
 		detailsReportWriter.close();
 	}
 

@@ -70,7 +70,7 @@ public class FilterByUid {
 	 */
 	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, TabDelimitedFileWriter probeUidQualityWriter,
 			TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter, TabDelimitedFileWriter uniqueProbeTalliesWriter,
-			TabDelimitedFileWriter probeCoverageWriter, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids) {
+			TabDelimitedFileWriter probeCoverageWriter, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids) {
 		List<IReadPair> readPairs = new ArrayList<IReadPair>();
 
 		long probeProcessingStartInMs = System.currentTimeMillis();
@@ -90,7 +90,11 @@ public class FilterByUid {
 					uid = SAMRecordUtil.getUidAttribute(record);
 				}
 				if (uid != null) {
-					distinctUids.add(new IupacNucleotideCodeSequence(uid));
+					ISequence uidSequence = new IupacNucleotideCodeSequence(uid);
+					distinctUids.add(uidSequence);
+					synchronized (uidSequence) {
+						uids.add(uidSequence);
+					}
 					datas.add(new ReadPair(record, mate, uid));
 				} else {
 					unableToAlignPrimerWriter.writeLine(probe.getProbeId(), probe.getSequenceName(), probe.getStart(), probe.getStop(), probe.getExtensionPrimerSequence(), record.getReadName(),
@@ -122,13 +126,19 @@ public class FilterByUid {
 		int[] sizeByUid = new int[uidToDataMap.size()];
 		int i = 0;
 
-		Set<ISequence> uids = new HashSet<ISequence>();
+		Set<ISequence> uniqueUidsByProbe = new HashSet<ISequence>();
+		List<ISequence> weightedUidsByProbe = new ArrayList<ISequence>();
 		for (String uid : uidToDataMap.keySet()) {
-			uids.add(new IupacNucleotideCodeSequence(uid));
+			ISequence uidSequence = new IupacNucleotideCodeSequence(uid);
+			uniqueUidsByProbe.add(uidSequence);
 
 			List<IReadPair> pairsDataByUid = uidToDataMap.get(uid);
 
 			int readPairsByUid = pairsDataByUid.size();
+
+			for (int j = 0; j < readPairsByUid; j++) {
+				weightedUidsByProbe.add(uidSequence);
+			}
 
 			totalReadPairs += readPairsByUid;
 			sizeByUid[i] = readPairsByUid;
@@ -201,12 +211,15 @@ public class FilterByUid {
 		long probeProcessingStopInMs = System.currentTimeMillis();
 		int totalTimeToProcessInMs = (int) (probeProcessingStopInMs - probeProcessingStartInMs);
 
-		String uidComposition = NucleotideCompositionUtil.getNucleotideComposition(uids);
-		String uidCompositionByPosition = NucleotideCompositionUtil.getNucleotideCompositionByPosition(uids);
+		String uidComposition = NucleotideCompositionUtil.getNucleotideComposition(uniqueUidsByProbe);
+		String uidCompositionByPosition = NucleotideCompositionUtil.getNucleotideCompositionByPosition(uniqueUidsByProbe);
+
+		String weightedUidComposition = NucleotideCompositionUtil.getNucleotideComposition(weightedUidsByProbe);
+		String weightedUidCompositionByPosition = NucleotideCompositionUtil.getNucleotideCompositionByPosition(weightedUidsByProbe);
 
 		ProbeProcessingStats probeProcessingStats = new ProbeProcessingStats(probe, totalUids, averageNumberOfReadPairsPerUid, standardDeviationOfReadPairsPerUid, totalDuplicateReadPairsRemoved,
 				totalReadPairsRemainingAfterReduction, minNumberOfReadPairsPerUid, maxNumberOfReadPairsPerUid, uidOfEntryWithMaxNumberOfReadPairs, totalTimeToProcessInMs, uidComposition,
-				uidCompositionByPosition);
+				uidCompositionByPosition, weightedUidComposition, weightedUidCompositionByPosition);
 
 		return new UidReductionResultsForAProbe(probeProcessingStats, readPairs);
 	}
