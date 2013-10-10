@@ -41,6 +41,8 @@ public class ProbeProcessingStats {
 	private final double onTargetDuplicateRate;
 	private final String uidComposition;
 	private final String uidCompositionByPosition;
+	private final String weightedUidComposition;
+	private final String weightedUidCompositionByPosition;
 
 	/**
 	 * Constructor
@@ -58,7 +60,7 @@ public class ProbeProcessingStats {
 	 */
 	public ProbeProcessingStats(Probe probe, int totalUids, double averageNumberOfReadPairsPerUid, double standardDeviationOfReadPairsPerUid, int totalDuplicateReadPairsRemoved,
 			int totalReadPairsRemainingAfterReduction, int minNumberOfReadPairsPerUid, int maxNumberOfReadPairsPerUid, String uidOfEntryWithMaxReadPairs, int totalTimeToProcessInMs,
-			String uidComposition, String uidCompositionByPosition) {
+			String uidComposition, String uidCompositionByPosition, String weightedUidComposition, String weightedUidCompositionByPosition) {
 		super();
 		this.probe = probe;
 		this.totalUids = totalUids;
@@ -73,6 +75,8 @@ public class ProbeProcessingStats {
 		this.uidComposition = uidComposition;
 		this.uidCompositionByPosition = uidCompositionByPosition;
 		this.onTargetDuplicateRate = (double) totalDuplicateReadPairsRemoved / (double) (totalDuplicateReadPairsRemoved + totalReadPairsRemainingAfterReduction);
+		this.weightedUidComposition = weightedUidComposition;
+		this.weightedUidCompositionByPosition = weightedUidCompositionByPosition;
 	}
 
 	public int getTotalUids() {
@@ -107,7 +111,7 @@ public class ProbeProcessingStats {
 		stringBuilder.append(totalUids + StringUtil.TAB + averageNumberOfReadPairsPerUid + StringUtil.TAB + standardDeviationOfReadPairsPerUid + StringUtil.TAB + minNumberOfReadPairsPerUid
 				+ StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase() + StringUtil.TAB + totalDuplicateReadPairsRemoved + StringUtil.TAB
 				+ totalReadPairsRemainingAfterReduction + StringUtil.TAB + formatter.format(onTargetDuplicateRate) + StringUtil.TAB + DateUtil.convertMillisecondsToHHMMSS(totalTimeToProcessInMs)
-				+ StringUtil.TAB + uidComposition + StringUtil.TAB + uidCompositionByPosition);
+				+ StringUtil.TAB + uidComposition + StringUtil.TAB + uidCompositionByPosition + StringUtil.TAB + weightedUidComposition + StringUtil.TAB + weightedUidCompositionByPosition);
 
 		stringBuilder.append(StringUtil.NEWLINE);
 

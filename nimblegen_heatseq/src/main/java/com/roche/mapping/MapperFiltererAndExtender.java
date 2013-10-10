@@ -344,14 +344,21 @@ public class MapperFiltererAndExtender {
 					List<Integer> numberOfReadsPairsPerUid = new ArrayList<Integer>();
 
 					Set<ISequence> distinctUidsByProbe = new HashSet<ISequence>();
+					List<ISequence> weightedUidsByProbe = new ArrayList<ISequence>();
 
 					// loop by uid
 					for (Entry<String, Set<QualityScoreAndFastQLineIndex>> uidToqualityScoreAndFastQLineIndexesEntry : uidToQualityScoreAndFastQLineIndexes.entrySet()) {
 						Set<QualityScoreAndFastQLineIndex> qualityScoreAndFastQLineIndexes = uidToqualityScoreAndFastQLineIndexesEntry.getValue();
 						String uid = uidToqualityScoreAndFastQLineIndexesEntry.getKey();
 						distinctUidsByProbe.add(new IupacNucleotideCodeSequence(uid));
-						distinctUids.add(new IupacNucleotideCodeSequence(uid));
+						ISequence uidSequence = new IupacNucleotideCodeSequence(uid);
+						distinctUids.add(uidSequence);
 						int numberOfReadPairs = qualityScoreAndFastQLineIndexes.size();
+
+						for (int j = 0; j < numberOfReadPairs; j++) {
+							weightedUidsByProbe.add(uidSequence);
+						}
+
 						numberOfReadsPairsPerUid.add(numberOfReadPairs);
 						if (numberOfReadPairs > maxNumberOfReadPairsPerUid) {
 							maxNumberOfReadPairsPerUid = numberOfReadPairs;
@@ -392,9 +399,12 @@ public class MapperFiltererAndExtender {
 						String uidNucleotideComposition = NucleotideCompositionUtil.getNucleotideComposition(distinctUidsByProbe);
 						String uidNucleotideCompositionByPosition = NucleotideCompositionUtil.getNucleotideCompositionByPosition(distinctUidsByProbe);
 
+						String weightedUidNucleotideComposition = NucleotideCompositionUtil.getNucleotideComposition(weightedUidsByProbe);
+						String weightedUidNucleotideCompositionByPosition = NucleotideCompositionUtil.getNucleotideCompositionByPosition(weightedUidsByProbe);
+
 						ProbeProcessingStats probeProcessingStats = new ProbeProcessingStats(probeReference.getProbe(), totalUids, averageNumberOfReadPairsPerUid, standardDeviationOfReadPairsPerUid,
 								totalDuplicateReadPairsRemoved, totalReadPairsRemainingAfterReduction, minNumberOfReadPairsPerUid, maxNumberOfReadPairsPerUid, uidOfEntryWithMaxNumberOfReadPairs,
-								totalTimeToProcessInMs, uidNucleotideComposition, uidNucleotideCompositionByPosition);
+								totalTimeToProcessInMs, uidNucleotideComposition, uidNucleotideCompositionByPosition, weightedUidNucleotideComposition, weightedUidNucleotideCompositionByPosition);
 						detailsReport.writeEntry(probeProcessingStats);
 					}
 
