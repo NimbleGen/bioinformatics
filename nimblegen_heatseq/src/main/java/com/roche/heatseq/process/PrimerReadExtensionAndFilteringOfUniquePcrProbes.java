@@ -245,6 +245,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 		TallyMap<String> readNamesToDistinctProbeAssignmentCount = new TallyMap<String>();
 		Set<ISequence> distinctUids = Collections.newSetFromMap(new ConcurrentHashMap<ISequence, Boolean>());
+		List<ISequence> uids = new ArrayList<ISequence>();
 
 		SAMFileWriter samWriter = null;
 
@@ -325,9 +326,9 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 					SAMRecordIterator samRecordIter = null;
 					if (applicationSettings.isNotTrimmedWithinTheCaptureTargetSequence()) {
-						samRecordIter = samReader.queryContained(sequenceName, probe.getCaptureTargetStart(), probe.getCaptureTargetStop());
-					} else {
 						samRecordIter = samReader.queryContained(sequenceName, probe.getStart(), probe.getStop());
+					} else {
+						samRecordIter = samReader.queryContained(sequenceName, probe.getCaptureTargetStart(), probe.getCaptureTargetStop());
 					}
 
 					while (samRecordIter.hasNext()) {
@@ -380,7 +381,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, applicationSettings, samWriter, extensionErrorsWriter, probeUidQualityWriter, detailsReport,
 							unableToAlignPrimerWriter, primerAlignmentWriter, uniqueProbeTalliesWriter, probeCoverageWriter, fastqOneWriter, fastqTwoWriter, readNameToCompleteRecordsMap,
-							applicationSettings.getAlignmentScorer(), distinctUids);
+							applicationSettings.getAlignmentScorer(), distinctUids, uids);
 
 					try {
 						// Don't execute more threads than we have processors
@@ -437,6 +438,10 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			if (summaryReport != null) {
 				summaryReport.setUidComposition(NucleotideCompositionUtil.getNucleotideComposition(distinctUids));
 				summaryReport.setUidCompositionByBase(NucleotideCompositionUtil.getNucleotideCompositionByPosition(distinctUids));
+
+				summaryReport.setWeightedUidComposition(NucleotideCompositionUtil.getNucleotideComposition(uids));
+				summaryReport.setWeightedUidCompositionByBase(NucleotideCompositionUtil.getNucleotideCompositionByPosition(uids));
+
 				summaryReport.setProcessingTimeInMs(end - start);
 				summaryReport.setDuplicateReadPairsRemoved(detailsReport.getDuplicateReadPairsRemoved());
 				summaryReport.setProbesWithNoMappedReadPairs(detailsReport.getProbesWithNoMappedReadPairs());
@@ -514,6 +519,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		private final FastqWriter fastqTwoWriter;
 		private final IAlignmentScorer alignmentScorer;
 		private final Set<ISequence> distinctUids;
+		private final List<ISequence> uids;
 		Map<String, SAMRecordPair> readNameToRecordsMap;
 
 		/**
@@ -541,7 +547,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(Probe probe, ApplicationSettings applicationSettings, SAMFileWriter samWriter, PrintWriter extensionErrorsWriter,
 				TabDelimitedFileWriter probeUidQualityWriter, DetailsReport detailsReport, TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter,
 				TabDelimitedFileWriter uniqueProbeTalliesWriter, TabDelimitedFileWriter probeCoverageWriter, FastqWriter fastqOneWriter, FastqWriter fastqTwoWriter,
-				Map<String, SAMRecordPair> readNameToRecordsMap, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids) {
+				Map<String, SAMRecordPair> readNameToRecordsMap, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids) {
 			this.probe = probe;
 			this.applicationSettings = applicationSettings;
 			this.samWriter = samWriter;
@@ -557,6 +563,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			this.readNameToRecordsMap = readNameToRecordsMap;
 			this.alignmentScorer = alignmentScorer;
 			this.distinctUids = distinctUids;
+			this.uids = uids;
 		}
 
 		/**
@@ -566,7 +573,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		public void run() {
 			try {
 				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, readNameToRecordsMap, probeUidQualityWriter, unableToAlignPrimerWriter,
-						primerAlignmentWriter, uniqueProbeTalliesWriter, probeCoverageWriter, applicationSettings.isAllowVariableLengthUids(), alignmentScorer, distinctUids);
+						primerAlignmentWriter, uniqueProbeTalliesWriter, probeCoverageWriter, applicationSettings.isAllowVariableLengthUids(), alignmentScorer, distinctUids, uids);
 				synchronized (detailsReport) {
 					if (detailsReport != null) {
 						detailsReport.writeEntry(probeReductionResults.getProbeProcessingStats());

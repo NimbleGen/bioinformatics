@@ -40,7 +40,8 @@ public class DetailsReport {
 				+ "total_uids" + StringUtil.TAB + "average_number_of_read_pairs_per_uid" + StringUtil.TAB + "standard_deviation_of_read_pairs_per_uid" + StringUtil.TAB + "min_read_pairs_per_uid"
 				+ StringUtil.TAB + "max_read_pairs_per_uid" + StringUtil.TAB + "uid_with_max_read_pairs" + StringUtil.TAB + "total_duplicate_read_pairs_removed" + StringUtil.TAB
 				+ "total_read_pairs_after_duplicate_removal" + StringUtil.TAB + "on_target_duplicate_rate" + StringUtil.TAB + "total_time_to_process_in_ms" + StringUtil.TAB
-				+ "uid_nuclotide_composition" + StringUtil.TAB + "uid_nuclotide_composition_by_position");
+				+ "unique_uid_nuclotide_composition" + StringUtil.TAB + "unique_uid_nuclotide_composition_by_position" + StringUtil.TAB + "weighted_uid_nuclotide_composition" + StringUtil.TAB
+				+ "weighted_uid_nuclotide_composition_by_position");
 		detailsReportWriter.flush();
 	}
 
