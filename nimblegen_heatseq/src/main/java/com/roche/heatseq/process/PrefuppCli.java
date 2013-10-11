@@ -252,7 +252,7 @@ public class PrefuppCli {
 				SAMFileReader.setDefaultValidationStringency(ValidationStringency.LENIENT);
 			}
 
-			boolean notTrimmedToWithinCaptureTarget = parsedCommandLine.isOptionPresent(LENIENT_VALIDATION_STRINGENCY_OPTION);
+			boolean notTrimmedToWithinCaptureTarget = parsedCommandLine.isOptionPresent(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
 
 			IAlignmentScorer alignmentScorer = new SimpleAlignmentScorer(matchScore, mismatchPenalty, gapExtendPenalty, gapOpenPenalty, false);
 
