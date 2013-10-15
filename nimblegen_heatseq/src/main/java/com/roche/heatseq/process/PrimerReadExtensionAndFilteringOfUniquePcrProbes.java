@@ -82,7 +82,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 	private static Logger logger = LoggerFactory.getLogger(PrimerReadExtensionAndFilteringOfUniquePcrProbes.class);
 
-	public final static String DETAILS_REPORT_NAME = "processing_details.txt";
+	public final static String DETAILS_REPORT_NAME = "probe_details.txt";
 	public final static String SUMMARY_REPORT_NAME = PrefuppCli.APPLICATION_NAME + "_summary.txt";
 	private final static String EXTENSION_ERRORS_REPORT_NAME = "extension_errors.txt";
 	public final static String PROBE_UID_QUALITY_REPORT_NAME = "probe_uid_quality.txt";
@@ -150,8 +150,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				extensionErrorsWriter = new PrintWriter(extensionErrorsReportFile);
 
 				FileUtil.createNewFile(probeUidQualityReportFile);
-				probeUidQualityWriter = new TabDelimitedFileWriter(probeUidQualityReportFile, new String[] { "probe_id", "probe_sequence_name", "probe_capture_start", "probe_capture_stop", "strand",
-						"uid", "read_one_quality", "read_two_quality", "total_quality", "read_name" });
+				probeUidQualityWriter = new TabDelimitedFileWriter(probeUidQualityReportFile, new String[] { "probe_id", "uid", "read_one_quality", "read_two_quality", "total_quality", "read_name" });
 
 				unableToAlignPrimerWriter = new TabDelimitedFileWriter(unableToAlignPrimerReportFile, new String[] { "probe_id", "sequence_name", "probe_start", "probe_stop",
 						"extension_primer_sequence", "read_name", "read_string" });
@@ -414,11 +413,14 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				SAMRecord record = samRecordIter.next();
 				Set<String> mappedReadNames = readNamesToDistinctProbeAssignmentCount.getTalliesAsMap().keySet();
 				String readName = record.getReadName();
-				if (!record.getReadUnmappedFlag() && !mappedReadNames.contains(readName)) {
+				if (record.getReadUnmappedFlag()) {
+					// TODO kick out read in an unmapped reads bam file
+				} else if (!record.getReadUnmappedFlag() && !mappedReadNames.contains(readName)) {
 					String strandString = "+";
 					if (record.getReadNegativeStrandFlag()) {
 						strandString = "-";
 					}
+					// TODO write these to a bam file instead of a bed
 					mappedOffTargetReadsWriter.writeLine(record.getReferenceName(), record.getAlignmentStart(), record.getAlignmentEnd(), readName, "", strandString);
 				}
 			}

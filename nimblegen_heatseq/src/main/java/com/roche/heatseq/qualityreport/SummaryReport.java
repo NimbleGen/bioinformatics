@@ -46,13 +46,13 @@ public class SummaryReport {
 		this.uidLength = uidLength;
 		FileUtil.createNewFile(summaryReportFile);
 		detailsReportWriter = new PrintWriter(summaryReportFile);
-		detailsReportWriter.println("processing_time_in_ms" + StringUtil.TAB + "total_input_reads" + StringUtil.TAB + "input_unmapped_reads" + StringUtil.TAB + "input_mapped_reads" + StringUtil.TAB
-				+ "duplicate_read_pairs_removed" + StringUtil.TAB + "read_pairs_assigned_to_multiple_probes" + StringUtil.TAB + "probes_with_no_mapped_read_pairs" + StringUtil.TAB + "total_probes"
-				+ StringUtil.TAB + "total_read_pairs_after_reduction" + StringUtil.TAB + "distinct_uids_found" + StringUtil.TAB + "possible_unique_uids_of_length_" + uidLength + StringUtil.TAB
-				+ "uid_ratio" + StringUtil.TAB + "average_uids_per_probe" + StringUtil.TAB + "average_uids_per_probes_with_reads" + StringUtil.TAB + "max_uids_per_probe" + StringUtil.TAB
-				+ "average_read_pairs_per_probe_uid" + StringUtil.TAB + "on-target_duplicate_rate" + StringUtil.TAB + "probe-specific_reads" + StringUtil.TAB + "probe-specific_to_total_reads_ratio"
-				+ StringUtil.TAB + "unique_uid_nucleotide_composition" + StringUtil.TAB + "unique_uid_nucleotide_composition_by_base" + StringUtil.TAB + "weighted_uid_nucleotide_composition"
-				+ StringUtil.TAB + "weighted_uid_nucleotide_composition_by_base");
+		detailsReportWriter.println("processing_time(HH:MM:SS)" + StringUtil.TAB + "total_input_reads" + StringUtil.TAB + "input_unmapped_reads" + StringUtil.TAB + "input_mapped_reads"
+				+ StringUtil.TAB + "duplicate_read_pairs_removed" + StringUtil.TAB + "read_pairs_assigned_to_multiple_probes" + StringUtil.TAB + "probes_with_no_mapped_read_pairs" + StringUtil.TAB
+				+ "total_probes" + StringUtil.TAB + "total_read_pairs_after_reduction" + StringUtil.TAB + "distinct_uids_found" + StringUtil.TAB + "possible_unique_uids_of_length_" + uidLength
+				+ StringUtil.TAB + "uid_ratio" + StringUtil.TAB + "average_uids_per_probe" + StringUtil.TAB + "average_uids_per_probes_with_reads" + StringUtil.TAB + "max_uids_per_probe"
+				+ StringUtil.TAB + "average_read_pairs_per_probe_uid" + StringUtil.TAB + "on-target_duplicate_rate" + StringUtil.TAB + "probe-specific_reads" + StringUtil.TAB
+				+ "probe-specific_to_total_reads_ratio" + StringUtil.TAB + "unique_uid_nucleotide_composition" + StringUtil.TAB + "unique_uid_nucleotide_composition_by_base" + StringUtil.TAB
+				+ "weighted_uid_nucleotide_composition" + StringUtil.TAB + "weighted_uid_nucleotide_composition_by_base");
 		detailsReportWriter.flush();
 	}
 
