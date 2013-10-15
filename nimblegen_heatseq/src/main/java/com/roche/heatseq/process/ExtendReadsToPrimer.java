@@ -16,7 +16,6 @@
 
 package com.roche.heatseq.process;
 
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -250,7 +249,7 @@ public final class ExtendReadsToPrimer {
 		return probeEndIndexInRead;
 	}
 
-	static List<IReadPair> extendReadsToPrimers(Probe probe, List<IReadPair> readPairs, PrintWriter extensionErrorsWriter, IAlignmentScorer alignmentScorer) {
+	static List<IReadPair> extendReadsToPrimers(Probe probe, List<IReadPair> readPairs, IAlignmentScorer alignmentScorer) {
 		List<IReadPair> extendedReadPairs = new ArrayList<IReadPair>();
 
 		for (IReadPair readPair : readPairs) {
@@ -259,23 +258,7 @@ public final class ExtendReadsToPrimer {
 			if (extendedReadPair != null) {
 				extendedReadPairs.add(extendedReadPair);
 			} else {
-				if (extensionErrorsWriter != null) {
-					synchronized (extensionErrorsWriter) {
-						extensionErrorsWriter.println();
-						extensionErrorsWriter.println("--------------------");
-						extensionErrorsWriter.println("PROBE " + probe.getProbeId() + ": " + probe.getSequenceName() + ":" + probe.getCaptureTargetStart() + " to " + probe.getCaptureTargetStop());
-						extensionErrorsWriter.println();
-						extensionErrorsWriter.println("fastqOne Sequence: " + readPair.getSequenceOne());
-						extensionErrorsWriter.println(StringUtil.TAB + "mapping in reference start: " + readPair.getRecordAlignmentStart());
-						extensionErrorsWriter.println(StringUtil.TAB + "mapping in reference stop: " + readPair.getRecordAlignmentEnd());
-						extensionErrorsWriter.println("fastqTwo Sequence: " + readPair.getSequenceTwo());
-						extensionErrorsWriter.println(StringUtil.TAB + "mapping in reference start: " + readPair.getMateAlignmentStart());
-						extensionErrorsWriter.println(StringUtil.TAB + "mapping in reference stop: " + readPair.getMateAlignmentEnd());
-						extensionErrorsWriter.println();
-						extensionErrorsWriter.println("--------------------");
-						extensionErrorsWriter.println();
-					}
-				}
+				logger.info("Unable to extend read:" + "PROBE " + probe.getProbeId() + "fastqOne Sequence: " + readPair.getSequenceOne() + "fastqTwo Sequence: " + readPair.getSequenceTwo());
 			}
 		}
 
