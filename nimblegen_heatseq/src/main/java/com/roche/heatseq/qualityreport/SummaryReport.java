@@ -46,13 +46,6 @@ public class SummaryReport {
 		this.uidLength = uidLength;
 		FileUtil.createNewFile(summaryReportFile);
 		detailsReportWriter = new PrintWriter(summaryReportFile);
-		detailsReportWriter.println("processing_time(HH:MM:SS)" + StringUtil.TAB + "total_input_reads" + StringUtil.TAB + "input_unmapped_reads" + StringUtil.TAB + "input_mapped_reads"
-				+ StringUtil.TAB + "duplicate_read_pairs_removed" + StringUtil.TAB + "read_pairs_assigned_to_multiple_probes" + StringUtil.TAB + "probes_with_no_mapped_read_pairs" + StringUtil.TAB
-				+ "total_probes" + StringUtil.TAB + "total_read_pairs_after_reduction" + StringUtil.TAB + "distinct_uids_found" + StringUtil.TAB + "possible_unique_uids_of_length_" + uidLength
-				+ StringUtil.TAB + "uid_ratio" + StringUtil.TAB + "average_uids_per_probe" + StringUtil.TAB + "average_uids_per_probes_with_reads" + StringUtil.TAB + "max_uids_per_probe"
-				+ StringUtil.TAB + "average_read_pairs_per_probe_uid" + StringUtil.TAB + "on-target_duplicate_rate" + StringUtil.TAB + "probe-specific_reads" + StringUtil.TAB
-				+ "probe-specific_to_total_reads_ratio" + StringUtil.TAB + "unique_uid_nucleotide_composition" + StringUtil.TAB + "unique_uid_nucleotide_composition_by_base" + StringUtil.TAB
-				+ "weighted_uid_nucleotide_composition" + StringUtil.TAB + "weighted_uid_nucleotide_composition_by_base");
 		detailsReportWriter.flush();
 	}
 
@@ -131,14 +124,31 @@ public class SummaryReport {
 		double onTargetDuplicateRate = (double) duplicateReadPairsRemoved / (double) (totalReadPairsAfterReduction + duplicateReadPairsRemoved);
 		int probeSpecificReads = (duplicateReadPairsRemoved + totalReadPairsAfterReduction) * 2;
 		double probeSpecificToTotalReadsRatio = (double) probeSpecificReads / (double) (mappedReads + unmappedReads);
-		detailsReportWriter.println(DateUtil.convertMillisecondsToHHMMSS(processingTimeInMs) + StringUtil.TAB + (mappedReads + unmappedReads) + StringUtil.TAB + unmappedReads + StringUtil.TAB
-				+ mappedReads + StringUtil.TAB + duplicateReadPairsRemoved + StringUtil.TAB + readPairsAssignedToMultipleProbes + StringUtil.TAB + probesWithNoMappedReadPairs + StringUtil.TAB
-				+ totalProbes + StringUtil.TAB + totalReadPairsAfterReduction + StringUtil.TAB + distinctUidsFound + StringUtil.TAB + theoreticalUniqueUids + StringUtil.TAB
-				+ formatter.format(uidRatio) + StringUtil.TAB + formatter.format(averageUidsPerProbe) + StringUtil.TAB + formatter.format(averageUidsPerProbeWithReads) + StringUtil.TAB
-				+ maxUidsPerProbe + StringUtil.TAB + formatter.format(averageNumberOfReadPairsPerProbeUid) + StringUtil.TAB + formatter.format(onTargetDuplicateRate) + StringUtil.TAB
-				+ probeSpecificReads + StringUtil.TAB + formatter.format(probeSpecificToTotalReadsRatio) + StringUtil.TAB + uidComposition + StringUtil.TAB + uidCompositionByBase + StringUtil.TAB
-				+ weightedUidComposition + StringUtil.TAB + weightedUidCompositionByBase);
+
+		detailsReportWriter.println("processing_time(HH:MM:SS)" + StringUtil.TAB + DateUtil.convertMillisecondsToHHMMSS(processingTimeInMs));
+		detailsReportWriter.println("total_input_reads" + StringUtil.TAB + (mappedReads + unmappedReads));
+		detailsReportWriter.println("input_unmapped_reads" + StringUtil.TAB + unmappedReads);
+		detailsReportWriter.println("input_mapped_reads" + StringUtil.TAB + mappedReads);
+		detailsReportWriter.println("duplicate_read_pairs_removed" + StringUtil.TAB + duplicateReadPairsRemoved);
+		detailsReportWriter.println("read_pairs_assigned_to_multiple_probes" + StringUtil.TAB + readPairsAssignedToMultipleProbes);
+		detailsReportWriter.println("probes_with_no_mapped_read_pairs" + StringUtil.TAB + probesWithNoMappedReadPairs);
+		detailsReportWriter.println("total_probes" + StringUtil.TAB + totalProbes);
+		detailsReportWriter.println("total_read_pairs_after_reduction" + StringUtil.TAB + totalReadPairsAfterReduction);
+		detailsReportWriter.println("distinct_uids_found" + StringUtil.TAB + distinctUidsFound);
+		detailsReportWriter.println("possible_unique_uids_of_length_" + uidLength + StringUtil.TAB + theoreticalUniqueUids);
+		detailsReportWriter.println("uid_ratio" + StringUtil.TAB + formatter.format(uidRatio));
+		detailsReportWriter.println("average_uids_per_probe" + StringUtil.TAB + formatter.format(averageUidsPerProbe));
+		detailsReportWriter.println("average_uids_per_probes_with_reads" + StringUtil.TAB + formatter.format(averageUidsPerProbeWithReads));
+		detailsReportWriter.println("max_uids_per_probe" + StringUtil.TAB + maxUidsPerProbe);
+		detailsReportWriter.println("average_read_pairs_per_probe_uid" + StringUtil.TAB + formatter.format(averageNumberOfReadPairsPerProbeUid));
+		detailsReportWriter.println("on-target_duplicate_rate" + StringUtil.TAB + formatter.format(onTargetDuplicateRate));
+		detailsReportWriter.println("probe-specific_reads" + StringUtil.TAB + probeSpecificReads);
+		detailsReportWriter.println("probe-specific_to_total_reads_ratio" + StringUtil.TAB + formatter.format(probeSpecificToTotalReadsRatio));
+		detailsReportWriter.println("unique_uid_nucleotide_composition" + StringUtil.TAB + uidComposition);
+		detailsReportWriter.println("unique_uid_nucleotide_composition_by_base" + StringUtil.TAB + uidCompositionByBase);
+		detailsReportWriter.println("weighted_uid_nucleotide_composition" + StringUtil.TAB + weightedUidComposition);
+		detailsReportWriter.println("weighted_uid_nucleotide_composition_by_base" + StringUtil.TAB + weightedUidCompositionByBase);
+
 		detailsReportWriter.close();
 	}
-
 }
