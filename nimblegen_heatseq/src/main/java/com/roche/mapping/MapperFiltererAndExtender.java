@@ -147,8 +147,8 @@ public class MapperFiltererAndExtender {
 			}
 			if (probeUidQualityFile != null) {
 				try {
-					probeUidQualityWriter = new TabDelimitedFileWriter(probeUidQualityFile, new String[] { "probe_id", "probe_sequence_name", "probe_capture_start", "probe_capture_stop", "strand",
-							"uid", "read_one_quality", "read_two_quality", "total_quality", "read_name", "read_sequence" });
+					probeUidQualityWriter = new TabDelimitedFileWriter(probeUidQualityFile, new String[] { "probe_id", "uid", "read_one_quality", "read_two_quality", "total_quality", "read_name",
+							"read_sequence" });
 				} catch (FileNotFoundException e) {
 					throw new IllegalStateException(e);
 				}

@@ -106,8 +106,7 @@ public class ProbeProcessingStats {
 	public String toReportString() {
 		DecimalFormat formatter = new DecimalFormat("0.00");
 		StringBuilder stringBuilder = new StringBuilder();
-		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + probe.getSequenceName() + StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB + probe.getCaptureTargetStop()
-				+ StringUtil.TAB + probe.getProbeStrand() + StringUtil.TAB);
+		stringBuilder.append(probe.getProbeId() + StringUtil.TAB);
 		stringBuilder.append(totalUids + StringUtil.TAB + averageNumberOfReadPairsPerUid + StringUtil.TAB + standardDeviationOfReadPairsPerUid + StringUtil.TAB + minNumberOfReadPairsPerUid
 				+ StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase() + StringUtil.TAB + totalDuplicateReadPairsRemoved + StringUtil.TAB
 				+ totalReadPairsRemainingAfterReduction + StringUtil.TAB + formatter.format(onTargetDuplicateRate) + StringUtil.TAB + DateUtil.convertMillisecondsToHHMMSS(totalTimeToProcessInMs)
