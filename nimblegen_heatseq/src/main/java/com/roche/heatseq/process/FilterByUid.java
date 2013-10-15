@@ -255,9 +255,6 @@ public class FilterByUid {
 		if (probeUidQualityWriter != null) {
 			for (IReadPair currentPair : data) {
 				String probeId = "";
-				String probeCaptureStart = "";
-				String probeCaptureStop = "";
-				String probeStrand = "";
 				String uid = "";
 				String sequenceQualityScore = "";
 				String sequenceTwoQualityScore = "";
@@ -266,9 +263,6 @@ public class FilterByUid {
 
 				if (currentPair != null) {
 					probeId = probe.getProbeId();
-					probeCaptureStart = "" + probe.getCaptureTargetStart();
-					probeCaptureStop = "" + probe.getCaptureTargetStop();
-					probeStrand = probe.getProbeStrand().toString();
 
 					uid = "" + currentPair.getUid();
 					readName = currentPair.getReadName();
@@ -278,8 +272,7 @@ public class FilterByUid {
 					totalQualityScore = "" + currentPair.getTotalSequenceQualityScore();
 
 				}
-				probeUidQualityWriter.writeLine(probeId, probe.getSequenceName(), probeCaptureStart, probeCaptureStop, probeStrand, uid.toUpperCase(), sequenceQualityScore, sequenceTwoQualityScore,
-						totalQualityScore, readName);
+				probeUidQualityWriter.writeLine(probeId, uid.toUpperCase(), sequenceQualityScore, sequenceTwoQualityScore, totalQualityScore, readName);
 			}
 		}
 	}

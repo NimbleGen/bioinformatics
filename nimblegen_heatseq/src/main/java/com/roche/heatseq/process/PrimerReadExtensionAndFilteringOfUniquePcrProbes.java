@@ -414,11 +414,14 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				SAMRecord record = samRecordIter.next();
 				Set<String> mappedReadNames = readNamesToDistinctProbeAssignmentCount.getTalliesAsMap().keySet();
 				String readName = record.getReadName();
-				if (!record.getReadUnmappedFlag() && !mappedReadNames.contains(readName)) {
+				if (record.getReadUnmappedFlag()) {
+					// TODO kick out read in an unmapped reads bam file
+				} else if (!record.getReadUnmappedFlag() && !mappedReadNames.contains(readName)) {
 					String strandString = "+";
 					if (record.getReadNegativeStrandFlag()) {
 						strandString = "-";
 					}
+					// TODO write these to a bam file instead of a bed
 					mappedOffTargetReadsWriter.writeLine(record.getReferenceName(), record.getAlignmentStart(), record.getAlignmentEnd(), readName, "", strandString);
 				}
 			}

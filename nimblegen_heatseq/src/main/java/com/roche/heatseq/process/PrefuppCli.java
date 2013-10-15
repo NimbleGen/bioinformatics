@@ -44,7 +44,7 @@ public class PrefuppCli {
 
 	public final static String APPLICATION_NAME = "prefupp";
 	private final static String APPLICATION_VERSION = "1.0.0";
-	public final static int DEFAULT_UID_LENGTH = 7;
+	public final static int DEFAULT_UID_LENGTH = 10;
 	private final static String BAM_EXTENSION = ".bam";
 
 	private final static String DUPLICATE_MAPPINGS_REPORT_NAME = "duplicate_mappings.txt";
