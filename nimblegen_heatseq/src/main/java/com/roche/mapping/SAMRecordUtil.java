@@ -30,7 +30,7 @@ import net.sf.samtools.SAMRecord;
 
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.SAMRecordPair;
-import com.roche.heatseq.process.TabDelimitedFileWriter;
+import com.roche.heatseq.qualityreport.ReportManager;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarString;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarStringUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
@@ -109,11 +109,11 @@ public class SAMRecordUtil {
 	 * @param probe
 	 * @return the UID set for this SAMRecord, null if no such attribute exists.
 	 */
-	public static String getVariableLengthUid(SAMRecord record, Probe probe, TabDelimitedFileWriter primerAlignmentWriter, IAlignmentScorer alignmentScorer) {
+	public static String getVariableLengthUid(SAMRecord record, Probe probe, ReportManager reportManager, IAlignmentScorer alignmentScorer) {
 		String uid = (String) record.getAttribute(UID_SAMRECORD_ATTRIBUTE_TAG);
 		String completeReadWithUid = uid + record.getReadString();
 		ISequence extensionPrimerSequence = probe.getExtensionPrimerSequence();
-		return getVariableLengthUid(completeReadWithUid, extensionPrimerSequence, primerAlignmentWriter, probe, alignmentScorer);
+		return getVariableLengthUid(completeReadWithUid, extensionPrimerSequence, reportManager, probe, alignmentScorer);
 	}
 
 	/**
@@ -121,7 +121,7 @@ public class SAMRecordUtil {
 	 * @param extensionPrimerSequence
 	 * @return the variable length UID based on the primer alignment, null if the uid cannot be extracted
 	 */
-	public static String getVariableLengthUid(String completeReadWithUid, ISequence extensionPrimerSequence, TabDelimitedFileWriter primerAlignmentWriter, Probe probe, IAlignmentScorer alignmentScorer) {
+	public static String getVariableLengthUid(String completeReadWithUid, ISequence extensionPrimerSequence, ReportManager reportManager, Probe probe, IAlignmentScorer alignmentScorer) {
 		ISequence completeReadSequence = new IupacNucleotideCodeSequence(completeReadWithUid);
 		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(completeReadSequence, extensionPrimerSequence, alignmentScorer);
 		int uidEndIndex = alignment.getIndexOfFirstMatchInReference();
@@ -156,7 +156,7 @@ public class SAMRecordUtil {
 		int editDistanceCutoff = (extensionPrimerSequence.size() / 4);
 
 		if (editDistance > 0 && editDistance < editDistanceCutoff) {
-			if (primerAlignmentWriter != null) {
+			if (reportManager.isReporting()) {
 				int cutoffIndex = editDistanceCutoff + extensionPrimerSequence.size() + uidLength;
 				ISequence referenceSequence = alignment.getAlignmentPair().getReferenceAlignment().subSequence(0, cutoffIndex);
 				ISequence querySequence = alignment.getAlignmentPair().getQueryAlignment().subSequence(0, cutoffIndex);
@@ -164,8 +164,8 @@ public class SAMRecordUtil {
 				String probeCaptureStart = "" + probe.getCaptureTargetStart();
 				String probeCaptureStop = "" + probe.getCaptureTargetStop();
 				String probeStrand = "" + probe.getProbeStrand();
-				primerAlignmentWriter.writeLine(uidLength, numberOfSubstitutions, numberOfInsertions, numberOfDeletions, editDistance, referenceSequence, querySequence, probeName, probeCaptureStart,
-						probeCaptureStop, probeStrand);
+				reportManager.getPrimerAlignmentWriter().writeLine(uidLength, numberOfSubstitutions, numberOfInsertions, numberOfDeletions, editDistance, referenceSequence, querySequence, probeName,
+						probeCaptureStart, probeCaptureStop, probeStrand);
 			}
 		} else if (editDistance >= editDistanceCutoff) {
 			variableLengthUid = null;

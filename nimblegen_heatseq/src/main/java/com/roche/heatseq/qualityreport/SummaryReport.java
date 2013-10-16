@@ -101,19 +101,19 @@ public class SummaryReport {
 		this.averageNumberOfReadPairsPerProbeUid = averageNumberOfReadPairsPerUid;
 	}
 
-	public void setUidCompositionByBase(String uidCompositionByBase) {
+	public void setDistinctUidCompositionByBase(String uidCompositionByBase) {
 		this.uidCompositionByBase = uidCompositionByBase;
 	}
 
-	public void setUidComposition(String weightedUidComposition) {
+	public void setDistinctUidComposition(String weightedUidComposition) {
 		this.weightedUidComposition = weightedUidComposition;
 	}
 
-	public void setWeightedUidCompositionByBase(String weightedUidCompositionByBase) {
+	public void setNonDistinctUidCompositionByBase(String weightedUidCompositionByBase) {
 		this.weightedUidCompositionByBase = weightedUidCompositionByBase;
 	}
 
-	public void setWeightedUidComposition(String uidComposition) {
+	public void setNonDistinctUidComposition(String uidComposition) {
 		this.uidComposition = uidComposition;
 	}
 

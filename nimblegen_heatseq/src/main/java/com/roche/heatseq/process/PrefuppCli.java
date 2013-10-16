@@ -47,8 +47,6 @@ public class PrefuppCli {
 	public final static int DEFAULT_UID_LENGTH = 10;
 	private final static String BAM_EXTENSION = ".bam";
 
-	private final static String DUPLICATE_MAPPINGS_REPORT_NAME = "duplicate_mappings.txt";
-
 	private final static CommandLineOption USAGE_OPTION = new CommandLineOption("Print Usage", "usage", 'h', "Print Usage.", false, true);
 	private final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("fastQ One File", "r1", null, "path to first input fastq file", true, false);
 	private final static CommandLineOption FASTQ_TWO_OPTION = new CommandLineOption("fastQ Two File", "r2", null, "path to second second input fastq file", true, false);
@@ -329,109 +327,8 @@ public class PrefuppCli {
 					throw new IllegalStateException(e);
 				}
 
-				File ambiguousMappingFile = null;
-				if (shouldOutputQualityReports) {
-					ambiguousMappingFile = new File(outputDirectory, outputFilePrefix + DUPLICATE_MAPPINGS_REPORT_NAME);
-					try {
-						FileUtil.createNewFile(ambiguousMappingFile);
-					} catch (IOException e) {
-						throw new IllegalStateException(e);
-					}
-				}
-
-				File probeUidQualityFile = null;
-				if (shouldOutputQualityReports) {
-					probeUidQualityFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.PROBE_UID_QUALITY_REPORT_NAME);
-					try {
-						FileUtil.createNewFile(probeUidQualityFile);
-					} catch (IOException e) {
-						throw new IllegalStateException(e);
-					}
-				}
-
-				File unableToAlignPrimerFile = null;
-				if (shouldOutputQualityReports) {
-					unableToAlignPrimerFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.UNABLE_TO_ALIGN_PRIMER_REPORT_NAME);
-					try {
-						FileUtil.createNewFile(unableToAlignPrimerFile);
-					} catch (IOException e) {
-						throw new IllegalStateException(e);
-					}
-				}
-
-				File unableToMapFastqOneFile = null;
-				if (shouldOutputQualityReports) {
-					unableToMapFastqOneFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME);
-					try {
-						FileUtil.createNewFile(unableToMapFastqOneFile);
-					} catch (IOException e) {
-						throw new IllegalStateException(e);
-					}
-				}
-
-				File unableToMapFastqTwoFile = null;
-				if (shouldOutputQualityReports) {
-					unableToMapFastqTwoFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.UNABLE_TO_MAP_FASTQ_TWO_REPORT_NAME);
-					try {
-						FileUtil.createNewFile(unableToMapFastqOneFile);
-					} catch (IOException e) {
-						throw new IllegalStateException(e);
-					}
-				}
-
-				File primerAlignmentFile = null;
-				if (shouldOutputQualityReports) {
-					primerAlignmentFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.PRIMER_ALIGNMENT_REPORT_NAME);
-					try {
-						FileUtil.createNewFile(primerAlignmentFile);
-					} catch (IOException e) {
-						throw new IllegalStateException(e);
-					}
-				}
-
-				File uniqueProbeTalliesFile = null;
-				if (shouldOutputQualityReports) {
-					uniqueProbeTalliesFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.UNIQUE_PROBE_TALLIES_REPORT_NAME);
-					try {
-						FileUtil.createNewFile(uniqueProbeTalliesFile);
-					} catch (IOException e) {
-						throw new IllegalStateException(e);
-					}
-				}
-
-				File probeCoverageFile = null;
-				if (shouldOutputQualityReports) {
-					probeCoverageFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.PROBE_COVERAGE_REPORT_NAME);
-					try {
-						FileUtil.createNewFile(probeCoverageFile);
-					} catch (IOException e) {
-						throw new IllegalStateException(e);
-					}
-				}
-
-				File detailsReportFile = null;
-				if (shouldOutputQualityReports) {
-					detailsReportFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.DETAILS_REPORT_NAME);
-					try {
-						FileUtil.createNewFile(detailsReportFile);
-					} catch (IOException e) {
-						throw new IllegalStateException(e);
-					}
-				}
-
-				File summaryReportFile = null;
-				if (shouldOutputQualityReports) {
-					summaryReportFile = new File(outputDirectory, outputFilePrefix + PrimerReadExtensionAndFilteringOfUniquePcrProbes.SUMMARY_REPORT_NAME);
-					try {
-						FileUtil.createNewFile(summaryReportFile);
-					} catch (IOException e) {
-						throw new IllegalStateException(e);
-					}
-				}
-
-				MapperFiltererAndExtender mapFilterAndExtend = new MapperFiltererAndExtender(fastQ1WithUidsFile, fastQ2File, probeFile, outputBamFile, ambiguousMappingFile, probeUidQualityFile,
-						unableToAlignPrimerFile, unableToMapFastqOneFile, unableToMapFastqTwoFile, primerAlignmentFile, uniqueProbeTalliesFile, probeCoverageFile, detailsReportFile,
-						summaryReportFile, numProcessors, uidLength, useLenientValidation, APPLICATION_NAME, APPLICATION_VERSION, commandLineSignature, alignmentScorer);
+				MapperFiltererAndExtender mapFilterAndExtend = new MapperFiltererAndExtender(fastQ1WithUidsFile, fastQ2File, probeFile, outputBamFile, outputDirectory, outputFilePrefix,
+						shouldOutputQualityReports, numProcessors, uidLength, useLenientValidation, APPLICATION_NAME, APPLICATION_VERSION, commandLineSignature, alignmentScorer);
 
 				mapFilterAndExtend.mapFilterAndExtend();
 

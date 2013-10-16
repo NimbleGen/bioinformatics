@@ -17,6 +17,8 @@
 package com.roche.heatseq.process;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import net.sf.picard.io.IoUtil;
 import net.sf.picard.sam.ValidateSamFile;
@@ -26,7 +28,14 @@ import net.sf.samtools.SAMFileHeader.SortOrder;
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMFileWriter;
 import net.sf.samtools.SAMFileWriterFactory;
+import net.sf.samtools.SAMProgramRecord;
 import net.sf.samtools.SAMRecord;
+import net.sf.samtools.SAMSequenceDictionary;
+import net.sf.samtools.SAMSequenceRecord;
+
+import com.roche.heatseq.objects.Probe;
+import com.roche.heatseq.objects.ProbesBySequenceName;
+import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 
 public class BamFileUtil {
 
@@ -152,6 +161,70 @@ public class BamFileUtil {
 	 */
 	public static void validateSamFile(File inputBamFile, File outputErrorFile) {
 		ValidateSamFile.main(new String[] { "INPUT=" + inputBamFile.getAbsolutePath(), "OUTPUT=" + outputErrorFile.getAbsolutePath() });
+	}
+
+	/**
+	 * Creates a new file header for our output BAM file
+	 * 
+	 * @param originalHeader
+	 * @param probeInfo
+	 * @param commandLineSignature
+	 * @param programName
+	 * @param programVersion
+	 * @return
+	 */
+	public static SAMFileHeader getHeader(ProbesBySequenceName probeInfo, String commandLineSignature, String programName, String programVersion) {
+		return getHeader(null, probeInfo, commandLineSignature, programName, programVersion);
+	}
+
+	/**
+	 * Creates a new file header for our output BAM file
+	 * 
+	 * @param originalHeader
+	 * @param probeInfo
+	 * @param commandLineSignature
+	 * @param programName
+	 * @param programVersion
+	 * @return
+	 */
+	public static SAMFileHeader getHeader(SAMFileHeader originalHeader, ProbesBySequenceName probeInfo, String commandLineSignature, String programName, String programVersion) {
+		SAMFileHeader newHeader = new SAMFileHeader();
+
+		List<SAMProgramRecord> programRecords = new ArrayList<SAMProgramRecord>();
+		if (originalHeader != null) {
+			newHeader.setReadGroups(originalHeader.getReadGroups());
+			programRecords.addAll(originalHeader.getProgramRecords());
+		}
+
+		String uniqueProgramGroupId = programName + "_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS();
+		SAMProgramRecord programRecord = new SAMProgramRecord(uniqueProgramGroupId);
+		programRecord.setProgramName(programName);
+		programRecord.setProgramVersion(programVersion);
+		programRecord.setCommandLine(commandLineSignature);
+		programRecords.add(programRecord);
+		newHeader.setProgramRecords(programRecords);
+
+		SAMSequenceDictionary sequenceDictionary = new SAMSequenceDictionary();
+		if (originalHeader != null) {
+			for (SAMSequenceRecord oldSequenceRecord : originalHeader.getSequenceDictionary().getSequences()) {
+				if (probeInfo.containsSequenceName(oldSequenceRecord.getSequenceName())) {
+					SAMSequenceRecord newSequenceRecord = new SAMSequenceRecord(oldSequenceRecord.getSequenceName(), oldSequenceRecord.getSequenceLength());
+					sequenceDictionary.addSequence(newSequenceRecord);
+				}
+			}
+		} else {
+			for (String sequenceName : probeInfo.getSequenceNames()) {
+				List<Probe> probes = probeInfo.getProbesBySequenceName(sequenceName);
+				int lastPosition = 0;
+				for (Probe probe : probes) {
+					lastPosition = Math.max(lastPosition, probe.getStop() + 1);
+				}
+				SAMSequenceRecord newSequenceRecord = new SAMSequenceRecord(sequenceName, lastPosition);
+				sequenceDictionary.addSequence(newSequenceRecord);
+			}
+		}
+		newHeader.setSequenceDictionary(sequenceDictionary);
+		return newHeader;
 	}
 
 	public static void main(String[] args) {
