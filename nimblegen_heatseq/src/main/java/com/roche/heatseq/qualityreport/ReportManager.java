@@ -30,8 +30,8 @@ public class ReportManager {
 	public final static String PRIMER_ALIGNMENT_REPORT_NAME = "extension_primer_alignment.txt";
 	public final static String UNIQUE_PROBE_TALLIES_REPORT_NAME = "unique_probe_tallies.txt";
 	public final static String PROBE_COVERAGE_REPORT_NAME = "probe_coverage.bed";
-	public final static String MAPPED_OFF_TARGET_READS_REPORT_NAME = "mapped_off_target_reads.sam";
-	public final static String UNMAPPED_READS_REPORT_NAME = "unmapped_reads.sam";
+	public final static String MAPPED_OFF_TARGET_READS_REPORT_NAME = "mapped_off_target_reads.bam";
+	public final static String UNMAPPED_READS_REPORT_NAME = "unmapped_read_pairs.bam";
 
 	private TabDelimitedFileWriter ambiguousMappingWriter;
 	private TabDelimitedFileWriter probeUidQualityWriter;
@@ -137,7 +137,7 @@ public class ReportManager {
 			File unMappedFile = new File(outputDirectory, outputFilePrefix + UNMAPPED_READS_REPORT_NAME);
 			try {
 				FileUtil.createNewFile(unMappedFile);
-				unmappedReadsWriter = samFactory.makeBAMWriter(samFileHeader, true, mappedOffTargetFile);
+				unmappedReadsWriter = samFactory.makeBAMWriter(samFileHeader, true, unMappedFile);
 			} catch (IOException e) {
 				throw new IllegalStateException(e);
 			}
@@ -198,6 +198,19 @@ public class ReportManager {
 		if (summaryReport != null) {
 			summaryReport.close();
 		}
+
+		if (uniqueProbeTalliesWriter != null) {
+			uniqueProbeTalliesWriter.close();
+		}
+
+		if (mappedOffTargetReadsWriter != null) {
+			mappedOffTargetReadsWriter.close();
+		}
+
+		if (unmappedReadsWriter != null) {
+			unmappedReadsWriter.close();
+		}
+
 	}
 
 	public DetailsReport getDetailsReport() {
@@ -244,7 +257,7 @@ public class ReportManager {
 		return mappedOffTargetReadsWriter;
 	}
 
-	public SAMFileWriter getUnMappedReadsWriter() {
+	public SAMFileWriter getUnMappedReadPairsWriter() {
 		return unmappedReadsWriter;
 	}
 
