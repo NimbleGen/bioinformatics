@@ -53,7 +53,6 @@ public class ProbePlotter {
 					"D:/liang/results/report_read_subsampling.txt"), new File("D:/liang/results/report_probe_subsampling.txt"), new int[] { 1, 10, 20, 50, 100 },
 					new double[] { 0.01, 0.1, 1, 10, 100 });
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}

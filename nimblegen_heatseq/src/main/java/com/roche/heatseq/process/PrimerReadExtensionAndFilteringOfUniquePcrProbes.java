@@ -38,10 +38,8 @@ import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMFileWriter;
 import net.sf.samtools.SAMFileWriterFactory;
-import net.sf.samtools.SAMProgramRecord;
 import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMRecordIterator;
-import net.sf.samtools.SAMSequenceDictionary;
 import net.sf.samtools.SAMSequenceRecord;
 
 import org.slf4j.Logger;
@@ -55,8 +53,7 @@ import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
 import com.roche.heatseq.qualityreport.DetailsReport;
-import com.roche.heatseq.qualityreport.NucleotideCompositionUtil;
-import com.roche.heatseq.qualityreport.SummaryReport;
+import com.roche.heatseq.qualityreport.ReportManager;
 import com.roche.mapping.SAMRecordUtil;
 import com.roche.mapping.SAMRecordUtil.SamReadCount;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
@@ -80,17 +77,6 @@ import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 	private static Logger logger = LoggerFactory.getLogger(PrimerReadExtensionAndFilteringOfUniquePcrProbes.class);
-
-	public final static String DETAILS_REPORT_NAME = "probe_details.txt";
-	public final static String SUMMARY_REPORT_NAME = PrefuppCli.APPLICATION_NAME + "_summary.txt";
-	public final static String PROBE_UID_QUALITY_REPORT_NAME = "probe_uid_quality.txt";
-	public final static String UNABLE_TO_ALIGN_PRIMER_REPORT_NAME = "unable_to_align_primer_for_variable_length_uid.txt";
-	public final static String UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME = "unable_to_map_one.fastq";
-	public final static String UNABLE_TO_MAP_FASTQ_TWO_REPORT_NAME = "unable_to_map_two.fastq";
-	public final static String PRIMER_ALIGNMENT_REPORT_NAME = "extension_primer_alignment.txt";
-	public final static String UNIQUE_PROBE_TALLIES_REPORT_NAME = "unique_probe_tallies.txt";
-	public final static String PROBE_COVERAGE_REPORT_NAME = "probe_coverage.bed";
-	public final static String MAPPED_OFF_TARGET_READS_REPORT_NAME = "mapped_off_target_reads.bed";
 
 	private static volatile Semaphore primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore = null;
 
@@ -117,56 +103,6 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 		long start = System.currentTimeMillis();
 
-		// Set up the reports files
-		File detailsReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + DETAILS_REPORT_NAME);
-		File summaryReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + SUMMARY_REPORT_NAME);
-		File probeUidQualityReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + PROBE_UID_QUALITY_REPORT_NAME);
-		File unableToAlignPrimerReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + UNABLE_TO_ALIGN_PRIMER_REPORT_NAME);
-		File primerAlignmentReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + PRIMER_ALIGNMENT_REPORT_NAME);
-		File uniqueProbeTalliesReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + UNIQUE_PROBE_TALLIES_REPORT_NAME);
-		File probeCoverageReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + PROBE_COVERAGE_REPORT_NAME);
-		File mappedOffTargetReadsReportFile = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix() + MAPPED_OFF_TARGET_READS_REPORT_NAME);
-
-		logger.debug("Creating details report file at " + detailsReportFile.getAbsolutePath());
-
-		DetailsReport detailsReport = null;
-		SummaryReport summaryReport = null;
-		TabDelimitedFileWriter probeUidQualityWriter = null;
-		TabDelimitedFileWriter unableToAlignPrimerWriter = null;
-		TabDelimitedFileWriter primerAlignmentWriter = null;
-		TabDelimitedFileWriter uniqueProbeTalliesWriter = null;
-		TabDelimitedFileWriter probeCoverageWriter = null;
-		TabDelimitedFileWriter mappedOffTargetReadsWriter = null;
-
-		if (applicationSettings.isShouldOutputQualityReports()) {
-			try {
-				detailsReport = new DetailsReport(detailsReportFile);
-				summaryReport = new SummaryReport(summaryReportFile, applicationSettings.getUidLength());
-
-				FileUtil.createNewFile(probeUidQualityReportFile);
-				probeUidQualityWriter = new TabDelimitedFileWriter(probeUidQualityReportFile, new String[] { "probe_id", "uid", "read_one_quality", "read_two_quality", "total_quality", "read_name" });
-
-				unableToAlignPrimerWriter = new TabDelimitedFileWriter(unableToAlignPrimerReportFile, new String[] { "probe_id", "sequence_name", "probe_start", "probe_stop",
-						"extension_primer_sequence", "read_name", "read_string" });
-
-				FileUtil.createNewFile(primerAlignmentReportFile);
-				primerAlignmentWriter = new TabDelimitedFileWriter(primerAlignmentReportFile, new String[] { "uid_length", "substituions", "insertions", "deletions", "edit_distance", "read",
-						"extension_primer", "probe_name", "probe_capture_start", "probe_capture_stop", "probe_strand" });
-
-				FileUtil.createNewFile(uniqueProbeTalliesReportFile);
-				uniqueProbeTalliesWriter = new TabDelimitedFileWriter(uniqueProbeTalliesReportFile);
-
-				FileUtil.createNewFile(probeCoverageReportFile);
-				probeCoverageWriter = new TabDelimitedFileWriter(probeCoverageReportFile);
-
-				FileUtil.createNewFile(mappedOffTargetReadsReportFile);
-				mappedOffTargetReadsWriter = new TabDelimitedFileWriter(mappedOffTargetReadsReportFile);
-
-			} catch (IOException e) {
-				throw new IllegalStateException("Could not create report file.", e);
-			}
-		}
-
 		// Parse the input probe file
 		ProbesBySequenceName probeInfo = null;
 		try {
@@ -174,37 +110,22 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		} catch (IOException e) {
 			logger.warn(e.getMessage(), e);
 		}
-
 		if (probeInfo == null) {
 			throw new IllegalStateException("Unable to parse probe info file[" + applicationSettings.getProbeFile() + "].");
 		}
 
-		// Actually do the work
-		filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings, probeInfo, detailsReport, summaryReport, probeUidQualityWriter, unableToAlignPrimerWriter, primerAlignmentWriter,
-				uniqueProbeTalliesWriter, probeCoverageWriter, mappedOffTargetReadsWriter);
+		SAMFileHeader samHeader = null;
+		try (SAMFileReader samReader = new SAMFileReader(applicationSettings.getBamFile(), applicationSettings.getBamFileIndex())) {
+			samHeader = BamFileUtil.getHeader(samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(),
+					applicationSettings.getProgramVersion());
+		}
 
-		// Clean up the reports
-		if (summaryReport != null) {
-			summaryReport.close();
-		}
-		if (detailsReport != null) {
-			detailsReport.close();
-		}
-		if (probeUidQualityWriter != null) {
-			probeUidQualityWriter.close();
-		}
-		if (unableToAlignPrimerWriter != null) {
-			unableToAlignPrimerWriter.close();
-		}
-		if (primerAlignmentWriter != null) {
-			primerAlignmentWriter.close();
-		}
-		if (uniqueProbeTalliesWriter != null) {
-			uniqueProbeTalliesWriter.close();
-		}
-		if (probeCoverageReportFile != null) {
-			probeCoverageWriter.close();
-		}
+		// Set up the reports files
+		ReportManager reportManager = new ReportManager(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix(), applicationSettings.getUidLength(), samHeader,
+				applicationSettings.isShouldOutputQualityReports());
+
+		// Actually do the work
+		filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings, probeInfo, reportManager);
 
 		long stop = System.currentTimeMillis();
 
@@ -226,9 +147,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	 * @param probeUidQualityWriter
 	 *            Writer for reporting quality per UID
 	 */
-	private static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings, ProbesBySequenceName probeInfo, DetailsReport detailsReport, SummaryReport summaryReport,
-			TabDelimitedFileWriter probeUidQualityWriter, TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter,
-			TabDelimitedFileWriter uniqueProbeTalliesWriter, TabDelimitedFileWriter probeCoverageWriter, TabDelimitedFileWriter mappedOffTargetReadsWriter) {
+	private static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings, ProbesBySequenceName probeInfo, ReportManager reportManager) {
 		long start = System.currentTimeMillis();
 
 		Set<String> sequenceNames = probeInfo.getSequenceNames();
@@ -241,10 +160,10 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 		try (SAMFileReader samReader = new SAMFileReader(applicationSettings.getBamFile(), applicationSettings.getBamFileIndex())) {
 
-			if (summaryReport != null) {
+			if (reportManager.isReporting()) {
 				SamReadCount readCount = SAMRecordUtil.countReads(samReader);
-				summaryReport.setUnmappedReads(readCount.getTotalUnmappedReads());
-				summaryReport.setMappedReads(readCount.getTotalMappedReads());
+				reportManager.getSummaryReport().setUnmappedReads(readCount.getTotalUnmappedReads());
+				reportManager.getSummaryReport().setMappedReads(readCount.getTotalMappedReads());
 			}
 
 			String outputUnsortedBamFileName = FileUtil.getFileNameWithoutExtension(applicationSettings.getOriginalBamFileName()) + "_UNSORTED_REDUCED."
@@ -263,8 +182,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 			// Make an unsorted BAM file writer with the fastest level of compression
 			samWriter = new SAMFileWriterFactory().makeBAMWriter(
-					getHeader(samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(), applicationSettings.getProgramVersion()),
-					false, outputUnsortedBamFile, 0);
+					BamFileUtil.getHeader(samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(),
+							applicationSettings.getProgramVersion()), false, outputUnsortedBamFile, 0);
 
 			FastqWriter fastqOneWriter = null;
 			FastqWriter fastqTwoWriter = null;
@@ -369,9 +288,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 						}
 					}
 
-					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, applicationSettings, samWriter, probeUidQualityWriter, detailsReport, unableToAlignPrimerWriter,
-							primerAlignmentWriter, uniqueProbeTalliesWriter, probeCoverageWriter, fastqOneWriter, fastqTwoWriter, readNameToCompleteRecordsMap,
-							applicationSettings.getAlignmentScorer(), distinctUids, uids);
+					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, applicationSettings, samWriter, reportManager, fastqOneWriter, fastqTwoWriter,
+							readNameToCompleteRecordsMap, applicationSettings.getAlignmentScorer(), distinctUids, uids);
 
 					try {
 						// Don't execute more threads than we have processors
@@ -399,20 +317,23 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			}
 			samWriter.close();
 
+			int totalReads = 0;
+			int totalMappedReads = 0;
+
 			SAMRecordIterator samRecordIter = samReader.iterator();
 			while (samRecordIter.hasNext()) {
 				SAMRecord record = samRecordIter.next();
-				Set<String> mappedReadNames = readNamesToDistinctProbeAssignmentCount.getTalliesAsMap().keySet();
+				totalReads++;
+				if (!record.getReadUnmappedFlag()) {
+					totalMappedReads++;
+				}
+				Set<String> mappedOnTargetReadNames = readNamesToDistinctProbeAssignmentCount.getTalliesAsMap().keySet();
 				String readName = record.getReadName();
-				if (record.getReadUnmappedFlag()) {
-					// TODO kick out read in an unmapped reads bam file
-				} else if (!record.getReadUnmappedFlag() && !mappedReadNames.contains(readName)) {
-					String strandString = "+";
-					if (record.getReadNegativeStrandFlag()) {
-						strandString = "-";
-					}
-					// TODO write these to a bam file instead of a bed
-					mappedOffTargetReadsWriter.writeLine(record.getReferenceName(), record.getAlignmentStart(), record.getAlignmentEnd(), readName, "", strandString);
+				boolean readAndMateMapped = !record.getMateUnmappedFlag() && record.getReadUnmappedFlag();
+				if (!readAndMateMapped) {
+					reportManager.getUnMappedReadsWriter().addAlignment(record);
+				} else if (readAndMateMapped && !mappedOnTargetReadNames.contains(readName)) {
+					reportManager.getMappedOffTargetReadsWriter().addAlignment(record);
 				}
 			}
 			samRecordIter.close();
@@ -428,69 +349,11 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 			long end = System.currentTimeMillis();
 
-			if (summaryReport != null) {
-				summaryReport.setUidComposition(NucleotideCompositionUtil.getNucleotideComposition(distinctUids));
-				summaryReport.setUidCompositionByBase(NucleotideCompositionUtil.getNucleotideCompositionByPosition(distinctUids));
-
-				summaryReport.setWeightedUidComposition(NucleotideCompositionUtil.getNucleotideComposition(uids));
-				summaryReport.setWeightedUidCompositionByBase(NucleotideCompositionUtil.getNucleotideCompositionByPosition(uids));
-
-				summaryReport.setProcessingTimeInMs(end - start);
-				summaryReport.setDuplicateReadPairsRemoved(detailsReport.getDuplicateReadPairsRemoved());
-				summaryReport.setProbesWithNoMappedReadPairs(detailsReport.getProbesWithNoMappedReadPairs());
-				summaryReport.setTotalReadPairsAfterReduction(detailsReport.getTotalReadPairsAfterReduction());
-
-				summaryReport.setAverageUidsPerProbe(detailsReport.getAverageNumberOfUidsPerProbe());
-				summaryReport.setAverageUidsPerProbeWithReads(detailsReport.getAverageNumberOfUidsPerProbeWithAssignedReads());
-				summaryReport.setMaxUidsPerProbe(detailsReport.getMaxNumberOfUidsPerProbe());
-				summaryReport.setAverageNumberOfReadPairsPerProbeUid(detailsReport.getAverageNumberOfReadPairsPerProbeUid());
-
-				int readPairsAssignedToMultipleProbes = 0;
-				for (int counts : readNamesToDistinctProbeAssignmentCount.getTalliesAsMap().values()) {
-					if (counts > 1) {
-						readPairsAssignedToMultipleProbes++;
-					}
-				}
-				summaryReport.setReadPairsAssignedToMultipleProbes(readPairsAssignedToMultipleProbes);
-				summaryReport.setDistinctUidsFound(distinctUids.size());
-				summaryReport.setTotalProbes(totalProbes);
+			if (reportManager.isReporting()) {
+				long processingTimeInMs = end - start;
+				reportManager.completeSummaryReport(readNamesToDistinctProbeAssignmentCount, distinctUids, uids, processingTimeInMs, totalProbes, totalReads, totalMappedReads);
 			}
 		}
-	}
-
-	/**
-	 * Creates a new file header for our output BAM file
-	 * 
-	 * @param originalHeader
-	 * @param probeInfo
-	 * @param commandLineSignature
-	 * @param programName
-	 * @param programVersion
-	 * @return
-	 */
-	private static SAMFileHeader getHeader(SAMFileHeader originalHeader, ProbesBySequenceName probeInfo, String commandLineSignature, String programName, String programVersion) {
-		SAMFileHeader newHeader = new SAMFileHeader();
-
-		newHeader.setReadGroups(originalHeader.getReadGroups());
-		List<SAMProgramRecord> programRecords = new ArrayList<SAMProgramRecord>(originalHeader.getProgramRecords());
-
-		String uniqueProgramGroupId = programName + "_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS();
-		SAMProgramRecord programRecord = new SAMProgramRecord(uniqueProgramGroupId);
-		programRecord.setProgramName(programName);
-		programRecord.setProgramVersion(programVersion);
-		programRecord.setCommandLine(commandLineSignature);
-		programRecords.add(programRecord);
-		newHeader.setProgramRecords(programRecords);
-
-		SAMSequenceDictionary sequenceDictionary = new SAMSequenceDictionary();
-		for (SAMSequenceRecord oldSequenceRecord : originalHeader.getSequenceDictionary().getSequences()) {
-			if (probeInfo.containsSequenceName(oldSequenceRecord.getSequenceName())) {
-				SAMSequenceRecord newSequenceRecord = new SAMSequenceRecord(oldSequenceRecord.getSequenceName(), oldSequenceRecord.getSequenceLength());
-				sequenceDictionary.addSequence(newSequenceRecord);
-			}
-		}
-		newHeader.setSequenceDictionary(sequenceDictionary);
-		return newHeader;
 	}
 
 	/**
@@ -501,17 +364,12 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		private final Probe probe;
 		private final ApplicationSettings applicationSettings;
 		private final SAMFileWriter samWriter;
-		private final TabDelimitedFileWriter probeUidQualityWriter;
-		private final DetailsReport detailsReport;
-		private final TabDelimitedFileWriter unableToAlignPrimerWriter;
-		private final TabDelimitedFileWriter primerAlignmentWriter;
-		private final TabDelimitedFileWriter uniqueProbeTalliesWriter;
-		private final TabDelimitedFileWriter probeCoverageWriter;
 		private final FastqWriter fastqOneWriter;
 		private final FastqWriter fastqTwoWriter;
 		private final IAlignmentScorer alignmentScorer;
 		private final Set<ISequence> distinctUids;
 		private final List<ISequence> uids;
+		private final ReportManager reportManager;
 		Map<String, SAMRecordPair> readNameToRecordsMap;
 
 		/**
@@ -536,25 +394,18 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		 * @param readNameToRecordsMap
 		 */
 
-		PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(Probe probe, ApplicationSettings applicationSettings, SAMFileWriter samWriter, TabDelimitedFileWriter probeUidQualityWriter,
-				DetailsReport detailsReport, TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter, TabDelimitedFileWriter uniqueProbeTalliesWriter,
-				TabDelimitedFileWriter probeCoverageWriter, FastqWriter fastqOneWriter, FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap, IAlignmentScorer alignmentScorer,
-				Set<ISequence> distinctUids, List<ISequence> uids) {
+		PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(Probe probe, ApplicationSettings applicationSettings, SAMFileWriter samWriter, ReportManager reportManager, FastqWriter fastqOneWriter,
+				FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids) {
 			this.probe = probe;
 			this.applicationSettings = applicationSettings;
 			this.samWriter = samWriter;
-			this.probeUidQualityWriter = probeUidQualityWriter;
-			this.detailsReport = detailsReport;
-			this.unableToAlignPrimerWriter = unableToAlignPrimerWriter;
-			this.primerAlignmentWriter = primerAlignmentWriter;
-			this.uniqueProbeTalliesWriter = uniqueProbeTalliesWriter;
-			this.probeCoverageWriter = probeCoverageWriter;
 			this.fastqOneWriter = fastqOneWriter;
 			this.fastqTwoWriter = fastqTwoWriter;
 			this.readNameToRecordsMap = readNameToRecordsMap;
 			this.alignmentScorer = alignmentScorer;
 			this.distinctUids = distinctUids;
 			this.uids = uids;
+			this.reportManager = reportManager;
 		}
 
 		/**
@@ -563,10 +414,11 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		@Override
 		public void run() {
 			try {
-				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, readNameToRecordsMap, probeUidQualityWriter, unableToAlignPrimerWriter,
-						primerAlignmentWriter, uniqueProbeTalliesWriter, probeCoverageWriter, applicationSettings.isAllowVariableLengthUids(), alignmentScorer, distinctUids, uids);
+				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, readNameToRecordsMap, reportManager, applicationSettings.isAllowVariableLengthUids(),
+						alignmentScorer, distinctUids, uids);
+				DetailsReport detailsReport = reportManager.getDetailsReport();
 				synchronized (detailsReport) {
-					if (detailsReport != null) {
+					if (probeReductionResults != null) {
 						detailsReport.writeEntry(probeReductionResults.getProbeProcessingStats());
 					} else {
 						detailsReport.writeBlankEntry(probe);

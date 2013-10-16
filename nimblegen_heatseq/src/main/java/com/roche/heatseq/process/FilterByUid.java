@@ -38,6 +38,7 @@ import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
 import com.roche.heatseq.qualityreport.NucleotideCompositionUtil;
 import com.roche.heatseq.qualityreport.ProbeProcessingStats;
+import com.roche.heatseq.qualityreport.ReportManager;
 import com.roche.mapping.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
@@ -68,9 +69,8 @@ public class FilterByUid {
 	 *            Used to report on UID quality
 	 * @return A UidReductionResultsForAProbe containing the processing statistics and the reduced probe set
 	 */
-	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, TabDelimitedFileWriter probeUidQualityWriter,
-			TabDelimitedFileWriter unableToAlignPrimerWriter, TabDelimitedFileWriter primerAlignmentWriter, TabDelimitedFileWriter uniqueProbeTalliesWriter,
-			TabDelimitedFileWriter probeCoverageWriter, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids) {
+	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, ReportManager reportManager, boolean allowVariableLengthUids,
+			IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids) {
 		List<IReadPair> readPairs = new ArrayList<IReadPair>();
 
 		long probeProcessingStartInMs = System.currentTimeMillis();
@@ -85,20 +85,20 @@ public class FilterByUid {
 			if ((record != null) && (mate != null)) {
 				String uid = null;
 				if (allowVariableLengthUids) {
-					uid = SAMRecordUtil.getVariableLengthUid(record, probe, primerAlignmentWriter, alignmentScorer);
+					uid = SAMRecordUtil.getVariableLengthUid(record, probe, reportManager, alignmentScorer);
 				} else {
 					uid = SAMRecordUtil.getUidAttribute(record);
 				}
 				if (uid != null) {
 					ISequence uidSequence = new IupacNucleotideCodeSequence(uid);
 					distinctUids.add(uidSequence);
-					synchronized (uidSequence) {
+					synchronized (uids) {
 						uids.add(uidSequence);
 					}
 					datas.add(new ReadPair(record, mate, uid));
 				} else {
-					unableToAlignPrimerWriter.writeLine(probe.getProbeId(), probe.getSequenceName(), probe.getStart(), probe.getStop(), probe.getExtensionPrimerSequence(), record.getReadName(),
-							record.getReadString());
+					reportManager.getUnableToAlignPrimerWriter().writeLine(probe.getProbeId(), probe.getSequenceName(), probe.getStart(), probe.getStop(), probe.getExtensionPrimerSequence(),
+							record.getReadName(), record.getReadString());
 				}
 			}
 		}
@@ -151,7 +151,7 @@ public class FilterByUid {
 
 			totalDuplicateReadPairsRemoved += (pairsDataByUid.size() - 1);
 
-			printProbeUidQualities(probe, pairsDataByUid, probeUidQualityWriter);
+			printProbeUidQualities(probe, pairsDataByUid, reportManager);
 
 			IReadPair bestPair = findBestData(pairsDataByUid);
 
@@ -177,7 +177,7 @@ public class FilterByUid {
 			standardDeviationOfReadPairsPerUid = StatisticsUtil.standardDeviation(sizeByUid);
 		}
 
-		if (uniqueProbeTalliesWriter != null) {
+		if (reportManager.isReporting()) {
 			String[] line = new String[uidToDataMap.size() + 1];
 			line[0] = probe.getProbeId();
 			int columnIndex = 1;
@@ -200,12 +200,11 @@ public class FilterByUid {
 				line[columnIndex] = uidNameAndCount.getUidName() + ":" + uidNameAndCount.getCount();
 				columnIndex++;
 			}
-			uniqueProbeTalliesWriter.writeLine((Object[]) line);
-		}
+			reportManager.getUniqueProbeTalliesWriter().writeLine((Object[]) line);
 
-		if (probeCoverageWriter != null) {
-			probeCoverageWriter.writeLine((Object[]) new String[] { probe.getSequenceName(), "" + probe.getStart(), "" + probe.getStop(), "" + probe.getProbeId(), "" + totalUids,
-					probe.getProbeStrand().getSymbol(), "" + probe.getCaptureTargetStart(), "" + probe.getCaptureTargetStop(), "", "", "", "" });
+			reportManager.getProbeCoverageWriter().writeLine(
+					(Object[]) new String[] { probe.getSequenceName(), "" + probe.getStart(), "" + probe.getStop(), "" + probe.getProbeId(), "" + totalUids, probe.getProbeStrand().getSymbol(),
+							"" + probe.getCaptureTargetStart(), "" + probe.getCaptureTargetStop(), "", "", "", "" });
 		}
 
 		long probeProcessingStopInMs = System.currentTimeMillis();
@@ -251,8 +250,8 @@ public class FilterByUid {
 	 * @param data
 	 * @param probeUidQualityWriter
 	 */
-	public static void printProbeUidQualities(Probe probe, List<IReadPair> data, TabDelimitedFileWriter probeUidQualityWriter) {
-		if (probeUidQualityWriter != null) {
+	public static void printProbeUidQualities(Probe probe, List<IReadPair> data, ReportManager reportManager) {
+		if (reportManager.isReporting()) {
 			for (IReadPair currentPair : data) {
 				String probeId = "";
 				String uid = "";
@@ -272,7 +271,7 @@ public class FilterByUid {
 					totalQualityScore = "" + currentPair.getTotalSequenceQualityScore();
 
 				}
-				probeUidQualityWriter.writeLine(probeId, uid.toUpperCase(), sequenceQualityScore, sequenceTwoQualityScore, totalQualityScore, readName);
+				reportManager.getProbeUidQualityWriter().writeLine(probeId, uid.toUpperCase(), sequenceQualityScore, sequenceTwoQualityScore, totalQualityScore, readName);
 			}
 		}
 	}
