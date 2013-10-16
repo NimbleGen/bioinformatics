@@ -38,10 +38,8 @@ import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMFileWriter;
 import net.sf.samtools.SAMFileWriterFactory;
-import net.sf.samtools.SAMProgramRecord;
 import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMRecordIterator;
-import net.sf.samtools.SAMSequenceDictionary;
 import net.sf.samtools.SAMSequenceRecord;
 
 import org.slf4j.Logger;
@@ -118,7 +116,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 		SAMFileHeader samHeader = null;
 		try (SAMFileReader samReader = new SAMFileReader(applicationSettings.getBamFile(), applicationSettings.getBamFileIndex())) {
-			samHeader = getHeader(samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(), applicationSettings.getProgramVersion());
+			samHeader = BamFileUtil.getHeader(samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(),
+					applicationSettings.getProgramVersion());
 		}
 
 		// Set up the reports files
@@ -183,8 +182,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 			// Make an unsorted BAM file writer with the fastest level of compression
 			samWriter = new SAMFileWriterFactory().makeBAMWriter(
-					getHeader(samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(), applicationSettings.getProgramVersion()),
-					false, outputUnsortedBamFile, 0);
+					BamFileUtil.getHeader(samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(),
+							applicationSettings.getProgramVersion()), false, outputUnsortedBamFile, 0);
 
 			FastqWriter fastqOneWriter = null;
 			FastqWriter fastqTwoWriter = null;
@@ -355,41 +354,6 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				reportManager.completeSummaryReport(readNamesToDistinctProbeAssignmentCount, distinctUids, uids, processingTimeInMs, totalProbes, totalReads, totalMappedReads);
 			}
 		}
-	}
-
-	/**
-	 * Creates a new file header for our output BAM file
-	 * 
-	 * @param originalHeader
-	 * @param probeInfo
-	 * @param commandLineSignature
-	 * @param programName
-	 * @param programVersion
-	 * @return
-	 */
-	private static SAMFileHeader getHeader(SAMFileHeader originalHeader, ProbesBySequenceName probeInfo, String commandLineSignature, String programName, String programVersion) {
-		SAMFileHeader newHeader = new SAMFileHeader();
-
-		newHeader.setReadGroups(originalHeader.getReadGroups());
-		List<SAMProgramRecord> programRecords = new ArrayList<SAMProgramRecord>(originalHeader.getProgramRecords());
-
-		String uniqueProgramGroupId = programName + "_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS();
-		SAMProgramRecord programRecord = new SAMProgramRecord(uniqueProgramGroupId);
-		programRecord.setProgramName(programName);
-		programRecord.setProgramVersion(programVersion);
-		programRecord.setCommandLine(commandLineSignature);
-		programRecords.add(programRecord);
-		newHeader.setProgramRecords(programRecords);
-
-		SAMSequenceDictionary sequenceDictionary = new SAMSequenceDictionary();
-		for (SAMSequenceRecord oldSequenceRecord : originalHeader.getSequenceDictionary().getSequences()) {
-			if (probeInfo.containsSequenceName(oldSequenceRecord.getSequenceName())) {
-				SAMSequenceRecord newSequenceRecord = new SAMSequenceRecord(oldSequenceRecord.getSequenceName(), oldSequenceRecord.getSequenceLength());
-				sequenceDictionary.addSequence(newSequenceRecord);
-			}
-		}
-		newHeader.setSequenceDictionary(sequenceDictionary);
-		return newHeader;
 	}
 
 	/**
