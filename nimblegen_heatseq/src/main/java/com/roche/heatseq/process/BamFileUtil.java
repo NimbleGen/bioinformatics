@@ -174,7 +174,7 @@ public class BamFileUtil {
 	 * @return
 	 */
 	public static SAMFileHeader getHeader(ProbesBySequenceName probeInfo, String commandLineSignature, String programName, String programVersion) {
-		return getHeader(null, probeInfo, commandLineSignature, programName, programVersion);
+		return getHeader(true, null, probeInfo, commandLineSignature, programName, programVersion);
 	}
 
 	/**
@@ -187,7 +187,8 @@ public class BamFileUtil {
 	 * @param programVersion
 	 * @return
 	 */
-	public static SAMFileHeader getHeader(SAMFileHeader originalHeader, ProbesBySequenceName probeInfo, String commandLineSignature, String programName, String programVersion) {
+	public static SAMFileHeader getHeader(boolean onlyIncludeSequencesFromProbeFile, SAMFileHeader originalHeader, ProbesBySequenceName probeInfo, String commandLineSignature, String programName,
+			String programVersion) {
 		SAMFileHeader newHeader = new SAMFileHeader();
 
 		List<SAMProgramRecord> programRecords = new ArrayList<SAMProgramRecord>();
@@ -207,7 +208,7 @@ public class BamFileUtil {
 		SAMSequenceDictionary sequenceDictionary = new SAMSequenceDictionary();
 		if (originalHeader != null) {
 			for (SAMSequenceRecord oldSequenceRecord : originalHeader.getSequenceDictionary().getSequences()) {
-				if (probeInfo.containsSequenceName(oldSequenceRecord.getSequenceName())) {
+				if (!onlyIncludeSequencesFromProbeFile || probeInfo.containsSequenceName(oldSequenceRecord.getSequenceName())) {
 					SAMSequenceRecord newSequenceRecord = new SAMSequenceRecord(oldSequenceRecord.getSequenceName(), oldSequenceRecord.getSequenceLength());
 					sequenceDictionary.addSequence(newSequenceRecord);
 				}

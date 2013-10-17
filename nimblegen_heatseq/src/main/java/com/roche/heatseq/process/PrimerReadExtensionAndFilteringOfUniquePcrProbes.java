@@ -116,7 +116,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 		SAMFileHeader samHeader = null;
 		try (SAMFileReader samReader = new SAMFileReader(applicationSettings.getBamFile(), applicationSettings.getBamFileIndex())) {
-			samHeader = BamFileUtil.getHeader(samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(),
+			samHeader = BamFileUtil.getHeader(false, samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(),
 					applicationSettings.getProgramVersion());
 		}
 
@@ -182,7 +182,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 			// Make an unsorted BAM file writer with the fastest level of compression
 			samWriter = new SAMFileWriterFactory().makeBAMWriter(
-					BamFileUtil.getHeader(samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(),
+					BamFileUtil.getHeader(true, samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(),
 							applicationSettings.getProgramVersion()), false, outputUnsortedBamFile, 0);
 
 			FastqWriter fastqOneWriter = null;
@@ -331,7 +331,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				String readName = record.getReadName();
 				boolean readAndMateMapped = !record.getMateUnmappedFlag() && record.getReadUnmappedFlag();
 				if (!readAndMateMapped) {
-					reportManager.getUnMappedReadsWriter().addAlignment(record);
+					reportManager.getUnMappedReadPairsWriter().addAlignment(record);
 				} else if (readAndMateMapped && !mappedOnTargetReadNames.contains(readName)) {
 					reportManager.getMappedOffTargetReadsWriter().addAlignment(record);
 				}
@@ -353,6 +353,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				long processingTimeInMs = end - start;
 				reportManager.completeSummaryReport(readNamesToDistinctProbeAssignmentCount, distinctUids, uids, processingTimeInMs, totalProbes, totalReads, totalMappedReads);
 			}
+
+			reportManager.close();
 		}
 	}
 
