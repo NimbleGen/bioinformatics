@@ -121,14 +121,22 @@ public class SummaryReport {
 		long theoreticalUniqueUids = Math.round(Math.pow(4, uidLength));
 		double uidRatio = (double) distinctUidsFound / (double) theoreticalUniqueUids;
 		DecimalFormat formatter = new DecimalFormat("0.0000");
-		double onTargetDuplicateRate = (double) duplicateReadPairsRemoved / (double) (totalReadPairsAfterReduction + duplicateReadPairsRemoved);
+		int onTargetReadPairs = (totalReadPairsAfterReduction + duplicateReadPairsRemoved);
+		int onTargetReads = onTargetReadPairs * 2;
+		int offTargetMappedReads = mappedReads - onTargetReads;
+		double onTargetDuplicateRate = (double) duplicateReadPairsRemoved / (double) (onTargetReadPairs);
 		int probeSpecificReads = (duplicateReadPairsRemoved + totalReadPairsAfterReduction) * 2;
 		double probeSpecificToTotalReadsRatio = (double) probeSpecificReads / (double) (mappedReads + unmappedReads);
+
+		double percentMappedReadsOnTarget = (double) onTargetReads / (double) mappedReads;
 
 		detailsReportWriter.println("processing_time(HH:MM:SS)" + StringUtil.TAB + DateUtil.convertMillisecondsToHHMMSS(processingTimeInMs));
 		detailsReportWriter.println("total_input_reads" + StringUtil.TAB + (mappedReads + unmappedReads));
 		detailsReportWriter.println("input_unmapped_reads" + StringUtil.TAB + unmappedReads);
 		detailsReportWriter.println("input_mapped_reads" + StringUtil.TAB + mappedReads);
+		detailsReportWriter.println("on_target_reads" + StringUtil.TAB + onTargetReads);
+		detailsReportWriter.println("off_target_mapped_reads" + StringUtil.TAB + offTargetMappedReads);
+		detailsReportWriter.println("percent_mapped_reads_on_target" + StringUtil.TAB + formatter.format(percentMappedReadsOnTarget));
 		detailsReportWriter.println("duplicate_read_pairs_removed" + StringUtil.TAB + duplicateReadPairsRemoved);
 		detailsReportWriter.println("read_pairs_assigned_to_multiple_probes" + StringUtil.TAB + readPairsAssignedToMultipleProbes);
 		detailsReportWriter.println("probes_with_no_mapped_read_pairs" + StringUtil.TAB + probesWithNoMappedReadPairs);
