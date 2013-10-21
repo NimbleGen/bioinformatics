@@ -90,6 +90,30 @@ public class HeatSeqSmokeTest {
 	}
 
 	@Test(groups = { "smoke" })
+	public void smallMapRunTestWithoutReports() {
+		URL fastQOneFilePath = getClass().getResource("one.fastq");
+		URL fastQTwoFilePath = getClass().getResource("two.fastq");
+		URL probeFilePath = getClass().getResource("probes.txt");
+
+		String[] args = new String[] { "--r1", fastQOneFilePath.getPath(), "--r2", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--outputDir", outputDirectoryPath,
+				"--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputPrefix", "prefix" };
+
+		PrefuppCli.runCommandLineApp(args);
+		File outputBam = new File(outputDirectoryPath, outputBamFileName);
+		int count = 0;
+		try (final SAMFileReader samReader = new SAMFileReader(outputBam)) {
+
+			SAMRecordIterator samRecordIter = samReader.iterator();
+			while (samRecordIter.hasNext()) {
+				samRecordIter.next();
+				count++;
+			}
+			samRecordIter.close();
+		}
+		Assert.assertNotEquals(count, 0);
+	}
+
+	@Test(groups = { "smoke" })
 	public void smallRunTest() {
 		String outputBamFileName = "output.bam";
 		URL fastQOneFilePath = getClass().getResource("one.fastq");
@@ -99,6 +123,32 @@ public class HeatSeqSmokeTest {
 
 		String[] args = new String[] { "--r1", fastQOneFilePath.getPath(), "--r2", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--inputBam", bamFilePath.getPath(), "--outputDir",
 				outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "14", "--outputReports", "--outputPrefix", "prefix" };
+		PrefuppCli.runCommandLineApp(args);
+
+		File outputBam = new File(outputDirectoryPath, outputBamFileName);
+		int count = 0;
+		try (final SAMFileReader samReader = new SAMFileReader(outputBam)) {
+
+			SAMRecordIterator samRecordIter = samReader.iterator();
+			while (samRecordIter.hasNext()) {
+				samRecordIter.next();
+				count++;
+			}
+			samRecordIter.close();
+		}
+		Assert.assertNotEquals(count, 0);
+	}
+
+	@Test(groups = { "smoke" })
+	public void smallRunTestWithoutReports() {
+		String outputBamFileName = "output.bam";
+		URL fastQOneFilePath = getClass().getResource("one.fastq");
+		URL fastQTwoFilePath = getClass().getResource("two.fastq");
+		URL probeFilePath = getClass().getResource("probes.txt");
+		URL bamFilePath = getClass().getResource("mapping.bam");
+
+		String[] args = new String[] { "--r1", fastQOneFilePath.getPath(), "--r2", fastQTwoFilePath.getPath(), "--probe", probeFilePath.getPath(), "--inputBam", bamFilePath.getPath(), "--outputDir",
+				outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength", "14" };
 		PrefuppCli.runCommandLineApp(args);
 
 		File outputBam = new File(outputDirectoryPath, outputBamFileName);

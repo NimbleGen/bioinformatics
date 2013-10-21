@@ -129,7 +129,7 @@ public class StressTest {
 
 		String[] args = new String[] { "--r1", fastqOneFile.getAbsolutePath(), "--r2", fastqTwoFile.getAbsolutePath(), "--probe", probesFile.getAbsolutePath(), "--inputBam",
 				new File(outputDirectoryPath, mappingOutputBamFileName).getAbsolutePath(), "--outputDir", outputDirectoryPath, "--outputBamFileName", outputBamFileName, "--uidLength",
-				"" + UID_LENGTH, "--outputReports", "--outputPrefix", "prefix" };
+				"" + UID_LENGTH, "--outputReports", "--outputPrefix", "prefix", "--readsNotTrimmedWithinCaptureTarget" };
 		PrefuppCli.runCommandLineApp(args);
 
 		File outputBam = new File(outputDirectoryPath, outputBamFileName);

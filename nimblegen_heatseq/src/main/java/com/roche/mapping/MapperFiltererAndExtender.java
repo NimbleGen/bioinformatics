@@ -537,12 +537,14 @@ public class MapperFiltererAndExtender {
 										matchingProbe.getExtensionPrimerSequence(), recordOne.getReadHeader(), recordOne.getReadString());
 							}
 						}
-					} else if ((matchingProbes.size() > 1) && (reportManager.isReporting())) {
-						for (ProbeReference matchingProbe : matchingProbes) {
-							Probe probe = matchingProbe.getProbe();
-							reportManager.getAmbiguousMappingWriter().writeLine(recordOne.getReadHeader(), recordOne.getReadString(), probe.getSequenceName(), probe.getExtensionPrimerStart(),
-									probe.getExtensionPrimerStop(), probe.getCaptureTargetStart(), probe.getCaptureTargetStop(), probe.getLigationPrimerStart(), probe.getLigationPrimerStop(),
-									probe.getProbeStrand());
+					} else if ((matchingProbes.size() > 1)) {
+						if (reportManager.isReporting()) {
+							for (ProbeReference matchingProbe : matchingProbes) {
+								Probe probe = matchingProbe.getProbe();
+								reportManager.getAmbiguousMappingWriter().writeLine(recordOne.getReadHeader(), recordOne.getReadString(), probe.getSequenceName(), probe.getExtensionPrimerStart(),
+										probe.getExtensionPrimerStop(), probe.getCaptureTargetStart(), probe.getCaptureTargetStop(), probe.getLigationPrimerStart(), probe.getLigationPrimerStop(),
+										probe.getProbeStrand());
+							}
 						}
 					} else if (matchingProbes.size() == 0) {
 						if (reportManager.isReporting()) {
