@@ -317,29 +317,6 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			}
 			samWriter.close();
 
-			int totalReads = 0;
-			int totalMappedReads = 0;
-
-			SAMRecordIterator samRecordIter = samReader.iterator();
-			while (samRecordIter.hasNext()) {
-				SAMRecord record = samRecordIter.next();
-				totalReads++;
-				if (!record.getReadUnmappedFlag()) {
-					totalMappedReads++;
-				}
-				Set<String> mappedOnTargetReadNames = readNamesToDistinctProbeAssignmentCount.getTalliesAsMap().keySet();
-				String readName = record.getReadName();
-				boolean readAndMateMapped = !record.getMateUnmappedFlag() && record.getReadUnmappedFlag();
-				if (!readAndMateMapped) {
-					reportManager.getUnMappedReadPairsWriter().addAlignment(record);
-				} else if (readAndMateMapped && !mappedOnTargetReadNames.contains(readName)) {
-					reportManager.getMappedOffTargetReadsWriter().addAlignment(record);
-				}
-			}
-			samRecordIter.close();
-
-			samReader.close();
-
 			// Sort the output BAM file,
 			BamFileUtil.sortOnCoordinates(outputUnsortedBamFile, outputSortedBamFile);
 			outputUnsortedBamFile.delete();
@@ -350,10 +327,32 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			long end = System.currentTimeMillis();
 
 			if (reportManager.isReporting()) {
+				int totalReads = 0;
+				int totalMappedReads = 0;
+
+				SAMRecordIterator samRecordIter = samReader.iterator();
+				while (samRecordIter.hasNext()) {
+					SAMRecord record = samRecordIter.next();
+					totalReads++;
+					if (!record.getReadUnmappedFlag()) {
+						totalMappedReads++;
+					}
+					Set<String> mappedOnTargetReadNames = readNamesToDistinctProbeAssignmentCount.getTalliesAsMap().keySet();
+					String readName = record.getReadName();
+					boolean readAndMateMapped = !record.getMateUnmappedFlag() && record.getReadUnmappedFlag();
+					if (!readAndMateMapped) {
+						reportManager.getUnMappedReadPairsWriter().addAlignment(record);
+					} else if (readAndMateMapped && !mappedOnTargetReadNames.contains(readName)) {
+						reportManager.getMappedOffTargetReadsWriter().addAlignment(record);
+					}
+				}
+				samRecordIter.close();
+
 				long processingTimeInMs = end - start;
 				reportManager.completeSummaryReport(readNamesToDistinctProbeAssignmentCount, distinctUids, uids, processingTimeInMs, totalProbes, totalReads, totalMappedReads);
 			}
 
+			samReader.close();
 			reportManager.close();
 		}
 	}
@@ -418,12 +417,14 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			try {
 				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, readNameToRecordsMap, reportManager, applicationSettings.isAllowVariableLengthUids(),
 						alignmentScorer, distinctUids, uids);
-				DetailsReport detailsReport = reportManager.getDetailsReport();
-				synchronized (detailsReport) {
-					if (probeReductionResults != null) {
-						detailsReport.writeEntry(probeReductionResults.getProbeProcessingStats());
-					} else {
-						detailsReport.writeBlankEntry(probe);
+				if (reportManager.isReporting()) {
+					DetailsReport detailsReport = reportManager.getDetailsReport();
+					synchronized (detailsReport) {
+						if (probeReductionResults != null) {
+							detailsReport.writeEntry(probeReductionResults.getProbeProcessingStats());
+						} else {
+							detailsReport.writeBlankEntry(probe);
+						}
 					}
 				}
 
