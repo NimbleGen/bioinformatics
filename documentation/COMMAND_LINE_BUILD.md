@@ -1,7 +1,7 @@
 Building the Heatseq Tool on the command line
 -------------------------
 
-These instructions are for building the Heatseq Tool on a Linux command line.
+These instructions are for building the Heatseq Tool on the Linux command line.
 
 **Section 1: Install Java**
 
@@ -9,34 +9,52 @@ The Heatseq Tool requires Java version 7.  To check which version of Java you ha
 
 **Section 2: Install maven**
 
-Type 'mvn --version' and ensure that you have maven installed.  If not download and install the [latest version of Maven](http://maven.apache.org/download.cgi).
+Type 'mvn --version' and ensure that you have maven installed.  If not, download and install the [latest version of Maven](http://maven.apache.org/download.cgi).
 
-Maven needs to be configured with a settings.xml file and a local repository.  If you have not already configured maven you will need to set these up.  By default Maven looks for a settings.xml file in a ~/.m2 directory.  The settings.xml file contains a localRepository field that must be configured to point to a directory.  For example:
+Maven needs to be configured with a settings.xml file and a local repository.  If you have not already configured maven you will need to set these up.  By default Maven looks for a settings.xml file in your ~/.m2 directory.  If you don't already have a ~/.m2 directory, create one.  Within that directory create a settings.xml file that contains the following:
 
 ```
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
-    <localRepository>/home/users/bainc/.m2/repository</localRepository>
+    <localRepository>/home/users/username/.m2/repository</localRepository>
     <interactiveMode>true</interactiveMode>
     <usePluginRegistry>false</usePluginRegistry>
     <offline>false</offline>
 </settings>
 ```
 
-If the directory you have set as your localRepository does not exist do a mkdir to create the directory.
+The localRepository field should be configured to point to a local directory.  If the directory you have set as your localRepository does not already exist do a mkdir to create the directory.
 
 **Section 3: Install git**
 
-Type 'git --version' an sure that you have git installed.  If not download and install the [latest version of git](http://git-scm.com/downloads).
+Type 'git --version' and ensure that you have git installed.  If not, download and install the [latest version of git](http://git-scm.com/downloads).
 
 
 **Section 4: Clone the Heatseq Tool's GitHub repository**
 
-You can clone the Heatseq Tool's GitHub repository by doing the following:
+Clone the Heatseq Tool's GitHub repository by doing the following:
 
 git clone https://<i>username</i>@github.com/NimbleGen/bioinformatics.git
 
 Substituting your GitHub username for <i>username</i>.
 
 **Section 5: Build the HeatSeq Tool**
+
+Build the HeatSeq Tool by doing the following:
+
+cd bioinformatics/build/heatseq_commandline
+mvn install
+
+After a successful build the HeatSeq application .jar file will be at:
+
+/bioinformatics/nimblegen_heatseq/target/nimblegen_heatseq-0.0.1-SNAPSHOT-<i>timestamp</i>-jar-with-dependencies.jar 
+
+Where <i>timestamp</i> will be the date and time the .jar file was build.  You can now run the jar file by calling:
+
+java -jar nimblegen_heatseq-0.0.1-SNAPSHOT-<i>timestamp</i>-jar-with-dependencies.jar
+
+
+
+
+
