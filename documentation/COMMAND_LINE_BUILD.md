@@ -43,7 +43,7 @@ Substituting your GitHub username for <i>username</i>.
 
 Build the HeatSeq Tool by doing the following:
 
-cd bioinformatics/build/heatseq_commandline
+cd bioinformatics/build/heatseq_commandline<br>
 mvn install
 
 After a successful build the HeatSeq application .jar file will be at:
