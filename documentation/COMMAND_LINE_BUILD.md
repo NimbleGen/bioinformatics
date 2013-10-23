@@ -50,7 +50,7 @@ After a successful build the HeatSeq application .jar file will be at:
 
 /bioinformatics/nimblegen_heatseq/target/nimblegen_heatseq-0.0.1-SNAPSHOT-<i>timestamp</i>-jar-with-dependencies.jar 
 
-Where <i>timestamp</i> will be the date and time the .jar file was built.  You can now run the jar file by calling:
+Where <i>timestamp</i> will be the date and time the .jar file was built.  You can now run the HeatSeq application by calling:
 
 java -jar nimblegen_heatseq-0.0.1-SNAPSHOT-<i>timestamp</i>-jar-with-dependencies.jar
 
