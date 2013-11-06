@@ -49,9 +49,9 @@ public class ProbePlotter {
 
 	public static void main(String[] args) {
 		try {
-			generateReadSubSampleReport(new File("D:/liang/results/report_unique_probe_tallies.txt"), new File("D:/liang/results/report_prefupp_summary.txt"), new File(
-					"D:/liang/results/report_read_subsampling.txt"), new File("D:/liang/results/report_probe_subsampling.txt"), new int[] { 1, 10, 20, 50, 100 },
-					new double[] { 0.01, 0.1, 1, 10, 100 });
+			generateReadSubSampleReport(new File("R:/SeqCap/proj/2642_SQC_HEAT-seq_Feb2013/analysis/131018_RNG_cancer_hotspot_A6JC5/ID_2_Hotspot_968/Hotspot_968_prefupp_unique_probe_tallies.txt"),
+					new File("R:/SeqCap/proj/2642_SQC_HEAT-seq_Feb2013/analysis/131018_RNG_cancer_hotspot_A6JC5/ID_2_Hotspot_968/Hotspot_968_prefupp_prefupp_summary.txt"), new File(
+							"D:/report_read_subsampling.txt"), new File("D:/report_probe_subsampling.txt"), new int[] { 1, 10, 20, 50, 100 }, new double[] { 0.01, 0.1, 1, 10, 100 });
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

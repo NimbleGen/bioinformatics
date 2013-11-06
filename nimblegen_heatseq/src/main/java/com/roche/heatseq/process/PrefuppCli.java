@@ -43,7 +43,7 @@ public class PrefuppCli {
 	private final static Logger logger = LoggerFactory.getLogger(PrefuppCli.class);
 
 	public final static String APPLICATION_NAME = "prefupp";
-	private final static String APPLICATION_VERSION = "1.0.0";
+	private final static String APPLICATION_VERSION = "0.0.19";
 	public final static int DEFAULT_UID_LENGTH = 10;
 	private final static String BAM_EXTENSION = ".bam";
 

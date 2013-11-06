@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -31,6 +32,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
+import net.sf.picard.fastq.FastqReader;
 import net.sf.picard.fastq.FastqRecord;
 import net.sf.picard.fastq.FastqWriter;
 import net.sf.picard.fastq.FastqWriterFactory;
@@ -330,6 +332,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				int totalReads = 0;
 				int totalMappedReads = 0;
 
+				Set<String> unmappedReadPairReadNames = new HashSet<String>();
+
 				SAMRecordIterator samRecordIter = samReader.iterator();
 				while (samRecordIter.hasNext()) {
 					SAMRecord record = samRecordIter.next();
@@ -339,13 +343,42 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					}
 					Set<String> mappedOnTargetReadNames = readNamesToDistinctProbeAssignmentCount.getTalliesAsMap().keySet();
 					String readName = record.getReadName();
-					boolean readAndMateMapped = !record.getMateUnmappedFlag() && record.getReadUnmappedFlag();
+					boolean readAndMateMapped = !record.getMateUnmappedFlag() && !record.getReadUnmappedFlag();
 					if (!readAndMateMapped) {
 						reportManager.getUnMappedReadPairsWriter().addAlignment(record);
+						unmappedReadPairReadNames.add(record.getReadName());
 					} else if (readAndMateMapped && !mappedOnTargetReadNames.contains(readName)) {
 						reportManager.getMappedOffTargetReadsWriter().addAlignment(record);
+					} else {
+						// the only remaining possible option is that it is mapped and on target so verify this
+						boolean mappedAndOnTarget = readAndMateMapped && mappedOnTargetReadNames.contains(readName);
+						assert mappedAndOnTarget;
 					}
 				}
+
+				try (FastqReader fastQOneReader = new FastqReader(applicationSettings.getFastQ1WithUidsFile())) {
+					try (FastqReader fastQTwoReader = new FastqReader(applicationSettings.getFastQ2File())) {
+
+						while (fastQOneReader.hasNext() && fastQTwoReader.hasNext()) {
+							FastqRecord fastQOneRecord = fastQOneReader.next();
+							FastqRecord fastQTwoRecord = fastQTwoReader.next();
+
+							String readName = IlluminaFastQHeader.getBaseHeader(fastQOneRecord.getReadHeader());
+							if (unmappedReadPairReadNames.contains(readName)) {
+								// sum the quality and place in qualHeaderPrefix
+								int fastQOneQualityScore = BamFileUtil.getQualityScore(fastQOneRecord.getBaseQualityString());
+								int fastQTwoQualityScore = BamFileUtil.getQualityScore(fastQTwoRecord.getBaseQualityString());
+
+								fastQOneRecord = new FastqRecord(fastQOneRecord.getReadHeader(), fastQOneRecord.getReadString(), "" + fastQOneQualityScore, fastQOneRecord.getBaseQualityString());
+								fastQTwoRecord = new FastqRecord(fastQTwoRecord.getReadHeader(), fastQTwoRecord.getReadString(), "" + fastQTwoQualityScore, fastQTwoRecord.getBaseQualityString());
+
+								reportManager.getFastqOneUnableToMapWriter().write(fastQOneRecord);
+								reportManager.getFastqTwoUnableToMapWriter().write(fastQTwoRecord);
+							}
+						}
+					}
+				}
+
 				samRecordIter.close();
 
 				long processingTimeInMs = end - start;
