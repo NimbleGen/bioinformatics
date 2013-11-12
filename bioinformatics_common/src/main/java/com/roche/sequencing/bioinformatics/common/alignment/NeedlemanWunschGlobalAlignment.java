@@ -390,12 +390,4 @@ public class NeedlemanWunschGlobalAlignment {
 		}
 		return index;
 	}
-
-	public static void main(String[] args) {
-		IAlignmentScorer scorer = new SimpleAlignmentScorer(10, 10, 5, 10, true);
-		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(new IupacNucleotideCodeSequence("ACCACCCTTAGGG"), new IupacNucleotideCodeSequence("CACCCC"), scorer);
-		System.out.println(alignment.getAlignmentAsString());
-		System.out.println(StringUtil.repeatString(" ", alignment.getIndexOfFirstMatchInReference()) + alignment.getCigarString().getCigarString(false, true));
-		System.out.println(alignment.getEditDistance());
-	}
 }

@@ -6,4 +6,4 @@
 */test-output/
 *buildNumber.properties
 */.svn/
-*/build/*/target/*
+*/target/*
