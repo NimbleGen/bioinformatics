@@ -20,15 +20,15 @@ import com.roche.sequencing.bioinformatics.common.sequence.ICode;
 
 public class SimpleAlignmentScorer implements IAlignmentScorer {
 
-	public final static int DEFAULT_MATCH_SCORE = 1;
-	public final static int DEFAULT_MISMATCH_PENALTY = -4;
-	public final static int DEFAULT_GAP_OPEN_PENALTY = -6;
-	public final static int DEFAULT_GAP_EXTEND_PENALTY = -1;
+	public final static double DEFAULT_MATCH_SCORE = 1;
+	public final static double DEFAULT_MISMATCH_PENALTY = -4;
+	public final static double DEFAULT_GAP_OPEN_PENALTY = -6;
+	public final static double DEFAULT_GAP_EXTEND_PENALTY = -1;
 
-	private final int match;
-	private final int mismatch;
-	private final int gapExtension;
-	private final int gapStart;
+	private final double match;
+	private final double mismatch;
+	private final double gapExtension;
+	private final double gapStart;
 	private final boolean shouldPenalizeTerminalGaps;
 
 	public SimpleAlignmentScorer() {
@@ -40,7 +40,7 @@ public class SimpleAlignmentScorer implements IAlignmentScorer {
 		shouldPenalizeTerminalGaps = false;
 	}
 
-	public SimpleAlignmentScorer(int match, int mismatch, int gapExtension, int gapStart, boolean shouldPenalizeTerminalGaps) {
+	public SimpleAlignmentScorer(double match, double mismatch, double gapExtension, double gapStart, boolean shouldPenalizeTerminalGaps) {
 		super();
 		this.match = match;
 		this.mismatch = mismatch;
@@ -50,8 +50,8 @@ public class SimpleAlignmentScorer implements IAlignmentScorer {
 	}
 
 	@Override
-	public int getMatchScore(ICode codeOne, ICode codeTwo) {
-		int score = 0;
+	public double getMatchScore(ICode codeOne, ICode codeTwo) {
+		double score = 0;
 
 		if (codeOne.matches(codeTwo)) {
 			score += match;
@@ -63,12 +63,12 @@ public class SimpleAlignmentScorer implements IAlignmentScorer {
 	}
 
 	@Override
-	public int getGapScore() {
+	public double getGapScore() {
 		return gapExtension;
 	}
 
 	@Override
-	public int getGapStartScore() {
+	public double getGapStartScore() {
 		return gapStart;
 	}
 

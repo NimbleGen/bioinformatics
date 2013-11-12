@@ -7,6 +7,10 @@
   		</encoder>
 	</appender>
 
+	 <logger name="com.jcabi">
+		<level value="OFF" />
+	</logger>
+
     <root>
 		<level value="warn" />
 		<appender-ref ref="STDOUT" />

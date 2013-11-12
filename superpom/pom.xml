@@ -17,11 +17,11 @@
 		</dependency>
 		<dependency>
 			<groupId>org.testng</groupId>
-			<artifactId>testng</artifactId>			
+			<artifactId>testng</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>commons-io</groupId>
-			<artifactId>commons-io</artifactId>			
+			<artifactId>commons-io</artifactId>
 		</dependency>
 	</dependencies>
 
@@ -51,6 +51,11 @@
 				<groupId>org.utgenome.thirdparty</groupId>
 				<artifactId>picard</artifactId>
 				<version>1.86.0</version>
+			</dependency>
+			<dependency>
+				<groupId>com.jcabi</groupId>
+				<artifactId>jcabi-manifests</artifactId>
+				<version>0.8</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
@@ -188,7 +193,7 @@
 			<id>org.maven.repo1</id>
 			<name>Central Maven Repository</name>
 			<url>http://repo1.maven.org/maven2</url>
-		</repository>		
+		</repository>
 	</repositories>
 
 	<prerequisites>

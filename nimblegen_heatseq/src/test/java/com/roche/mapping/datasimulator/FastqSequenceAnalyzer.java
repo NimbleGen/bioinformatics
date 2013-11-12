@@ -3,7 +3,9 @@ package com.roche.mapping.datasimulator;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -23,6 +25,7 @@ import com.roche.heatseq.process.PrefuppCli;
 import com.roche.heatseq.process.ProbeFileUtil;
 import com.roche.heatseq.process.TabDelimitedFileWriter;
 import com.roche.heatseq.qualityreport.ReportManager;
+import com.roche.sandbox.PieChart;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
@@ -35,7 +38,7 @@ public class FastqSequenceAnalyzer {
 	// private final static String READ_ONE_TERMINAL_PRIMER = "AGATCGGAAGAG";
 	// private final static String READ_TWO_TERMINAL_PRIMER = "ACACTACCGTCGG";
 
-	private static final String DIRECTORY_NAME = "real_time_ready";
+	private static final String DIRECTORY_NAME = "ATM_140";
 
 	/**
 	 * @param args
@@ -60,6 +63,8 @@ public class FastqSequenceAnalyzer {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+
+		// System.out.println(match("AAACAAAT", "CBBAT", 1));
 
 		// try {
 		// // analyzeUnmappedReads(new File("D:/ATM_140/probe_info_96.txt"), new File("D:/ATM_140/results/50pm_report_unable_to_map_one.fastq"), new File(
@@ -124,7 +129,7 @@ public class FastqSequenceAnalyzer {
 
 		for (int i = 0; i < directories.size(); i++) {
 			File directoryFile = new File(directories.get(i));
-			File resultsDirectory = new File(directoryFile, "/results/");
+			File resultsDirectory = new File(directoryFile, "/results2/");
 			File probeFile = new File(directoryFile, probeFiles.get(i));
 			File fastq1File = new File(directoryFile, fastq1Files.get(i));
 			File fastq2File = new File(directoryFile, fastq2Files.get(i));
@@ -133,16 +138,26 @@ public class FastqSequenceAnalyzer {
 
 			String[] arguments = new String[] { "--r1", fastq1File.getAbsolutePath(), "--r2", fastq2File.getAbsolutePath(), "--probe", probeFile.getAbsolutePath(), "--inputBam",
 					bamFile.getAbsolutePath(), "--outputDir", resultsDirectory.getAbsolutePath(), "--outputBamFileName", prefixName + "_results.bam", "--outputReports", "--uidLength", "10",
-					"--lenientValidation", "--outputPrefix", prefixName };
+					"--lenientValidation", "--outputPrefix", prefixName, "--outputFastq" };
 
 			PrefuppCli.main(arguments);
 
 			File unmappedFastqOneFile = new File(resultsDirectory, prefixName + ReportManager.UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME);
 			File unmappedFastqTwoFile = new File(resultsDirectory, prefixName + ReportManager.UNABLE_TO_MAP_FASTQ_TWO_REPORT_NAME);
 
-			analyzeUnmappedReads(probeFile, unmappedFastqOneFile, unmappedFastqTwoFile, new File(resultsDirectory, prefixName + "_unmapped_counts.txt"), new File(resultsDirectory, prefixName
-					+ "_unmapped_unassigned_read_ones.txt"), new File(resultsDirectory, prefixName + "_unmapped_unassigned_read_twos.txt"), new File(resultsDirectory, prefixName
-					+ "_unmapped_assigned_to_mult_probes.txt"));
+			File probeDetailsFile = new File(resultsDirectory, prefixName + ReportManager.DETAILS_REPORT_NAME);
+			File prefuppSummaryFile = new File(resultsDirectory, prefixName + ReportManager.SUMMARY_REPORT_NAME);
+			analyzeReads(probeFile, probeDetailsFile, unmappedFastqOneFile, unmappedFastqTwoFile, prefuppSummaryFile, new File(resultsDirectory, prefixName + "_unmapped_counts.txt"), new File(
+					resultsDirectory, prefixName + "_unmapped_unassigned_read_ones.txt"), new File(resultsDirectory, prefixName + "_unmapped_unassigned_read_twos.txt"), new File(resultsDirectory,
+					prefixName + "_unmapped_assigned_to_mult_probes.txt"), new File(resultsDirectory, prefixName + "_probe_breakdown.txt"), new File(resultsDirectory, prefixName
+					+ "_read_pairs_pie_charts.pdf"));
+
+			// File mappedFastqOneFile = new File(resultsDirectory, bamFile.getName() + "_one.fastq");
+			// File mappedFastqTwoFile = new File(resultsDirectory, bamFile.getName() + "_two.fastq");
+
+			// analyzeReads(probeFile, mappedFastqOneFile, mappedFastqTwoFile, new File(resultsDirectory, prefixName + "_mapped_counts.txt"), new File(resultsDirectory, prefixName
+			// + "_mapped_unassigned_read_ones.txt"), new File(resultsDirectory, prefixName + "_mapped_unassigned_read_twos.txt"), new File(resultsDirectory, prefixName
+			// + "_mapped_assigned_to_mult_probes.txt"));
 
 			tallyRepeatSequences(unmappedFastqOneFile, new File(unmappedFastqOneFile.getAbsolutePath() + "_counts.txt"));
 			tallyRepeatSequences(unmappedFastqTwoFile, new File(unmappedFastqTwoFile.getAbsolutePath() + "_counts.txt"));
@@ -160,7 +175,7 @@ public class FastqSequenceAnalyzer {
 		// }
 
 		try (TabDelimitedFileWriter writer = new TabDelimitedFileWriter(tallyFile, new String[] { "sequence", "count" })) {
-			for (Entry<String, Integer> sequenceAndCount : tally.getObjectsSortedSortedFromMostTalliesToLeast()) {
+			for (Entry<String, Integer> sequenceAndCount : tally.getObjectsSortedFromMostTalliesToLeast()) {
 				int count = sequenceAndCount.getValue();
 				String sequence = sequenceAndCount.getKey();
 				writer.writeLine(sequence, count);
@@ -264,7 +279,7 @@ public class FastqSequenceAnalyzer {
 		}
 
 		try (TabDelimitedFileWriter writer = new TabDelimitedFileWriter(outputFile, new String[] { "sequence", "count" })) {
-			for (Entry<ISequence, Integer> sequenceAndCount : sequenceTallies.getObjectsSortedSortedFromMostTalliesToLeast()) {
+			for (Entry<ISequence, Integer> sequenceAndCount : sequenceTallies.getObjectsSortedFromMostTalliesToLeast()) {
 				int count = sequenceAndCount.getValue();
 				ISequence sequence = sequenceAndCount.getKey();
 				writer.writeLine(sequence, count);
@@ -437,29 +452,79 @@ public class FastqSequenceAnalyzer {
 
 	}
 
-	private static void analyzeUnmappedReads(File probeInfoFile, File fastqOneFile, File fastqTwoFile, File outputCountFile, File readOneUnassignedToProbeFile, File readTwoUnassignedToProbeFile,
-			File readsAssignedToMultipleProbesFile) throws IOException {
+	private static class ProbeBreakdown {
+		private int uniqueMappedOnTargetReadPairs;
+		private int duplicateMappedOnTargetReadPairs;
+		private int unmappedReadPairs;
+
+		public ProbeBreakdown() {
+			super();
+		}
+
+		public int getUniqueMappedOnTargetReadPairs() {
+			return uniqueMappedOnTargetReadPairs;
+		}
+
+		public int getDuplicateMappedOnTargetReadPairs() {
+			return duplicateMappedOnTargetReadPairs;
+		}
+
+		public int getMappedOnTargetReadPairs() {
+			return uniqueMappedOnTargetReadPairs + duplicateMappedOnTargetReadPairs;
+		}
+
+		public int getUnmappedReadPairs() {
+			return unmappedReadPairs;
+		}
+
+		public int getTotalReadPairs() {
+			return getMappedOnTargetReadPairs() + unmappedReadPairs;
+		}
+
+		public void setUniqueMappedOnTargetReadPairs(int uniqueMappedOnTargetReadPairs) {
+			this.uniqueMappedOnTargetReadPairs = uniqueMappedOnTargetReadPairs;
+		}
+
+		public void setDuplicateMappedOnTargetReadPairs(int duplicateMappedOnTargetReadPairs) {
+			this.duplicateMappedOnTargetReadPairs = duplicateMappedOnTargetReadPairs;
+		}
+
+		public void setUnmappedReadPairs(int unmappedReadPairs) {
+			this.unmappedReadPairs = unmappedReadPairs;
+		}
+
+	}
+
+	private static void analyzeReads(File probeInfoFile, File probeDetailsFile, File fastqOneFile, File fastqTwoFile, File prefuppSummaryFile, File outputCountFile, File readOneUnassignedToProbeFile,
+			File readTwoUnassignedToProbeFile, File readsAssignedToMultipleProbesFile, File probeBreakdownFile, File outputPieChartsFile) throws IOException {
 		long start = System.currentTimeMillis();
 		ProbesBySequenceName probesBySequenceName = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
 
 		Map<String, Set<Probe>> readToProbeMap = new LinkedHashMap<String, Set<Probe>>();
 
-		try (TabDelimitedFileWriter writer = new TabDelimitedFileWriter(outputCountFile, new String[] { "probe", "r1Extension", "r1Ligation", "r1ExtensionReverseCompliment",
-				"r1LigationReverseCompliment", "r2Extension", "r2Ligation", "r2ExtensionReverseCompliment", "r2LigationReverseCompliment" })) {
+		Map<String, ProbeBreakdown> probeIdToBreakdownMap = new HashMap<String, ProbeBreakdown>();
+
+		try (TabDelimitedFileWriter writer = new TabDelimitedFileWriter(outputCountFile, new String[] { "probe", "r1_and_r2_complete", "r1_and_r2_partial", "r1_complete", "r1_partial", "r2_complete",
+				"r2_partial", "r1_extension", "r1_ligation", "r2_rc_extension", "r2_rc_ligation" })) {
 
 			for (Probe probe : probesBySequenceName.getProbes()) {
-				int fastqOneExtension = 0;
-				int fastqOneLigation = 0;
+				int fullyMappedCount = 0;
+				int partiallyMappedCount = 0;
 
-				int fastqOneExtensionReverseCompliment = 0;
-				int fastqOneLigationReverseCompliment = 0;
+				int r1Ext = 0;
+				int r1Lig = 0;
+				int r2RCExt = 0;
+				int r2RCLig = 0;
+				int r1comp = 0;
+				int r1part = 0;
+				int r2comp = 0;
+				int r2part = 0;
 
-				int fastqTwoExtension = 0;
-				int fastqTwoLigation = 0;
-
-				int fastqTwoExtensionReverseCompliment = 0;
-				int fastqTwoLigationReverseCompliment = 0;
-
+				ISequence extensionSequence = probe.getExtensionPrimerSequence();
+				ISequence ligationSequence = probe.getLigationPrimerSequence();
+				ISequence extensionSequenceReverseCompliment = extensionSequence.getReverseCompliment();
+				ISequence ligationSequenceReverseCompliment = ligationSequence.getReverseCompliment();
+				long startT = System.currentTimeMillis();
 				try (FastqReader fastQOneReader = new FastqReader(fastqOneFile)) {
 					try (FastqReader fastQTwoReader = new FastqReader(fastqTwoFile)) {
 						while (fastQOneReader.hasNext() && fastQTwoReader.hasNext()) {
@@ -469,48 +534,58 @@ public class FastqSequenceAnalyzer {
 							String readOne = recordOne.getReadString();
 							String readTwo = recordTwo.getReadString();
 
-							int numberOfTimesreadOneMapped = 0;
+							ISequence readOneSequence = new IupacNucleotideCodeSequence(readOne);
+							ISequence readTwoSequence = new IupacNucleotideCodeSequence(readTwo);
 
-							String extensionPrimerSequence = probe.getExtensionPrimerSequence().toString();
-							if (readOne.contains(extensionPrimerSequence)) {
-								numberOfTimesreadOneMapped++;
-								fastqOneExtension++;
-							}
-							String ligationPrimerSequence = probe.getLigationPrimerSequence().toString();
-							if (readOne.contains(ligationPrimerSequence)) {
-								numberOfTimesreadOneMapped++;
-								fastqOneLigation++;
-							}
+							boolean readOneContainsExtension = matches(readOneSequence, extensionSequence);
 
-							String extensionPrimerSequenceReverseCompliment = probe.getExtensionPrimerSequence().getReverseCompliment().toString();
-							if (readOne.contains(extensionPrimerSequenceReverseCompliment)) {
-								numberOfTimesreadOneMapped++;
-								fastqOneExtensionReverseCompliment++;
-							}
-							String ligationPrimerSequenceReverseCompliment = probe.getLigationPrimerSequence().getReverseCompliment().toString();
-							if (readOne.contains(ligationPrimerSequenceReverseCompliment)) {
-								numberOfTimesreadOneMapped++;
-								fastqOneLigationReverseCompliment++;
+							boolean readOneContainsLigation = matches(readOneSequence, ligationSequence);
+
+							boolean readTwoContainsReverseComplimentExtension = matches(readTwoSequence, extensionSequenceReverseCompliment);
+							boolean readTwoContainsReverseComplimentLigation = matches(readTwoSequence, ligationSequenceReverseCompliment);
+
+							boolean fullyMapped = (readOneContainsExtension && readOneContainsLigation && readTwoContainsReverseComplimentExtension && readTwoContainsReverseComplimentLigation);
+							boolean partiallyMapped = (!fullyMapped && (readOneContainsExtension || readOneContainsLigation || readTwoContainsReverseComplimentExtension || readTwoContainsReverseComplimentLigation));
+
+							if (fullyMapped) {
+								fullyMappedCount++;
 							}
 
-							int numberOfTimesReadTwoMapped = 0;
-
-							if (readTwo.contains(extensionPrimerSequence)) {
-								numberOfTimesReadTwoMapped++;
-								fastqTwoExtension++;
-							}
-							if (readTwo.contains(ligationPrimerSequence)) {
-								numberOfTimesReadTwoMapped++;
-								fastqTwoLigation++;
+							if (partiallyMapped) {
+								partiallyMappedCount++;
 							}
 
-							if (readTwo.contains(extensionPrimerSequenceReverseCompliment)) {
-								numberOfTimesReadTwoMapped++;
-								fastqTwoExtensionReverseCompliment++;
+							if (readOneContainsExtension) {
+								r1Ext++;
 							}
-							if (readTwo.contains(ligationPrimerSequenceReverseCompliment)) {
-								numberOfTimesReadTwoMapped++;
-								fastqTwoLigationReverseCompliment++;
+
+							if (readOneContainsLigation) {
+								r1Lig++;
+							}
+
+							if (readOneContainsLigation && readOneContainsExtension) {
+								r1comp++;
+							}
+
+							if ((!readOneContainsExtension && readOneContainsLigation) || (readOneContainsExtension && !readOneContainsLigation)) {
+								r1part++;
+							}
+
+							if (readTwoContainsReverseComplimentExtension && readTwoContainsReverseComplimentLigation) {
+								r2comp++;
+							}
+
+							if ((!readTwoContainsReverseComplimentExtension && readTwoContainsReverseComplimentLigation)
+									|| (readTwoContainsReverseComplimentExtension && !readTwoContainsReverseComplimentLigation)) {
+								r2part++;
+							}
+
+							if (readTwoContainsReverseComplimentExtension) {
+								r2RCExt++;
+							}
+
+							if (readTwoContainsReverseComplimentLigation) {
+								r2RCLig++;
 							}
 
 							Set<Probe> mappedProbes = readToProbeMap.get(readName);
@@ -518,7 +593,7 @@ public class FastqSequenceAnalyzer {
 								mappedProbes = new HashSet<Probe>();
 							}
 
-							if (numberOfTimesreadOneMapped >= 1 || numberOfTimesReadTwoMapped >= 1) {
+							if (fullyMapped) {
 								mappedProbes.add(probe);
 							}
 
@@ -526,10 +601,12 @@ public class FastqSequenceAnalyzer {
 						}
 					}
 				}
-
-				writer.writeLine(probe.getProbeId(), fastqOneExtension, fastqOneLigation, fastqOneExtensionReverseCompliment, fastqOneLigationReverseCompliment, fastqTwoExtension, fastqTwoLigation,
-						fastqTwoExtensionReverseCompliment, fastqTwoLigationReverseCompliment);
-
+				long endT = System.currentTimeMillis();
+				System.out.println("time:" + (endT - startT));
+				writer.writeLine(probe.getProbeId(), fullyMappedCount, partiallyMappedCount, r1comp, r1part, r2comp, r2part, r1Ext, r1Lig, r2RCExt, r2RCLig);
+				ProbeBreakdown probeBreakdown = new ProbeBreakdown();
+				probeBreakdown.setUnmappedReadPairs(fullyMappedCount);
+				probeIdToBreakdownMap.put(probe.getProbeId(), probeBreakdown);
 			}
 		}
 
@@ -572,7 +649,7 @@ public class FastqSequenceAnalyzer {
 			}
 
 			try (TabDelimitedFileWriter writer = new TabDelimitedFileWriter(readOneUnassignedToProbeFile, new String[] { "sequence", "count" })) {
-				for (Entry<ISequence, Integer> sequenceAndCount : unassignedReadOneTallies.getObjectsSortedSortedFromMostTalliesToLeast()) {
+				for (Entry<ISequence, Integer> sequenceAndCount : unassignedReadOneTallies.getObjectsSortedFromMostTalliesToLeast()) {
 					int count = sequenceAndCount.getValue();
 					ISequence sequence = sequenceAndCount.getKey();
 					writer.writeLine(sequence, count);
@@ -580,16 +657,69 @@ public class FastqSequenceAnalyzer {
 			}
 
 			try (TabDelimitedFileWriter writer = new TabDelimitedFileWriter(readTwoUnassignedToProbeFile, new String[] { "sequence", "count" })) {
-				for (Entry<ISequence, Integer> sequenceAndCount : unassignedReadTwoTallies.getObjectsSortedSortedFromMostTalliesToLeast()) {
+				for (Entry<ISequence, Integer> sequenceAndCount : unassignedReadTwoTallies.getObjectsSortedFromMostTalliesToLeast()) {
 					int count = sequenceAndCount.getValue();
 					ISequence sequence = sequenceAndCount.getKey();
 					writer.writeLine(sequence, count);
 				}
 			}
+
+			String[] probeDetailsHeaderNames = new String[] { "probe_id", "total_uids", "average_number_of_read_pairs_per_uid" };
+			Iterator<Map<String, String>> parsedProbeDetails = DelimitedFileParserUtil.getHeaderNameToValueMapRowIteratorFromDelimitedFile(probeDetailsFile, probeDetailsHeaderNames, StringUtil.TAB);
+			while (parsedProbeDetails.hasNext()) {
+				Map<String, String> line = parsedProbeDetails.next();
+				String probeId = line.get(probeDetailsHeaderNames[0]);
+				int totalUids = Integer.valueOf(line.get(probeDetailsHeaderNames[1]));
+				double averageNumberOfReadPairsPerUid = Double.valueOf(line.get(probeDetailsHeaderNames[2]));
+				ProbeBreakdown probeBreakdown = probeIdToBreakdownMap.get(probeId);
+				probeBreakdown.setUniqueMappedOnTargetReadPairs(totalUids);
+				double totalReadPairs = totalUids * averageNumberOfReadPairsPerUid;
+				probeBreakdown.setDuplicateMappedOnTargetReadPairs((int) (totalReadPairs - totalUids));
+				probeIdToBreakdownMap.put(probeId, probeBreakdown);
+			}
+			String[] probeBreakdownHeader = new String[] { "probe_id", "unique_mapped_on_target_read_pairs", "duplicate_mapped_on_target_read_pairs", "mapped_on_target_read_pairs",
+					"unmapped_read_pairs", "total_read_pairs" };
+
+			try (TabDelimitedFileWriter writer = new TabDelimitedFileWriter(probeBreakdownFile, probeBreakdownHeader)) {
+				for (Entry<String, ProbeBreakdown> entry : probeIdToBreakdownMap.entrySet()) {
+					String probeId = entry.getKey();
+					ProbeBreakdown probeBreakdown = entry.getValue();
+					writer.writeLine(probeId, probeBreakdown.getUniqueMappedOnTargetReadPairs(), probeBreakdown.getDuplicateMappedOnTargetReadPairs(), probeBreakdown.getMappedOnTargetReadPairs(),
+							probeBreakdown.getUnmappedReadPairs(), probeBreakdown.getTotalReadPairs());
+				}
+			}
 		}
+
+		PieChart.generateVisualReport(DIRECTORY_NAME + " PAIRED READS SUMMARY", prefuppSummaryFile, probeBreakdownFile, outputPieChartsFile);
 
 		long stop = System.currentTimeMillis();
 		System.out.println("total time:" + (stop - start));
 
+	}
+
+	private static boolean matches(ISequence referenceSequence, ISequence querySequence) {
+		return match(referenceSequence.toString(), querySequence.toString(), 4);
+	}
+
+	private static boolean match(String referenceString, String queryString, int allowedMismatches) {
+		boolean match = false;
+
+		int startingReferenceIndex = 0;
+
+		while (!match && startingReferenceIndex + queryString.length() <= referenceString.length()) {
+			int queryIndex = 0;
+			int mismatches = 0;
+			boolean tooManyMisMatches = false;
+			while (queryIndex < queryString.length() && !tooManyMisMatches) {
+				if (queryString.charAt(queryIndex) != referenceString.charAt(startingReferenceIndex + queryIndex)) {
+					mismatches++;
+				}
+				queryIndex++;
+				tooManyMisMatches = (mismatches > allowedMismatches);
+			}
+			match = !tooManyMisMatches;
+			startingReferenceIndex++;
+		}
+		return match;
 	}
 }

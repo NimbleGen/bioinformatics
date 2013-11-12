@@ -124,7 +124,7 @@ public class NeedlemanWunschGlobalAlignment {
 	/**
 	 * @return the alignment score associated with this alignment
 	 */
-	public int getAlignmentScore() {
+	public double getAlignmentScore() {
 		getAlignmentPair();
 		return getStartingTracebackCell().getScore();
 	}
@@ -272,7 +272,7 @@ public class NeedlemanWunschGlobalAlignment {
 
 		TraceabilityMatrixCell sourceOfCellAbove = cellAbove.getSourceCell();
 		boolean isVerticalGapContinuation = ((sourceOfCellAbove != null) && (sourceOfCellAbove.getColumnIndex() == cellAbove.getColumnIndex()));
-		int verticalScore = cellAbove.getScore();
+		double verticalScore = cellAbove.getScore();
 
 		if (!isEndOfRow || getAlignmentScorer().shouldPenalizeTerminalGaps()) {
 			if (isVerticalGapContinuation) {
@@ -284,7 +284,7 @@ public class NeedlemanWunschGlobalAlignment {
 
 		TraceabilityMatrixCell sourceOfCellToLeft = cellToLeft.getSourceCell();
 		boolean isHorizontalGapContinuation = ((sourceOfCellToLeft != null) && (sourceOfCellToLeft.getRowIndex() == cellToLeft.getRowIndex()));
-		int horizontalScore = cellToLeft.getScore();
+		double horizontalScore = cellToLeft.getScore();
 
 		if (!isBottomOfColumn || getAlignmentScorer().shouldPenalizeTerminalGaps()) {
 			if (isHorizontalGapContinuation) {
@@ -294,10 +294,10 @@ public class NeedlemanWunschGlobalAlignment {
 			}
 		}
 
-		int matchOrMismatchScore = cellAboveLeft.getScore()
+		double matchOrMismatchScore = cellAboveLeft.getScore()
 				+ getAlignmentScorer().getMatchScore(getQuerySequence().getCodeAt(currentCell.getRowIndex() - 1), getReferenceSequence().getCodeAt(currentCell.getColumnIndex() - 1));
 
-		int maxScore = ArraysUtil.max(horizontalScore, verticalScore, matchOrMismatchScore);
+		double maxScore = ArraysUtil.max(horizontalScore, verticalScore, matchOrMismatchScore);
 
 		currentCell.setScore(maxScore);
 
@@ -335,8 +335,8 @@ public class NeedlemanWunschGlobalAlignment {
 		return initialPointer;
 	}
 
-	private int getInitialScore(int rowIndex, int columnIndex) {
-		int score = 0;
+	private double getInitialScore(int rowIndex, int columnIndex) {
+		double score = 0;
 
 		if ((rowIndex == 0) && (columnIndex != 0)) {
 			if (getAlignmentScorer().shouldPenalizeTerminalGaps()) {
@@ -389,5 +389,13 @@ public class NeedlemanWunschGlobalAlignment {
 			index = -1;
 		}
 		return index;
+	}
+
+	public static void main(String[] args) {
+		IAlignmentScorer scorer = new SimpleAlignmentScorer(10, 10, 5, 10, true);
+		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(new IupacNucleotideCodeSequence("ACCACCCTTAGGG"), new IupacNucleotideCodeSequence("CACCCC"), scorer);
+		System.out.println(alignment.getAlignmentAsString());
+		System.out.println(StringUtil.repeatString(" ", alignment.getIndexOfFirstMatchInReference()) + alignment.getCigarString().getCigarString(false, true));
+		System.out.println(alignment.getEditDistance());
 	}
 }

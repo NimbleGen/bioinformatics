@@ -9,26 +9,26 @@
 		<relativePath>../../superpom/pom.xml</relativePath>
 	</parent>
 
-	<artifactId>prefupp</artifactId>
+	<artifactId>kens_aligner</artifactId>
 	<packaging>pom</packaging>
-	<name>Heatseq Command Line</name>
-	<description>Command line tool for heatseq</description>
-	<version>v20</version>
-	
+	<name>Kens Aligner Command Line Tool</name>
+	<description>Command line tool for aligning fastq files to NimbleGen probe files</description>
+	<version>v2</version>
+
 	<modules>
 		<module>../../bioinformatics_common</module>
 		<module>../../nimblegen_heatseq</module>
 		<module>../../imageexporter</module>
-	</modules>	
-	
+	</modules>
+
 	<dependencies>
 		<dependency>
 			<groupId>com.roche.sequencing</groupId>
 			<artifactId>nimblegen_heatseq</artifactId>
-			<version>0.0.1-SNAPSHOT</version>			
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
-	
+
 	<build>
 		<finalName>${project.artifactId}_${project.version}</finalName>
 		<plugins>
@@ -50,7 +50,7 @@
 					<appendAssemblyId>false</appendAssemblyId>
 					<archive>
 						<manifestEntries>
-							<Main-Class>com/roche/heatseq/process/PrefuppCli</Main-Class>
+							<Main-Class>com/roche/sandbox/KensAligner</Main-Class>
 							<Implementation-Build>${maven.build.timestamp}</Implementation-Build>
 							<version>${project.version}</version>
 						</manifestEntries>
@@ -64,8 +64,8 @@
 						</goals>
 					</execution>
 				</executions>
-			</plugin>
+			</plugin>			
 		</plugins>
 	</build>
-	
+
 </project>

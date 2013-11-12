@@ -23,7 +23,7 @@ package com.roche.sequencing.bioinformatics.common.alignment;
  */
 class TraceabilityMatrixCell {
 	private TraceabilityMatrixCell sourceCell;
-	private int score;
+	private double score;
 	private final int row;
 	private final int col;
 
@@ -37,14 +37,14 @@ class TraceabilityMatrixCell {
 	 * 
 	 * @param score
 	 */
-	public void setScore(int score) {
+	public void setScore(double score) {
 		this.score = score;
 	}
 
 	/**
 	 * @return the score of this cell
 	 */
-	public int getScore() {
+	public double getScore() {
 		return score;
 	}
 

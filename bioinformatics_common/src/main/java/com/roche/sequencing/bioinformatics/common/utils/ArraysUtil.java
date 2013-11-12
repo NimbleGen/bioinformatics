@@ -30,6 +30,22 @@ public final class ArraysUtil {
 	 * @param values
 	 * @return the max of all provided values
 	 */
+	public static double max(double... values) {
+		double max = -Double.MAX_VALUE;
+
+		for (double value : values) {
+			if (value > max) {
+				max = value;
+			}
+		}
+
+		return max;
+	}
+
+	/**
+	 * @param values
+	 * @return the max of all provided values
+	 */
 	public static int max(int... values) {
 		int max = Integer.MIN_VALUE;
 

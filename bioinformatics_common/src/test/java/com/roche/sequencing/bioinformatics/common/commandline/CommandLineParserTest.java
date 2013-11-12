@@ -154,4 +154,12 @@ public class CommandLineParserTest {
 		group.addOption(new CommandLineOption("b", "ab", 'b', "a", false, true));
 	}
 
+	@Test(groups = { "integration" })
+	public void negativeArgumentValueTest() {
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
+		group.addOption(new CommandLineOption("a", "ab", 'a', "a", true, false));
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--ab", "-100" }, group);
+
+	}
+
 }

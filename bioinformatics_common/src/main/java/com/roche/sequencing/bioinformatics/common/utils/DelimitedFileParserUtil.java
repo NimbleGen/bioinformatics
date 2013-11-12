@@ -46,6 +46,23 @@ public final class DelimitedFileParserUtil {
 		throw new AssertionError();
 	}
 
+	public static Map<String, String> parseNameDelimiterValueNewLineFile(File nameDelimiterValueNewLineFile, String nameValueDelimiter) throws IOException {
+		Map<String, String> parsedNameValues = new HashMap<String, String>();
+
+		InputStream fileInputStream = new FileInputStream(nameDelimiterValueNewLineFile);
+		try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fileInputStream, Charset.forName("UTF-8")))) {
+			String currentRow = null;
+			while ((currentRow = bufferedReader.readLine()) != null) {
+				String[] rowValues = currentRow.split(nameValueDelimiter);
+				if (rowValues.length > 1) {
+					parsedNameValues.put(rowValues[0], rowValues[1]);
+				}
+			}
+		}
+
+		return parsedNameValues;
+	}
+
 	/**
 	 * Advances the buffered reader to the header line and returns the header line as a string
 	 * 

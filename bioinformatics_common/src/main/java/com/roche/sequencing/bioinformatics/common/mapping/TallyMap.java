@@ -99,7 +99,7 @@ public class TallyMap<O> {
 		return objectCount.keySet();
 	}
 
-	public List<Entry<O, Integer>> getObjectsSortedSortedFromMostTalliesToLeast() {
+	public List<Entry<O, Integer>> getObjectsSortedFromMostTalliesToLeast() {
 		List<Entry<O, Integer>> entries = new ArrayList<Entry<O, Integer>>(objectCount.entrySet());
 		Collections.sort(entries, new Comparator<Entry<O, Integer>>() {
 			@Override
@@ -108,5 +108,11 @@ public class TallyMap<O> {
 			}
 		});
 		return entries;
+	}
+
+	public void addAll(TallyMap<O> tallyMap) {
+		for (Entry<O, Integer> entry : tallyMap.objectCount.entrySet()) {
+			addMultiple(entry.getKey(), entry.getValue());
+		}
 	}
 }

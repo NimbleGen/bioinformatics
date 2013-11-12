@@ -25,18 +25,18 @@ public interface IAlignmentScorer {
 	 * @param codeTwo
 	 * @return the score associated with the relationship between codeOne and codeTwo
 	 */
-	int getMatchScore(ICode codeOne, ICode codeTwo);
+	double getMatchScore(ICode codeOne, ICode codeTwo);
 
 	/**
 	 * @return the score associated with the continuation of a gap
 	 */
-	int getGapScore();
+	double getGapScore();
 
 	/**
 	 * 
 	 * @return the score associated with the beginning of a gap
 	 */
-	int getGapStartScore();
+	double getGapStartScore();
 
 	/**
 	 * 
