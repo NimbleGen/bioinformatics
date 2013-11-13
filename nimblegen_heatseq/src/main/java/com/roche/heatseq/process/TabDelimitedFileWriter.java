@@ -50,6 +50,7 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 				printWriter.write(header);
 			}
 			printWriter.println();
+			printWriter.flush();
 		}
 		this.shouldValidateColumnCount = false;
 	}

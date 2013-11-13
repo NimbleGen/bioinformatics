@@ -1,4 +1,4 @@
-package com.roche.mapping.datasimulator.sandbox;
+package com.roche.sandbox;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -112,8 +112,8 @@ public class JonsAligner {
 		}
 
 		@Override
-		public int getMatchScore(ICode codeOne, ICode codeTwo) {
-			int score = 0;
+		public double getMatchScore(ICode codeOne, ICode codeTwo) {
+			double score = 0;
 			if (!(codeOne.equals(IupacNucleotideCode.N) || (codeTwo.equals(IupacNucleotideCode.N)))) {
 				score = super.getMatchScore(codeOne, codeTwo);
 			}

@@ -72,7 +72,7 @@ public class CommandLineParser {
 						// it is a non-flagged option argument
 						String nextArgument = "";
 
-						if ((nextArgumentIndex < arguments.length) && !isOptionIdentifierArgument(arguments[nextArgumentIndex])) {
+						if ((nextArgumentIndex < arguments.length)) {
 							nextArgument = arguments[nextArgumentIndex];
 							parsedCommandLine.setArgumentValue(argument, nextArgument);
 							nextArgumentIndex++;

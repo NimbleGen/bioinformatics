@@ -28,6 +28,7 @@ import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.jcabi.manifests.Manifests;
 import com.roche.heatseq.objects.ApplicationSettings;
 import com.roche.mapping.MapperFiltererAndExtender;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
@@ -43,7 +44,7 @@ public class PrefuppCli {
 	private final static Logger logger = LoggerFactory.getLogger(PrefuppCli.class);
 
 	public final static String APPLICATION_NAME = "prefupp";
-	private final static String APPLICATION_VERSION = "0.0.19";
+	private static String applicationVersionFromManifest = "unversioned";
 	public final static int DEFAULT_UID_LENGTH = 10;
 	private final static String BAM_EXTENSION = ".bam";
 
@@ -81,7 +82,10 @@ public class PrefuppCli {
 			null, "The reads have not been trimmed to an area within the capture target.", false, true);
 
 	public static void main(String[] args) {
-		outputToConsole("Primer Read Extension and Filtering of Unique PCR Probes");
+		if (Manifests.exists("version")) {
+			applicationVersionFromManifest = Manifests.read("version");
+		}
+		outputToConsole("Primer Read Extension and Filtering of Unique PCR Probes (version:" + applicationVersionFromManifest + ")");
 
 		try {
 			runCommandLineApp(args);
@@ -199,10 +203,10 @@ public class PrefuppCli {
 			boolean shouldOutputFastq = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_FASTQ_OPTION);
 
 			// Set up our alignment scorer
-			int matchScore = SimpleAlignmentScorer.DEFAULT_MATCH_SCORE;
-			int mismatchPenalty = SimpleAlignmentScorer.DEFAULT_MISMATCH_PENALTY;
-			int gapOpenPenalty = SimpleAlignmentScorer.DEFAULT_GAP_OPEN_PENALTY;
-			int gapExtendPenalty = SimpleAlignmentScorer.DEFAULT_GAP_EXTEND_PENALTY;
+			double matchScore = SimpleAlignmentScorer.DEFAULT_MATCH_SCORE;
+			double mismatchPenalty = SimpleAlignmentScorer.DEFAULT_MISMATCH_PENALTY;
+			double gapOpenPenalty = SimpleAlignmentScorer.DEFAULT_GAP_OPEN_PENALTY;
+			double gapExtendPenalty = SimpleAlignmentScorer.DEFAULT_GAP_EXTEND_PENALTY;
 
 			if (parsedCommandLine.isOptionPresent(MATCH_SCORE_OPTION)) {
 				try {
@@ -328,7 +332,7 @@ public class PrefuppCli {
 				}
 
 				MapperFiltererAndExtender mapFilterAndExtend = new MapperFiltererAndExtender(fastQ1WithUidsFile, fastQ2File, probeFile, outputBamFile, outputDirectory, outputFilePrefix,
-						shouldOutputQualityReports, numProcessors, uidLength, useLenientValidation, APPLICATION_NAME, APPLICATION_VERSION, commandLineSignature, alignmentScorer);
+						shouldOutputQualityReports, numProcessors, uidLength, useLenientValidation, APPLICATION_NAME, applicationVersionFromManifest, commandLineSignature, alignmentScorer);
 
 				mapFilterAndExtend.mapFilterAndExtend();
 
@@ -364,7 +368,7 @@ public class PrefuppCli {
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
 					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, APPLICATION_NAME,
-					APPLICATION_VERSION, numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, uidLength);
+					applicationVersionFromManifest, numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, uidLength);
 
 			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 

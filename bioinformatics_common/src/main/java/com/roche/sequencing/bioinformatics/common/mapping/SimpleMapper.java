@@ -136,12 +136,7 @@ public class SimpleMapper<O> {
 	 */
 	@SuppressWarnings("unchecked")
 	public Set<O> getBestCandidateReferences(ISequence querySequence) {
-		TallyMap<O> matchTallies = new TallyMap<O>();
-		int sliceSpacing = (int) Math.ceil(((double) comparisonSequenceSize / (double) maxQueryDepth));
-		for (int i = 0; i < querySequence.size() - comparisonSequenceSize; i += sliceSpacing) {
-			ISequence querySequenceSlice = querySequence.subSequence(i, i + comparisonSequenceSize);
-			matchTallies.addAll(sequenceSliceToReferenceAddressMap.get(querySequenceSlice));
-		}
+		TallyMap<O> matchTallies = getReferenceTallyMap(querySequence);
 		Set<O> bestCandidates = null;
 		if (matchTallies.getLargestCount() >= minHitThreshold) {
 			bestCandidates = matchTallies.getObjectsWithLargestCount();
@@ -149,7 +144,20 @@ public class SimpleMapper<O> {
 			bestCandidates = (Set<O>) Collections.EMPTY_SET;
 		}
 		return bestCandidates;
+	}
 
+	/**
+	 * @param querySequence
+	 * @return the tallyMap associated with hits for this query sequence
+	 */
+	public TallyMap<O> getReferenceTallyMap(ISequence querySequence) {
+		TallyMap<O> matchTallies = new TallyMap<O>();
+		int sliceSpacing = (int) Math.ceil(((double) comparisonSequenceSize / (double) maxQueryDepth));
+		for (int i = 0; i < querySequence.size() - comparisonSequenceSize; i += sliceSpacing) {
+			ISequence querySequenceSlice = querySequence.subSequence(i, i + comparisonSequenceSize);
+			matchTallies.addAll(sequenceSliceToReferenceAddressMap.get(querySequenceSlice));
+		}
+		return matchTallies;
 	}
 
 }

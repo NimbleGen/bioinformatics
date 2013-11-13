@@ -11,6 +11,10 @@
 		<level value="debug" />
 	</logger>
 	
+	 <logger name="com.jcabi">
+		<level value="OFF" />
+	</logger>
+	
 	<root>
 		<level value="error" />
 		<appender-ref ref="STDOUT" />
