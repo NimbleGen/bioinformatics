@@ -13,7 +13,7 @@
 	<packaging>pom</packaging>
 	<name>Kens Aligner Command Line Tool</name>
 	<description>Command line tool for aligning fastq files to NimbleGen probe files</description>
-	<version>v2</version>
+	<version>v3</version>
 
 	<modules>
 		<module>../../bioinformatics_common</module>

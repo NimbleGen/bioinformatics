@@ -38,7 +38,7 @@ public class FastqSequenceAnalyzer {
 	// private final static String READ_ONE_TERMINAL_PRIMER = "AGATCGGAAGAG";
 	// private final static String READ_TWO_TERMINAL_PRIMER = "ACACTACCGTCGG";
 
-	private static final String DIRECTORY_NAME = "ATM_140";
+	private static final String DIRECTORY_NAME = "rebalance";
 
 	/**
 	 * @param args

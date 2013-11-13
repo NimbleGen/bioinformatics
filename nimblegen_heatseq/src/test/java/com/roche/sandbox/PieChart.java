@@ -58,11 +58,11 @@ public class PieChart {
 		while (probeBreakdowns.hasNext()) {
 			Map<String, String> probeBreakdown = probeBreakdowns.next();
 			String probeId = probeBreakdown.get(probeBreakdownHeader[0]);
-			int uniqueMappedOnTargetReadPairs = Integer.valueOf(probeBreakdown.get(probeBreakdownHeader[1]));
-			int duplicateMappedOnTargetReadPairs = Integer.valueOf(probeBreakdown.get(probeBreakdownHeader[2]));
+			// int uniqueMappedOnTargetReadPairs = Integer.valueOf(probeBreakdown.get(probeBreakdownHeader[1]));
+			// int duplicateMappedOnTargetReadPairs = Integer.valueOf(probeBreakdown.get(probeBreakdownHeader[2]));
 			int mappedOnTargetReadPairs = Integer.valueOf(probeBreakdown.get(probeBreakdownHeader[3]));
 			int unmappedReadPairs = Integer.valueOf(probeBreakdown.get(probeBreakdownHeader[4]));
-			int totalReadPairs = Integer.valueOf(probeBreakdown.get(probeBreakdownHeader[5]));
+			// int totalReadPairs = Integer.valueOf(probeBreakdown.get(probeBreakdownHeader[5]));
 			unmappedData.put(probeId, unmappedReadPairs);
 			assignedData.put(probeId, unmappedReadPairs + mappedOnTargetReadPairs);
 			unmappedAssignedPairs += unmappedReadPairs;

@@ -16,6 +16,8 @@
 
 package com.roche.sequencing.bioinformatics.common.alignment;
 
+import java.text.DecimalFormat;
+
 import com.roche.sequencing.bioinformatics.common.sequence.ICode;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCode;
@@ -28,6 +30,8 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
  * 
  */
 public class NeedlemanWunschGlobalAlignment {
+
+	private final DecimalFormat numberFormatter = new DecimalFormat("0.00");
 
 	private final IAlignmentScorer alignmentScorer;
 
@@ -158,7 +162,7 @@ public class NeedlemanWunschGlobalAlignment {
 
 			for (int j = 0; j < currentRow.length; j++) {
 				TraceabilityMatrixCell cell = currentRow[j];
-				String scoreAsString = "" + cell.getScore();
+				String scoreAsString = numberFormatter.format(cell.getScore());
 
 				lengthOfLongestScore = Math.max(scoreAsString.length(), lengthOfLongestScore);
 			}
@@ -218,7 +222,7 @@ public class NeedlemanWunschGlobalAlignment {
 				TraceabilityMatrixCell cell = currentRow[j];
 
 				if (cell != null) {
-					String scoreAsString = "" + cell.getScore();
+					String scoreAsString = numberFormatter.format(cell.getScore());
 
 					stringBuilder.append(cell.getSourceIndicator() + " " + StringUtil.padLeft(scoreAsString, lengthOfLongestScore) + entryDelimiter);
 				}

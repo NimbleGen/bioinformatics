@@ -52,6 +52,8 @@ public class KensAligner {
 	private final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("fastQ File", "r1", null, "path to input fastq file", true, false);
 	private final static CommandLineOption PROBE_OPTION = new CommandLineOption("PROBE File", "probe", null, "The probe file", true, false);
 	private final static CommandLineOption OUTPUT_DIR_OPTION = new CommandLineOption("Output Directory", "outputDir", null, "location to store resultant files.", false, false);
+	private final static CommandLineOption OUTPUT_TRACEABILITY_MATRIX_OPTION = new CommandLineOption("Output Traceability Matrix", "trace", null,
+			"flag for outputting traceability matrix for the best alignments", false, true);
 	private final static CommandLineOption NUMBER_OF_TOP_PROBE_MATCHES_TO_ALIGN_OPTION = new CommandLineOption("Max Candidate Probes For Alignment", "maxCandidateProbes", null,
 			"The max Number of top candidate probes to align in order to find best alignment (default:" + DEFAULT_NUMBER_OF_TOP_MAPPED_PROBES_TO_ALIGN
 					+ ").  A smaller number relative to the number of total probes will run faster but may miss optimal alignments.", false, false);
@@ -151,7 +153,10 @@ public class KensAligner {
 				}
 			}
 
-			alignReadsToProbes(probeFile, fastQ1WithUidsFile, outputDirectory, alignmentScorer, minAlignmentScoreThreshold, maxNumberOfRecordsToRead, numberOfTopMatchedProbesToAlign);
+			boolean outputTraceabilityMatrix = parsedCommandLine.isOptionPresent(OUTPUT_TRACEABILITY_MATRIX_OPTION);
+
+			alignReadsToProbes(probeFile, fastQ1WithUidsFile, outputDirectory, alignmentScorer, minAlignmentScoreThreshold, maxNumberOfRecordsToRead, numberOfTopMatchedProbesToAlign,
+					outputTraceabilityMatrix);
 
 		}
 
@@ -163,7 +168,7 @@ public class KensAligner {
 		File fastqReadFile = new File("D:/ken/Des-RTR-250_S3_L001_R1_001.fastq");
 		File outputDirectory = new File("D:/ken/results/");
 		try {
-			alignReadsToProbes(probeInfoFile, fastqReadFile, outputDirectory, null, Integer.MIN_VALUE, Long.MAX_VALUE, DEFAULT_NUMBER_OF_TOP_MAPPED_PROBES_TO_ALIGN);
+			alignReadsToProbes(probeInfoFile, fastqReadFile, outputDirectory, null, Integer.MIN_VALUE, Long.MAX_VALUE, DEFAULT_NUMBER_OF_TOP_MAPPED_PROBES_TO_ALIGN, false);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -199,10 +204,6 @@ public class KensAligner {
 
 		public void setBestLigationAlignment(NeedlemanWunschGlobalAlignment bestLigationAlignment) {
 			this.bestLigationAlignment = bestLigationAlignment;
-		}
-
-		public double getBestExtensionLigationAlignmentScoreSum() {
-			return (this.bestExtensionAlignment.getAlignmentScore() + this.bestLigationAlignment.getAlignmentScore());
 		}
 
 		public Probe getBestProbe() {
@@ -264,7 +265,7 @@ public class KensAligner {
 	}
 
 	public static void alignReadsToProbes(File probeInfoFile, File fastqReadFile, File outputDirectory, IAlignmentScorer alignmentScorer, int minAlignmentScoreThreshold,
-			long maxNumberOfRecordsToRead, int numberOfTopMatchedProbesToAlign) throws IOException {
+			long maxNumberOfRecordsToRead, int numberOfTopMatchedProbesToAlign, boolean outputTraceabilityMatrix) throws IOException {
 
 		long start = System.currentTimeMillis();
 
@@ -278,6 +279,13 @@ public class KensAligner {
 		File alignmentFile = new File(outputDirectory, "read_alignments.txt");
 		FileUtil.createNewFile(alignmentFile);
 		BufferedWriter alignmentFileWriter = new BufferedWriter(new FileWriter(alignmentFile));
+
+		BufferedWriter traceabilityMatrixFileWriter = null;
+		if (outputTraceabilityMatrix) {
+			File traceabilityMatrixFile = new File(outputDirectory, "read_traceability_matrices.txt");
+			FileUtil.createNewFile(alignmentFile);
+			traceabilityMatrixFileWriter = new BufferedWriter(new FileWriter(traceabilityMatrixFile));
+		}
 
 		File unassignedReadsFastqFile = new File(outputDirectory, "unassigned_reads.fastq");
 		FileUtil.createNewFile(unassignedReadsFastqFile);
@@ -319,63 +327,82 @@ public class KensAligner {
 					BestProbeMatch reverseComplimentBestProbeMatch = getBestProbeMatch(reverseComplimentReadName, reverseComplimentReadSequence, extensionMapper, ligationMapper,
 							minAlignmentScoreThreshold, numberOfTopMatchedProbesToAlign, alignmentScorer);
 
-					if (reverseComplimentBestProbeMatch != null
-							&& reverseComplimentBestProbeMatch.getBestExtensionLigationAlignmentScoreSum() > bestProbeMatch.getBestExtensionLigationAlignmentScoreSum()) {
-						bestProbeMatch = reverseComplimentBestProbeMatch;
-					}
+					// if (reverseComplimentBestProbeMatch != null
+					// && reverseComplimentBestProbeMatch.getBestExtensionLigationAlignmentScoreSum() > bestProbeMatch.getBestExtensionLigationAlignmentScoreSum()) {
+					// bestProbeMatch = reverseComplimentBestProbeMatch;
+					// }
 
 					// print out reports
-					if (bestProbeMatch.bestProbeExists()) {
-						NeedlemanWunschGlobalAlignment bestExtensionAlignment = bestProbeMatch.getBestExtensionAlignment();
-						NeedlemanWunschGlobalAlignment bestLigationAlignment = bestProbeMatch.getBestLigationAlignment();
-						Probe bestProbe = bestProbeMatch.getBestProbe();
-						readName = bestProbeMatch.getReadName();
-						readSequence = bestProbeMatch.getReadSequence();
-
-						ISequence uid = readSequence.subSequence(0, bestExtensionAlignment.getIndexOfFirstMatchInReference() - 1);
-
-						String actualExtensionPrimer = bestExtensionAlignment.getAlignmentPair().getReferenceAlignmentWithoutEndingAndBeginningInserts().toString();
-						String expectedExtensionPrimer = bestProbe.getExtensionPrimerSequence().toString();
-						String actualLigationPrimer = bestLigationAlignment.getAlignmentPair().getReferenceAlignmentWithoutEndingAndBeginningInserts().toString();
-						String expectedLigationPrimer = bestProbe.getLigationPrimerSequence().toString();
-
-						alignmentFileWriter.write("_________________________________________" + StringUtil.NEWLINE);
-						alignmentFileWriter.write("Read Name:" + record.getReadHeader() + StringUtil.NEWLINE);
-						alignmentFileWriter.write("Probe:" + bestProbe.getProbeId() + StringUtil.NEWLINE);
-						alignmentFileWriter.write("Extension Edit Distance:" + bestExtensionAlignment.getEditDistance() + StringUtil.NEWLINE);
-						alignmentFileWriter.write("Extension Alignment:" + StringUtil.NEWLINE);
-						alignmentFileWriter.write(bestExtensionAlignment.getAlignmentPair().getReferenceAlignment().toString() + StringUtil.NEWLINE);
-						alignmentFileWriter.write(StringUtil.repeatString(" ", bestExtensionAlignment.getIndexOfFirstMatchInReference())
-								+ bestExtensionAlignment.getCigarString().getCigarString(false, true) + StringUtil.NEWLINE);
-						alignmentFileWriter.write(bestExtensionAlignment.getAlignmentPair().getQueryAlignment().toString() + StringUtil.NEWLINE);
-						alignmentFileWriter.write(StringUtil.NEWLINE);
-						alignmentFileWriter.write("Ligation Edit Distance:" + bestLigationAlignment.getEditDistance() + StringUtil.NEWLINE);
-						alignmentFileWriter.write("Ligation Alignment:" + StringUtil.NEWLINE);
-						alignmentFileWriter.write(bestLigationAlignment.getAlignmentPair().getReferenceAlignment().toString() + StringUtil.NEWLINE);
-						alignmentFileWriter.write(StringUtil.repeatString(" ", bestLigationAlignment.getIndexOfFirstMatchInReference())
-								+ bestLigationAlignment.getCigarString().getCigarString(false, true) + StringUtil.NEWLINE);
-						alignmentFileWriter.write(bestLigationAlignment.getAlignmentPair().getQueryAlignment().toString() + StringUtil.NEWLINE);
-						alignmentFileWriter.write("_________________________________________" + StringUtil.NEWLINE);
-
-						assignedReadsWriter.writeLine(readName, bestProbe.getProbeId(), bestExtensionAlignment.getAlignmentScore() + bestLigationAlignment.getAlignmentScore(), uid,
-								expectedExtensionPrimer, actualExtensionPrimer, bestExtensionAlignment.getCigarString().getCigarString(false, true), bestExtensionAlignment.getAlignmentScore(),
-								bestExtensionAlignment.getEditDistance(), expectedLigationPrimer, actualLigationPrimer, bestLigationAlignment.getCigarString().getCigarString(false, true),
-								bestLigationAlignment.getAlignmentScore(), bestLigationAlignment.getEditDistance());
-					} else {
-						// TODO If a threshold is added to edit distance this may output values
-						unassignedReadsFastqFileWriter.write(record);
-					}
+					outputResults(record, reverseComplimentBestProbeMatch, alignmentFileWriter, traceabilityMatrixFileWriter, assignedReadsWriter, unassignedReadsFastqFileWriter);
+					outputResults(record, bestProbeMatch, alignmentFileWriter, traceabilityMatrixFileWriter, assignedReadsWriter, unassignedReadsFastqFileWriter);
 				}
-
 			}
 		}
 
 		unassignedReadsFastqFileWriter.close();
 		alignmentFileWriter.close();
+		if (traceabilityMatrixFileWriter != null) {
+			traceabilityMatrixFileWriter.close();
+		}
 
 		long end = System.currentTimeMillis();
 		System.out.println(APPLICATION_NAME + " (version:" + applicationVersionFromManifest + ") completed running in " + DateUtil.convertMillisecondsToHHMMSS(end - start) + "(HH:MM:SS). "
 				+ currentReadIndex + " records processed.");
+	}
+
+	private static void outputResults(FastqRecord record, BestProbeMatch bestProbeMatch, BufferedWriter alignmentFileWriter, BufferedWriter traceabilityMatrixFileWriter,
+			TabDelimitedFileWriter assignedReadsWriter, FastqWriter unassignedReadsFastqFileWriter) throws IOException {
+		if (bestProbeMatch.bestProbeExists()) {
+			NeedlemanWunschGlobalAlignment bestExtensionAlignment = bestProbeMatch.getBestExtensionAlignment();
+			NeedlemanWunschGlobalAlignment bestLigationAlignment = bestProbeMatch.getBestLigationAlignment();
+			Probe bestProbe = bestProbeMatch.getBestProbe();
+			String readName = bestProbeMatch.getReadName();
+			ISequence readSequence = bestProbeMatch.getReadSequence();
+
+			ISequence uid = readSequence.subSequence(0, bestExtensionAlignment.getIndexOfFirstMatchInReference() - 1);
+
+			String actualExtensionPrimer = bestExtensionAlignment.getAlignmentPair().getReferenceAlignmentWithoutEndingAndBeginningInserts().toString();
+			String expectedExtensionPrimer = bestProbe.getExtensionPrimerSequence().toString();
+			String actualLigationPrimer = bestLigationAlignment.getAlignmentPair().getReferenceAlignmentWithoutEndingAndBeginningInserts().toString();
+			String expectedLigationPrimer = bestProbe.getLigationPrimerSequence().toString();
+
+			alignmentFileWriter.write("_________________________________________" + StringUtil.NEWLINE);
+			alignmentFileWriter.write("Read Name:" + readName + StringUtil.NEWLINE);
+			alignmentFileWriter.write("Probe:" + bestProbe.getProbeId() + StringUtil.NEWLINE);
+			alignmentFileWriter.write("Extension Edit Distance:" + bestExtensionAlignment.getEditDistance() + StringUtil.NEWLINE);
+			alignmentFileWriter.write("Extension Alignment:" + StringUtil.NEWLINE);
+			alignmentFileWriter.write(bestExtensionAlignment.getAlignmentPair().getReferenceAlignment().toString() + StringUtil.NEWLINE);
+			alignmentFileWriter.write(StringUtil.repeatString(" ", bestExtensionAlignment.getIndexOfFirstMatchInReference()) + bestExtensionAlignment.getCigarString().getCigarString(false, true)
+					+ StringUtil.NEWLINE);
+			alignmentFileWriter.write(bestExtensionAlignment.getAlignmentPair().getQueryAlignment().toString() + StringUtil.NEWLINE);
+			alignmentFileWriter.write(StringUtil.NEWLINE);
+			alignmentFileWriter.write("Ligation Edit Distance:" + bestLigationAlignment.getEditDistance() + StringUtil.NEWLINE);
+			alignmentFileWriter.write("Ligation Alignment:" + StringUtil.NEWLINE);
+			alignmentFileWriter.write(bestLigationAlignment.getAlignmentPair().getReferenceAlignment().toString() + StringUtil.NEWLINE);
+			alignmentFileWriter.write(StringUtil.repeatString(" ", bestLigationAlignment.getIndexOfFirstMatchInReference()) + bestLigationAlignment.getCigarString().getCigarString(false, true)
+					+ StringUtil.NEWLINE);
+			alignmentFileWriter.write(bestLigationAlignment.getAlignmentPair().getQueryAlignment().toString() + StringUtil.NEWLINE);
+			alignmentFileWriter.write("_________________________________________" + StringUtil.NEWLINE);
+
+			if (traceabilityMatrixFileWriter != null) {
+				traceabilityMatrixFileWriter.write("_________________________________________" + StringUtil.NEWLINE);
+				traceabilityMatrixFileWriter.write("Read Name:" + readName + StringUtil.NEWLINE);
+				traceabilityMatrixFileWriter.write("Probe:" + bestProbe.getProbeId() + StringUtil.NEWLINE);
+				traceabilityMatrixFileWriter.write("Extension Traceability Matrix:" + StringUtil.NEWLINE);
+				traceabilityMatrixFileWriter.write(bestExtensionAlignment.getTraceabilityMatrixAsString() + StringUtil.NEWLINE);
+				traceabilityMatrixFileWriter.write("Ligation Traceability Matrix:" + StringUtil.NEWLINE);
+				traceabilityMatrixFileWriter.write(bestLigationAlignment.getTraceabilityMatrixAsString() + StringUtil.NEWLINE);
+			}
+
+			assignedReadsWriter.writeLine(readName, bestProbe.getProbeId(), bestExtensionAlignment.getAlignmentScore() + bestLigationAlignment.getAlignmentScore(), uid, expectedExtensionPrimer,
+					actualExtensionPrimer, bestExtensionAlignment.getCigarString().getCigarString(false, true), bestExtensionAlignment.getAlignmentScore(), bestExtensionAlignment.getEditDistance(),
+					expectedLigationPrimer, actualLigationPrimer, bestLigationAlignment.getCigarString().getCigarString(false, true), bestLigationAlignment.getAlignmentScore(),
+					bestLigationAlignment.getEditDistance());
+		} else {
+			// TODO If a threshold is added to edit distance this may output values
+			unassignedReadsFastqFileWriter.write(record);
+		}
+
 	}
 
 	private static IAlignmentScorer getAlignmentScorer(ParsedCommandLine parsedCommandLine) {
@@ -422,6 +449,7 @@ public class KensAligner {
 		group.addOption(FASTQ_ONE_OPTION);
 		group.addOption(PROBE_OPTION);
 		group.addOption(OUTPUT_DIR_OPTION);
+		group.addOption(OUTPUT_TRACEABILITY_MATRIX_OPTION);
 		group.addOption(MIN_ALIGNMENT_SCORE_THRESHOLD_OPTION);
 		group.addOption(NUMBER_OF_TOP_PROBE_MATCHES_TO_ALIGN_OPTION);
 		group.addOption(MAX_NUMBER_OF_RECORDS_TO_READ_OPTION);
