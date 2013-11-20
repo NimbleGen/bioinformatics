@@ -38,11 +38,7 @@
 		<dependency>
 			<groupId>org.utgenome.thirdparty</groupId>
 			<artifactId>picard</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.jcabi</groupId>
-			<artifactId>jcabi-manifests</artifactId>
-		</dependency>
+		</dependency>		
 	</dependencies>
 
 	
