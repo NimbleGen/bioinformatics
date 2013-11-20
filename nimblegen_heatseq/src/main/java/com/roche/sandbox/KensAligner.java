@@ -14,7 +14,6 @@ import net.sf.picard.fastq.FastqWriterFactory;
 
 import org.apache.commons.io.FileUtils;
 
-import com.jcabi.manifests.Manifests;
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.heatseq.process.ProbeFileUtil;
@@ -34,6 +33,7 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCode;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.ManifestUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class KensAligner {
@@ -77,8 +77,9 @@ public class KensAligner {
 
 	private static void runApplicationViaCommandLine(String[] args) throws IOException {
 
-		if (Manifests.exists("version")) {
-			applicationVersionFromManifest = Manifests.read("version");
+		String version = ManifestUtil.getManifestValue("version");
+		if (version != null) {
+			applicationVersionFromManifest = version;
 		}
 
 		ParsedCommandLine parsedCommandLine = CommandLineParser.parseCommandLine(args, getCommandLineOptionsGroup());

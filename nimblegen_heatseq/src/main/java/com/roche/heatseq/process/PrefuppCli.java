@@ -28,7 +28,6 @@ import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.jcabi.manifests.Manifests;
 import com.roche.heatseq.objects.ApplicationSettings;
 import com.roche.mapping.MapperFiltererAndExtender;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
@@ -39,6 +38,7 @@ import com.roche.sequencing.bioinformatics.common.commandline.CommandLineParser;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.ManifestUtil;
 
 public class PrefuppCli {
 	private final static Logger logger = LoggerFactory.getLogger(PrefuppCli.class);
@@ -82,8 +82,9 @@ public class PrefuppCli {
 			null, "The reads have not been trimmed to an area within the capture target.", false, true);
 
 	public static void main(String[] args) {
-		if (Manifests.exists("version")) {
-			applicationVersionFromManifest = Manifests.read("version");
+		String version = ManifestUtil.getManifestValue("version");
+		if (version != null) {
+			applicationVersionFromManifest = version;
 		}
 		outputToConsole("Primer Read Extension and Filtering of Unique PCR Probes (version:" + applicationVersionFromManifest + ")");
 
