@@ -13,6 +13,7 @@ import java.util.Set;
 import net.sf.picard.fastq.FastqReader;
 import net.sf.picard.fastq.FastqRecord;
 
+import com.google.common.io.Files;
 import com.roche.heatseq.objects.IlluminaFastQHeader;
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ProbesBySequenceName;
@@ -29,6 +30,7 @@ import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.DelimitedFileParserUtil;
+import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class FastqSequenceAnalyzer {
@@ -70,9 +72,14 @@ public class FastqSequenceAnalyzer {
 		}
 
 		File resultsDirectory = new File(parsedCommandLine.getOptionsValue(RESULTS_PATH_OPTION));
-		if (!resultsDirectory.isDirectory()) {
-			throw new IllegalStateException("The provided results directory[" + inputDirectory.getAbsolutePath() + "] is not a directory.");
+		if (!resultsDirectory.exists()){
+			try {
+				FileUtil.createDirectory(resultsDirectory);
+			} catch (IOException e) {
+				System.out.println("Unable to create results directory["+resultsDirectory.getAbsolutePath()+"]."+e.getMessage());
+			}
 		}
+		
 
 		// try {
 		// tallyRepeatSequences(new File("D:/ATM_140/results/50pm_report_unable_to_map_one.fastq"), new File("D:/fastq1_unmapped_tallies.txt"));
@@ -144,7 +151,7 @@ public class FastqSequenceAnalyzer {
 
 		for (int i = 0; i < directories.size(); i++) {
 			String probeFileName = probeFiles.get(i);
-			File directoryFile = new File(directories.get(i));
+			File directoryFile = new File(projectOverviewFile.getParentFile(),directories.get(i));
 			File probeFile = new File(directoryFile, probeFileName);
 			File fastq1File = new File(directoryFile, fastq1Files.get(i));
 			File fastq2File = new File(directoryFile, fastq2Files.get(i));

@@ -133,6 +133,15 @@ public final class FileUtil {
 
 		return success;
 	}
+	
+	/**
+	 * Create a directory and any parent directories that do not exist.
+	 * @param newDirectory
+	 * @throws IOException 
+	 */
+	public static void createDirectory(File newDirectory) throws IOException{
+		FileUtils.forceMkdir(newDirectory);
+	}
 
 	public static int countNumberOfLinesInFile(File file) throws IOException {
 		int count = 0;

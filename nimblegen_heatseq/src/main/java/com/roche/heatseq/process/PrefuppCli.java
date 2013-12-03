@@ -24,7 +24,6 @@ import java.nio.file.Path;
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMFileReader.ValidationStringency;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,7 +115,7 @@ public class PrefuppCli {
 				outputDirectory = new File(outputDirectoryString);
 				if (!outputDirectory.exists()) {
 					try {
-						FileUtils.forceMkdir(outputDirectory);
+						FileUtil.createDirectory(outputDirectory);
 					} catch (IOException e) {
 						throw new IllegalStateException("Could not create provided output directory[" + outputDirectory.getAbsolutePath() + "].", e);
 					}
