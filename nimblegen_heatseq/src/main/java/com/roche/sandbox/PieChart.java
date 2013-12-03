@@ -51,7 +51,7 @@ public class PieChart {
 
 		Map<String, Integer> assignedData = new HashMap<String, Integer>();
 
-		String[] probeBreakdownHeader = new String[] { "probe_id", "unique_mapped_on_target_read_pairs", "duplicate_mapped_on_target_read_pairs", "mapped_on_target_read_pairs", "unmapped_read_pairs",
+		String[] probeBreakdownHeader = new String[] { "probe_id", "unique_on_target_read_pairs", "duplicate_on_target_read_pairs", "on_target_read_pairs", "not_on_target_read_pairs",
 				"total_read_pairs" };
 		Iterator<Map<String, String>> probeBreakdowns = DelimitedFileParserUtil.getHeaderNameToValueMapRowIteratorFromDelimitedFile(probeBreakdownFile, probeBreakdownHeader, StringUtil.TAB);
 		int unmappedAssignedPairs = 0;
@@ -78,24 +78,20 @@ public class PieChart {
 		unmappedData.put("Unassigned", unmappedUnassignedToProbe);
 
 		Map<String, Integer> allReadPairsData = new HashMap<String, Integer>();
-		allReadPairsData.put("Mapped Pairs On-Target", mappedOnTargetPairs);
-		allReadPairsData.put("Unmapped Pairs Assigned To Probe", unmappedAssignedPairs);
-		allReadPairsData.put("Unmapped Pairs Unassigned To Probe", unmappedUnassignedToProbe);
-		// allReadPairsData.put("Mapped On-Target Pairs", 375002);
-		// allReadPairsData.put("Mapped Off-Target Pairs", 22537);
-		// allReadPairsData.put("Unmapped Assigned To Probe", 21034);
-		// allReadPairsData.put("Unmapped UnAssigned To Probe", 299724);
+		allReadPairsData.put("On-Target Pairs", mappedOnTargetPairs);
+		allReadPairsData.put("Not On-Target Pairs Assigned To Probe", unmappedAssignedPairs);
+		allReadPairsData.put("Not On-Target Pairs Unassigned To Probe", unmappedUnassignedToProbe);
 
-		Graphics2DImageExporter imageExporter = new Graphics2DImageExporter(ImageType.PDF, 1300, 2000);
+		Graphics2DImageExporter imageExporter = new Graphics2DImageExporter(ImageType.PDF, 1300, 1000);
 		Graphics2D graphics = imageExporter.getGraphics2D();
 		graphics.setColor(Color.black);
 		graphics.setFont(graphics.getFont().deriveFont((float) 35));
 		graphics.drawString(title, 40, 50);
 
 		generatePieChart("All Read Pairs", graphics, new Rectangle(50, 75, 600, 600), allReadPairsData, true, false);
-		generatePieChart("Unmapped Read Pairs by Probe", graphics, new Rectangle(700, 75, 600, 600), unmappedData, true, true);
+		generatePieChart("Not On-Target Read Pairs by Probe", graphics, new Rectangle(700, 75, 600, 600), unmappedData, true, true);
 		// generatePieChart("Unmapped Read Pairs by Probe", graphics, new Rectangle(50, 725, 600, 1100), unmappedData, true);
-		generatePieChart("All Probe Related Read Pairs (Mapped and Unmapped)", graphics, new Rectangle(100, 725, 1100, 1100), assignedData, false, true);
+		// generatePieChart("Assigned All Probe Related Read Pairs (Mapped and Unmapped)", graphics, new Rectangle(100, 725, 1100, 1100), assignedData, false, true);
 
 		try {
 			imageExporter.exportImage(outputFile.getAbsolutePath());

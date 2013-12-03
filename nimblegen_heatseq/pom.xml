@@ -21,19 +21,15 @@
 		<dependency>
 			<groupId>com.roche.sequencing</groupId>
 			<artifactId>bioinformatics_common</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>com.roche.sequencing</groupId>
 			<artifactId>imageexporter</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
-			<scope>test</scope>						
 		</dependency>
 		<dependency>
 			<groupId>jfree</groupId>
 			<artifactId>jfreechart</artifactId>
-			<version>1.0.13</version>
-			<scope>test</scope>						
+			<version>1.0.13</version>									
 		</dependency>
 		<dependency>
 			<groupId>org.utgenome.thirdparty</groupId>

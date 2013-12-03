@@ -14,7 +14,7 @@
  *   limitations under the License.
  */
 
-package com.roche.mapping.datasimulator;
+package com.roche.sandbox;
 
 import java.awt.Color;
 import java.awt.FontMetrics;
