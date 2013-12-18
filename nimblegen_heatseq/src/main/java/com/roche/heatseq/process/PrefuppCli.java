@@ -64,7 +64,7 @@ public class PrefuppCli {
 			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.", false, false);
 	private final static CommandLineOption UID_LENGTH_OPTION = new CommandLineOption("Length of UID in Bases", "uidLength", null,
 			"Length of the Universal Identifier.  If not specified this will default to " + DEFAULT_UID_LENGTH + " bases.", false, false);
-	private final static CommandLineOption ALLOW_VARIABLE_LENGTH_UIDS_OPTION = new CommandLineOption("Allow Variable Length Uids", "allow_variable_length_uids", null, "Allow Variable Length Uids",
+	private final static CommandLineOption ALLOW_VARIABLE_LENGTH_UIDS_OPTION = new CommandLineOption("Allow Variable Length Uids", "allowVariableLengthUids", null, "Allow Variable Length Uids",
 			false, true);
 	private final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o', "Name for output bam file.", true, false);
 	private final static CommandLineOption MATCH_SCORE_OPTION = new CommandLineOption("Match Score", "matchScore", null,

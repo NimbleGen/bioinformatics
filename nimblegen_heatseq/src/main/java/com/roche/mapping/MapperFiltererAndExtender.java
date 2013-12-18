@@ -521,14 +521,12 @@ public class MapperFiltererAndExtender {
 
 							if (reportManager.isReporting()) {
 
-								String probeCaptureStart = "" + matchingProbe.getCaptureTargetStart();
-								String probeCaptureStop = "" + matchingProbe.getCaptureTargetStop();
-								String probeStrand = matchingProbe.getProbeStrand().toString();
-								String readSequence = queryOneSequence.toString();
+								String readSequenceOne = queryOneSequence.toString();
+								String readSequenceTwo = queryTwoSequence.toString();
 
 								String readName = recordOne.getReadHeader();
-								reportManger.getProbeUidQualityWriter().writeLine(matchingProbe.getProbeId(), matchingProbe.getSequenceName(), probeCaptureStart, probeCaptureStop, probeStrand,
-										uid.toUpperCase(), sequenceOneQualityScore, sequenceTwoQualityScore, qualityScore, readName, readSequence);
+								reportManger.getProbeUidQualityWriter().writeLine(matchingProbe.getProbeId(), uid.toUpperCase(), sequenceOneQualityScore, sequenceTwoQualityScore, qualityScore,
+										readName, readSequenceOne, readSequenceTwo);
 							}
 
 						} else {
