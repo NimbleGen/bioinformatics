@@ -260,6 +260,9 @@ public class FilterByUid {
 				String totalQualityScore = "";
 				String readName = "";
 
+				String sequenceOne = "";
+				String sequenceTwo = "";
+
 				if (currentPair != null) {
 					probeId = probe.getProbeId();
 
@@ -269,9 +272,11 @@ public class FilterByUid {
 					sequenceQualityScore = "" + currentPair.getSequenceOneQualityScore();
 					sequenceTwoQualityScore = "" + currentPair.getSequenceTwoQualityScore();
 					totalQualityScore = "" + currentPair.getTotalSequenceQualityScore();
+					sequenceOne = currentPair.getSequenceOne();
+					sequenceTwo = currentPair.getSequenceTwo();
 
 				}
-				reportManager.getProbeUidQualityWriter().writeLine(probeId, uid.toUpperCase(), sequenceQualityScore, sequenceTwoQualityScore, totalQualityScore, readName);
+				reportManager.getProbeUidQualityWriter().writeLine(probeId, uid.toUpperCase(), sequenceQualityScore, sequenceTwoQualityScore, totalQualityScore, readName, sequenceOne, sequenceTwo);
 			}
 		}
 	}

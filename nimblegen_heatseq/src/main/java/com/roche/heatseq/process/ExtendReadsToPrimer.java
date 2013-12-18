@@ -118,7 +118,7 @@ public final class ExtendReadsToPrimer {
 
 				SAMRecord readOneExtendedRecord = extendRecord(samHeader, readName, readGroup, readOneIsOnReverseStrand, readOneExtensionDetails.getAlignmentCigarString(),
 						readOneExtensionDetails.getMismatchDetailsString(), readOneExtensionDetails.getAlignmentStartInReference(), readOneExtendedSequence.toString(), readOneExtendedBaseQualities,
-						sequenceName, oneMappingQuality, probe.getCaptureTargetSequence().size(), uid, probe.getProbeId());
+						sequenceName, oneMappingQuality, readOneReferenceLength, uid, probe.getProbeId());
 
 				ReadExtensionDetails readTwoExtensionDetails = calculateDetailsForReadExtensionToPrimer(ligationPrimer, primerReferencePositionAdjacentToSequence, captureTargetSequence, sequenceTwo,
 						true, readTwoIsOnReverseStrand, alignmentScorer);

@@ -175,7 +175,7 @@ public class KensAligner {
 		}
 	}
 
-	private static class BestProbeMatch {
+	public static class BestProbeMatch {
 		private NeedlemanWunschGlobalAlignment bestExtensionAlignment;
 		private NeedlemanWunschGlobalAlignment bestLigationAlignment;
 		private Probe bestProbe;
@@ -228,7 +228,7 @@ public class KensAligner {
 		}
 	}
 
-	private static BestProbeMatch getBestProbeMatch(String readName, ISequence readSequence, SimpleMapper<Probe> extensionMapper, SimpleMapper<Probe> ligationMapper, int minAlignmentScoreThreshold,
+	public static BestProbeMatch getBestProbeMatch(String readName, ISequence readSequence, SimpleMapper<Probe> extensionMapper, SimpleMapper<Probe> ligationMapper, int minAlignmentScoreThreshold,
 			int numberOfTopMatchedProbesToAlign, IAlignmentScorer alignmentScorer) {
 
 		BestProbeMatch bestProbeMatch = new BestProbeMatch(readName, readSequence);

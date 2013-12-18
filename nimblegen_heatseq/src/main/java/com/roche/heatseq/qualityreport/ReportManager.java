@@ -67,7 +67,7 @@ public class ReportManager {
 			try {
 				FileUtil.createNewFile(probeUidQualityFile);
 				probeUidQualityWriter = new TabDelimitedFileWriter(probeUidQualityFile, new String[] { "probe_id", "uid", "read_one_quality", "read_two_quality", "total_quality", "read_name",
-						"read_sequence" });
+						"read_sequence", "sequence_one", "sequence_two" });
 			} catch (IOException e) {
 				throw new IllegalStateException(e);
 			}

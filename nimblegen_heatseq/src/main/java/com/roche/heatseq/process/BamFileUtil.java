@@ -174,7 +174,7 @@ public class BamFileUtil {
 	 * @return
 	 */
 	public static SAMFileHeader getHeader(ProbesBySequenceName probeInfo, String commandLineSignature, String programName, String programVersion) {
-		return getHeader(true, null, probeInfo, commandLineSignature, programName, programVersion);
+		return getHeader(false, null, probeInfo, commandLineSignature, programName, programVersion);
 	}
 
 	/**
