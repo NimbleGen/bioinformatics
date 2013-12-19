@@ -184,7 +184,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 			// Make an unsorted BAM file writer with the fastest level of compression
 			samWriter = new SAMFileWriterFactory().makeBAMWriter(
-					BamFileUtil.getHeader(true, samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(),
+					BamFileUtil.getHeader(false, samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(),
 							applicationSettings.getProgramVersion()), false, outputUnsortedBamFile, 0);
 
 			FastqWriter fastqOneWriter = null;
