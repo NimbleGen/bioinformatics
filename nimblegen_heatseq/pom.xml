@@ -23,15 +23,6 @@
 			<artifactId>bioinformatics_common</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>com.roche.sequencing</groupId>
-			<artifactId>imageexporter</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>jfree</groupId>
-			<artifactId>jfreechart</artifactId>
-			<version>1.0.13</version>									
-		</dependency>
-		<dependency>
 			<groupId>org.utgenome.thirdparty</groupId>
 			<artifactId>picard</artifactId>
 		</dependency>		
