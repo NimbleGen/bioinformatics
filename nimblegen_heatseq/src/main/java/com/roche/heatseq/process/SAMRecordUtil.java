@@ -14,7 +14,7 @@
  *   limitations under the License.
  */
 
-package com.roche.mapping;
+package com.roche.heatseq.process;
 
 import java.io.File;
 import java.util.List;
@@ -202,12 +202,7 @@ public class SAMRecordUtil {
 		samRecord.setMateUnmappedFlag(mate.getReadUnmappedFlag());
 	}
 
-	static SAMFileHeader createSAMFileHeader() {
-		SAMFileHeader header = new SAMFileHeader();
-		return header;
-	}
-
-	static void createBamFile(SAMFileHeader header, File outputFile, List<SAMRecordPair> records) {
+	public static void createBamFile(SAMFileHeader header, File outputFile, List<SAMRecordPair> records) {
 		// Make an output BAM file sorted by coordinates and as compressed as possible
 		header.setSortOrder(SortOrder.coordinate);
 		SAMFileWriter samWriter = new SAMFileWriterFactory().makeBAMWriter(header, false, outputFile, 9);

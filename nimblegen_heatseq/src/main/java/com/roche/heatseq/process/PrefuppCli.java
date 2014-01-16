@@ -28,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.ApplicationSettings;
-import com.roche.mapping.MapperFiltererAndExtender;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.SimpleAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
@@ -44,13 +43,13 @@ public class PrefuppCli {
 
 	public final static String APPLICATION_NAME = "prefupp";
 	private static String applicationVersionFromManifest = "unversioned";
-	public final static int DEFAULT_UID_LENGTH = 10;
+	private final static int DEFAULT_UID_LENGTH = 10;
 	private final static String BAM_EXTENSION = ".bam";
 
 	private final static CommandLineOption USAGE_OPTION = new CommandLineOption("Print Usage", "usage", 'h', "Print Usage.", false, true);
 	private final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("fastQ One File", "r1", null, "path to first input fastq file", true, false);
 	private final static CommandLineOption FASTQ_TWO_OPTION = new CommandLineOption("fastQ Two File", "r2", null, "path to second second input fastq file", true, false);
-	private final static CommandLineOption INPUT_BAM_OPTION = new CommandLineOption("Input BAM File Path", "inputBam", null, "path to input BAM file containing the aligned reads", false, false);
+	private final static CommandLineOption INPUT_BAM_OPTION = new CommandLineOption("Input BAM File Path", "inputBam", null, "path to input BAM file containing the aligned reads", true, false);
 	private final static CommandLineOption PROBE_OPTION = new CommandLineOption("PROBE File", "probe", null, "The probe file", true, false);
 	private final static CommandLineOption OUTPUT_DIR_OPTION = new CommandLineOption("Output Directory", "outputDir", null, "location to store resultant files.", false, false);
 	private final static CommandLineOption OUTPUT_FILE_PREFIX_OPTION = new CommandLineOption("Output File Prefix", "outputPrefix", null, "text to put at beginning of output file names", false, false);
@@ -258,89 +257,73 @@ public class PrefuppCli {
 
 			IAlignmentScorer alignmentScorer = new SimpleAlignmentScorer(matchScore, mismatchPenalty, gapExtendPenalty, gapOpenPenalty, false);
 
-			if (parsedCommandLine.isOptionPresent(INPUT_BAM_OPTION)) {
-				try {
-					String bamFileString = parsedCommandLine.getOptionsValue(INPUT_BAM_OPTION);
-					File bamFile = new File(bamFileString);
+			try {
+				String bamFileString = parsedCommandLine.getOptionsValue(INPUT_BAM_OPTION);
+				File bamFile = new File(bamFileString);
 
-					if (!bamFile.exists()) {
-						throw new IllegalStateException("Unable to find provided BAM file[" + bamFile.getAbsolutePath() + "].");
-					}
+				if (!bamFile.exists()) {
+					throw new IllegalStateException("Unable to find provided BAM file[" + bamFile.getAbsolutePath() + "].");
+				}
 
-					Path tempOutputDirectoryPath = Files.createTempDirectory(tmpDirectory.toPath(), "nimblegen_");
-					final File tempOutputDirectory = tempOutputDirectoryPath.toFile();
-					// Delete our temporary directory when we shut down the JVM if the user hasn't asked us to keep it
-					if (!saveTmpFiles) {
-						Runtime.getRuntime().addShutdownHook(new Thread() {
-							@Override
-							public void run() {
-								try {
-									FileUtil.deleteDirectory(tempOutputDirectory);
-								} catch (IOException e) {
-									outputToConsole("Couldn't delete temp directory [" + tempOutputDirectory.getAbsolutePath() + "]:" + e.getMessage());
-								}
+				Path tempOutputDirectoryPath = Files.createTempDirectory(tmpDirectory.toPath(), "nimblegen_");
+				final File tempOutputDirectory = tempOutputDirectoryPath.toFile();
+				// Delete our temporary directory when we shut down the JVM if the user hasn't asked us to keep it
+				if (!saveTmpFiles) {
+					Runtime.getRuntime().addShutdownHook(new Thread() {
+						@Override
+						public void run() {
+							try {
+								FileUtil.deleteDirectory(tempOutputDirectory);
+							} catch (IOException e) {
+								outputToConsole("Couldn't delete temp directory [" + tempOutputDirectory.getAbsolutePath() + "]:" + e.getMessage());
 							}
-						});
-					}
+						}
+					});
+				}
 
-					// Try to locate or create an index file for the input bam file
-					File bamIndexFile = null;
+				// Try to locate or create an index file for the input bam file
+				File bamIndexFile = null;
 
-					// Look for the index in the same location as the file but with a .bai extension instead of a .bam extension
-					File tempBamIndexfile = new File(FileUtil.getFileNameWithoutExtension(bamFileString) + ".bai");
+				// Look for the index in the same location as the file but with a .bai extension instead of a .bam extension
+				File tempBamIndexfile = new File(FileUtil.getFileNameWithoutExtension(bamFileString) + ".bai");
+				if (tempBamIndexfile.exists()) {
+					bamIndexFile = tempBamIndexfile;
+					outputToConsole("Using the BAM Index File located at [" + bamIndexFile + "].");
+				}
+
+				// Try looking for a .bai file in the same location as the bam file
+				if (bamIndexFile == null) {
+					// Try looking for a .bam.bai file in the same location as the bam file
+					tempBamIndexfile = new File(bamFileString + ".bai");
 					if (tempBamIndexfile.exists()) {
 						bamIndexFile = tempBamIndexfile;
 						outputToConsole("Using the BAM Index File located at [" + bamIndexFile + "].");
 					}
-
-					// Try looking for a .bai file in the same location as the bam file
-					if (bamIndexFile == null) {
-						// Try looking for a .bam.bai file in the same location as the bam file
-						tempBamIndexfile = new File(bamFileString + ".bai");
-						if (tempBamIndexfile.exists()) {
-							bamIndexFile = tempBamIndexfile;
-							outputToConsole("Using the BAM Index File located at [" + bamIndexFile + "].");
-						}
-					}
-
-					// We couldn't find an index file, create one in our temp directory
-					if ((bamIndexFile == null) || !bamIndexFile.exists()) {
-						// a bam index file was not provided so create one in the default location
-						bamIndexFile = File.createTempFile("bam_index_", ".bai", tempOutputDirectory);
-						outputToConsole("A BAM Index File was not found in the default location so creating bam index file at:" + bamIndexFile);
-						try {
-							SAMFileReader samReader = new SAMFileReader(bamFile);
-							BamFileUtil.createIndex(samReader, bamIndexFile);
-						} catch (Exception e) {
-							throw new IllegalStateException("Could not find or create bam index file at [" + bamIndexFile.getAbsolutePath() + "].", e);
-						}
-					}
-
-					sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tempOutputDirectory,
-							shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget);
-
-				} catch (Exception e) {
-					throw new IllegalStateException(e.getMessage(), e);
-				}
-			} else {
-				outputToConsole("A bam file was not provided so a mapping will be performed.");
-				File outputBamFile = new File(outputDirectory, outputBamFileName);
-				try {
-					FileUtil.createNewFile(outputBamFile);
-				} catch (IOException e) {
-					throw new IllegalStateException(e);
 				}
 
-				MapperFiltererAndExtender mapFilterAndExtend = new MapperFiltererAndExtender(fastQ1WithUidsFile, fastQ2File, probeFile, outputBamFile, outputDirectory, outputFilePrefix,
-						shouldOutputQualityReports, numProcessors, uidLength, useLenientValidation, APPLICATION_NAME, applicationVersionFromManifest, commandLineSignature, alignmentScorer);
+				// We couldn't find an index file, create one in our temp directory
+				if ((bamIndexFile == null) || !bamIndexFile.exists()) {
+					// a bam index file was not provided so create one in the default location
+					bamIndexFile = File.createTempFile("bam_index_", ".bai", tempOutputDirectory);
+					outputToConsole("A BAM Index File was not found in the default location so creating bam index file at:" + bamIndexFile);
+					try {
+						SAMFileReader samReader = new SAMFileReader(bamFile);
+						BamFileUtil.createIndex(samReader, bamIndexFile);
+					} catch (Exception e) {
+						throw new IllegalStateException("Could not find or create bam index file at [" + bamIndexFile.getAbsolutePath() + "].", e);
+					}
+				}
 
-				mapFilterAndExtend.mapFilterAndExtend();
+				sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tempOutputDirectory,
+						shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget);
 
+			} catch (Exception e) {
+				throw new IllegalStateException(e.getMessage(), e);
 			}
+
 			long end = System.currentTimeMillis();
 			outputToConsole("Processing Completed (Total time: " + DateUtil.convertMillisecondsToHHMMSS(end - start) + ").");
 		}
-
 	}
 
 	private static void sortMergeFilterAndExtendReads(File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName,
