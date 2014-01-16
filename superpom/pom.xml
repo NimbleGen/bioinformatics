@@ -34,7 +34,12 @@
 			</dependency>
 			<dependency>
 				<groupId>com.roche.sequencing</groupId>
-				<artifactId>imageexporter</artifactId>
+				<artifactId>nimblegen_heatseq</artifactId>
+				<version>0.0.1-SNAPSHOT</version>
+			</dependency>
+			<dependency>
+				<groupId>com.roche.sequencing</groupId>
+				<artifactId>nimblegen_image_exporter</artifactId>
 				<version>0.0.1-SNAPSHOT</version>
 			</dependency>
 			<dependency>
