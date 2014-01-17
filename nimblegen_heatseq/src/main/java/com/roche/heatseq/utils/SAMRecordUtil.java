@@ -14,7 +14,7 @@
  *   limitations under the License.
  */
 
-package com.roche.heatseq.process;
+package com.roche.heatseq.utils;
 
 import java.io.File;
 import java.util.List;
@@ -45,8 +45,8 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
  */
 public class SAMRecordUtil {
 
-	public static final String UID_SAMRECORD_ATTRIBUTE_TAG = "UI";
-	public static final String PROBE_ID_SAMRECORD_ATTRIBUTE_TAG = "PI";
+	private static final String UID_SAMRECORD_ATTRIBUTE_TAG = "UI";
+	private static final String PROBE_ID_SAMRECORD_ATTRIBUTE_TAG = "PI";
 	public static final String MISMATCH_DETAILS_ATTRIBUTE_TAG = "MD";
 	public static final String READ_GROUP_ATTRIBUTE_TAG = "RG";
 	public static final String EDIT_DISTANCE_ATTRIBUTE_TAG = "NM";
@@ -231,7 +231,7 @@ public class SAMRecordUtil {
 		private final int totalUnmappedReads;
 		private final int totalMappedReads;
 
-		public SamReadCount(int totalUnmappedReads, int totalMappedReads) {
+		private SamReadCount(int totalUnmappedReads, int totalMappedReads) {
 			super();
 			this.totalUnmappedReads = totalUnmappedReads;
 			this.totalMappedReads = totalMappedReads;

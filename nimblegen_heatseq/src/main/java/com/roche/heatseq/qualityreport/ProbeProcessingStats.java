@@ -103,7 +103,7 @@ public class ProbeProcessingStats {
 		return probe;
 	}
 
-	public String toReportString() {
+	String toReportString() {
 		DecimalFormat formatter = new DecimalFormat("0.00");
 		StringBuilder stringBuilder = new StringBuilder();
 		stringBuilder.append(probe.getProbeId() + StringUtil.TAB);

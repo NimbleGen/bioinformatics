@@ -36,9 +36,10 @@ import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ReadPair;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
-import com.roche.heatseq.qualityreport.NucleotideCompositionUtil;
 import com.roche.heatseq.qualityreport.ProbeProcessingStats;
 import com.roche.heatseq.qualityreport.ReportManager;
+import com.roche.heatseq.utils.NucleotideCompositionUtil;
+import com.roche.heatseq.utils.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
@@ -47,7 +48,7 @@ import com.roche.sequencing.bioinformatics.common.utils.StatisticsUtil;
 /**
  * Filter a set of reads to find the best read per UID
  */
-public class FilterByUid {
+class FilterByUid {
 	@SuppressWarnings("unused")
 	private final static Logger logger = LoggerFactory.getLogger(FilterByUid.class);
 
@@ -249,7 +250,7 @@ public class FilterByUid {
 	 * @param data
 	 * @param probeUidQualityWriter
 	 */
-	public static void printProbeUidQualities(Probe probe, List<IReadPair> data, ReportManager reportManager) {
+	private static void printProbeUidQualities(Probe probe, List<IReadPair> data, ReportManager reportManager) {
 		if (reportManager.isReporting()) {
 			for (IReadPair currentPair : data) {
 				String probeId = "";

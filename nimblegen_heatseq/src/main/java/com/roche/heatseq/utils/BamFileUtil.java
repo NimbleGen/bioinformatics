@@ -14,7 +14,7 @@
  *   limitations under the License.
  */
 
-package com.roche.heatseq.process;
+package com.roche.heatseq.utils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -62,7 +62,7 @@ public class BamFileUtil {
 		return sumOfQualityScores;
 	}
 
-	static void createIndexOnCoordinateSortedBamFile(SAMFileReader samReader, File outputIndexFile) {
+	public static void createIndexOnCoordinateSortedBamFile(SAMFileReader samReader, File outputIndexFile) {
 		createIndex(samReader, outputIndexFile);
 	}
 
@@ -121,7 +121,7 @@ public class BamFileUtil {
 	 * @param output
 	 * @return output
 	 */
-	static File sortOnCoordinates(File input, File output) {
+	public static File sortOnCoordinates(File input, File output) {
 		return picardSortAndCompress(input, output, SortOrder.coordinate);
 	}
 
@@ -159,7 +159,7 @@ public class BamFileUtil {
 	 * @param inputBamFile
 	 * @param outputErrorFile
 	 */
-	public static void validateSamFile(File inputBamFile, File outputErrorFile) {
+	private static void validateSamFile(File inputBamFile, File outputErrorFile) {
 		ValidateSamFile.main(new String[] { "INPUT=" + inputBamFile.getAbsolutePath(), "OUTPUT=" + outputErrorFile.getAbsolutePath() });
 	}
 

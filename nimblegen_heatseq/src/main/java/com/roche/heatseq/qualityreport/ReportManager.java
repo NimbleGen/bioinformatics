@@ -12,7 +12,8 @@ import net.sf.samtools.SAMFileWriter;
 import net.sf.samtools.SAMFileWriterFactory;
 
 import com.roche.heatseq.process.PrefuppCli;
-import com.roche.heatseq.process.TabDelimitedFileWriter;
+import com.roche.heatseq.utils.NucleotideCompositionUtil;
+import com.roche.heatseq.utils.TabDelimitedFileWriter;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
@@ -23,15 +24,15 @@ public class ReportManager {
 
 	public final static String DETAILS_REPORT_NAME = "probe_details.txt";
 	public final static String SUMMARY_REPORT_NAME = PrefuppCli.APPLICATION_NAME + "_summary.txt";
-	public final static String PROBE_UID_QUALITY_REPORT_NAME = "probe_uid_quality.txt";
-	public final static String UNABLE_TO_ALIGN_PRIMER_REPORT_NAME = "unable_to_align_primer_for_variable_length_uid.txt";
+	private final static String PROBE_UID_QUALITY_REPORT_NAME = "probe_uid_quality.txt";
+	private final static String UNABLE_TO_ALIGN_PRIMER_REPORT_NAME = "unable_to_align_primer_for_variable_length_uid.txt";
 	public final static String UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME = "unable_to_map_one.fastq";
 	public final static String UNABLE_TO_MAP_FASTQ_TWO_REPORT_NAME = "unable_to_map_two.fastq";
-	public final static String PRIMER_ALIGNMENT_REPORT_NAME = "extension_primer_alignment.txt";
-	public final static String UNIQUE_PROBE_TALLIES_REPORT_NAME = "unique_probe_tallies.txt";
-	public final static String PROBE_COVERAGE_REPORT_NAME = "probe_coverage.bed";
-	public final static String MAPPED_OFF_TARGET_READS_REPORT_NAME = "mapped_off_target_reads.bam";
-	public final static String UNMAPPED_READS_REPORT_NAME = "unmapped_read_pairs.bam";
+	private final static String PRIMER_ALIGNMENT_REPORT_NAME = "extension_primer_alignment.txt";
+	private final static String UNIQUE_PROBE_TALLIES_REPORT_NAME = "unique_probe_tallies.txt";
+	private final static String PROBE_COVERAGE_REPORT_NAME = "probe_coverage.bed";
+	private final static String MAPPED_OFF_TARGET_READS_REPORT_NAME = "mapped_off_target_reads.bam";
+	private final static String UNMAPPED_READS_REPORT_NAME = "unmapped_read_pairs.bam";
 
 	private TabDelimitedFileWriter ambiguousMappingWriter;
 	private TabDelimitedFileWriter probeUidQualityWriter;

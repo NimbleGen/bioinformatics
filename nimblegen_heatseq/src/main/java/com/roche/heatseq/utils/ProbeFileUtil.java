@@ -14,7 +14,7 @@
  *   limitations under the License.
  */
 
-package com.roche.heatseq.process;
+package com.roche.heatseq.utils;
 
 import java.io.BufferedWriter;
 import java.io.File;

@@ -22,7 +22,7 @@ public class DetailsReport {
 	private int totalProbes;
 	private double sumOfAverageNumberOfReadPairsPerProbeUid;
 
-	public DetailsReport(File detailsReportFile) throws IOException {
+	DetailsReport(File detailsReportFile) throws IOException {
 		duplicateReadPairsRemoved = 0;
 		probesWithNoMappedReadPairs = 0;
 		totalReadPairsAfterReduction = 0;
@@ -100,7 +100,7 @@ public class DetailsReport {
 		return averageNumberOfUids;
 	}
 
-	public void close() {
+	void close() {
 		detailsReportWriter.close();
 	}
 
