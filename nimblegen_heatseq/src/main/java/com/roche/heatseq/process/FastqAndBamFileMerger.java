@@ -33,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.IlluminaFastQHeader;
-import com.roche.mapping.SAMRecordUtil;
 
 /**
  * Merges alignment information from a BAM file with read string, quality string, and UID from two input fastQ files, joining on the read name. Stores the result in a 'merged' BAM file.

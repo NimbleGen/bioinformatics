@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
 import com.roche.heatseq.objects.IReadPair;
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ReadPair;
-import com.roche.mapping.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarString;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;

@@ -21,7 +21,7 @@ import net.sf.samtools.SAMRecord;
 
 import com.roche.heatseq.process.BamFileUtil;
 import com.roche.heatseq.process.FastqAndBamFileMerger;
-import com.roche.mapping.SAMRecordUtil;
+import com.roche.heatseq.process.SAMRecordUtil;
 
 /**
  * 
@@ -104,26 +104,6 @@ public class ReadPair implements IReadPair {
 	@Override
 	public SAMFileHeader getSamHeader() {
 		return record.getHeader();
-	}
-
-	@Override
-	public int getRecordAlignmentStart() {
-		return record.getAlignmentStart();
-	}
-
-	@Override
-	public int getRecordAlignmentEnd() {
-		return record.getAlignmentEnd();
-	}
-
-	@Override
-	public int getMateAlignmentStart() {
-		return mate.getAlignmentStart();
-	}
-
-	@Override
-	public int getMateAlignmentEnd() {
-		return mate.getAlignmentEnd();
 	}
 
 	@Override

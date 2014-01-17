@@ -51,14 +51,6 @@ public interface IReadPair {
 
 	SAMFileHeader getSamHeader();
 
-	int getRecordAlignmentStart();
-
-	int getRecordAlignmentEnd();
-
-	int getMateAlignmentStart();
-
-	int getMateAlignmentEnd();
-
 	String getSequenceName();
 
 	int getOneMappingQuality();

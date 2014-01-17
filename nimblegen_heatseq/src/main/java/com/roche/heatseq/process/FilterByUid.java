@@ -39,7 +39,6 @@ import com.roche.heatseq.objects.UidReductionResultsForAProbe;
 import com.roche.heatseq.qualityreport.NucleotideCompositionUtil;
 import com.roche.heatseq.qualityreport.ProbeProcessingStats;
 import com.roche.heatseq.qualityreport.ReportManager;
-import com.roche.mapping.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
