@@ -1,4 +1,4 @@
-package com.roche.heatseq.qualityreport;
+package com.roche.heatseq.utils;
 
 import java.text.DecimalFormat;
 import java.util.Collection;

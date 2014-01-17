@@ -42,7 +42,7 @@ public class SummaryReport {
 
 	private double averageNumberOfReadPairsPerProbeUid;
 
-	public SummaryReport(File summaryReportFile, int uidLength) throws IOException {
+	SummaryReport(File summaryReportFile, int uidLength) throws IOException {
 		this.uidLength = uidLength;
 		FileUtil.createNewFile(summaryReportFile);
 		detailsReportWriter = new PrintWriter(summaryReportFile);
@@ -117,7 +117,7 @@ public class SummaryReport {
 		this.uidComposition = uidComposition;
 	}
 
-	public void close() {
+	void close() {
 		long theoreticalUniqueUids = Math.round(Math.pow(4, uidLength));
 		double uidRatio = (double) distinctUidsFound / (double) theoreticalUniqueUids;
 		DecimalFormat formatter = new DecimalFormat("0.0000");

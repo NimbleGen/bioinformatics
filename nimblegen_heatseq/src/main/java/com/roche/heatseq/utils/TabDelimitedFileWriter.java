@@ -1,4 +1,4 @@
-package com.roche.heatseq.process;
+package com.roche.heatseq.utils;
 
 import java.io.File;
 import java.io.FileWriter;
