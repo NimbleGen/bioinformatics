@@ -54,18 +54,20 @@ import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
-import com.roche.heatseq.qualityreport.DetailsReport;
+import com.roche.heatseq.qualityreport.ProbeDetailsReport;
 import com.roche.heatseq.qualityreport.ReportManager;
 import com.roche.heatseq.utils.BamFileUtil;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.heatseq.utils.SAMRecordUtil;
 import com.roche.heatseq.utils.SAMRecordUtil.SamReadCount;
+import com.roche.heatseq.utils.TabDelimitedFileWriter;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 /*
  * Class to get reads for each probe from a merged BAM file, determine which read to use for each UID, extend the reads to the target primers, and output the reduced and extended reads to a new BAM file
@@ -453,12 +455,19 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, readNameToRecordsMap, reportManager, applicationSettings.isAllowVariableLengthUids(),
 						alignmentScorer, distinctUids, uids);
 				if (reportManager.isReporting()) {
-					DetailsReport detailsReport = reportManager.getDetailsReport();
+					ProbeDetailsReport detailsReport = reportManager.getDetailsReport();
 					synchronized (detailsReport) {
 						if (probeReductionResults != null) {
 							detailsReport.writeEntry(probeReductionResults.getProbeProcessingStats());
 						} else {
 							detailsReport.writeBlankEntry(probe);
+						}
+					}
+
+					TabDelimitedFileWriter uidCompositionByProbeReport = reportManager.getUidCompisitionByProbeWriter();
+					synchronized (uidCompositionByProbeReport) {
+						if (uidCompositionByProbeReport != null) {
+							uidCompositionByProbeReport.writeLine(probe.getProbeId() + StringUtil.TAB + probeReductionResults.getProbeProcessingStats().toUidCompositionByProbeString());
 						}
 					}
 				}
