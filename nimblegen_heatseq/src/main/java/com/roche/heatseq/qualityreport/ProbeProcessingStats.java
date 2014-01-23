@@ -103,14 +103,19 @@ public class ProbeProcessingStats {
 		return probe;
 	}
 
+	public String toUidCompositionByProbeString() {
+		String uidCompositionByProbeRow = StringUtil.TAB + uidComposition + StringUtil.TAB + uidCompositionByPosition + StringUtil.TAB + weightedUidComposition + StringUtil.TAB
+				+ weightedUidCompositionByPosition;
+		return uidCompositionByProbeRow;
+	}
+
 	String toReportString() {
 		DecimalFormat formatter = new DecimalFormat("0.00");
 		StringBuilder stringBuilder = new StringBuilder();
 		stringBuilder.append(probe.getProbeId() + StringUtil.TAB);
 		stringBuilder.append(totalUids + StringUtil.TAB + averageNumberOfReadPairsPerUid + StringUtil.TAB + standardDeviationOfReadPairsPerUid + StringUtil.TAB + minNumberOfReadPairsPerUid
 				+ StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase() + StringUtil.TAB + totalDuplicateReadPairsRemoved + StringUtil.TAB
-				+ totalReadPairsRemainingAfterReduction + StringUtil.TAB + formatter.format(onTargetDuplicateRate) + StringUtil.TAB + DateUtil.convertMillisecondsToHHMMSS(totalTimeToProcessInMs)
-				+ StringUtil.TAB + uidComposition + StringUtil.TAB + uidCompositionByPosition + StringUtil.TAB + weightedUidComposition + StringUtil.TAB + weightedUidCompositionByPosition);
+				+ totalReadPairsRemainingAfterReduction + StringUtil.TAB + formatter.format(onTargetDuplicateRate) + StringUtil.TAB + DateUtil.convertMillisecondsToHHMMSS(totalTimeToProcessInMs));
 
 		stringBuilder.append(StringUtil.NEWLINE);
 

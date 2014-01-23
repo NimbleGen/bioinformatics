@@ -12,18 +12,19 @@ import net.sf.samtools.SAMFileWriter;
 import net.sf.samtools.SAMFileWriterFactory;
 
 import com.roche.heatseq.process.PrefuppCli;
-import com.roche.heatseq.utils.NucleotideCompositionUtil;
 import com.roche.heatseq.utils.TabDelimitedFileWriter;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class ReportManager {
 
 	private final static String DUPLICATE_MAPPINGS_REPORT_NAME = "duplicate_mappings.txt";
 
-	public final static String DETAILS_REPORT_NAME = "probe_details.txt";
+	public final static String PROBE_DETAILS_REPORT_NAME = "probe_details.txt";
 	public final static String SUMMARY_REPORT_NAME = PrefuppCli.APPLICATION_NAME + "_summary.txt";
+	private final static String UID_COMPOSITION_REPORT_NAME = "uid_composition_by_probe.txt";
 	private final static String PROBE_UID_QUALITY_REPORT_NAME = "probe_uid_quality.txt";
 	private final static String UNABLE_TO_ALIGN_PRIMER_REPORT_NAME = "unable_to_align_primer_for_variable_length_uid.txt";
 	public final static String UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME = "unable_to_map_one.fastq";
@@ -40,9 +41,11 @@ public class ReportManager {
 	private TabDelimitedFileWriter primerAlignmentWriter;
 	private TabDelimitedFileWriter uniqueProbeTalliesWriter;
 	private TabDelimitedFileWriter probeCoverageWriter;
+	private TabDelimitedFileWriter UidCompositionByProbeWriter;
+
 	private SAMFileWriter mappedOffTargetReadsWriter;
 	private SAMFileWriter unmappedReadsWriter;
-	private DetailsReport detailsReport;
+	private ProbeDetailsReport detailsReport;
 	private SummaryReport summaryReport;
 
 	private FastqWriter fastqOneUnableToMapWriter;
@@ -125,6 +128,17 @@ public class ReportManager {
 				throw new IllegalStateException(e);
 			}
 
+			File uidCompositionByProbeFile = new File(outputDirectory, outputFilePrefix + UID_COMPOSITION_REPORT_NAME);
+			try {
+				FileUtil.createNewFile(uidCompositionByProbeFile);
+				UidCompositionByProbeWriter = new TabDelimitedFileWriter(uidCompositionByProbeFile, new String[] {
+						"probe_id",
+						"unique_uid_nuclotide_composition" + StringUtil.TAB + "unique_uid_nuclotide_composition_by_position" + StringUtil.TAB + "weighted_uid_nuclotide_composition" + StringUtil.TAB
+								+ "weighted_uid_nuclotide_composition_by_position" });
+			} catch (IOException e) {
+				throw new IllegalStateException(e);
+			}
+
 			SAMFileWriterFactory samFactory = new SAMFileWriterFactory();
 
 			File mappedOffTargetFile = new File(outputDirectory, outputFilePrefix + MAPPED_OFF_TARGET_READS_REPORT_NAME);
@@ -143,10 +157,10 @@ public class ReportManager {
 				throw new IllegalStateException(e);
 			}
 
-			File detailsReportFile = new File(outputDirectory, outputFilePrefix + DETAILS_REPORT_NAME);
+			File detailsReportFile = new File(outputDirectory, outputFilePrefix + PROBE_DETAILS_REPORT_NAME);
 			try {
 				FileUtil.createNewFile(detailsReportFile);
-				detailsReport = new DetailsReport(detailsReportFile);
+				detailsReport = new ProbeDetailsReport(detailsReportFile);
 			} catch (IOException e) {
 				throw new IllegalStateException(e);
 			}
@@ -192,6 +206,10 @@ public class ReportManager {
 			probeCoverageWriter.close();
 		}
 
+		if (UidCompositionByProbeWriter != null) {
+			UidCompositionByProbeWriter.close();
+		}
+
 		if (detailsReport != null) {
 			detailsReport.close();
 		}
@@ -214,7 +232,7 @@ public class ReportManager {
 
 	}
 
-	public DetailsReport getDetailsReport() {
+	public ProbeDetailsReport getDetailsReport() {
 		return detailsReport;
 	}
 
@@ -224,6 +242,10 @@ public class ReportManager {
 
 	public TabDelimitedFileWriter getProbeCoverageWriter() {
 		return probeCoverageWriter;
+	}
+
+	public TabDelimitedFileWriter getUidCompisitionByProbeWriter() {
+		return UidCompositionByProbeWriter;
 	}
 
 	public SummaryReport getSummaryReport() {
@@ -264,12 +286,6 @@ public class ReportManager {
 
 	public void completeSummaryReport(TallyMap<String> readNamesToDistinctProbeAssignmentCount, Set<ISequence> distinctUids, List<ISequence> nonDistinctUids, long processingTimeInMs, int totalProbes,
 			int totalReads, int totalMappedReads) {
-		summaryReport.setDistinctUidComposition(NucleotideCompositionUtil.getNucleotideComposition(distinctUids));
-		summaryReport.setDistinctUidCompositionByBase(NucleotideCompositionUtil.getNucleotideCompositionByPosition(distinctUids));
-
-		summaryReport.setNonDistinctUidComposition(NucleotideCompositionUtil.getNucleotideComposition(nonDistinctUids));
-		summaryReport.setNonDistinctUidCompositionByBase(NucleotideCompositionUtil.getNucleotideCompositionByPosition(nonDistinctUids));
-
 		summaryReport.setProcessingTimeInMs(processingTimeInMs);
 		summaryReport.setDuplicateReadPairsRemoved(detailsReport.getDuplicateReadPairsRemoved());
 		summaryReport.setProbesWithNoMappedReadPairs(detailsReport.getProbesWithNoMappedReadPairs());

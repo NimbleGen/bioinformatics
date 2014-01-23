@@ -34,12 +34,6 @@ public class SummaryReport {
 	private double averageUidsPerProbe;
 	private int maxUidsPerProbe;
 
-	private String uidCompositionByBase;
-	private String uidComposition;
-
-	private String weightedUidCompositionByBase;
-	private String weightedUidComposition;
-
 	private double averageNumberOfReadPairsPerProbeUid;
 
 	SummaryReport(File summaryReportFile, int uidLength) throws IOException {
@@ -101,22 +95,6 @@ public class SummaryReport {
 		this.averageNumberOfReadPairsPerProbeUid = averageNumberOfReadPairsPerUid;
 	}
 
-	public void setDistinctUidCompositionByBase(String uidCompositionByBase) {
-		this.uidCompositionByBase = uidCompositionByBase;
-	}
-
-	public void setDistinctUidComposition(String weightedUidComposition) {
-		this.weightedUidComposition = weightedUidComposition;
-	}
-
-	public void setNonDistinctUidCompositionByBase(String weightedUidCompositionByBase) {
-		this.weightedUidCompositionByBase = weightedUidCompositionByBase;
-	}
-
-	public void setNonDistinctUidComposition(String uidComposition) {
-		this.uidComposition = uidComposition;
-	}
-
 	void close() {
 		long theoreticalUniqueUids = Math.round(Math.pow(4, uidLength));
 		double uidRatio = (double) distinctUidsFound / (double) theoreticalUniqueUids;
@@ -152,11 +130,6 @@ public class SummaryReport {
 		detailsReportWriter.println("on-target_duplicate_rate" + StringUtil.TAB + formatter.format(onTargetDuplicateRate));
 		detailsReportWriter.println("probe-specific_reads" + StringUtil.TAB + probeSpecificReads);
 		detailsReportWriter.println("probe-specific_to_total_reads_ratio" + StringUtil.TAB + formatter.format(probeSpecificToTotalReadsRatio));
-		detailsReportWriter.println("unique_uid_nucleotide_composition" + StringUtil.TAB + uidComposition);
-		detailsReportWriter.println("unique_uid_nucleotide_composition_by_base" + StringUtil.TAB + uidCompositionByBase);
-		detailsReportWriter.println("weighted_uid_nucleotide_composition" + StringUtil.TAB + weightedUidComposition);
-		detailsReportWriter.println("weighted_uid_nucleotide_composition_by_base" + StringUtil.TAB + weightedUidCompositionByBase);
-
 		detailsReportWriter.close();
 	}
 }
