@@ -37,7 +37,6 @@ public class ApplicationSettings {
 	private final String outputFilePrefix;
 	private final String originalBamFileName;
 	private final boolean shouldOutputQualityReports;
-	private final boolean shouldOutputFastq;
 	private final String commandLineSignature;
 	private final String programName;
 	private final String programVersion;
@@ -46,6 +45,7 @@ public class ApplicationSettings {
 	private final IAlignmentScorer alignmentScorer;
 	private final boolean notTrimmedToWithinTheCaptureTargetSequence;
 	private final int uidLength;
+	private final boolean markDuplicates;
 
 	/**
 	 * Default Constructor
@@ -67,8 +67,8 @@ public class ApplicationSettings {
 	 * @param numProcessors
 	 */
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
-			String originalBamFileName, boolean shouldOutputQualityReports, boolean shouldOutputFastq, String commandLineSignature, String programName, String programVersion, int numProcessors,
-			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinTheCaptureTargetSequence, int uidLength) {
+			String originalBamFileName, boolean shouldOutputQualityReports, String commandLineSignature, String programName, String programVersion, int numProcessors, boolean allowVariableLengthUids,
+			IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinTheCaptureTargetSequence, int uidLength, boolean markDuplicates) {
 		super();
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;
@@ -80,7 +80,6 @@ public class ApplicationSettings {
 		this.outputFilePrefix = outputFilePrefix;
 		this.originalBamFileName = originalBamFileName;
 		this.shouldOutputQualityReports = shouldOutputQualityReports;
-		this.shouldOutputFastq = shouldOutputFastq;
 		this.commandLineSignature = commandLineSignature;
 		this.programName = programName;
 		this.programVersion = programVersion;
@@ -89,6 +88,7 @@ public class ApplicationSettings {
 		this.alignmentScorer = alignmentScorer;
 		this.notTrimmedToWithinTheCaptureTargetSequence = notTrimmedToWithinTheCaptureTargetSequence;
 		this.uidLength = uidLength;
+		this.markDuplicates = markDuplicates;
 	}
 
 	/**
@@ -162,13 +162,6 @@ public class ApplicationSettings {
 	}
 
 	/**
-	 * @return true if the outputFastQ files should be created
-	 */
-	public boolean isShouldOutputFastq() {
-		return shouldOutputFastq;
-	}
-
-	/**
 	 * @return the signature of the command line call used to run this application
 	 */
 	public String getCommandLineSignature() {
@@ -222,6 +215,13 @@ public class ApplicationSettings {
 	 */
 	public int getUidLength() {
 		return uidLength;
+	}
+
+	/**
+	 * @return true if duplicates should be marked in the bam file opposed to removed
+	 */
+	public boolean isMarkDuplicates() {
+		return markDuplicates;
 	}
 
 }

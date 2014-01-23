@@ -58,8 +58,6 @@ public class PrefuppCli {
 	private final static CommandLineOption SAVE_TMP_DIR_OPTION = new CommandLineOption("Save Temporary Files", "saveTmpFiles", null, "save temporary files for later debugging.", false, true);
 	private final static CommandLineOption SHOULD_OUTPUT_REPORTS_OPTION = new CommandLineOption("Should Output Quality Reports", "outputReports", 'r',
 			"Should this utility generate quality reports?  (Default: No)", false, true);
-	private final static CommandLineOption SHOULD_OUTPUT_FASTQ_OPTION = new CommandLineOption("Should Output FastQ Results", "outputFastq", 'f',
-			"Should this utility generate fastq result files?  (Default: No)", false, true);
 	private final static CommandLineOption NUM_PROCESSORS_OPTION = new CommandLineOption("Number of Processors", "numProcessors", null,
 			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.", false, false);
 	private final static CommandLineOption UID_LENGTH_OPTION = new CommandLineOption("Length of UID in Bases", "uidLength", null,
@@ -77,6 +75,8 @@ public class PrefuppCli {
 			"The penalty for extending a gap when extending alignments to the primers (Default: " + SimpleAlignmentScorer.DEFAULT_GAP_EXTEND_PENALTY + ")", false, false);
 	private final static CommandLineOption LENIENT_VALIDATION_STRINGENCY_OPTION = new CommandLineOption("Lenient Validation Stringency", "lenientValidation", null,
 			"Use a lenient validation stringency for all SAM files read by this program.", false, true);
+	private final static CommandLineOption MARK_DUPLICATES_OPTION = new CommandLineOption("Mark Duplicates", "markDuplicates", null, "Mark duplicate reads in the bam file instead of removing them.",
+			false, true);
 	private final static CommandLineOption NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION = new CommandLineOption("Reads Are Not Trimmed To Within Capture Target", "readsNotTrimmedWithinCaptureTarget",
 			null, "The reads have not been trimmed to an area within the capture target.", false, true);
 
@@ -200,8 +200,6 @@ public class PrefuppCli {
 				}
 			}
 
-			boolean shouldOutputFastq = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_FASTQ_OPTION);
-
 			// Set up our alignment scorer
 			double matchScore = SimpleAlignmentScorer.DEFAULT_MATCH_SCORE;
 			double mismatchPenalty = SimpleAlignmentScorer.DEFAULT_MISMATCH_PENALTY;
@@ -253,6 +251,8 @@ public class PrefuppCli {
 			if (useLenientValidation) {
 				SAMFileReader.setDefaultValidationStringency(ValidationStringency.LENIENT);
 			}
+
+			boolean markDuplicates = parsedCommandLine.isOptionPresent(MARK_DUPLICATES_OPTION);
 
 			boolean notTrimmedToWithinCaptureTarget = parsedCommandLine.isOptionPresent(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
 
@@ -316,7 +316,7 @@ public class PrefuppCli {
 				}
 
 				sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tempOutputDirectory,
-						shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget);
+						shouldOutputQualityReports, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, markDuplicates);
 
 			} catch (Exception e) {
 				throw new IllegalStateException(e.getMessage(), e);
@@ -328,8 +328,8 @@ public class PrefuppCli {
 	}
 
 	private static void sortMergeFilterAndExtendReads(File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName,
-			String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputQualityReports, boolean shouldOutputFastq, String commandLineSignature, int numProcessors, int uidLength,
-			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinCaptureTarget) {
+			String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputQualityReports, String commandLineSignature, int numProcessors, int uidLength, boolean allowVariableLengthUids,
+			IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinCaptureTarget, boolean markDuplicates) {
 		try {
 
 			final File mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", tempOutputDirectory);
@@ -351,8 +351,8 @@ public class PrefuppCli {
 			samReader.close();
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
-					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, shouldOutputFastq, commandLineSignature, APPLICATION_NAME,
-					applicationVersionFromManifest, numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, uidLength);
+					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, commandLineSignature, APPLICATION_NAME,
+					applicationVersionFromManifest, numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, uidLength, markDuplicates);
 
 			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
@@ -381,7 +381,6 @@ public class PrefuppCli {
 		group.addOption(TMP_DIR_OPTION);
 		group.addOption(SAVE_TMP_DIR_OPTION);
 		group.addOption(SHOULD_OUTPUT_REPORTS_OPTION);
-		group.addOption(SHOULD_OUTPUT_FASTQ_OPTION);
 		group.addOption(NUM_PROCESSORS_OPTION);
 		group.addOption(UID_LENGTH_OPTION);
 		group.addOption(ALLOW_VARIABLE_LENGTH_UIDS_OPTION);
@@ -390,6 +389,7 @@ public class PrefuppCli {
 		group.addOption(GAP_OPEN_PENALTY_OPTION);
 		group.addOption(GAP_EXTEND_PENALTY_OPTION);
 		group.addOption(LENIENT_VALIDATION_STRINGENCY_OPTION);
+		group.addOption(MARK_DUPLICATES_OPTION);
 		group.addOption(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
 		return group;
 	}
