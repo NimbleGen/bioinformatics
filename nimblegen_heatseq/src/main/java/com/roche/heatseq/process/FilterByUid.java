@@ -70,7 +70,7 @@ class FilterByUid {
 	 * @return A UidReductionResultsForAProbe containing the processing statistics and the reduced probe set
 	 */
 	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, ReportManager reportManager, boolean allowVariableLengthUids,
-			IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids) {
+			IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids, boolean markDuplicates) {
 		List<IReadPair> readPairs = new ArrayList<IReadPair>();
 
 		long probeProcessingStartInMs = System.currentTimeMillis();
@@ -156,6 +156,14 @@ class FilterByUid {
 			IReadPair bestPair = findBestData(pairsDataByUid);
 
 			readPairs.add(bestPair);
+			if (markDuplicates) {
+				for (IReadPair readPair : pairsDataByUid) {
+					if (!readPair.equals(bestPair)) {
+						readPair.markAsDuplicate();
+						readPairs.add(readPair);
+					}
+				}
+			}
 
 			totalReadPairsRemainingAfterReduction++;
 			i++;

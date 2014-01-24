@@ -120,4 +120,11 @@ public class ReadPair implements IReadPair {
 	public int getTwoMappingQuality() {
 		return mate.getMappingQuality();
 	}
+
+	@Override
+	public void markAsDuplicate() {
+		record.setDuplicateReadFlag(true);
+		mate.setDuplicateReadFlag(true);
+	}
+
 }

@@ -34,8 +34,6 @@ import java.util.concurrent.TimeUnit;
 
 import net.sf.picard.fastq.FastqReader;
 import net.sf.picard.fastq.FastqRecord;
-import net.sf.picard.fastq.FastqWriter;
-import net.sf.picard.fastq.FastqWriterFactory;
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMFileWriter;
@@ -191,17 +189,6 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					BamFileUtil.getHeader(false, samReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(),
 							applicationSettings.getProgramVersion()), false, outputUnsortedBamFile, 0);
 
-			FastqWriter fastqOneWriter = null;
-			FastqWriter fastqTwoWriter = null;
-			if (applicationSettings.isShouldOutputFastq()) {
-				File fastqOne = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOriginalBamFileName() + "_one.fastq");
-				File fastqTwo = new File(applicationSettings.getOutputDirectory(), applicationSettings.getOriginalBamFileName() + "_two.fastq");
-				logger.debug("Output fastq files will be created at fastqone[" + fastqOne.getAbsolutePath() + "] and fastqtwo[" + fastqTwo.getAbsolutePath() + "].");
-				final FastqWriterFactory fastqWriterFactory = new FastqWriterFactory();
-				fastqOneWriter = fastqWriterFactory.newWriter(fastqOne);
-				fastqTwoWriter = fastqWriterFactory.newWriter(fastqTwo);
-			}
-
 			List<SAMSequenceRecord> referenceSequencesInBam = samReader.getFileHeader().getSequenceDictionary().getSequences();
 			List<String> referenceSequenceNamesInBam = new ArrayList<String>(referenceSequencesInBam.size());
 			List<Integer> referenceSequenceLengthsInBam = new ArrayList<Integer>(referenceSequencesInBam.size());
@@ -294,8 +281,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 						}
 					}
 
-					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, applicationSettings, samWriter, reportManager, fastqOneWriter, fastqTwoWriter,
-							readNameToCompleteRecordsMap, applicationSettings.getAlignmentScorer(), distinctUids, uids);
+					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, applicationSettings, samWriter, reportManager, readNameToCompleteRecordsMap,
+							applicationSettings.getAlignmentScorer(), distinctUids, uids);
 
 					try {
 						// Don't execute more threads than we have processors
@@ -315,12 +302,6 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				throw new RuntimeException(e.getMessage(), e);
 			}
 
-			if (fastqOneWriter != null) {
-				fastqOneWriter.close();
-			}
-			if (fastqTwoWriter != null) {
-				fastqTwoWriter.close();
-			}
 			samWriter.close();
 
 			// Sort the output BAM file,
@@ -402,8 +383,6 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		private final Probe probe;
 		private final ApplicationSettings applicationSettings;
 		private final SAMFileWriter samWriter;
-		private final FastqWriter fastqOneWriter;
-		private final FastqWriter fastqTwoWriter;
 		private final IAlignmentScorer alignmentScorer;
 		private final Set<ISequence> distinctUids;
 		private final List<ISequence> uids;
@@ -432,13 +411,11 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		 * @param readNameToRecordsMap
 		 */
 
-		PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(Probe probe, ApplicationSettings applicationSettings, SAMFileWriter samWriter, ReportManager reportManager, FastqWriter fastqOneWriter,
-				FastqWriter fastqTwoWriter, Map<String, SAMRecordPair> readNameToRecordsMap, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids) {
+		PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(Probe probe, ApplicationSettings applicationSettings, SAMFileWriter samWriter, ReportManager reportManager,
+				Map<String, SAMRecordPair> readNameToRecordsMap, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids) {
 			this.probe = probe;
 			this.applicationSettings = applicationSettings;
 			this.samWriter = samWriter;
-			this.fastqOneWriter = fastqOneWriter;
-			this.fastqTwoWriter = fastqTwoWriter;
 			this.readNameToRecordsMap = readNameToRecordsMap;
 			this.alignmentScorer = alignmentScorer;
 			this.distinctUids = distinctUids;
@@ -453,7 +430,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		public void run() {
 			try {
 				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, readNameToRecordsMap, reportManager, applicationSettings.isAllowVariableLengthUids(),
-						alignmentScorer, distinctUids, uids);
+						alignmentScorer, distinctUids, uids, applicationSettings.isMarkDuplicates());
 				if (reportManager.isReporting()) {
 					ProbeDetailsReport detailsReport = reportManager.getDetailsReport();
 					synchronized (detailsReport) {
@@ -475,10 +452,6 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				List<IReadPair> readsToWrite = ExtendReadsToPrimer.extendReadsToPrimers(probe, probeReductionResults.getReadPairs(), alignmentScorer);
 
 				writeReadsToSamFile(samWriter, readsToWrite);
-				if (fastqOneWriter != null && fastqTwoWriter != null) {
-					writeReadsToFastQFiles(readsToWrite, fastqOneWriter, fastqTwoWriter);
-				}
-
 			} catch (Exception e) {
 				logger.warn(e.getMessage(), e);
 			} finally {
@@ -515,43 +488,6 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					samWriter.addAlignment(record);
 				}
 			}
-		}
-
-		/**
-		 * If the user has requested it, write the reads to fastQ files
-		 * 
-		 * @param readPairs
-		 * @param fastqOneWriter
-		 * @param fastqTwoWriter
-		 */
-		private static void writeReadsToFastQFiles(List<IReadPair> readPairs, FastqWriter fastqOneWriter, FastqWriter fastqTwoWriter) {
-			synchronized (fastqOneWriter) {
-				for (IReadPair readPair : readPairs) {
-					FastqRecord recordOne = getFastqRecord(readPair.getRecord());
-					FastqRecord recordTwo = getFastqRecord(readPair.getMateRecord());
-					fastqOneWriter.write(recordOne);
-					fastqTwoWriter.write(recordTwo);
-				}
-			}
-		}
-
-		/**
-		 * Utility to get a Fastq record from a SAMRecord
-		 * 
-		 * @param samRecord
-		 * @return
-		 */
-		private static FastqRecord getFastqRecord(SAMRecord samRecord) {
-			int pairNumber = 1;
-			if (samRecord.getSecondOfPairFlag()) {
-				pairNumber = 2;
-			}
-			String headerPrefix = samRecord.getReadName() + " " + pairNumber + ":N:0:1";
-			String sequence = samRecord.getReadString();
-			String qualityPrefix = "+";
-			String quality = samRecord.getBaseQualityString();
-			FastqRecord fastqRecord = new FastqRecord(headerPrefix, sequence, qualityPrefix, quality);
-			return fastqRecord;
 		}
 	}
 }

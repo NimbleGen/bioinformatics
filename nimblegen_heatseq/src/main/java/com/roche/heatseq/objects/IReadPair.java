@@ -57,4 +57,6 @@ public interface IReadPair {
 
 	int getTwoMappingQuality();
 
+	void markAsDuplicate();
+
 }
