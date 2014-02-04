@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 
@@ -39,7 +38,6 @@ public class SimpleMapper<O> {
 	private final static int DEFAULT_MAX_REFERENCE_DEPTH = 10;
 	private final static int DEFAULT_MAX_QUERY_DEPTH = 1;
 	private final static int DEFAULT_MIN_HIT_THRESHOLD = 3;
-	private final static int MAX_NUMBER_OF_REFERENCES_ALLOWED_PER_SEQUENCE = 1000;
 
 	private final int comparisonSequenceSize;
 	private final int maxReferenceDepth;
@@ -47,7 +45,6 @@ public class SimpleMapper<O> {
 	private final int minHitThreshold;
 
 	private final Map<ISequence, Set<O>> sequenceSliceToReferenceAddressMap;
-	private final Set<ISequence> overSaturatedSequences;
 
 	/**
 	 * Default Constructor
@@ -74,7 +71,6 @@ public class SimpleMapper<O> {
 		this.maxQueryDepth = maxQueryDepth;
 		this.minHitThreshold = minHitThreshold;
 		sequenceSliceToReferenceAddressMap = new ConcurrentHashMap<ISequence, Set<O>>();
-		overSaturatedSequences = new ConcurrentSkipListSet<ISequence>();
 	}
 
 	/**
@@ -116,18 +112,12 @@ public class SimpleMapper<O> {
 	}
 
 	private void addSliceToReferenceMap(ISequence sequence, O sequenceAddress) {
-		if (!overSaturatedSequences.contains(sequence)) {
-			Set<O> sequenceAddresses = sequenceSliceToReferenceAddressMap.get(sequence);
-			if (sequenceAddresses == null) {
-				sequenceAddresses = new HashSet<O>();
-			}
-			sequenceAddresses.add(sequenceAddress);
-			if (sequenceAddresses.size() > MAX_NUMBER_OF_REFERENCES_ALLOWED_PER_SEQUENCE) {
-				overSaturatedSequences.add(sequence);
-				sequenceAddresses.clear();
-			}
-			sequenceSliceToReferenceAddressMap.put(sequence, sequenceAddresses);
+		Set<O> sequenceAddresses = sequenceSliceToReferenceAddressMap.get(sequence);
+		if (sequenceAddresses == null) {
+			sequenceAddresses = new HashSet<O>();
 		}
+		sequenceAddresses.add(sequenceAddress);
+		sequenceSliceToReferenceAddressMap.put(sequence, sequenceAddresses);
 	}
 
 	/**

@@ -95,7 +95,7 @@ class FilterByUid {
 					synchronized (uids) {
 						uids.add(uidSequence);
 					}
-					datas.add(new ReadPair(record, mate, uid));
+					datas.add(new ReadPair(record, mate, uid, probe.getCaptureTargetSequence(), probe.getProbeId()));
 				} else {
 					reportManager.getUnableToAlignPrimerWriter().writeLine(probe.getProbeId(), probe.getSequenceName(), probe.getStart(), probe.getStop(), probe.getExtensionPrimerSequence(),
 							record.getReadName(), record.getReadString());

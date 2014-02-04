@@ -22,6 +22,7 @@ import net.sf.samtools.SAMRecord;
 import com.roche.heatseq.process.FastqAndBamFileMerger;
 import com.roche.heatseq.utils.BamFileUtil;
 import com.roche.heatseq.utils.SAMRecordUtil;
+import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 
 /**
  * 
@@ -32,12 +33,16 @@ public class ReadPair implements IReadPair {
 	private final SAMRecord record;
 	private final SAMRecord mate;
 	private final String uid;
+	private final ISequence captureTargetSequence;
+	private final String probeId;
 
-	public ReadPair(SAMRecord record, SAMRecord mate, String uid) {
+	public ReadPair(SAMRecord record, SAMRecord mate, String uid, ISequence captureTargetSequence, String probeId) {
 		super();
 		this.record = record;
 		this.mate = mate;
 		this.uid = uid;
+		this.captureTargetSequence = captureTargetSequence;
+		this.probeId = probeId;
 	}
 
 	@Override
@@ -125,6 +130,16 @@ public class ReadPair implements IReadPair {
 	public void markAsDuplicate() {
 		record.setDuplicateReadFlag(true);
 		mate.setDuplicateReadFlag(true);
+	}
+
+	@Override
+	public ISequence getCaptureTargetSequence() {
+		return captureTargetSequence;
+	}
+
+	@Override
+	public String getProbeId() {
+		return probeId;
 	}
 
 }

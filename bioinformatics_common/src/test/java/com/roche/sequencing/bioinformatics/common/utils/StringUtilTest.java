@@ -90,4 +90,15 @@ public class StringUtilTest {
 		Assert.assertEquals(actualResult, expectedResult);
 	}
 
+	@Test(groups = { "unit" })
+	public void testMatch() {
+		Assert.assertEquals(StringUtil.contains("ABCDEFG", "ABC", 0), true);
+		Assert.assertEquals(StringUtil.contains("ABCDEFG", "ACC", 0), false);
+		Assert.assertEquals(StringUtil.contains("ABCDEFG", "ACC", 1), true);
+		Assert.assertEquals(StringUtil.contains("ABCDEFG", "ABCCEF", 1), true);
+		Assert.assertEquals(StringUtil.contains("CBCDEFG", "ABC", 1), true);
+		Assert.assertEquals(StringUtil.contains("ABCDEFG", "DFF", 0), false);
+		Assert.assertEquals(StringUtil.contains("ABCDEFG", "DFF", 1), true);
+	}
+
 }

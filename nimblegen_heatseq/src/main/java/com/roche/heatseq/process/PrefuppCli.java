@@ -48,10 +48,10 @@ public class PrefuppCli {
 	private final static String BAM_EXTENSION = ".bam";
 
 	private final static CommandLineOption USAGE_OPTION = new CommandLineOption("Print Usage", "usage", 'h', "Print Usage.", false, true);
-	private final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("fastQ One File", "r1", null, "path to first input fastq file", true, false);
-	private final static CommandLineOption FASTQ_TWO_OPTION = new CommandLineOption("fastQ Two File", "r2", null, "path to second second input fastq file", true, false);
+	private final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("FastQ One File", "r1", null, "path to first input fastq file", true, false);
+	private final static CommandLineOption FASTQ_TWO_OPTION = new CommandLineOption("FastQ Two File", "r2", null, "path to second second input fastq file", true, false);
 	private final static CommandLineOption INPUT_BAM_OPTION = new CommandLineOption("Input BAM File Path", "inputBam", null, "path to input BAM file containing the aligned reads", true, false);
-	private final static CommandLineOption PROBE_OPTION = new CommandLineOption("PROBE File", "probe", null, "The probe file", true, false);
+	private final static CommandLineOption PROBE_OPTION = new CommandLineOption("Probe Information File", "probe", null, "The probe file", true, false);
 	private final static CommandLineOption OUTPUT_DIR_OPTION = new CommandLineOption("Output Directory", "outputDir", null, "location to store resultant files.", false, false);
 	private final static CommandLineOption OUTPUT_FILE_PREFIX_OPTION = new CommandLineOption("Output File Prefix", "outputPrefix", null, "text to put at beginning of output file names", false, false);
 	private final static CommandLineOption TMP_DIR_OPTION = new CommandLineOption("Temporary Directory", "tmpDir", null, "location to store temporary files.", false, false);
@@ -77,6 +77,7 @@ public class PrefuppCli {
 			"Use a lenient validation stringency for all SAM files read by this program.", false, true);
 	private final static CommandLineOption MARK_DUPLICATES_OPTION = new CommandLineOption("Mark Duplicates", "markDuplicates", null, "Mark duplicate reads in the bam file instead of removing them.",
 			false, true);
+	private final static CommandLineOption MERGE_PAIRS_OPTION = new CommandLineOption("Merge Pairs", "mergePairs", null, "Merge pairs using the highest quality base reads from each read", false, true);
 	private final static CommandLineOption NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION = new CommandLineOption("Reads Are Not Trimmed To Within Capture Target", "readsNotTrimmedWithinCaptureTarget",
 			null, "The reads have not been trimmed to an area within the capture target.", false, true);
 
@@ -253,6 +254,7 @@ public class PrefuppCli {
 			}
 
 			boolean markDuplicates = parsedCommandLine.isOptionPresent(MARK_DUPLICATES_OPTION);
+			boolean mergePairs = parsedCommandLine.isOptionPresent(MERGE_PAIRS_OPTION);
 
 			boolean notTrimmedToWithinCaptureTarget = parsedCommandLine.isOptionPresent(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
 
@@ -316,7 +318,8 @@ public class PrefuppCli {
 				}
 
 				sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tempOutputDirectory,
-						shouldOutputQualityReports, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, markDuplicates);
+						shouldOutputQualityReports, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, markDuplicates,
+						mergePairs);
 
 			} catch (Exception e) {
 				throw new IllegalStateException(e.getMessage(), e);
@@ -329,7 +332,7 @@ public class PrefuppCli {
 
 	private static void sortMergeFilterAndExtendReads(File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName,
 			String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputQualityReports, String commandLineSignature, int numProcessors, int uidLength, boolean allowVariableLengthUids,
-			IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinCaptureTarget, boolean markDuplicates) {
+			IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinCaptureTarget, boolean markDuplicates, boolean mergePairs) {
 		try {
 
 			final File mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", tempOutputDirectory);
@@ -352,7 +355,7 @@ public class PrefuppCli {
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
 					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, commandLineSignature, APPLICATION_NAME,
-					applicationVersionFromManifest, numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, uidLength, markDuplicates);
+					applicationVersionFromManifest, numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, uidLength, markDuplicates, mergePairs);
 
 			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
@@ -390,6 +393,7 @@ public class PrefuppCli {
 		group.addOption(GAP_EXTEND_PENALTY_OPTION);
 		group.addOption(LENIENT_VALIDATION_STRINGENCY_OPTION);
 		group.addOption(MARK_DUPLICATES_OPTION);
+		group.addOption(MERGE_PAIRS_OPTION);
 		group.addOption(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
 		return group;
 	}

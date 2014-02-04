@@ -46,6 +46,7 @@ public class ApplicationSettings {
 	private final boolean notTrimmedToWithinTheCaptureTargetSequence;
 	private final int uidLength;
 	private final boolean markDuplicates;
+	private final boolean mergePairs;
 
 	/**
 	 * Default Constructor
@@ -68,7 +69,7 @@ public class ApplicationSettings {
 	 */
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
 			String originalBamFileName, boolean shouldOutputQualityReports, String commandLineSignature, String programName, String programVersion, int numProcessors, boolean allowVariableLengthUids,
-			IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinTheCaptureTargetSequence, int uidLength, boolean markDuplicates) {
+			IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinTheCaptureTargetSequence, int uidLength, boolean markDuplicates, boolean mergePairs) {
 		super();
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;
@@ -89,6 +90,7 @@ public class ApplicationSettings {
 		this.notTrimmedToWithinTheCaptureTargetSequence = notTrimmedToWithinTheCaptureTargetSequence;
 		this.uidLength = uidLength;
 		this.markDuplicates = markDuplicates;
+		this.mergePairs = mergePairs;
 	}
 
 	/**
@@ -206,7 +208,7 @@ public class ApplicationSettings {
 	/**
 	 * @return true if the user has indicated that the reads have not been trimmed to be within the capture target sequence
 	 */
-	public boolean isNotTrimmedWithinTheCaptureTargetSequence() {
+	public boolean isNotTrimmedToWithinTheCaptureTargetSequence() {
 		return notTrimmedToWithinTheCaptureTargetSequence;
 	}
 
@@ -222,6 +224,13 @@ public class ApplicationSettings {
 	 */
 	public boolean isMarkDuplicates() {
 		return markDuplicates;
+	}
+
+	/**
+	 * @return true if the pairs should be merged
+	 */
+	public boolean isMergePairs() {
+		return mergePairs;
 	}
 
 }
