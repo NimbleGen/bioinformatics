@@ -160,4 +160,27 @@ public final class StringUtil {
 		result.append(baseString.substring(i, baseString.length()));
 		return result.toString();
 	}
+
+	public static boolean contains(String referenceString, String queryString, int allowedMismatches) {
+		boolean match = false;
+
+		int startingReferenceIndex = 0;
+
+		while (!match && startingReferenceIndex + queryString.length() <= referenceString.length()) {
+			int queryIndex = 0;
+			int mismatches = 0;
+			boolean tooManyMisMatches = false;
+			while (queryIndex < queryString.length() && !tooManyMisMatches) {
+				if (queryString.charAt(queryIndex) != referenceString.charAt(startingReferenceIndex + queryIndex)) {
+					mismatches++;
+				}
+				queryIndex++;
+				tooManyMisMatches = (mismatches > allowedMismatches);
+			}
+			match = !tooManyMisMatches;
+			startingReferenceIndex++;
+		}
+		return match;
+	}
+
 }

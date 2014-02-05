@@ -60,8 +60,10 @@ import com.roche.heatseq.utils.SAMRecordUtil;
 import com.roche.heatseq.utils.SAMRecordUtil.SamReadCount;
 import com.roche.heatseq.utils.TabDelimitedFileWriter;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
+import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
+import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
@@ -227,7 +229,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					Map<String, SAMRecordPair> readNameToRecordsMap = new HashMap<String, SAMRecordPair>();
 
 					SAMRecordIterator samRecordIter = null;
-					if (applicationSettings.isNotTrimmedWithinTheCaptureTargetSequence()) {
+					if (applicationSettings.isNotTrimmedToWithinTheCaptureTargetSequence()) {
 						samRecordIter = samReader.queryContained(sequenceName, probe.getStart(), probe.getStop());
 					} else {
 						samRecordIter = samReader.queryContained(sequenceName, probe.getCaptureTargetStart(), probe.getCaptureTargetStop());
@@ -451,7 +453,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 				List<IReadPair> readsToWrite = ExtendReadsToPrimer.extendReadsToPrimers(probe, probeReductionResults.getReadPairs(), alignmentScorer);
 
-				writeReadsToSamFile(samWriter, readsToWrite);
+				writeReadsToSamFile(samWriter, readsToWrite, applicationSettings.isMergePairs());
 			} catch (Exception e) {
 				logger.warn(e.getMessage(), e);
 			} finally {
@@ -465,29 +467,180 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		 * @param samWriter
 		 * @param readPairs
 		 */
-		private static void writeReadsToSamFile(SAMFileWriter samWriter, List<IReadPair> readPairs) {
+		private static void writeReadsToSamFile(SAMFileWriter samWriter, List<IReadPair> readPairs, boolean mergePairs) {
 			synchronized (samWriter) {
 				SAMFileHeader header = samWriter.getFileHeader();
 				for (IReadPair readPair : readPairs) {
-					SAMRecord record = readPair.getRecord();
-					SAMRecord mate = readPair.getMateRecord();
+					if (mergePairs) {
+						SAMRecord mergedRecord = mergePairs(readPair);
+						if (mergedRecord != null) {
+							samWriter.addAlignment(mergedRecord);
+						}
+					} else {
+						SAMRecord record = readPair.getRecord();
+						SAMRecord mate = readPair.getMateRecord();
 
-					record.setHeader(header);
-					mate.setHeader(header);
+						record.setHeader(header);
+						mate.setHeader(header);
 
-					String recordReferenceName = record.getReferenceName();
-					String mateReferenceName = mate.getReferenceName();
+						String recordReferenceName = record.getReferenceName();
+						String mateReferenceName = mate.getReferenceName();
 
-					record.setReferenceName(recordReferenceName);
-					record.setMateReferenceName(mateReferenceName);
+						record.setReferenceName(recordReferenceName);
+						record.setMateReferenceName(mateReferenceName);
 
-					mate.setReferenceName(mateReferenceName);
-					mate.setMateReferenceName(recordReferenceName);
+						mate.setReferenceName(mateReferenceName);
+						mate.setMateReferenceName(recordReferenceName);
 
-					samWriter.addAlignment(mate);
-					samWriter.addAlignment(record);
+						samWriter.addAlignment(mate);
+						samWriter.addAlignment(record);
+					}
 				}
 			}
+		}
+
+		private static SAMRecord mergePairs(IReadPair readPair) {
+			SAMRecord mergedRecord = new SAMRecord(readPair.getSamHeader());
+			mergedRecord.setReadPairedFlag(false);
+
+			SAMRecord record = readPair.getRecord();
+			SAMRecord mate = readPair.getMateRecord();
+
+			SAMRecord upstreamRecord = null;
+			SAMRecord downstreamRecord = null;
+
+			if (record.getAlignmentStart() < mate.getAlignmentStart()) {
+				upstreamRecord = record;
+				downstreamRecord = mate;
+			} else {
+				upstreamRecord = mate;
+				downstreamRecord = record;
+			}
+
+			boolean isNegativeStrand = record.getReadNegativeStrandFlag();
+			ISequence captureTargetSequence = readPair.getCaptureTargetSequence();
+
+			int overlapStartIndexInGenome = downstreamRecord.getAlignmentStart();
+			int overlapEndIndexInGenome = upstreamRecord.getAlignmentStart() + upstreamRecord.getReadLength();
+
+			int overlapLength = overlapEndIndexInGenome - overlapStartIndexInGenome;
+
+			ISequence overlappingSequence = null;
+			String overlappingQuality = null;
+			ISequence sequenceStart = null;
+			String qualityStart = null;
+			ISequence sequenceEnd = null;
+			String qualityEnd = null;
+
+			if (overlapLength < 0) {
+				// there is no overlap so fill the gap with N's and give these bases a poor quality score
+				int fillSize = -overlapLength;
+
+				overlappingSequence = new IupacNucleotideCodeSequence(StringUtil.repeatString("N", fillSize));
+				// ! represents the worst quality score
+				overlappingQuality = StringUtil.repeatString("!", fillSize);
+
+				sequenceStart = new IupacNucleotideCodeSequence(upstreamRecord.getReadString());
+				qualityStart = upstreamRecord.getBaseQualityString();
+
+				sequenceEnd = new IupacNucleotideCodeSequence(downstreamRecord.getReadString());
+				qualityEnd = downstreamRecord.getBaseQualityString();
+			} else {
+				int overlapStartIndexInUpstreamRecord = overlapStartIndexInGenome - upstreamRecord.getAlignmentStart();
+				int overlapEndIndexInUpstreamRecord = upstreamRecord.getReadLength() - 1;
+
+				int sizeOfUpstreamOverlap = (overlapEndIndexInUpstreamRecord - overlapStartIndexInUpstreamRecord + 1);
+
+				int overlapStartIndexInDownstreamRecord = 0;
+				int overlapEndIndexInDownstreamRecord = sizeOfUpstreamOverlap - 1;
+
+				String upstreamQuality = upstreamRecord.getBaseQualityString();
+				ISequence upstreamSequence = new IupacNucleotideCodeSequence(upstreamRecord.getReadString());
+
+				String downstreamQuality = downstreamRecord.getBaseQualityString();
+				ISequence downstreamSequence = new IupacNucleotideCodeSequence(downstreamRecord.getReadString());
+
+				sequenceStart = upstreamSequence.subSequence(0, overlapStartIndexInUpstreamRecord - 1);
+				qualityStart = upstreamQuality.substring(0, overlapStartIndexInUpstreamRecord);
+				assert sequenceStart.size() == qualityStart.length();
+
+				sequenceEnd = downstreamSequence.subSequence(overlapEndIndexInDownstreamRecord + 1, downstreamRecord.getReadLength() - 1);
+				qualityEnd = downstreamQuality.substring(overlapEndIndexInDownstreamRecord + 1, downstreamRecord.getReadLength());
+				assert sequenceEnd.size() == qualityEnd.length();
+
+				assert overlapEndIndexInUpstreamRecord == (upstreamSequence.size() - 1);
+				ISequence upstreamOverlapSequence = upstreamSequence.subSequence(overlapStartIndexInUpstreamRecord, overlapEndIndexInUpstreamRecord);
+				String upstreamOverlapQuality = upstreamQuality.substring(overlapStartIndexInUpstreamRecord, overlapEndIndexInUpstreamRecord + 1);
+				assert upstreamOverlapSequence.size() == upstreamOverlapQuality.length();
+
+				ISequence downstreamOverlapSequenceOnPositiveStrand = downstreamSequence.subSequence(overlapStartIndexInDownstreamRecord, overlapEndIndexInDownstreamRecord);
+				String downstreamOverlapQualityOnPositiveStrand = downstreamQuality.substring(overlapStartIndexInDownstreamRecord, overlapEndIndexInDownstreamRecord + 1);
+				assert downstreamOverlapSequenceOnPositiveStrand.size() == downstreamOverlapQualityOnPositiveStrand.length();
+				assert upstreamOverlapSequence.size() == downstreamOverlapSequenceOnPositiveStrand.size();
+
+				StringBuilder overlappingSequenceBuilder = new StringBuilder();
+				StringBuilder overlappingQualityBuilder = new StringBuilder();
+
+				int sizeOfDownstreamOverlap = (overlapEndIndexInDownstreamRecord - overlapStartIndexInDownstreamRecord + 1);
+				assert sizeOfUpstreamOverlap == sizeOfDownstreamOverlap;
+				int sizeOfOverlap = sizeOfUpstreamOverlap;
+
+				for (int i = 0; i < sizeOfOverlap; i++) {
+					short upstreamQualityScoreAtPosition = BamFileUtil.getQualityScore(upstreamOverlapQuality.substring(i, i));
+					short downstreamQualityScoreAtPosition = BamFileUtil.getQualityScore(downstreamQuality.substring(i, i));
+					// a higher quality score indicates a smaller probability of error (source: http://www.illumina.com/truseq/quality_101/quality_scores.ilmn)
+					if (upstreamQualityScoreAtPosition >= downstreamQualityScoreAtPosition) {
+						overlappingSequenceBuilder.append(upstreamOverlapSequence.getCodeAt(i).toString());
+						overlappingQualityBuilder.append(upstreamOverlapQuality.charAt(i));
+					} else {
+						overlappingSequenceBuilder.append(downstreamOverlapSequenceOnPositiveStrand.getCodeAt(i).toString());
+						overlappingQualityBuilder.append(downstreamOverlapQualityOnPositiveStrand.charAt(i));
+					}
+				}
+
+				overlappingSequence = new IupacNucleotideCodeSequence(overlappingSequenceBuilder.toString());
+				overlappingQuality = overlappingQualityBuilder.toString();
+
+			}
+
+			ISequence mergedSequence = new IupacNucleotideCodeSequence();
+			mergedSequence.append(sequenceStart);
+			mergedSequence.append(overlappingSequence);
+			mergedSequence.append(sequenceEnd);
+
+			String mergedQuality = qualityStart + overlappingQuality + qualityEnd;
+
+			if (isNegativeStrand) {
+				mergedSequence = mergedSequence.getReverseCompliment();
+				mergedQuality = StringUtil.reverse(mergedQuality);
+			}
+
+			NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(captureTargetSequence, mergedSequence);
+			String cigarString = alignment.getCigarString().getStandardCigarString();
+
+			mergedRecord.setCigarString(cigarString);
+			String mismatchDetails = alignment.getMismatchDetails();
+			if (mismatchDetails != null && !mismatchDetails.isEmpty()) {
+				mergedRecord.setAttribute(SAMRecordUtil.MISMATCH_DETAILS_ATTRIBUTE_TAG, mismatchDetails);
+			}
+
+			mergedRecord.setReadString(mergedSequence.toString());
+			mergedRecord.setBaseQualityString(mergedQuality);
+
+			mergedRecord.setReadName(record.getReadName());
+			mergedRecord.setAlignmentStart(record.getAlignmentStart());
+
+			SAMRecordUtil.setSamRecordUidAttribute(mergedRecord, readPair.getUid());
+			SAMRecordUtil.setSamRecordProbeIdAttribute(mergedRecord, readPair.getProbeId());
+			mergedRecord.setReadNegativeStrandFlag(isNegativeStrand);
+			mergedRecord.setReferenceName(record.getReferenceName());
+			if (isNegativeStrand) {
+				mergedRecord.setInferredInsertSize(-captureTargetSequence.size());
+			} else {
+				mergedRecord.setInferredInsertSize(captureTargetSequence.size());
+			}
+
+			return mergedRecord;
 		}
 	}
 }

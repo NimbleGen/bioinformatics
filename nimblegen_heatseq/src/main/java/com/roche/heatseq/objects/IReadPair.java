@@ -19,6 +19,8 @@ package com.roche.heatseq.objects;
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMRecord;
 
+import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
+
 /**
  * 
  * Represents an Illumina Read Pair coupled with a UID
@@ -59,4 +61,7 @@ public interface IReadPair {
 
 	void markAsDuplicate();
 
+	ISequence getCaptureTargetSequence();
+
+	String getProbeId();
 }
