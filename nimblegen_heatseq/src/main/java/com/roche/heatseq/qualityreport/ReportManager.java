@@ -53,7 +53,7 @@ public class ReportManager {
 
 	private final boolean shouldOutputReports;
 
-	public ReportManager(File outputDirectory, String outputFilePrefix, int uidLength, SAMFileHeader samFileHeader, boolean shouldOutputReports) {
+	public ReportManager(File outputDirectory, String outputFilePrefix, int extensionUidLength, int ligationUidLength, SAMFileHeader samFileHeader, boolean shouldOutputReports) {
 
 		this.shouldOutputReports = shouldOutputReports;
 
@@ -70,8 +70,8 @@ public class ReportManager {
 			File probeUidQualityFile = new File(outputDirectory, outputFilePrefix + PROBE_UID_QUALITY_REPORT_NAME);
 			try {
 				FileUtil.createNewFile(probeUidQualityFile);
-				probeUidQualityWriter = new TabDelimitedFileWriter(probeUidQualityFile, new String[] { "probe_id", "uid", "read_one_quality", "read_two_quality", "total_quality", "read_name",
-						"read_sequence", "sequence_one", "sequence_two" });
+				probeUidQualityWriter = new TabDelimitedFileWriter(probeUidQualityFile, new String[] { "probe_id", "extension_uid", "ligation_uid", "read_one_quality", "read_two_quality",
+						"total_quality", "read_name", "read_sequence", "sequence_one", "sequence_two" });
 			} catch (IOException e) {
 				throw new IllegalStateException(e);
 			}
@@ -170,7 +170,7 @@ public class ReportManager {
 			summaryReportFile = new File(outputDirectory, outputFilePrefix + SUMMARY_REPORT_NAME);
 			try {
 				FileUtil.createNewFile(summaryReportFile);
-				summaryReport = new SummaryReport(summaryReportFile, uidLength);
+				summaryReport = new SummaryReport(summaryReportFile, extensionUidLength, ligationUidLength);
 			} catch (IOException e) {
 				throw new IllegalStateException(e);
 			}

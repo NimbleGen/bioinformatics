@@ -13,7 +13,8 @@ public class SummaryReport {
 
 	private final PrintWriter detailsReportWriter;
 
-	private final int uidLength;
+	private final int extensionUidLength;
+	private final int ligationUidLength;
 
 	private long processingTimeInMs;
 
@@ -36,8 +37,9 @@ public class SummaryReport {
 
 	private double averageNumberOfReadPairsPerProbeUid;
 
-	SummaryReport(File summaryReportFile, int uidLength) throws IOException {
-		this.uidLength = uidLength;
+	SummaryReport(File summaryReportFile, int extensionUidLength, int ligationUidLength) throws IOException {
+		this.extensionUidLength = extensionUidLength;
+		this.ligationUidLength = ligationUidLength;
 		FileUtil.createNewFile(summaryReportFile);
 		detailsReportWriter = new PrintWriter(summaryReportFile);
 		detailsReportWriter.flush();
@@ -96,7 +98,7 @@ public class SummaryReport {
 	}
 
 	void close() {
-		long theoreticalUniqueUids = Math.round(Math.pow(4, uidLength));
+		long theoreticalUniqueUids = Math.round(Math.pow(4, extensionUidLength + ligationUidLength));
 		double uidRatio = (double) distinctUidsFound / (double) theoreticalUniqueUids;
 		DecimalFormat formatter = new DecimalFormat("0.0000");
 		int onTargetReadPairs = (totalReadPairsAfterReduction + duplicateReadPairsRemoved);
@@ -121,7 +123,7 @@ public class SummaryReport {
 		detailsReportWriter.println("total_probes" + StringUtil.TAB + totalProbes);
 		detailsReportWriter.println("total_read_pairs_after_reduction" + StringUtil.TAB + totalReadPairsAfterReduction);
 		detailsReportWriter.println("distinct_uids_found" + StringUtil.TAB + distinctUidsFound);
-		detailsReportWriter.println("possible_unique_uids_of_length_" + uidLength + StringUtil.TAB + theoreticalUniqueUids);
+		detailsReportWriter.println("possible_unique_uids_of_length_" + (extensionUidLength + ligationUidLength) + StringUtil.TAB + theoreticalUniqueUids);
 		detailsReportWriter.println("uid_ratio" + StringUtil.TAB + formatter.format(uidRatio));
 		detailsReportWriter.println("average_uids_per_probe" + StringUtil.TAB + formatter.format(averageUidsPerProbe));
 		detailsReportWriter.println("average_uids_per_probes_with_reads" + StringUtil.TAB + formatter.format(averageUidsPerProbeWithReads));

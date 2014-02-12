@@ -127,8 +127,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		}
 
 		// Set up the reports files
-		ReportManager reportManager = new ReportManager(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix(), applicationSettings.getUidLength(), samHeader,
-				applicationSettings.isShouldOutputQualityReports());
+		ReportManager reportManager = new ReportManager(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix(), applicationSettings.getExtensionUidLength(),
+				applicationSettings.getLigationUidLength(), samHeader, applicationSettings.isShouldOutputQualityReports());
 
 		// Actually do the work
 		filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings, probeInfo, reportManager);
@@ -630,7 +630,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			mergedRecord.setReadName(record.getReadName());
 			mergedRecord.setAlignmentStart(record.getAlignmentStart());
 
-			SAMRecordUtil.setSamRecordUidAttribute(mergedRecord, readPair.getUid());
+			SAMRecordUtil.setSamRecordExtensionUidAttribute(mergedRecord, readPair.getExtensionUid());
+			SAMRecordUtil.setSamRecordLigationUidAttribute(mergedRecord, readPair.getLigationUid());
 			SAMRecordUtil.setSamRecordProbeIdAttribute(mergedRecord, readPair.getProbeId());
 			mergedRecord.setReadNegativeStrandFlag(isNegativeStrand);
 			mergedRecord.setReferenceName(record.getReferenceName());

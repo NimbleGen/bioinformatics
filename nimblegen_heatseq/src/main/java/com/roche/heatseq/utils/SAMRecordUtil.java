@@ -45,7 +45,8 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
  */
 public class SAMRecordUtil {
 
-	private static final String UID_SAMRECORD_ATTRIBUTE_TAG = "UI";
+	private static final String EXTENSION_UID_SAMRECORD_ATTRIBUTE_TAG = "EI";
+	private static final String LIGATION_UID_SAMRECORD_ATTRIBUTE_TAG = "LI";
 	private static final String PROBE_ID_SAMRECORD_ATTRIBUTE_TAG = "PI";
 	public static final String MISMATCH_DETAILS_ATTRIBUTE_TAG = "MD";
 	public static final String READ_GROUP_ATTRIBUTE_TAG = "RG";
@@ -60,8 +61,18 @@ public class SAMRecordUtil {
 	 * @param uidLength
 	 * @return the UID contained within the provided sequence
 	 */
-	public static String parseUidFromRead(String sequence, int uidLength) {
-		String uidSequence = sequence.substring(0, uidLength);
+	public static String parseUidFromReadOne(String sequence, int extensionUidLength) {
+		String uidSequence = sequence.substring(0, extensionUidLength);
+		return uidSequence;
+	}
+
+	/**
+	 * @param sequence
+	 * @param uidLength
+	 * @return the UID contained within the provided sequence
+	 */
+	public static String parseUidFromReadTwo(String sequence, int ligationUidLength) {
+		String uidSequence = sequence.substring(sequence.length() - ligationUidLength, sequence.length());
 		return uidSequence;
 	}
 
@@ -70,19 +81,39 @@ public class SAMRecordUtil {
 	 * @param uidLength
 	 * @return a read sequence without the UID
 	 */
-	public static String removeUidFromRead(String sequence, int uidLength) {
-		sequence = sequence.substring(uidLength, sequence.length());
+	public static String removeUidFromReadOne(String sequence, int extensionUidLength) {
+		sequence = sequence.substring(extensionUidLength, sequence.length());
 		return sequence;
 	}
 
 	/**
-	 * Set the UID attribute for this SAMRecord
+	 * @param sequence
+	 * @param uidLength
+	 * @return a read sequence without the UID
+	 */
+	public static String removeUidFromReadTwo(String sequence, int ligationUidLength) {
+		sequence = sequence.substring(0, sequence.length() - ligationUidLength);
+		return sequence;
+	}
+
+	/**
+	 * Set the extension UID attribute for this SAMRecord
 	 * 
 	 * @param record
 	 * @param uid
 	 */
-	public static void setSamRecordUidAttribute(SAMRecord record, String uid) {
-		record.setAttribute(UID_SAMRECORD_ATTRIBUTE_TAG, uid);
+	public static void setSamRecordExtensionUidAttribute(SAMRecord record, String uid) {
+		record.setAttribute(EXTENSION_UID_SAMRECORD_ATTRIBUTE_TAG, uid);
+	}
+
+	/**
+	 * Set the ligation UID attribute for this SAMRecord
+	 * 
+	 * @param record
+	 * @param uid
+	 */
+	public static void setSamRecordLigationUidAttribute(SAMRecord record, String uid) {
+		record.setAttribute(LIGATION_UID_SAMRECORD_ATTRIBUTE_TAG, uid);
 	}
 
 	/**
@@ -97,10 +128,19 @@ public class SAMRecordUtil {
 
 	/**
 	 * @param record
-	 * @return the UID attribute set for this SAMRecord, null if no such attribute exists.
+	 * @return the extension UID attribute set for this SAMRecord, null if no such attribute exists.
 	 */
-	public static String getUidAttribute(SAMRecord record) {
-		String uid = (String) record.getAttribute(UID_SAMRECORD_ATTRIBUTE_TAG);
+	public static String getExtensionUidAttribute(SAMRecord record) {
+		String uid = (String) record.getAttribute(EXTENSION_UID_SAMRECORD_ATTRIBUTE_TAG);
+		return uid;
+	}
+
+	/**
+	 * @param record
+	 * @return the ligation UID attribute set for this SAMRecord, null if no such attribute exists.
+	 */
+	public static String getLigationUidAttribute(SAMRecord record) {
+		String uid = (String) record.getAttribute(LIGATION_UID_SAMRECORD_ATTRIBUTE_TAG);
 		return uid;
 	}
 
@@ -109,11 +149,23 @@ public class SAMRecordUtil {
 	 * @param probe
 	 * @return the UID set for this SAMRecord, null if no such attribute exists.
 	 */
-	public static String getVariableLengthUid(SAMRecord record, Probe probe, ReportManager reportManager, IAlignmentScorer alignmentScorer) {
-		String uid = (String) record.getAttribute(UID_SAMRECORD_ATTRIBUTE_TAG);
+	public static String getExtensionVariableLengthUid(SAMRecord record, Probe probe, ReportManager reportManager, IAlignmentScorer alignmentScorer) {
+		String uid = getExtensionUidAttribute(record);
 		String completeReadWithUid = uid + record.getReadString();
 		ISequence extensionPrimerSequence = probe.getExtensionPrimerSequence();
 		return getVariableLengthUid(completeReadWithUid, extensionPrimerSequence, reportManager, probe, alignmentScorer);
+	}
+
+	/**
+	 * @param record
+	 * @param probe
+	 * @return the UID set for this SAMRecord, null if no such attribute exists.
+	 */
+	public static String getLigationVariableLengthUid(SAMRecord record, Probe probe, ReportManager reportManager, IAlignmentScorer alignmentScorer) {
+		String uid = getLigationUidAttribute(record);
+		String completeReadWithUid = uid + record.getReadString();
+		ISequence ligationPrimerSequence = probe.getLigationPrimerSequence();
+		return getVariableLengthUid(completeReadWithUid, ligationPrimerSequence, reportManager, probe, alignmentScorer);
 	}
 
 	/**
