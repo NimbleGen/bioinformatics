@@ -29,8 +29,6 @@ import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 public interface IReadPair {
 	String getReadName();
 
-	String getUid();
-
 	SAMRecord getRecord();
 
 	SAMRecord getMateRecord();
@@ -64,4 +62,8 @@ public interface IReadPair {
 	ISequence getCaptureTargetSequence();
 
 	String getProbeId();
+
+	String getExtensionUid();
+
+	String getLigationUid();
 }

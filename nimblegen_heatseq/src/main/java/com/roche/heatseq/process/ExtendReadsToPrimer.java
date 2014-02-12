@@ -63,7 +63,7 @@ public final class ExtendReadsToPrimer {
 	 * @return UniqueProbeRepresentativeData with extended reads or null if it could not be extended
 	 */
 	private static IReadPair extendReadPair(Probe probe, IReadPair readPair, IAlignmentScorer alignmentScorer) {
-		return extendReadPair(readPair.getUid(), probe, readPair.getSamHeader(), readPair.getSequenceName(), readPair.getReadName(), readPair.getReadGroup(),
+		return extendReadPair(readPair.getExtensionUid(), readPair.getLigationUid(), probe, readPair.getSamHeader(), readPair.getSequenceName(), readPair.getReadName(), readPair.getReadGroup(),
 				new IupacNucleotideCodeSequence(readPair.getSequenceOne()), readPair.getSequenceOneQualityString(), new IupacNucleotideCodeSequence(readPair.getSequenceTwo()),
 				readPair.getSequenceTwoQualityString(), readPair.getOneMappingQuality(), readPair.getTwoMappingQuality(), alignmentScorer);
 	}
@@ -84,8 +84,9 @@ public final class ExtendReadsToPrimer {
 	 * @param twoMappingQuality
 	 * @return readPair that has been extended to the primers (the primers are not included in the new alignment)
 	 */
-	public static IReadPair extendReadPair(String uid, Probe probe, SAMFileHeader samHeader, String sequenceName, String readName, String readGroup, ISequence sequenceOne,
-			String sequenceOneQualityString, ISequence sequenceTwo, String sequenceTwoQualityString, int oneMappingQuality, int twoMappingQuality, IAlignmentScorer alignmentScorer) {
+	public static IReadPair extendReadPair(String extensionUid, String ligationUid, Probe probe, SAMFileHeader samHeader, String sequenceName, String readName, String readGroup,
+			ISequence sequenceOne, String sequenceOneQualityString, ISequence sequenceTwo, String sequenceTwoQualityString, int oneMappingQuality, int twoMappingQuality,
+			IAlignmentScorer alignmentScorer) {
 		IReadPair extendedReadPair = null;
 
 		try {
@@ -118,7 +119,7 @@ public final class ExtendReadsToPrimer {
 
 				SAMRecord readOneExtendedRecord = extendRecord(samHeader, readName, readGroup, readOneIsOnReverseStrand, readOneExtensionDetails.getAlignmentCigarString(),
 						readOneExtensionDetails.getMismatchDetailsString(), readOneExtensionDetails.getAlignmentStartInReference(), readOneExtendedSequence.toString(), readOneExtendedBaseQualities,
-						sequenceName, oneMappingQuality, readOneReferenceLength, uid, probe.getProbeId());
+						sequenceName, oneMappingQuality, readOneReferenceLength, extensionUid, ligationUid, probe.getProbeId());
 
 				ReadExtensionDetails readTwoExtensionDetails = calculateDetailsForReadExtensionToPrimer(ligationPrimer, primerReferencePositionAdjacentToSequence, captureTargetSequence, sequenceTwo,
 						true, readTwoIsOnReverseStrand, alignmentScorer);
@@ -134,11 +135,11 @@ public final class ExtendReadsToPrimer {
 					}
 					SAMRecord readTwoExtendedRecord = extendRecord(samHeader, readName, readGroup, readTwoIsOnReverseStrand, readTwoExtensionDetails.getAlignmentCigarString(),
 							readTwoExtensionDetails.getMismatchDetailsString(), readTwoExtensionDetails.getAlignmentStartInReference(), readTwoExtendedSequence.toString(),
-							readTwoExtendedBaseQualities, sequenceName, twoMappingQuality, readTwoReferenceLength, uid, probe.getProbeId());
+							readTwoExtendedBaseQualities, sequenceName, twoMappingQuality, readTwoReferenceLength, extensionUid, ligationUid, probe.getProbeId());
 
 					SAMRecordUtil.setSAMRecordsAsPair(readOneExtendedRecord, readTwoExtendedRecord);
 
-					extendedReadPair = new ReadPair(readOneExtendedRecord, readTwoExtendedRecord, uid, probe.getCaptureTargetSequence(), probe.getProbeId());
+					extendedReadPair = new ReadPair(readOneExtendedRecord, readTwoExtendedRecord, extensionUid, ligationUid, probe.getCaptureTargetSequence(), probe.getProbeId());
 
 				}
 			}
@@ -189,7 +190,8 @@ public final class ExtendReadsToPrimer {
 	}
 
 	private static SAMRecord extendRecord(SAMFileHeader samHeader, String readName, String readGroup, boolean isNegativeStrand, CigarString cigarString, String mismatchDetailsString,
-			int alignmentStartInReference, String readString, String baseQualityString, String sequenceName, int mappingQuality, int referenceLength, String uid, String probeId) {
+			int alignmentStartInReference, String readString, String baseQualityString, String sequenceName, int mappingQuality, int referenceLength, String extensionUid, String ligationUid,
+			String probeId) {
 		if (readString.length() != baseQualityString.length()) {
 			throw new IllegalStateException("SAMRecord read[" + readString + "] length[" + readString.length() + "] and base quality[" + baseQualityString + "] length[" + baseQualityString.length()
 					+ "] must be the same.");
@@ -205,7 +207,8 @@ public final class ExtendReadsToPrimer {
 		record.setAlignmentStart(alignmentStartInReference);
 		record.setReadString(readString);
 		record.setBaseQualityString(baseQualityString);
-		SAMRecordUtil.setSamRecordUidAttribute(record, uid);
+		SAMRecordUtil.setSamRecordExtensionUidAttribute(record, extensionUid);
+		SAMRecordUtil.setSamRecordLigationUidAttribute(record, ligationUid);
 		SAMRecordUtil.setSamRecordProbeIdAttribute(record, probeId);
 		if (mismatchDetailsString != null && !mismatchDetailsString.isEmpty()) {
 			record.setAttribute(SAMRecordUtil.MISMATCH_DETAILS_ATTRIBUTE_TAG, mismatchDetailsString);

@@ -62,6 +62,8 @@ public class PrefuppCli {
 			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.", false, false);
 	private final static CommandLineOption UID_LENGTH_OPTION = new CommandLineOption("Length of UID in Bases", "uidLength", null,
 			"Length of the Universal Identifier.  If not specified this will default to " + DEFAULT_UID_LENGTH + " bases.", false, false);
+	private final static CommandLineOption LIGATION_UID_LENGTH_OPTION = new CommandLineOption("Length of Ligation UID in Bases", "ligationUidLength", null,
+			"Length of the Universal Identifier connected to the Ligation Primer.  If not specified this will default to " + DEFAULT_UID_LENGTH + " bases.", false, false);
 	private final static CommandLineOption ALLOW_VARIABLE_LENGTH_UIDS_OPTION = new CommandLineOption("Allow Variable Length Uids", "allowVariableLengthUids", null, "Allow Variable Length Uids",
 			false, true);
 	private final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o', "Name for output bam file.", true, false);
@@ -183,6 +185,16 @@ public class PrefuppCli {
 					uidLength = Integer.parseInt(parsedCommandLine.getOptionsValue(UID_LENGTH_OPTION));
 				} catch (NumberFormatException ex) {
 					throw new IllegalStateException("UID length specified is not an integer[" + parsedCommandLine.getOptionsValue(UID_LENGTH_OPTION) + "].");
+				}
+			}
+
+			int ligationUidLength = DEFAULT_UID_LENGTH;
+			boolean ligationUidLengthOptionIsPresent = parsedCommandLine.isOptionPresent(LIGATION_UID_LENGTH_OPTION);
+			if (ligationUidLengthOptionIsPresent) {
+				try {
+					ligationUidLength = Integer.parseInt(parsedCommandLine.getOptionsValue(LIGATION_UID_LENGTH_OPTION));
+				} catch (NumberFormatException ex) {
+					throw new IllegalStateException("Ligation UID length specified is not an integer[" + parsedCommandLine.getOptionsValue(LIGATION_UID_LENGTH_OPTION) + "].");
 				}
 			}
 
@@ -318,8 +330,8 @@ public class PrefuppCli {
 				}
 
 				sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tempOutputDirectory,
-						shouldOutputQualityReports, commandLineSignature, numProcessors, uidLength, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, markDuplicates,
-						mergePairs);
+						shouldOutputQualityReports, commandLineSignature, numProcessors, uidLength, ligationUidLength, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget,
+						markDuplicates, mergePairs);
 
 			} catch (Exception e) {
 				throw new IllegalStateException(e.getMessage(), e);
@@ -331,8 +343,8 @@ public class PrefuppCli {
 	}
 
 	private static void sortMergeFilterAndExtendReads(File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName,
-			String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputQualityReports, String commandLineSignature, int numProcessors, int uidLength, boolean allowVariableLengthUids,
-			IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinCaptureTarget, boolean markDuplicates, boolean mergePairs) {
+			String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputQualityReports, String commandLineSignature, int numProcessors, int extensionUidLength, int ligationUidLength,
+			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinCaptureTarget, boolean markDuplicates, boolean mergePairs) {
 		try {
 
 			final File mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", tempOutputDirectory);
@@ -340,7 +352,7 @@ public class PrefuppCli {
 
 			long totalTimeStart = System.currentTimeMillis();
 
-			FastqAndBamFileMerger.createMergedFastqAndBamFileFromUnsortedFiles(bamFile, fastQ1WithUidsFile, fastQ2File, mergedBamFileSortedByCoordinates, uidLength);
+			FastqAndBamFileMerger.createMergedFastqAndBamFileFromUnsortedFiles(bamFile, fastQ1WithUidsFile, fastQ2File, mergedBamFileSortedByCoordinates, extensionUidLength, ligationUidLength);
 			long timeAfterMergeUnsorted = System.currentTimeMillis();
 			logger.debug("done merging bam and fastqfiles ... result[" + mergedBamFileSortedByCoordinates.getAbsolutePath() + "] in " + (timeAfterMergeUnsorted - totalTimeStart) + "ms.");
 
@@ -355,7 +367,8 @@ public class PrefuppCli {
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
 					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, commandLineSignature, APPLICATION_NAME,
-					applicationVersionFromManifest, numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, uidLength, markDuplicates, mergePairs);
+					applicationVersionFromManifest, numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, extensionUidLength, ligationUidLength, markDuplicates,
+					mergePairs);
 
 			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
@@ -386,6 +399,7 @@ public class PrefuppCli {
 		group.addOption(SHOULD_OUTPUT_REPORTS_OPTION);
 		group.addOption(NUM_PROCESSORS_OPTION);
 		group.addOption(UID_LENGTH_OPTION);
+		group.addOption(LIGATION_UID_LENGTH_OPTION);
 		group.addOption(ALLOW_VARIABLE_LENGTH_UIDS_OPTION);
 		group.addOption(MATCH_SCORE_OPTION);
 		group.addOption(MISMATCH_PENALTY_OPTION);

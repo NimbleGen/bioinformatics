@@ -83,19 +83,26 @@ class FilterByUid {
 			SAMRecord mate = recordPair.getSecondOfPairRecord();
 
 			if ((record != null) && (mate != null)) {
-				String uid = null;
+				String extensionUid = null;
+				String ligationUid = null;
 				if (allowVariableLengthUids) {
-					uid = SAMRecordUtil.getVariableLengthUid(record, probe, reportManager, alignmentScorer);
+					extensionUid = SAMRecordUtil.getExtensionVariableLengthUid(record, probe, reportManager, alignmentScorer);
+					ligationUid = SAMRecordUtil.getLigationVariableLengthUid(mate, probe, reportManager, alignmentScorer);
 				} else {
-					uid = SAMRecordUtil.getUidAttribute(record);
+					extensionUid = SAMRecordUtil.getExtensionUidAttribute(record);
+					ligationUid = SAMRecordUtil.getExtensionUidAttribute(mate);
 				}
-				if (uid != null) {
-					ISequence uidSequence = new IupacNucleotideCodeSequence(uid);
-					distinctUids.add(uidSequence);
+				if (extensionUid != null && ligationUid != null) {
+					ISequence extensionUidSequence = new IupacNucleotideCodeSequence(extensionUid);
+					ISequence ligationUidSequence = new IupacNucleotideCodeSequence(ligationUid);
+					ISequence fullUidSequence = new IupacNucleotideCodeSequence();
+					fullUidSequence.append(extensionUidSequence);
+					fullUidSequence.append(ligationUidSequence);
+					distinctUids.add(fullUidSequence);
 					synchronized (uids) {
-						uids.add(uidSequence);
+						uids.add(fullUidSequence);
 					}
-					datas.add(new ReadPair(record, mate, uid, probe.getCaptureTargetSequence(), probe.getProbeId()));
+					datas.add(new ReadPair(record, mate, extensionUid, ligationUid, probe.getCaptureTargetSequence(), probe.getProbeId()));
 				} else {
 					reportManager.getUnableToAlignPrimerWriter().writeLine(probe.getProbeId(), probe.getSequenceName(), probe.getStart(), probe.getStop(), probe.getExtensionPrimerSequence(),
 							record.getReadName(), record.getReadString());
@@ -105,16 +112,18 @@ class FilterByUid {
 
 		Map<String, List<IReadPair>> uidToDataMap = new HashMap<String, List<IReadPair>>();
 		for (IReadPair read : datas) {
-			String uid = read.getUid();
+			String extensionUid = read.getExtensionUid();
+			String ligationUid = read.getLigationUid();
+			String fullUid = extensionUid + ligationUid;
 			// TODO 7/2/2013 Kurt Heilman this basically is using a string comparison instead of a sequence comparison to match the UIDs. Is this appropriate?
-			List<IReadPair> uidData = uidToDataMap.get(uid);
+			List<IReadPair> uidData = uidToDataMap.get(fullUid);
 
 			if (uidData == null) {
 				uidData = new ArrayList<IReadPair>();
 			}
 
 			uidData.add(read);
-			uidToDataMap.put(uid, uidData);
+			uidToDataMap.put(fullUid, uidData);
 		}
 
 		int totalReadPairsRemainingAfterReduction = 0;
@@ -262,7 +271,8 @@ class FilterByUid {
 		if (reportManager.isReporting()) {
 			for (IReadPair currentPair : data) {
 				String probeId = "";
-				String uid = "";
+				String extensionUid = "";
+				String ligationUid = "";
 				String sequenceQualityScore = "";
 				String sequenceTwoQualityScore = "";
 				String totalQualityScore = "";
@@ -274,7 +284,8 @@ class FilterByUid {
 				if (currentPair != null) {
 					probeId = probe.getProbeId();
 
-					uid = "" + currentPair.getUid();
+					extensionUid = "" + currentPair.getExtensionUid();
+					ligationUid = "" + currentPair.getLigationUid();
 					readName = currentPair.getReadName();
 
 					sequenceQualityScore = "" + currentPair.getSequenceOneQualityScore();
@@ -284,7 +295,8 @@ class FilterByUid {
 					sequenceTwo = currentPair.getSequenceTwo();
 
 				}
-				reportManager.getProbeUidQualityWriter().writeLine(probeId, uid.toUpperCase(), sequenceQualityScore, sequenceTwoQualityScore, totalQualityScore, readName, sequenceOne, sequenceTwo);
+				reportManager.getProbeUidQualityWriter().writeLine(probeId, extensionUid.toUpperCase(), ligationUid.toUpperCase(), sequenceQualityScore, sequenceTwoQualityScore, totalQualityScore,
+						readName, sequenceOne, sequenceTwo);
 			}
 		}
 	}

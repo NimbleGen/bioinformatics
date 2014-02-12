@@ -19,7 +19,6 @@ package com.roche.heatseq.objects;
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMRecord;
 
-import com.roche.heatseq.process.FastqAndBamFileMerger;
 import com.roche.heatseq.utils.BamFileUtil;
 import com.roche.heatseq.utils.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
@@ -32,15 +31,17 @@ import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 public class ReadPair implements IReadPair {
 	private final SAMRecord record;
 	private final SAMRecord mate;
-	private final String uid;
+	private final String extensionUid;
+	private final String ligationUid;
 	private final ISequence captureTargetSequence;
 	private final String probeId;
 
-	public ReadPair(SAMRecord record, SAMRecord mate, String uid, ISequence captureTargetSequence, String probeId) {
+	public ReadPair(SAMRecord record, SAMRecord mate, String extensionUid, String ligationUid, ISequence captureTargetSequence, String probeId) {
 		super();
 		this.record = record;
 		this.mate = mate;
-		this.uid = uid;
+		this.extensionUid = extensionUid;
+		this.ligationUid = ligationUid;
 		this.captureTargetSequence = captureTargetSequence;
 		this.probeId = probeId;
 	}
@@ -51,8 +52,13 @@ public class ReadPair implements IReadPair {
 	}
 
 	@Override
-	public String getUid() {
-		return uid;
+	public String getExtensionUid() {
+		return extensionUid;
+	}
+
+	@Override
+	public String getLigationUid() {
+		return ligationUid;
 	}
 
 	@Override
@@ -82,22 +88,22 @@ public class ReadPair implements IReadPair {
 
 	@Override
 	public String getSequenceOne() {
-		return FastqAndBamFileMerger.getReadSequenceFromMergedRecord(record);
+		return record.getReadString();
 	}
 
 	@Override
 	public String getSequenceTwo() {
-		return FastqAndBamFileMerger.getReadSequenceFromMergedRecord(mate);
+		return mate.getReadString();
 	}
 
 	@Override
 	public String getSequenceOneQualityString() {
-		return FastqAndBamFileMerger.getReadBaseQualityFromMergedRecord(record);
+		return record.getBaseQualityString();
 	}
 
 	@Override
 	public String getSequenceTwoQualityString() {
-		return FastqAndBamFileMerger.getReadBaseQualityFromMergedRecord(mate);
+		return mate.getBaseQualityString();
 	}
 
 	@Override

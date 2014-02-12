@@ -94,11 +94,15 @@ public class FastqAndBamFileMerger {
 					String baseQualityString = simpleFastqRecord.getBaseQualityString();
 					String uid = null;
 					if (processFirstOfPairReads) {
-						uid = SAMRecordUtil.parseUidFromRead(readString, uidLength);
-						readString = SAMRecordUtil.removeUidFromRead(readString, uidLength);
-						baseQualityString = SAMRecordUtil.removeUidFromRead(baseQualityString, uidLength);
+						uid = SAMRecordUtil.parseUidFromReadOne(readString, uidLength);
+						readString = SAMRecordUtil.removeUidFromReadOne(readString, uidLength);
+						baseQualityString = SAMRecordUtil.removeUidFromReadOne(baseQualityString, uidLength);
+					} else {
+						uid = SAMRecordUtil.parseUidFromReadTwo(readString, uidLength);
+						readString = SAMRecordUtil.removeUidFromReadTwo(readString, uidLength);
+						baseQualityString = SAMRecordUtil.removeUidFromReadTwo(baseQualityString, uidLength);
 					}
-					SAMRecord modifiedRecord = storeFastqInfoInRecord(samRecord, readString, baseQualityString, uid);
+					SAMRecord modifiedRecord = storeFastqInfoInRecord(processFirstOfPairReads, samRecord, readString, baseQualityString, uid);
 					samWriter.addAlignment(modifiedRecord);
 				}
 			}
@@ -206,7 +210,7 @@ public class FastqAndBamFileMerger {
 	 * @param outputBamFile
 	 * @return
 	 */
-	static File createMergedFastqAndBamFileFromUnsortedFiles(File unsortedBamFile, File unsortedFastq1File, File unsortedFastq2File, File outputBamFile, int uidLength) {
+	static File createMergedFastqAndBamFileFromUnsortedFiles(File unsortedBamFile, File unsortedFastq1File, File unsortedFastq2File, File outputBamFile, int readOneUidLength, int readTwoUidLength) {
 		// Each new iteration starts at the first record.
 		try (SAMFileReader samReader = new SAMFileReader(unsortedBamFile)) {
 
@@ -220,10 +224,10 @@ public class FastqAndBamFileMerger {
 			int maximumHashSize = getMaximumHashSizeForMerge(unsortedBamFile, unsortedFastq1File);
 
 			// Process the first of pair reads and the first fastQ file.
-			createMergedFastqAndBamFileFromUnsortedFiles(samReader, unsortedFastq1File, true, samWriter, maximumHashSize, uidLength);
+			createMergedFastqAndBamFileFromUnsortedFiles(samReader, unsortedFastq1File, true, samWriter, maximumHashSize, readOneUidLength);
 
 			// Process the second of pair reads and the second fastQ file.
-			createMergedFastqAndBamFileFromUnsortedFiles(samReader, unsortedFastq2File, false, samWriter, maximumHashSize, uidLength);
+			createMergedFastqAndBamFileFromUnsortedFiles(samReader, unsortedFastq2File, false, samWriter, maximumHashSize, readTwoUidLength);
 
 			samWriter.close();
 		}
@@ -240,28 +244,16 @@ public class FastqAndBamFileMerger {
 	 * @param uid
 	 * @return
 	 */
-	private static SAMRecord storeFastqInfoInRecord(SAMRecord record, String readSequenceFromFastq, String readBaseQualityFromFastq, String uid) {
+	private static SAMRecord storeFastqInfoInRecord(boolean isReadOne, SAMRecord record, String readSequenceFromFastq, String readBaseQualityFromFastq, String uid) {
 		if (uid != null) {
-			SAMRecordUtil.setSamRecordUidAttribute(record, uid);
+			if (isReadOne) {
+				SAMRecordUtil.setSamRecordExtensionUidAttribute(record, uid);
+			} else {
+				SAMRecordUtil.setSamRecordLigationUidAttribute(record, uid);
+			}
 		}
 		record.setReadString(readSequenceFromFastq);
 		record.setBaseQualityString(readBaseQualityFromFastq);
 		return record;
-	}
-
-	/**
-	 * @param record
-	 * @return The read quality string from a merged SAM record
-	 */
-	public static String getReadBaseQualityFromMergedRecord(SAMRecord record) {
-		return record.getBaseQualityString();
-	}
-
-	/**
-	 * @param record
-	 * @return The read string from a merged SAM record
-	 */
-	public static String getReadSequenceFromMergedRecord(SAMRecord record) {
-		return record.getReadString();
 	}
 }
