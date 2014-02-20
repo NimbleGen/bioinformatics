@@ -147,27 +147,6 @@ public class SAMRecordUtil {
 
 	/**
 	 * @param record
-	 * @return the extension UID attribute set for this SAMRecord, null if no such attribute exists.
-	 */
-	public static String getExtensionUidAttribute(SAMRecord record) {
-		// TODO need
-
-		String uid = (String) record.getAttribute(EXTENSION_UID_SAMRECORD_ATTRIBUTE_TAG);
-		return uid;
-	}
-
-	/**
-	 * @param record
-	 * @return the ligation UID attribute set for this SAMRecord, null if no such attribute exists.
-	 */
-	public static String getLigationUidAttribute(SAMRecord record) {
-		// TODO
-		String uid = (String) record.getAttribute(LIGATION_UID_SAMRECORD_ATTRIBUTE_TAG);
-		return uid;
-	}
-
-	/**
-	 * @param record
 	 * @param probe
 	 * @return the UID set for this SAMRecord, null if no such attribute exists.
 	 */

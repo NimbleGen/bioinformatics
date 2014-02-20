@@ -155,7 +155,7 @@ public final class ExtendReadsToPrimer {
 			extendedReadPair = new ReadPair(readOneRecord, readTwoRecord, extensionUid, ligationUid, probe.getCaptureTargetSequence(), probe.getProbeId(), readOneExtended, readTwoExtended);
 
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.warn(e.getMessage(), e);
 			throw new IllegalStateException(e.getMessage(), e);
 		}
 
