@@ -1,0 +1,32 @@
+Memory allocated per record[0.0] maximumHashSize[7000000] 2014-02-20 16:36:54,658 DEBUG [FastqAndBamFileMerger.java:183]
+
+Joined fastQ and bam file in 1 passes 2014-02-20 16:36:54,822 DEBUG [FastqAndBamFileMerger.java:141]
+
+done merging bam and fastqfiles ... result[D:\ryan_bug\temp\nimblegen_1436644447149727851\merged_bam_sorted_by_coordinates_8316268167253892435.bam] in 316ms. 2014-02-20 16:36:54,893 DEBUG [PrefuppCli.java:362]
+
+done creating index for merged and sorted bam file ... result[D:\ryan_bug\temp\nimblegen_1436644447149727851\index_of_merged_bam_sorted_by_coordinates_7060726260871836340.bamindex] in 00:00:00 2014-02-20 16:36:54,973 DEBUG [PrefuppCli.java:369]
+
+Done parsing probeInfo[D:\ryan_bug\reduced_probe_info.txt]  Total time: 00:00:00 2014-02-20 16:36:54,993 DEBUG [ProbeFileUtil.java:104]
+
+Beginning processing chr16 with 1 PROBES  2014-02-20 16:36:55,022 DEBUG [PrimerReadExtensionAndFilteringOfUniquePcrProbes.java:217]
+
+Total time: 00:00:01 2014-02-20 16:36:56,480 DEBUG [PrimerReadExtensionAndFilteringOfUniquePcrProbes.java:139]
+
+done - Total time: (00:00:01) 2014-02-20 16:36:56,481 DEBUG [PrefuppCli.java:381]
+
+Memory allocated per record[0.0] maximumHashSize[7000000] 2014-02-20 16:37:27,210 DEBUG [FastqAndBamFileMerger.java:183]
+
+Joined fastQ and bam file in 1 passes 2014-02-20 16:37:27,358 DEBUG [FastqAndBamFileMerger.java:141]
+
+done merging bam and fastqfiles ... result[D:\ryan_bug\temp\nimblegen_2288201702151202975\merged_bam_sorted_by_coordinates_1491258592512652347.bam] in 305ms. 2014-02-20 16:37:27,435 DEBUG [PrefuppCli.java:362]
+
+done creating index for merged and sorted bam file ... result[D:\ryan_bug\temp\nimblegen_2288201702151202975\index_of_merged_bam_sorted_by_coordinates_2151911121551892199.bamindex] in 00:00:00 2014-02-20 16:37:27,516 DEBUG [PrefuppCli.java:369]
+
+Done parsing probeInfo[D:\ryan_bug\reduced_probe_info.txt]  Total time: 00:00:00 2014-02-20 16:37:27,536 DEBUG [ProbeFileUtil.java:104]
+
+Beginning processing chr16 with 1 PROBES  2014-02-20 16:37:27,571 DEBUG [PrimerReadExtensionAndFilteringOfUniquePcrProbes.java:217]
+
+Total time: 00:00:01 2014-02-20 16:37:29,055 DEBUG [PrimerReadExtensionAndFilteringOfUniquePcrProbes.java:139]
+
+done - Total time: (00:00:01) 2014-02-20 16:37:29,055 DEBUG [PrefuppCli.java:381]
+

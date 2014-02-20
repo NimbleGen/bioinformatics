@@ -105,10 +105,6 @@ public final class ExtendReadsToPrimer {
 				primerReferencePositionAdjacentToSequence = probe.getExtensionPrimerStart();
 			}
 
-			if (readName.contains("8975")) {
-				System.out.println(readName);
-			}
-
 			ReadExtensionDetails readOneExtensionDetails = calculateDetailsForReadExtensionToPrimer(extensionPrimer, primerReferencePositionAdjacentToSequence, captureTargetSequence, sequenceOne,
 					false, readOneIsOnReverseStrand, alignmentScorer);
 
