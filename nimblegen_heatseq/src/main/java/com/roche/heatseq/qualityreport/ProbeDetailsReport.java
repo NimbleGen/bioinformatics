@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-import com.roche.heatseq.objects.Probe;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
@@ -38,8 +37,8 @@ public class ProbeDetailsReport {
 		detailsReportWriter = new PrintWriter(detailsReportFile);
 		detailsReportWriter.println("probe_id" + StringUtil.TAB + "total_uids" + StringUtil.TAB + "average_number_of_read_pairs_per_uid" + StringUtil.TAB + "standard_deviation_of_read_pairs_per_uid"
 				+ StringUtil.TAB + "min_read_pairs_per_uid" + StringUtil.TAB + "max_read_pairs_per_uid" + StringUtil.TAB + "uid_with_max_read_pairs" + StringUtil.TAB
-				+ "total_duplicate_read_pairs_removed" + StringUtil.TAB + "total_read_pairs_after_duplicate_removal" + StringUtil.TAB + "on_target_duplicate_rate" + StringUtil.TAB
-				+ "total_time_to_process_in_ms");
+				+ "total_duplicate_read_pairs_removed" + StringUtil.TAB + "total_read_pairs_after_duplicate_removal" + StringUtil.TAB + "unique_reads_with_extension_errors" + StringUtil.TAB
+				+ "on_target_duplicate_rate" + StringUtil.TAB + "total_time_to_process_in_ms");
 		detailsReportWriter.flush();
 	}
 
@@ -59,14 +58,6 @@ public class ProbeDetailsReport {
 
 		totalProbes++;
 		totalNonZeroProbes++;
-	}
-
-	public void writeBlankEntry(Probe probe) {
-		probesWithNoMappedReadPairs++;
-		detailsReportWriter.print(probe.getProbeId() + StringUtil.TAB + 0 + StringUtil.TAB + 0 + StringUtil.TAB + "NaN" + StringUtil.TAB + "0" + StringUtil.TAB + "0" + StringUtil.TAB + "0"
-				+ StringUtil.TAB + "" + StringUtil.TAB + "0" + StringUtil.TAB + "0" + StringUtil.TAB + "0:00:00");
-		detailsReportWriter.flush();
-		totalProbes++;
 	}
 
 	public int getDuplicateReadPairsRemoved() {

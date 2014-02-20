@@ -66,4 +66,10 @@ public interface IReadPair {
 	String getExtensionUid();
 
 	String getLigationUid();
+
+	boolean isMarkedDuplicate();
+
+	boolean isReadOneExtended();
+
+	boolean isReadTwoExtended();
 }

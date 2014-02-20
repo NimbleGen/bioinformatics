@@ -70,7 +70,7 @@ class FilterByUid {
 	 * @return A UidReductionResultsForAProbe containing the processing statistics and the reduced probe set
 	 */
 	static UidReductionResultsForAProbe reduceProbesByUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, ReportManager reportManager, boolean allowVariableLengthUids,
-			IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids, boolean markDuplicates) {
+			int expectedExtensionUidLength, int expectedLigationUidLength, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids, boolean markDuplicates) {
 		List<IReadPair> readPairs = new ArrayList<IReadPair>();
 
 		long probeProcessingStartInMs = System.currentTimeMillis();
@@ -81,7 +81,6 @@ class FilterByUid {
 			SAMRecordPair recordPair = compressedReadNameToSamRecordPairEntry.getValue();
 			SAMRecord record = recordPair.getFirstOfPairRecord();
 			SAMRecord mate = recordPair.getSecondOfPairRecord();
-
 			if ((record != null) && (mate != null)) {
 				String extensionUid = null;
 				String ligationUid = null;
@@ -89,8 +88,8 @@ class FilterByUid {
 					extensionUid = SAMRecordUtil.getExtensionVariableLengthUid(record, probe, reportManager, alignmentScorer);
 					ligationUid = SAMRecordUtil.getLigationVariableLengthUid(mate, probe, reportManager, alignmentScorer);
 				} else {
-					extensionUid = SAMRecordUtil.getExtensionUidAttribute(record);
-					ligationUid = SAMRecordUtil.getExtensionUidAttribute(mate);
+					extensionUid = SAMRecordUtil.parseUidFromReadOne(record.getReadString(), expectedExtensionUidLength);
+					ligationUid = SAMRecordUtil.parseUidFromReadTwo(mate.getReadString(), expectedLigationUidLength);
 				}
 				if (extensionUid != null && ligationUid != null) {
 					ISequence extensionUidSequence = new IupacNucleotideCodeSequence(extensionUid);
@@ -102,27 +101,41 @@ class FilterByUid {
 					synchronized (uids) {
 						uids.add(fullUidSequence);
 					}
-					datas.add(new ReadPair(record, mate, extensionUid, ligationUid, probe.getCaptureTargetSequence(), probe.getProbeId()));
+
+					String readOneString = SAMRecordUtil.removeUidFromReadOne(record.getReadString(), extensionUid.length());
+					String readOneBaseQualityString = SAMRecordUtil.removeUidFromReadOne(record.getBaseQualityString(), extensionUid.length());
+
+					String readTwoString = SAMRecordUtil.removeUidFromReadOne(mate.getReadString(), ligationUid.length());
+					String readTwoBaseQualityString = SAMRecordUtil.removeUidFromReadOne(mate.getBaseQualityString(), ligationUid.length());
+
+					record.setReadString(readOneString);
+					record.setBaseQualityString(readOneBaseQualityString);
+
+					mate.setReadString(readTwoString);
+					mate.setBaseQualityString(readTwoBaseQualityString);
+
+					datas.add(new ReadPair(record, mate, extensionUid, ligationUid, probe.getCaptureTargetSequence(), probe.getProbeId(), false, false));
 				} else {
+					boolean extensionFailed = extensionUid == null;
+					boolean ligationFailed = ligationUid == null;
 					reportManager.getUnableToAlignPrimerWriter().writeLine(probe.getProbeId(), probe.getSequenceName(), probe.getStart(), probe.getStop(), probe.getExtensionPrimerSequence(),
-							record.getReadName(), record.getReadString());
+							probe.getLigationPrimerSequence(), record.getReadName(), record.getReadString(), mate.getReadString(), extensionFailed, ligationFailed);
 				}
 			}
 		}
 
 		Map<String, List<IReadPair>> uidToDataMap = new HashMap<String, List<IReadPair>>();
-		for (IReadPair read : datas) {
-			String extensionUid = read.getExtensionUid();
-			String ligationUid = read.getLigationUid();
+		for (IReadPair readPair : datas) {
+			String extensionUid = readPair.getExtensionUid();
+			String ligationUid = readPair.getLigationUid();
 			String fullUid = extensionUid + ligationUid;
-			// TODO 7/2/2013 Kurt Heilman this basically is using a string comparison instead of a sequence comparison to match the UIDs. Is this appropriate?
 			List<IReadPair> uidData = uidToDataMap.get(fullUid);
 
 			if (uidData == null) {
 				uidData = new ArrayList<IReadPair>();
 			}
 
-			uidData.add(read);
+			uidData.add(readPair);
 			uidToDataMap.put(fullUid, uidData);
 		}
 

@@ -60,7 +60,7 @@ public class PrefuppCli {
 			"Should this utility generate quality reports?  (Default: No)", false, true);
 	private final static CommandLineOption NUM_PROCESSORS_OPTION = new CommandLineOption("Number of Processors", "numProcessors", null,
 			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.", false, false);
-	private final static CommandLineOption UID_LENGTH_OPTION = new CommandLineOption("Length of UID in Bases", "uidLength", null,
+	private final static CommandLineOption EXTENSION_UID_LENGTH_OPTION = new CommandLineOption("Length of Extension UID in Bases", "extensionUidLength", null,
 			"Length of the Universal Identifier.  If not specified this will default to " + DEFAULT_UID_LENGTH + " bases.", false, false);
 	private final static CommandLineOption LIGATION_UID_LENGTH_OPTION = new CommandLineOption("Length of Ligation UID in Bases", "ligationUidLength", null,
 			"Length of the Universal Identifier connected to the Ligation Primer.  If not specified this will default to " + DEFAULT_UID_LENGTH + " bases.", false, false);
@@ -136,16 +136,21 @@ public class PrefuppCli {
 				outputFilePrefix = "";
 			}
 
-			String tmpDirectoryString = parsedCommandLine.getOptionsValue(TMP_DIR_OPTION);
-			File tmpDirectory = null;
-			if (tmpDirectoryString != null) {
-				tmpDirectory = new File(tmpDirectoryString);
-				if (!tmpDirectory.exists() || !tmpDirectory.isDirectory()) {
-					throw new IllegalStateException("Unable to find provided temporary directory[" + tmpDirectory.getAbsolutePath() + "].");
+			String tempDirectoryString = parsedCommandLine.getOptionsValue(TMP_DIR_OPTION);
+			File tempDirectory = null;
+			if (tempDirectoryString != null) {
+				tempDirectory = new File(tempDirectoryString);
+				try {
+					FileUtil.createDirectory(tempDirectory);
+				} catch (IOException e) {
+					throw new IllegalStateException("Unable to create provided temporary directory[" + tempDirectory.getAbsolutePath() + "].");
+				}
+				if (!tempDirectory.exists() || !tempDirectory.isDirectory()) {
+					throw new IllegalStateException("Unable to find provided temporary directory[" + tempDirectory.getAbsolutePath() + "].");
 				}
 			} else {
 				// default temp directory
-				tmpDirectory = FileUtil.getSystemSpecificTempDirectory();
+				tempDirectory = FileUtil.getSystemSpecificTempDirectory();
 			}
 
 			boolean saveTmpFiles = parsedCommandLine.isOptionPresent(SAVE_TMP_DIR_OPTION);
@@ -178,13 +183,13 @@ public class PrefuppCli {
 				}
 			}
 
-			int uidLength = DEFAULT_UID_LENGTH;
-			boolean uidLengthOptionIsPresent = parsedCommandLine.isOptionPresent(UID_LENGTH_OPTION);
+			int extensionUidLength = DEFAULT_UID_LENGTH;
+			boolean uidLengthOptionIsPresent = parsedCommandLine.isOptionPresent(EXTENSION_UID_LENGTH_OPTION);
 			if (uidLengthOptionIsPresent) {
 				try {
-					uidLength = Integer.parseInt(parsedCommandLine.getOptionsValue(UID_LENGTH_OPTION));
+					extensionUidLength = Integer.parseInt(parsedCommandLine.getOptionsValue(EXTENSION_UID_LENGTH_OPTION));
 				} catch (NumberFormatException ex) {
-					throw new IllegalStateException("UID length specified is not an integer[" + parsedCommandLine.getOptionsValue(UID_LENGTH_OPTION) + "].");
+					throw new IllegalStateException("UID length specified is not an integer[" + parsedCommandLine.getOptionsValue(EXTENSION_UID_LENGTH_OPTION) + "].");
 				}
 			}
 
@@ -280,7 +285,7 @@ public class PrefuppCli {
 					throw new IllegalStateException("Unable to find provided BAM file[" + bamFile.getAbsolutePath() + "].");
 				}
 
-				Path tempOutputDirectoryPath = Files.createTempDirectory(tmpDirectory.toPath(), "nimblegen_");
+				Path tempOutputDirectoryPath = Files.createTempDirectory(tempDirectory.toPath(), "nimblegen_");
 				final File tempOutputDirectory = tempOutputDirectoryPath.toFile();
 				// Delete our temporary directory when we shut down the JVM if the user hasn't asked us to keep it
 				if (!saveTmpFiles) {
@@ -330,8 +335,8 @@ public class PrefuppCli {
 				}
 
 				sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tempOutputDirectory,
-						shouldOutputQualityReports, commandLineSignature, numProcessors, uidLength, ligationUidLength, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget,
-						markDuplicates, mergePairs);
+						shouldOutputQualityReports, commandLineSignature, numProcessors, extensionUidLength, ligationUidLength, allowVariableLengthUids, alignmentScorer,
+						notTrimmedToWithinCaptureTarget, markDuplicates, mergePairs);
 
 			} catch (Exception e) {
 				throw new IllegalStateException(e.getMessage(), e);
@@ -398,7 +403,7 @@ public class PrefuppCli {
 		group.addOption(SAVE_TMP_DIR_OPTION);
 		group.addOption(SHOULD_OUTPUT_REPORTS_OPTION);
 		group.addOption(NUM_PROCESSORS_OPTION);
-		group.addOption(UID_LENGTH_OPTION);
+		group.addOption(EXTENSION_UID_LENGTH_OPTION);
 		group.addOption(LIGATION_UID_LENGTH_OPTION);
 		group.addOption(ALLOW_VARIABLE_LENGTH_UIDS_OPTION);
 		group.addOption(MATCH_SCORE_OPTION);
