@@ -47,7 +47,6 @@ public final class ExtendReadsToPrimer {
 	private static final Logger logger = LoggerFactory.getLogger(ExtendReadsToPrimer.class);
 
 	private static final int PRIMER_ALIGNMENT_BUFFER = 10;
-	private static final int PRIMER_ACCEPTANCE_BUFFER = 5;
 
 	/**
 	 * We just use static methods from this class
@@ -234,33 +233,37 @@ public final class ExtendReadsToPrimer {
 	static Integer getPrimerEndIndexInRead(ISequence primerSequence, ISequence readSequence, IAlignmentScorer alignmentScorer) {
 		// cutoff excess sequence beyond primer
 		readSequence = readSequence.subSequence(0, Math.min(readSequence.size() - 1, primerSequence.size() + PRIMER_ALIGNMENT_BUFFER));
-		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(primerSequence, readSequence, alignmentScorer);
+		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(readSequence, primerSequence, alignmentScorer);
 		ISequence readAlignment = alignment.getAlignmentPair().getReferenceAlignment();
-		int firstNonGapIndex = -1;
+		ISequence primerAlignment = alignment.getAlignmentPair().getQueryAlignment();
 
 		double lengthNormalizedAlignmentScore = alignment.getLengthNormalizedAlignmentScore();
+		Integer probeEndIndexInRead = null;
 
 		if (lengthNormalizedAlignmentScore > 0) {
-			int currentIndexFromEnd = 0;
-
 			// walk backwards until we stop seeing gaps
-			alignmentLoop: for (ICode code : readAlignment.getReverse()) {
-				if (!code.matches(IupacNucleotideCode.GAP)) {
-					firstNonGapIndex = readAlignment.size() - currentIndexFromEnd;
-
-					break alignmentLoop;
+			ISequence reverseReadAlignment = readAlignment.getReverse();
+			ISequence reversePrimerAlignment = primerAlignment.getReverse();
+			boolean passedTrailingPrimerGaps = false;
+			int i = 0;
+			probeEndIndexInRead = 0;
+			while (i < reverseReadAlignment.size()) {
+				ICode currentReadCode = reverseReadAlignment.getCodeAt(i);
+				ICode currentPrimerCode = reversePrimerAlignment.getCodeAt(i);
+				if (!passedTrailingPrimerGaps && !currentPrimerCode.matches(IupacNucleotideCode.GAP)) {
+					passedTrailingPrimerGaps = true;
 				}
 
-				currentIndexFromEnd++;
+				// start counting all based in read when the initial primer gaps have been passed
+				if (passedTrailingPrimerGaps && !currentReadCode.matches(IupacNucleotideCode.GAP)) {
+					probeEndIndexInRead++;
+				}
+
+				i++;
 			}
 		}
-
-		Integer probeEndIndexInRead = null;
-		if (firstNonGapIndex >= (primerSequence.size() - PRIMER_ACCEPTANCE_BUFFER) && firstNonGapIndex <= (primerSequence.size() + PRIMER_ACCEPTANCE_BUFFER)) {
-			probeEndIndexInRead = firstNonGapIndex - 1;
-		}
-
-		return probeEndIndexInRead;
+		// indexes are zero based and counts are one based so subtract one
+		return probeEndIndexInRead - 1;
 	}
 
 	static List<IReadPair> extendReadsToPrimers(Probe probe, List<IReadPair> readPairs, IAlignmentScorer alignmentScorer) {

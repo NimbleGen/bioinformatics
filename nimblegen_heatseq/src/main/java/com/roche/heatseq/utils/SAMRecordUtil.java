@@ -54,6 +54,7 @@ public class SAMRecordUtil {
 	public static final String READ_GROUP_ATTRIBUTE_TAG = "RG";
 	public static final String EDIT_DISTANCE_ATTRIBUTE_TAG = "NM";
 	public static final String EXTENSION_ERROR_ATTRIBUTE_TAG = "EE";
+	public static final String MAPPED_READ_LENGTH_ATTRIBUTE_TAG = "ML";
 
 	private SAMRecordUtil() {
 		throw new AssertionError();
@@ -120,6 +121,25 @@ public class SAMRecordUtil {
 	}
 
 	/**
+	 * Set the read length of the truncated read used for mapping this is necessary because we override this read with the raw read
+	 * 
+	 * @param record
+	 * @param length
+	 */
+	public static void setMappedReadLength(SAMRecord record, int length) {
+		record.setAttribute(MAPPED_READ_LENGTH_ATTRIBUTE_TAG, length);
+	}
+
+	public static int getMappedReadLengthFromAttribute(SAMRecord record) {
+		Object lengthAsString = record.getAttribute(MAPPED_READ_LENGTH_ATTRIBUTE_TAG);
+		Integer length = null;
+		if (lengthAsString instanceof Integer) {
+			length = (Integer) lengthAsString;
+		}
+		return length;
+	}
+
+	/**
 	 * Set the probeId attribute for this SAMRecord
 	 * 
 	 * @param record
@@ -169,12 +189,12 @@ public class SAMRecordUtil {
 
 	/**
 	 * @param completeReadWithUid
-	 * @param extensionPrimerSequence
+	 * @param primerSequence
 	 * @return the variable length UID based on the primer alignment, null if the uid cannot be extracted
 	 */
-	public static String getVariableLengthUid(String completeReadWithUid, ISequence extensionPrimerSequence, ReportManager reportManager, Probe probe, IAlignmentScorer alignmentScorer) {
+	public static String getVariableLengthUid(String completeReadWithUid, ISequence primerSequence, ReportManager reportManager, Probe probe, IAlignmentScorer alignmentScorer) {
 		ISequence completeReadSequence = new IupacNucleotideCodeSequence(completeReadWithUid);
-		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(completeReadSequence, extensionPrimerSequence, alignmentScorer);
+		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(completeReadSequence, primerSequence, alignmentScorer);
 		int uidEndIndex = alignment.getIndexOfFirstMatchInReference();
 		String variableLengthUid = null;
 		if (uidEndIndex >= 0) {
@@ -204,11 +224,11 @@ public class SAMRecordUtil {
 
 		int editDistance = numberOfInsertions + numberOfDeletions + numberOfSubstitutions;
 
-		int editDistanceCutoff = (extensionPrimerSequence.size() / 4);
+		int editDistanceCutoff = (primerSequence.size() / 4);
 
 		if (editDistance > 0 && editDistance < editDistanceCutoff) {
 			if (reportManager.isReporting()) {
-				int cutoffIndex = editDistanceCutoff + extensionPrimerSequence.size() + uidLength;
+				int cutoffIndex = editDistanceCutoff + primerSequence.size() + uidLength;
 				ISequence referenceSequence = alignment.getAlignmentPair().getReferenceAlignment().subSequence(0, cutoffIndex);
 				ISequence querySequence = alignment.getAlignmentPair().getQueryAlignment().subSequence(0, cutoffIndex);
 				String probeName = probe.getSequenceName();
