@@ -47,7 +47,7 @@ public final class ExtendReadsToPrimer {
 	private static final Logger logger = LoggerFactory.getLogger(ExtendReadsToPrimer.class);
 
 	private static final int PRIMER_ALIGNMENT_BUFFER = 10;
-	private static final int PRIMER_ACCEPTANCE_BUFFER = 2;
+	private static final int PRIMER_ACCEPTANCE_BUFFER = 5;
 
 	/**
 	 * We just use static methods from this class
@@ -63,9 +63,9 @@ public final class ExtendReadsToPrimer {
 	 * @return UniqueProbeRepresentativeData with extended reads or null if it could not be extended
 	 */
 	private static IReadPair extendReadPair(Probe probe, IReadPair readPair, IAlignmentScorer alignmentScorer) {
-		return extendReadPair(readPair.getExtensionUid(), readPair.getLigationUid(), probe, readPair.getSamHeader(), readPair.getSequenceName(), readPair.getReadName(), readPair.getReadGroup(),
-				new IupacNucleotideCodeSequence(readPair.getSequenceOne()), readPair.getSequenceOneQualityString(), new IupacNucleotideCodeSequence(readPair.getSequenceTwo()),
-				readPair.getSequenceTwoQualityString(), readPair.getOneMappingQuality(), readPair.getTwoMappingQuality(), alignmentScorer);
+		return extendReadPair(readPair.isMarkedDuplicate(), readPair.getExtensionUid(), readPair.getLigationUid(), probe, readPair.getSamHeader(), readPair.getSequenceName(), readPair.getReadName(),
+				readPair.getReadGroup(), new IupacNucleotideCodeSequence(readPair.getSequenceOne()), readPair.getSequenceOneQualityString(),
+				new IupacNucleotideCodeSequence(readPair.getSequenceTwo()), readPair.getSequenceTwoQualityString(), readPair.getOneMappingQuality(), readPair.getTwoMappingQuality(), alignmentScorer);
 	}
 
 	/**
@@ -84,10 +84,12 @@ public final class ExtendReadsToPrimer {
 	 * @param twoMappingQuality
 	 * @return readPair that has been extended to the primers (the primers are not included in the new alignment)
 	 */
-	public static IReadPair extendReadPair(String extensionUid, String ligationUid, Probe probe, SAMFileHeader samHeader, String sequenceName, String readName, String readGroup,
-			ISequence sequenceOne, String sequenceOneQualityString, ISequence sequenceTwo, String sequenceTwoQualityString, int oneMappingQuality, int twoMappingQuality,
+	public static IReadPair extendReadPair(boolean isMarkedDuplicate, String extensionUid, String ligationUid, Probe probe, SAMFileHeader samHeader, String sequenceName, String readName,
+			String readGroup, ISequence sequenceOne, String sequenceOneQualityString, ISequence sequenceTwo, String sequenceTwoQualityString, int oneMappingQuality, int twoMappingQuality,
 			IAlignmentScorer alignmentScorer) {
 		IReadPair extendedReadPair = null;
+		boolean readOneExtended = false;
+		boolean readTwoExtended = false;
 
 		try {
 			sequenceTwo = sequenceTwo.getCompliment();
@@ -102,8 +104,11 @@ public final class ExtendReadsToPrimer {
 			if (readOneIsOnReverseStrand) {
 				primerReferencePositionAdjacentToSequence = probe.getExtensionPrimerStart();
 			}
+
 			ReadExtensionDetails readOneExtensionDetails = calculateDetailsForReadExtensionToPrimer(extensionPrimer, primerReferencePositionAdjacentToSequence, captureTargetSequence, sequenceOne,
 					false, readOneIsOnReverseStrand, alignmentScorer);
+
+			SAMRecord readOneRecord = null;
 
 			if (readOneExtensionDetails != null) {
 				ISequence readOneExtendedSequence = sequenceOne.subSequence(readOneExtensionDetails.getReadStart(), sequenceOne.size());
@@ -117,34 +122,41 @@ public final class ExtendReadsToPrimer {
 					primerReferencePositionAdjacentToSequence = probe.getLigationPrimerStop();
 				}
 
-				SAMRecord readOneExtendedRecord = extendRecord(samHeader, readName, readGroup, readOneIsOnReverseStrand, readOneExtensionDetails.getAlignmentCigarString(),
+				readOneExtended = true;
+				readOneRecord = createRecord(samHeader, readName, readGroup, readOneIsOnReverseStrand, readOneExtensionDetails.getAlignmentCigarString(),
 						readOneExtensionDetails.getMismatchDetailsString(), readOneExtensionDetails.getAlignmentStartInReference(), readOneExtendedSequence.toString(), readOneExtendedBaseQualities,
-						sequenceName, oneMappingQuality, readOneReferenceLength, extensionUid, ligationUid, probe.getProbeId());
-
-				ReadExtensionDetails readTwoExtensionDetails = calculateDetailsForReadExtensionToPrimer(ligationPrimer, primerReferencePositionAdjacentToSequence, captureTargetSequence, sequenceTwo,
-						true, readTwoIsOnReverseStrand, alignmentScorer);
-
-				if (readTwoExtensionDetails != null) {
-					String readTwoExtendedBaseQualities = sequenceTwoQualityString.substring(readTwoExtensionDetails.getReadStart(), sequenceTwoQualityString.length());
-					ISequence readTwoExtendedSequence = sequenceTwo.subSequence(readTwoExtensionDetails.getReadStart(), sequenceTwo.size()).getCompliment();
-					int readTwoReferenceLength = probe.getCaptureTargetSequence().size();
-					if (readTwoIsOnReverseStrand) {
-						readTwoExtendedSequence = readTwoExtendedSequence.getReverseCompliment();
-						readTwoExtendedBaseQualities = StringUtil.reverse(readTwoExtendedBaseQualities);
-						readTwoReferenceLength = -readTwoReferenceLength;
-					}
-					SAMRecord readTwoExtendedRecord = extendRecord(samHeader, readName, readGroup, readTwoIsOnReverseStrand, readTwoExtensionDetails.getAlignmentCigarString(),
-							readTwoExtensionDetails.getMismatchDetailsString(), readTwoExtensionDetails.getAlignmentStartInReference(), readTwoExtendedSequence.toString(),
-							readTwoExtendedBaseQualities, sequenceName, twoMappingQuality, readTwoReferenceLength, extensionUid, ligationUid, probe.getProbeId());
-
-					SAMRecordUtil.setSAMRecordsAsPair(readOneExtendedRecord, readTwoExtendedRecord);
-
-					extendedReadPair = new ReadPair(readOneExtendedRecord, readTwoExtendedRecord, extensionUid, ligationUid, probe.getCaptureTargetSequence(), probe.getProbeId());
-
-				}
+						sequenceName, oneMappingQuality, readOneReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId());
 			}
+
+			ReadExtensionDetails readTwoExtensionDetails = calculateDetailsForReadExtensionToPrimer(ligationPrimer, primerReferencePositionAdjacentToSequence, captureTargetSequence, sequenceTwo,
+					true, readTwoIsOnReverseStrand, alignmentScorer);
+
+			SAMRecord readTwoRecord = null;
+
+			if (readTwoExtensionDetails != null) {
+				String readTwoExtendedBaseQualities = sequenceTwoQualityString.substring(readTwoExtensionDetails.getReadStart(), sequenceTwoQualityString.length());
+				ISequence readTwoExtendedSequence = sequenceTwo.subSequence(readTwoExtensionDetails.getReadStart(), sequenceTwo.size()).getCompliment();
+				int readTwoReferenceLength = probe.getCaptureTargetSequence().size();
+				if (readTwoIsOnReverseStrand) {
+					readTwoExtendedSequence = readTwoExtendedSequence.getReverseCompliment();
+					readTwoExtendedBaseQualities = StringUtil.reverse(readTwoExtendedBaseQualities);
+					readTwoReferenceLength = -readTwoReferenceLength;
+				}
+				readTwoExtended = true;
+				readTwoRecord = createRecord(samHeader, readName, readGroup, readTwoIsOnReverseStrand, readTwoExtensionDetails.getAlignmentCigarString(),
+						readTwoExtensionDetails.getMismatchDetailsString(), readTwoExtensionDetails.getAlignmentStartInReference(), readTwoExtendedSequence.toString(), readTwoExtendedBaseQualities,
+						sequenceName, twoMappingQuality, readTwoReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId());
+			}
+
+			if (readOneRecord != null && readTwoRecord != null) {
+				SAMRecordUtil.setSAMRecordsAsPair(readOneRecord, readTwoRecord);
+			}
+
+			extendedReadPair = new ReadPair(readOneRecord, readTwoRecord, extensionUid, ligationUid, probe.getCaptureTargetSequence(), probe.getProbeId(), readOneExtended, readTwoExtended);
+
 		} catch (Exception e) {
 			logger.warn(e.getMessage(), e);
+			throw new IllegalStateException(e.getMessage(), e);
 		}
 
 		return extendedReadPair;
@@ -189,9 +201,9 @@ public final class ExtendReadsToPrimer {
 		return readExtensionDetails;
 	}
 
-	private static SAMRecord extendRecord(SAMFileHeader samHeader, String readName, String readGroup, boolean isNegativeStrand, CigarString cigarString, String mismatchDetailsString,
-			int alignmentStartInReference, String readString, String baseQualityString, String sequenceName, int mappingQuality, int referenceLength, String extensionUid, String ligationUid,
-			String probeId) {
+	public static SAMRecord createRecord(SAMFileHeader samHeader, String readName, String readGroup, boolean isNegativeStrand, CigarString cigarString, String mismatchDetailsString,
+			int alignmentStartInReference, String readString, String baseQualityString, String sequenceName, int mappingQuality, int referenceLength, boolean isMarkedDuplicate, String extensionUid,
+			String ligationUid, String probeId) {
 		if (readString.length() != baseQualityString.length()) {
 			throw new IllegalStateException("SAMRecord read[" + readString + "] length[" + readString.length() + "] and base quality[" + baseQualityString + "] length[" + baseQualityString.length()
 					+ "] must be the same.");
@@ -207,6 +219,7 @@ public final class ExtendReadsToPrimer {
 		record.setAlignmentStart(alignmentStartInReference);
 		record.setReadString(readString);
 		record.setBaseQualityString(baseQualityString);
+		record.setDuplicateReadFlag(isMarkedDuplicate);
 		SAMRecordUtil.setSamRecordExtensionUidAttribute(record, extensionUid);
 		SAMRecordUtil.setSamRecordLigationUidAttribute(record, ligationUid);
 		SAMRecordUtil.setSamRecordProbeIdAttribute(record, probeId);
@@ -222,9 +235,7 @@ public final class ExtendReadsToPrimer {
 		// cutoff excess sequence beyond primer
 		readSequence = readSequence.subSequence(0, Math.min(readSequence.size() - 1, primerSequence.size() + PRIMER_ALIGNMENT_BUFFER));
 		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(primerSequence, readSequence, alignmentScorer);
-
 		ISequence readAlignment = alignment.getAlignmentPair().getReferenceAlignment();
-
 		int firstNonGapIndex = -1;
 
 		double lengthNormalizedAlignmentScore = alignment.getLengthNormalizedAlignmentScore();
@@ -245,7 +256,7 @@ public final class ExtendReadsToPrimer {
 		}
 
 		Integer probeEndIndexInRead = null;
-		if (firstNonGapIndex >= primerSequence.size() - PRIMER_ACCEPTANCE_BUFFER && firstNonGapIndex <= primerSequence.size() + PRIMER_ACCEPTANCE_BUFFER) {
+		if (firstNonGapIndex >= (primerSequence.size() - PRIMER_ACCEPTANCE_BUFFER) && firstNonGapIndex <= (primerSequence.size() + PRIMER_ACCEPTANCE_BUFFER)) {
 			probeEndIndexInRead = firstNonGapIndex - 1;
 		}
 
@@ -258,10 +269,15 @@ public final class ExtendReadsToPrimer {
 		for (IReadPair readPair : readPairs) {
 			IReadPair extendedReadPair = ExtendReadsToPrimer.extendReadPair(probe, readPair, alignmentScorer);
 
-			if (extendedReadPair != null) {
+			if (extendedReadPair.isReadOneExtended() && extendedReadPair.isReadTwoExtended()) {
 				extendedReadPairs.add(extendedReadPair);
 			} else {
-				logger.info("Unable to extend read:" + "PROBE " + probe.getProbeId() + "fastqOne Sequence: " + readPair.getSequenceOne() + "fastqTwo Sequence: " + readPair.getSequenceTwo());
+				SAMRecordUtil.setExtensionErrorAttribute(readPair.getRecord(), !readPair.isReadOneExtended(), !readPair.isReadTwoExtended());
+				SAMRecordUtil.setExtensionErrorAttribute(readPair.getMateRecord(), !readPair.isReadOneExtended(), !readPair.isReadTwoExtended());
+				extendedReadPairs.add(readPair);
+				logger.info("Unable to extend read[" + readPair.getReadName() + "]:" + "PROBE " + probe.getProbeId() + "  Probe Extension Sequence[" + probe.getExtensionPrimerSequence()
+						+ "]  Probe Ligation Sequence[" + probe.getLigationPrimerSequence() + "] fastqOne Sequence[" + readPair.getSequenceOne() + "] fastqTwo Sequence[" + readPair.getSequenceTwo()
+						+ "]");
 			}
 		}
 

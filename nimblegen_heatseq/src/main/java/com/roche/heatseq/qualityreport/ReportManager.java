@@ -41,7 +41,7 @@ public class ReportManager {
 	private TabDelimitedFileWriter primerAlignmentWriter;
 	private TabDelimitedFileWriter uniqueProbeTalliesWriter;
 	private TabDelimitedFileWriter probeCoverageWriter;
-	private TabDelimitedFileWriter UidCompositionByProbeWriter;
+	private TabDelimitedFileWriter uidCompositionByProbeWriter;
 
 	private SAMFileWriter mappedOffTargetReadsWriter;
 	private SAMFileWriter unmappedReadsWriter;
@@ -79,8 +79,8 @@ public class ReportManager {
 			File unableToAlignPrimerFile = new File(outputDirectory, outputFilePrefix + UNABLE_TO_ALIGN_PRIMER_REPORT_NAME);
 			try {
 				FileUtil.createNewFile(unableToAlignPrimerFile);
-				unableToAlignPrimerWriter = new TabDelimitedFileWriter(unableToAlignPrimerFile, new String[] { "sequence_name", "probe_start", "probe_stop", "extension_primer_sequence", "read_name",
-						"read_string" });
+				unableToAlignPrimerWriter = new TabDelimitedFileWriter(unableToAlignPrimerFile, new String[] { "sequence_name", "probe_start", "probe_stop", "extension_primer_sequence",
+						"ligation_primer_sequence", "read_name", "read_one_string", "read_two_string", "extension_failed", "ligation_failed" });
 			} catch (IOException e) {
 				throw new IllegalStateException(e);
 			}
@@ -131,7 +131,7 @@ public class ReportManager {
 			File uidCompositionByProbeFile = new File(outputDirectory, outputFilePrefix + UID_COMPOSITION_REPORT_NAME);
 			try {
 				FileUtil.createNewFile(uidCompositionByProbeFile);
-				UidCompositionByProbeWriter = new TabDelimitedFileWriter(uidCompositionByProbeFile, new String[] {
+				uidCompositionByProbeWriter = new TabDelimitedFileWriter(uidCompositionByProbeFile, new String[] {
 						"probe_id",
 						"unique_uid_nuclotide_composition" + StringUtil.TAB + "unique_uid_nuclotide_composition_by_position" + StringUtil.TAB + "weighted_uid_nuclotide_composition" + StringUtil.TAB
 								+ "weighted_uid_nuclotide_composition_by_position" });
@@ -206,8 +206,8 @@ public class ReportManager {
 			probeCoverageWriter.close();
 		}
 
-		if (UidCompositionByProbeWriter != null) {
-			UidCompositionByProbeWriter.close();
+		if (uidCompositionByProbeWriter != null) {
+			uidCompositionByProbeWriter.close();
 		}
 
 		if (detailsReport != null) {
@@ -245,7 +245,7 @@ public class ReportManager {
 	}
 
 	public TabDelimitedFileWriter getUidCompisitionByProbeWriter() {
-		return UidCompositionByProbeWriter;
+		return uidCompositionByProbeWriter;
 	}
 
 	public SummaryReport getSummaryReport() {

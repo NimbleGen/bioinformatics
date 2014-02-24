@@ -35,8 +35,10 @@ public class ReadPair implements IReadPair {
 	private final String ligationUid;
 	private final ISequence captureTargetSequence;
 	private final String probeId;
+	private final boolean readOneExtended;
+	private final boolean readTwoExtended;
 
-	public ReadPair(SAMRecord record, SAMRecord mate, String extensionUid, String ligationUid, ISequence captureTargetSequence, String probeId) {
+	public ReadPair(SAMRecord record, SAMRecord mate, String extensionUid, String ligationUid, ISequence captureTargetSequence, String probeId, boolean readOneExtended, boolean readTwoExtended) {
 		super();
 		this.record = record;
 		this.mate = mate;
@@ -44,6 +46,18 @@ public class ReadPair implements IReadPair {
 		this.ligationUid = ligationUid;
 		this.captureTargetSequence = captureTargetSequence;
 		this.probeId = probeId;
+		this.readOneExtended = readOneExtended;
+		this.readTwoExtended = readTwoExtended;
+	}
+
+	@Override
+	public boolean isReadOneExtended() {
+		return readOneExtended;
+	}
+
+	@Override
+	public boolean isReadTwoExtended() {
+		return readTwoExtended;
 	}
 
 	@Override
@@ -136,6 +150,11 @@ public class ReadPair implements IReadPair {
 	public void markAsDuplicate() {
 		record.setDuplicateReadFlag(true);
 		mate.setDuplicateReadFlag(true);
+	}
+
+	@Override
+	public boolean isMarkedDuplicate() {
+		return record.getDuplicateReadFlag();
 	}
 
 	@Override

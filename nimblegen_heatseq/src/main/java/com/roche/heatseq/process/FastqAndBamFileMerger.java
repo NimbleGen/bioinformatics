@@ -33,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.IlluminaFastQHeader;
-import com.roche.heatseq.utils.SAMRecordUtil;
 
 /**
  * Merges alignment information from a BAM file with read string, quality string, and UID from two input fastQ files, joining on the read name. Stores the result in a 'merged' BAM file.
@@ -92,17 +91,7 @@ public class FastqAndBamFileMerger {
 				if (simpleFastqRecord != null) {
 					String readString = simpleFastqRecord.getReadString();
 					String baseQualityString = simpleFastqRecord.getBaseQualityString();
-					String uid = null;
-					if (processFirstOfPairReads) {
-						uid = SAMRecordUtil.parseUidFromReadOne(readString, uidLength);
-						readString = SAMRecordUtil.removeUidFromReadOne(readString, uidLength);
-						baseQualityString = SAMRecordUtil.removeUidFromReadOne(baseQualityString, uidLength);
-					} else {
-						uid = SAMRecordUtil.parseUidFromReadTwo(readString, uidLength);
-						readString = SAMRecordUtil.removeUidFromReadTwo(readString, uidLength);
-						baseQualityString = SAMRecordUtil.removeUidFromReadTwo(baseQualityString, uidLength);
-					}
-					SAMRecord modifiedRecord = storeFastqInfoInRecord(processFirstOfPairReads, samRecord, readString, baseQualityString, uid);
+					SAMRecord modifiedRecord = storeFastqInfoInRecord(samRecord, readString, baseQualityString);
 					samWriter.addAlignment(modifiedRecord);
 				}
 			}
@@ -244,14 +233,7 @@ public class FastqAndBamFileMerger {
 	 * @param uid
 	 * @return
 	 */
-	private static SAMRecord storeFastqInfoInRecord(boolean isReadOne, SAMRecord record, String readSequenceFromFastq, String readBaseQualityFromFastq, String uid) {
-		if (uid != null) {
-			if (isReadOne) {
-				SAMRecordUtil.setSamRecordExtensionUidAttribute(record, uid);
-			} else {
-				SAMRecordUtil.setSamRecordLigationUidAttribute(record, uid);
-			}
-		}
+	private static SAMRecord storeFastqInfoInRecord(SAMRecord record, String readSequenceFromFastq, String readBaseQualityFromFastq) {
 		record.setReadString(readSequenceFromFastq);
 		record.setBaseQualityString(readBaseQualityFromFastq);
 		return record;

@@ -44,6 +44,10 @@ public class ProbeProcessingStats {
 	private final String weightedUidComposition;
 	private final String weightedUidCompositionByPosition;
 
+	private int countOfUniqueReadsUnableToExtend;
+
+	// private int countOfDuplicateReadsUnableToExtend;
+
 	/**
 	 * Constructor
 	 * 
@@ -74,9 +78,16 @@ public class ProbeProcessingStats {
 		this.totalTimeToProcessInMs = totalTimeToProcessInMs;
 		this.uidComposition = uidComposition;
 		this.uidCompositionByPosition = uidCompositionByPosition;
-		this.onTargetDuplicateRate = (double) totalDuplicateReadPairsRemoved / (double) (totalDuplicateReadPairsRemoved + totalReadPairsRemainingAfterReduction);
+		double totalOnTargetReads = (double) (totalDuplicateReadPairsRemoved + totalReadPairsRemainingAfterReduction);
+		if (totalOnTargetReads != 0) {
+			this.onTargetDuplicateRate = (double) totalDuplicateReadPairsRemoved / totalOnTargetReads;
+		} else {
+			this.onTargetDuplicateRate = 0;
+		}
 		this.weightedUidComposition = weightedUidComposition;
 		this.weightedUidCompositionByPosition = weightedUidCompositionByPosition;
+		this.countOfUniqueReadsUnableToExtend = 0;
+		// this.countOfDuplicateReadsUnableToExtend = 0;
 	}
 
 	public int getTotalUids() {
@@ -99,6 +110,10 @@ public class ProbeProcessingStats {
 		return totalReadPairsRemainingAfterReduction;
 	}
 
+	public int getTotalUniqueReadsUnableToExtend() {
+		return countOfUniqueReadsUnableToExtend;
+	}
+
 	public Probe getProbe() {
 		return probe;
 	}
@@ -115,10 +130,15 @@ public class ProbeProcessingStats {
 		stringBuilder.append(probe.getProbeId() + StringUtil.TAB);
 		stringBuilder.append(totalUids + StringUtil.TAB + averageNumberOfReadPairsPerUid + StringUtil.TAB + standardDeviationOfReadPairsPerUid + StringUtil.TAB + minNumberOfReadPairsPerUid
 				+ StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase() + StringUtil.TAB + totalDuplicateReadPairsRemoved + StringUtil.TAB
-				+ totalReadPairsRemainingAfterReduction + StringUtil.TAB + formatter.format(onTargetDuplicateRate) + StringUtil.TAB + DateUtil.convertMillisecondsToHHMMSS(totalTimeToProcessInMs));
+				+ totalReadPairsRemainingAfterReduction + StringUtil.TAB + countOfUniqueReadsUnableToExtend + StringUtil.TAB + formatter.format(onTargetDuplicateRate) + StringUtil.TAB
+				+ DateUtil.convertMillisecondsToHHMMSS(totalTimeToProcessInMs));
 
 		stringBuilder.append(StringUtil.NEWLINE);
 
 		return stringBuilder.toString();
+	}
+
+	public void setExtensionErrors(int countOfUniqueReadsUnableToExtend) {
+		this.countOfUniqueReadsUnableToExtend = countOfUniqueReadsUnableToExtend;
 	}
 }

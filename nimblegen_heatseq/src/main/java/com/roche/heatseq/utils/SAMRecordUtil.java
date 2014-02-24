@@ -45,12 +45,15 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
  */
 public class SAMRecordUtil {
 
+	// private static Logger logger = LoggerFactory.getLogger(SAMRecordUtil.class);
+
 	private static final String EXTENSION_UID_SAMRECORD_ATTRIBUTE_TAG = "EI";
 	private static final String LIGATION_UID_SAMRECORD_ATTRIBUTE_TAG = "LI";
 	private static final String PROBE_ID_SAMRECORD_ATTRIBUTE_TAG = "PI";
 	public static final String MISMATCH_DETAILS_ATTRIBUTE_TAG = "MD";
 	public static final String READ_GROUP_ATTRIBUTE_TAG = "RG";
 	public static final String EDIT_DISTANCE_ATTRIBUTE_TAG = "NM";
+	public static final String EXTENSION_ERROR_ATTRIBUTE_TAG = "EE";
 
 	private SAMRecordUtil() {
 		throw new AssertionError();
@@ -127,21 +130,19 @@ public class SAMRecordUtil {
 	}
 
 	/**
+	 * Set the extension error attribute for this SAMRecord
+	 * 
 	 * @param record
-	 * @return the extension UID attribute set for this SAMRecord, null if no such attribute exists.
+	 * @param uid
 	 */
-	public static String getExtensionUidAttribute(SAMRecord record) {
-		String uid = (String) record.getAttribute(EXTENSION_UID_SAMRECORD_ATTRIBUTE_TAG);
-		return uid;
-	}
-
-	/**
-	 * @param record
-	 * @return the ligation UID attribute set for this SAMRecord, null if no such attribute exists.
-	 */
-	public static String getLigationUidAttribute(SAMRecord record) {
-		String uid = (String) record.getAttribute(LIGATION_UID_SAMRECORD_ATTRIBUTE_TAG);
-		return uid;
+	public static void setExtensionErrorAttribute(SAMRecord record, boolean unableToExtendReadOne, boolean unableToExtendReadTwo) {
+		if (unableToExtendReadOne && unableToExtendReadTwo) {
+			record.setAttribute(EXTENSION_ERROR_ATTRIBUTE_TAG, "FAILED_TO_EXTEND_READ_ONE_AND_READ_TWO");
+		} else if (unableToExtendReadOne) {
+			record.setAttribute(EXTENSION_ERROR_ATTRIBUTE_TAG, "FAILED_TO_EXTEND_READ_ONE");
+		} else if (unableToExtendReadTwo) {
+			record.setAttribute(EXTENSION_ERROR_ATTRIBUTE_TAG, "FAILED_TO_EXTEND_READ_TWO");
+		}
 	}
 
 	/**
@@ -150,8 +151,7 @@ public class SAMRecordUtil {
 	 * @return the UID set for this SAMRecord, null if no such attribute exists.
 	 */
 	public static String getExtensionVariableLengthUid(SAMRecord record, Probe probe, ReportManager reportManager, IAlignmentScorer alignmentScorer) {
-		String uid = getExtensionUidAttribute(record);
-		String completeReadWithUid = uid + record.getReadString();
+		String completeReadWithUid = record.getReadString();
 		ISequence extensionPrimerSequence = probe.getExtensionPrimerSequence();
 		return getVariableLengthUid(completeReadWithUid, extensionPrimerSequence, reportManager, probe, alignmentScorer);
 	}
@@ -162,9 +162,8 @@ public class SAMRecordUtil {
 	 * @return the UID set for this SAMRecord, null if no such attribute exists.
 	 */
 	public static String getLigationVariableLengthUid(SAMRecord record, Probe probe, ReportManager reportManager, IAlignmentScorer alignmentScorer) {
-		String uid = getLigationUidAttribute(record);
-		String completeReadWithUid = uid + record.getReadString();
-		ISequence ligationPrimerSequence = probe.getLigationPrimerSequence();
+		String completeReadWithUid = record.getReadString();
+		ISequence ligationPrimerSequence = probe.getLigationPrimerSequence().getReverseCompliment();
 		return getVariableLengthUid(completeReadWithUid, ligationPrimerSequence, reportManager, probe, alignmentScorer);
 	}
 
