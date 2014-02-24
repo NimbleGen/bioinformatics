@@ -44,7 +44,8 @@ public class PrefuppCli {
 
 	public final static String APPLICATION_NAME = "prefupp";
 	private static String applicationVersionFromManifest = "unversioned";
-	private final static int DEFAULT_UID_LENGTH = 10;
+	private final static int DEFAULT_EXTENSION_UID_LENGTH = 10;
+	private final static int DEFAULT_LIGATION_UID_LENGTH = 0;
 	private final static String BAM_EXTENSION = ".bam";
 
 	private final static CommandLineOption USAGE_OPTION = new CommandLineOption("Print Usage", "usage", 'h', "Print Usage.", false, true);
@@ -61,9 +62,9 @@ public class PrefuppCli {
 	private final static CommandLineOption NUM_PROCESSORS_OPTION = new CommandLineOption("Number of Processors", "numProcessors", null,
 			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.", false, false);
 	private final static CommandLineOption EXTENSION_UID_LENGTH_OPTION = new CommandLineOption("Length of Extension UID in Bases", "extensionUidLength", null,
-			"Length of the Universal Identifier.  If not specified this will default to " + DEFAULT_UID_LENGTH + " bases.", false, false);
+			"Length of the Universal Identifier.  If not specified this will default to " + DEFAULT_EXTENSION_UID_LENGTH + " bases.", false, false);
 	private final static CommandLineOption LIGATION_UID_LENGTH_OPTION = new CommandLineOption("Length of Ligation UID in Bases", "ligationUidLength", null,
-			"Length of the Universal Identifier connected to the Ligation Primer.  If not specified this will default to " + DEFAULT_UID_LENGTH + " bases.", false, false);
+			"Length of the Universal Identifier connected to the Ligation Primer.  If not specified this will default to " + DEFAULT_LIGATION_UID_LENGTH + " bases.", false, false);
 	private final static CommandLineOption ALLOW_VARIABLE_LENGTH_UIDS_OPTION = new CommandLineOption("Allow Variable Length Uids", "allowVariableLengthUids", null, "Allow Variable Length Uids",
 			false, true);
 	private final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o', "Name for output bam file.", true, false);
@@ -183,7 +184,7 @@ public class PrefuppCli {
 				}
 			}
 
-			int extensionUidLength = DEFAULT_UID_LENGTH;
+			int extensionUidLength = DEFAULT_EXTENSION_UID_LENGTH;
 			boolean uidLengthOptionIsPresent = parsedCommandLine.isOptionPresent(EXTENSION_UID_LENGTH_OPTION);
 			if (uidLengthOptionIsPresent) {
 				try {
@@ -193,7 +194,7 @@ public class PrefuppCli {
 				}
 			}
 
-			int ligationUidLength = DEFAULT_UID_LENGTH;
+			int ligationUidLength = DEFAULT_LIGATION_UID_LENGTH;
 			boolean ligationUidLengthOptionIsPresent = parsedCommandLine.isOptionPresent(LIGATION_UID_LENGTH_OPTION);
 			if (ligationUidLengthOptionIsPresent) {
 				try {
@@ -357,7 +358,7 @@ public class PrefuppCli {
 
 			long totalTimeStart = System.currentTimeMillis();
 
-			FastqAndBamFileMerger.createMergedFastqAndBamFileFromUnsortedFiles(bamFile, fastQ1WithUidsFile, fastQ2File, mergedBamFileSortedByCoordinates, extensionUidLength, ligationUidLength);
+			FastqAndBamFileMerger.createMergedFastqAndBamFileFromUnsortedFiles(bamFile, fastQ1WithUidsFile, fastQ2File, mergedBamFileSortedByCoordinates);
 			long timeAfterMergeUnsorted = System.currentTimeMillis();
 			logger.debug("done merging bam and fastqfiles ... result[" + mergedBamFileSortedByCoordinates.getAbsolutePath() + "] in " + (timeAfterMergeUnsorted - totalTimeStart) + "ms.");
 

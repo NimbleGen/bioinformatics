@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.IlluminaFastQHeader;
+import com.roche.heatseq.utils.SAMRecordUtil;
 
 /**
  * Merges alignment information from a BAM file with read string, quality string, and UID from two input fastQ files, joining on the read name. Stores the result in a 'merged' BAM file.
@@ -77,7 +78,7 @@ public class FastqAndBamFileMerger {
 	 * @param processFirstOfPairReads
 	 * @param samWriter
 	 */
-	private static void mergeAndOutputRecords(Map<String, SimpleFastqRecord> nameToFastQRecord, SAMFileReader samReader, boolean processFirstOfPairReads, SAMFileWriter samWriter, int uidLength) {
+	private static void mergeAndOutputRecords(Map<String, SimpleFastqRecord> nameToFastQRecord, SAMFileReader samReader, boolean processFirstOfPairReads, SAMFileWriter samWriter) {
 
 		SAMRecordIterator samIter = samReader.iterator();
 
@@ -108,8 +109,7 @@ public class FastqAndBamFileMerger {
 	 * @param processFirstOfPairReads
 	 * @param samWriter
 	 */
-	private static void createMergedFastqAndBamFileFromUnsortedFiles(SAMFileReader samReader, File unsortedFastQFile, boolean processFirstOfPairReads, SAMFileWriter samWriter, int maximumHashSize,
-			int uidLength) {
+	private static void createMergedFastqAndBamFileFromUnsortedFiles(SAMFileReader samReader, File unsortedFastQFile, boolean processFirstOfPairReads, SAMFileWriter samWriter, int maximumHashSize) {
 
 		int bamFilePassesCount = 0;
 
@@ -122,7 +122,7 @@ public class FastqAndBamFileMerger {
 
 				if (nameToFastQRecord.size() > maximumHashSize) {
 
-					mergeAndOutputRecords(nameToFastQRecord, samReader, processFirstOfPairReads, samWriter, uidLength);
+					mergeAndOutputRecords(nameToFastQRecord, samReader, processFirstOfPairReads, samWriter);
 					bamFilePassesCount++;
 
 					// Done processing that chunk of the fastq file.
@@ -132,7 +132,7 @@ public class FastqAndBamFileMerger {
 
 			// Process the last chunk of the fastq file
 			if (nameToFastQRecord.size() > 0) {
-				mergeAndOutputRecords(nameToFastQRecord, samReader, processFirstOfPairReads, samWriter, uidLength);
+				mergeAndOutputRecords(nameToFastQRecord, samReader, processFirstOfPairReads, samWriter);
 				bamFilePassesCount++;
 			}
 
@@ -199,7 +199,7 @@ public class FastqAndBamFileMerger {
 	 * @param outputBamFile
 	 * @return
 	 */
-	static File createMergedFastqAndBamFileFromUnsortedFiles(File unsortedBamFile, File unsortedFastq1File, File unsortedFastq2File, File outputBamFile, int readOneUidLength, int readTwoUidLength) {
+	static File createMergedFastqAndBamFileFromUnsortedFiles(File unsortedBamFile, File unsortedFastq1File, File unsortedFastq2File, File outputBamFile) {
 		// Each new iteration starts at the first record.
 		try (SAMFileReader samReader = new SAMFileReader(unsortedBamFile)) {
 
@@ -213,10 +213,10 @@ public class FastqAndBamFileMerger {
 			int maximumHashSize = getMaximumHashSizeForMerge(unsortedBamFile, unsortedFastq1File);
 
 			// Process the first of pair reads and the first fastQ file.
-			createMergedFastqAndBamFileFromUnsortedFiles(samReader, unsortedFastq1File, true, samWriter, maximumHashSize, readOneUidLength);
+			createMergedFastqAndBamFileFromUnsortedFiles(samReader, unsortedFastq1File, true, samWriter, maximumHashSize);
 
 			// Process the second of pair reads and the second fastQ file.
-			createMergedFastqAndBamFileFromUnsortedFiles(samReader, unsortedFastq2File, false, samWriter, maximumHashSize, readTwoUidLength);
+			createMergedFastqAndBamFileFromUnsortedFiles(samReader, unsortedFastq2File, false, samWriter, maximumHashSize);
 
 			samWriter.close();
 		}
@@ -234,6 +234,8 @@ public class FastqAndBamFileMerger {
 	 * @return
 	 */
 	private static SAMRecord storeFastqInfoInRecord(SAMRecord record, String readSequenceFromFastq, String readBaseQualityFromFastq) {
+		int mappedReadLength = record.getReadLength();
+		SAMRecordUtil.setMappedReadLength(record, mappedReadLength);
 		record.setReadString(readSequenceFromFastq);
 		record.setBaseQualityString(readBaseQualityFromFastq);
 		return record;

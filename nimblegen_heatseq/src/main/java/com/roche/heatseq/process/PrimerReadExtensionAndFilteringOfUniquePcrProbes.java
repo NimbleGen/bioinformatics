@@ -85,6 +85,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	private static Logger logger = LoggerFactory.getLogger(PrimerReadExtensionAndFilteringOfUniquePcrProbes.class);
 
 	private static volatile Semaphore primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore = null;
+	private final static int READ_TO_PROBE_ALIGNMENT_BUFFER = 4;
 
 	/**
 	 * We never create instances of this class, we only expose static methods
@@ -244,8 +245,57 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 						boolean isFastq1 = record.getFirstOfPairFlag();
 						boolean isFastq2 = record.getSecondOfPairFlag();
 
+						boolean readLocationIsSuitableForProbe = true;
+						// can not make assumptions about the location of the mapping if uids are variable length
+						if (!applicationSettings.isAllowVariableLengthUids()) {
+							int mappedReadLength = SAMRecordUtil.getMappedReadLengthFromAttribute(record);
+							int rawReadLength = record.getReadLength();
+
+							if (isFastq1) {
+								int uidLength = applicationSettings.getExtensionUidLength();
+								int offset = mappedReadLength - rawReadLength + uidLength;
+
+								int differenceInLocation = Integer.MAX_VALUE;
+								if (probe.getProbeStrand() == Strand.FORWARD) {
+									int readStart = record.getAlignmentStart() + offset;
+									int primerStop = probe.getExtensionPrimerStart();
+									differenceInLocation = readStart - primerStop;
+								} else {
+									// there is an issue with some bam file records that getAlignmentEnd() is not set
+									// so calculate it instead of using record.getAlignmentEnd()
+									int recordAlignmentEnd = record.getAlignmentStart() + mappedReadLength - 1;
+									int readStart = recordAlignmentEnd - offset;
+									int primerStop = probe.getExtensionPrimerStop();
+									differenceInLocation = primerStop - readStart;
+								}
+
+								readLocationIsSuitableForProbe = Math.abs(differenceInLocation) <= READ_TO_PROBE_ALIGNMENT_BUFFER;
+							} else if (isFastq2) {
+								int uidLength = applicationSettings.getLigationUidLength();
+								int offset = mappedReadLength - rawReadLength + uidLength;
+
+								int differenceInLocation = Integer.MAX_VALUE;
+								if (probe.getProbeStrand() == Strand.FORWARD) {
+									// there is an issue with some bam file records that getAlignmentEnd() is not set
+									// so calculate it instead of using record.getAlignmentEnd()
+									int recordAlignmentEnd = record.getAlignmentStart() + mappedReadLength - 1;
+									int readStart = recordAlignmentEnd - offset;
+									int primerStart = probe.getLigationPrimerStop();
+									differenceInLocation = readStart - primerStart;
+								} else {
+									int readStart = record.getAlignmentStart() + offset;
+									int primerStart = probe.getLigationPrimerStart();
+									differenceInLocation = primerStart - readStart;
+								}
+
+								readLocationIsSuitableForProbe = Math.abs(differenceInLocation) <= READ_TO_PROBE_ALIGNMENT_BUFFER;
+							} else {
+								throw new AssertionError();
+							}
+						}
+
 						boolean readOrientationIsSuitableForProbe = (isFastq1 && recordStrandMatchesProbeStrand) || (isFastq2 && !recordStrandMatchesProbeStrand);
-						if (readOrientationIsSuitableForProbe) {
+						if (readOrientationIsSuitableForProbe && readLocationIsSuitableForProbe) {
 
 							String uniqueReadName = IlluminaFastQHeader.getUniqueIdForReadHeader(record.getReadName());
 							SAMRecordPair pair = readNameToRecordsMap.get(uniqueReadName);
@@ -426,7 +476,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		@Override
 		public void run() {
 			try {
-				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceProbesByUid(probe, readNameToRecordsMap, reportManager, applicationSettings.isAllowVariableLengthUids(),
+				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceReadsByProbeAndUid(probe, readNameToRecordsMap, reportManager, applicationSettings.isAllowVariableLengthUids(),
 						applicationSettings.getExtensionUidLength(), applicationSettings.getLigationUidLength(), alignmentScorer, distinctUids, uids, applicationSettings.isMarkDuplicates());
 
 				List<IReadPair> reducedReads = probeReductionResults.getReadPairs();
