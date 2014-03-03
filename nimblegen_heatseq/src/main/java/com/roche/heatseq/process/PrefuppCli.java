@@ -83,6 +83,12 @@ public class PrefuppCli {
 	private final static CommandLineOption MERGE_PAIRS_OPTION = new CommandLineOption("Merge Pairs", "mergePairs", null, "Merge pairs using the highest quality base reads from each read", false, true);
 	private final static CommandLineOption NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION = new CommandLineOption("Reads Are Not Trimmed To Within Capture Target", "readsNotTrimmedWithinCaptureTarget",
 			null, "The reads have not been trimmed to an area within the capture target.", false, true);
+	private final static CommandLineOption STRICT_READ_TO_PROBE_MATCHING_OPTION = new CommandLineOption(
+			"Strict Probe to Read Matching",
+			"strictMatching",
+			null,
+			"Only match reads with a probe if they align perfectly.  This will reduce the number of reads assigned to multiple probes but might also remove actual reads that should be assigned to any given probe.",
+			false, true);
 
 	public static void main(String[] args) {
 		String version = ManifestUtil.getManifestValue("version");
@@ -205,6 +211,7 @@ public class PrefuppCli {
 			}
 
 			boolean allowVariableLengthUids = parsedCommandLine.isOptionPresent(ALLOW_VARIABLE_LENGTH_UIDS_OPTION);
+			boolean useStrictReadToProbeMatching = parsedCommandLine.isOptionPresent(STRICT_READ_TO_PROBE_MATCHING_OPTION);
 
 			String outputBamFileName = parsedCommandLine.getOptionsValue(OUTPUT_BAM_FILE_NAME_OPTION);
 			if (!outputBamFileName.endsWith(BAM_EXTENSION)) {
@@ -337,7 +344,7 @@ public class PrefuppCli {
 
 				sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tempOutputDirectory,
 						shouldOutputQualityReports, commandLineSignature, numProcessors, extensionUidLength, ligationUidLength, allowVariableLengthUids, alignmentScorer,
-						notTrimmedToWithinCaptureTarget, markDuplicates, mergePairs);
+						notTrimmedToWithinCaptureTarget, markDuplicates, mergePairs, useStrictReadToProbeMatching);
 
 			} catch (Exception e) {
 				throw new IllegalStateException(e.getMessage(), e);
@@ -350,7 +357,7 @@ public class PrefuppCli {
 
 	private static void sortMergeFilterAndExtendReads(File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName,
 			String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputQualityReports, String commandLineSignature, int numProcessors, int extensionUidLength, int ligationUidLength,
-			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinCaptureTarget, boolean markDuplicates, boolean mergePairs) {
+			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinCaptureTarget, boolean markDuplicates, boolean mergePairs, boolean useStrictReadToProbeMatching) {
 		try {
 
 			final File mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", tempOutputDirectory);
@@ -374,7 +381,7 @@ public class PrefuppCli {
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
 					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, commandLineSignature, APPLICATION_NAME,
 					applicationVersionFromManifest, numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, extensionUidLength, ligationUidLength, markDuplicates,
-					mergePairs);
+					mergePairs, useStrictReadToProbeMatching);
 
 			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
@@ -415,6 +422,7 @@ public class PrefuppCli {
 		group.addOption(MARK_DUPLICATES_OPTION);
 		group.addOption(MERGE_PAIRS_OPTION);
 		group.addOption(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
+		group.addOption(STRICT_READ_TO_PROBE_MATCHING_OPTION);
 		return group;
 	}
 }

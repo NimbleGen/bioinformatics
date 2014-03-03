@@ -70,7 +70,8 @@ class FilterByUid {
 	 * @return A UidReductionResultsForAProbe containing the processing statistics and the reduced probe set
 	 */
 	static UidReductionResultsForAProbe reduceReadsByProbeAndUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, ReportManager reportManager, boolean allowVariableLengthUids,
-			int expectedExtensionUidLength, int expectedLigationUidLength, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids, boolean markDuplicates) {
+			int expectedExtensionUidLength, int expectedLigationUidLength, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids, boolean markDuplicates,
+			boolean useStrictReadToProbeMatching) {
 		List<IReadPair> readPairs = new ArrayList<IReadPair>();
 
 		long probeProcessingStartInMs = System.currentTimeMillis();
@@ -81,17 +82,28 @@ class FilterByUid {
 			SAMRecordPair recordPair = compressedReadNameToSamRecordPairEntry.getValue();
 			SAMRecord record = recordPair.getFirstOfPairRecord();
 			SAMRecord mate = recordPair.getSecondOfPairRecord();
+			boolean readPairAlignsWithProbeCoordinates = true;
 			if ((record != null) && (mate != null)) {
 				String extensionUid = null;
 				String ligationUid = null;
 				if (allowVariableLengthUids) {
+
 					extensionUid = SAMRecordUtil.getExtensionVariableLengthUid(record, probe, reportManager, alignmentScorer);
 					ligationUid = SAMRecordUtil.getLigationVariableLengthUid(mate, probe, reportManager, alignmentScorer);
+
+					if (useStrictReadToProbeMatching && (extensionUid != null) && (ligationUid != null)) {
+						boolean readOneAlignsWithProbeCoordinates = PrimerReadExtensionAndFilteringOfUniquePcrProbes.readPairAlignsWithProbeCoordinates(probe, record, true, extensionUid.length(),
+								ligationUid.length());
+						boolean readTwoAlignsWithProbeCoordinates = PrimerReadExtensionAndFilteringOfUniquePcrProbes.readPairAlignsWithProbeCoordinates(probe, mate, false, ligationUid.length(),
+								ligationUid.length());
+						readPairAlignsWithProbeCoordinates = readOneAlignsWithProbeCoordinates && readTwoAlignsWithProbeCoordinates;
+					}
 				} else {
 					extensionUid = SAMRecordUtil.parseUidFromReadOne(record.getReadString(), expectedExtensionUidLength);
 					ligationUid = SAMRecordUtil.parseUidFromReadTwo(mate.getReadString(), expectedLigationUidLength);
 				}
-				if (extensionUid != null && ligationUid != null) {
+				if (readPairAlignsWithProbeCoordinates && extensionUid != null && ligationUid != null) {
+
 					ISequence extensionUidSequence = new IupacNucleotideCodeSequence(extensionUid);
 					ISequence ligationUidSequence = new IupacNucleotideCodeSequence(ligationUid);
 					ISequence fullUidSequence = new IupacNucleotideCodeSequence();
