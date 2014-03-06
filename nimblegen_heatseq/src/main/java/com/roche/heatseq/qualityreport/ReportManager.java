@@ -3,6 +3,7 @@ package com.roche.heatseq.qualityreport;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import net.sf.picard.fastq.FastqWriter;
@@ -11,9 +12,9 @@ import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileWriter;
 import net.sf.samtools.SAMFileWriterFactory;
 
+import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.process.PrefuppCli;
 import com.roche.heatseq.utils.TabDelimitedFileWriter;
-import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
@@ -25,26 +26,28 @@ public class ReportManager {
 	public final static String PROBE_DETAILS_REPORT_NAME = "probe_details.txt";
 	public final static String SUMMARY_REPORT_NAME = PrefuppCli.APPLICATION_NAME + "_summary.txt";
 	private final static String UID_COMPOSITION_REPORT_NAME = "uid_composition_by_probe.txt";
-	private final static String PROBE_UID_QUALITY_REPORT_NAME = "probe_uid_quality.txt";
 	private final static String UNABLE_TO_ALIGN_PRIMER_REPORT_NAME = "unable_to_align_primer_for_variable_length_uid.txt";
 	public final static String UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME = "unable_to_map_one.fastq";
 	public final static String UNABLE_TO_MAP_FASTQ_TWO_REPORT_NAME = "unable_to_map_two.fastq";
 	private final static String PRIMER_ALIGNMENT_REPORT_NAME = "extension_primer_alignment.txt";
 	private final static String UNIQUE_PROBE_TALLIES_REPORT_NAME = "unique_probe_tallies.txt";
+	private final static String READS_MAPPED_TO_MULTIPLE_PROBES_REPORT_NAME = "reads_mapped_to_multiple_probes.txt";
 	private final static String PROBE_COVERAGE_REPORT_NAME = "probe_coverage.bed";
 	private final static String MAPPED_OFF_TARGET_READS_REPORT_NAME = "mapped_off_target_reads.bam";
 	private final static String UNMAPPED_READS_REPORT_NAME = "unmapped_read_pairs.bam";
+	private final static String PARTIALLY_MAPPED_READS_REPORT_NAME = "partially_mapped_read_pairs.bam";
 
 	private TabDelimitedFileWriter ambiguousMappingWriter;
-	private TabDelimitedFileWriter probeUidQualityWriter;
 	private TabDelimitedFileWriter unableToAlignPrimerWriter;
 	private TabDelimitedFileWriter primerAlignmentWriter;
 	private TabDelimitedFileWriter uniqueProbeTalliesWriter;
 	private TabDelimitedFileWriter probeCoverageWriter;
 	private TabDelimitedFileWriter uidCompositionByProbeWriter;
+	private TabDelimitedFileWriter readsMappedToMultipleProbesWriter;
 
 	private SAMFileWriter mappedOffTargetReadsWriter;
 	private SAMFileWriter unmappedReadsWriter;
+	private SAMFileWriter partiallyMappedReadsWriter;
 	private ProbeDetailsReport detailsReport;
 	private SummaryReport summaryReport;
 
@@ -53,7 +56,8 @@ public class ReportManager {
 
 	private final boolean shouldOutputReports;
 
-	public ReportManager(File outputDirectory, String outputFilePrefix, int extensionUidLength, int ligationUidLength, SAMFileHeader samFileHeader, boolean shouldOutputReports) {
+	public ReportManager(String softwareName, String softwareVersion, File outputDirectory, String outputFilePrefix, int extensionUidLength, int ligationUidLength, SAMFileHeader samFileHeader,
+			boolean shouldOutputReports) {
 
 		this.shouldOutputReports = shouldOutputReports;
 
@@ -63,15 +67,6 @@ public class ReportManager {
 				FileUtil.createNewFile(ambiguousMappingFile);
 				ambiguousMappingWriter = new TabDelimitedFileWriter(ambiguousMappingFile, new String[] { "read_name", "read_string", "sequence_name", "extension_primer_start",
 						"extension_primer_stop", "capture_target_start", "capture_target_stop", "ligation_primer_start", "ligation_primer_stop", "probe_strand" });
-			} catch (IOException e) {
-				throw new IllegalStateException(e);
-			}
-
-			File probeUidQualityFile = new File(outputDirectory, outputFilePrefix + PROBE_UID_QUALITY_REPORT_NAME);
-			try {
-				FileUtil.createNewFile(probeUidQualityFile);
-				probeUidQualityWriter = new TabDelimitedFileWriter(probeUidQualityFile, new String[] { "probe_id", "extension_uid", "ligation_uid", "read_one_quality", "read_two_quality",
-						"total_quality", "read_name", "read_sequence", "sequence_one", "sequence_two" });
 			} catch (IOException e) {
 				throw new IllegalStateException(e);
 			}
@@ -128,6 +123,14 @@ public class ReportManager {
 				throw new IllegalStateException(e);
 			}
 
+			File readsMappedToMultipleProbesFile = new File(outputDirectory, outputFilePrefix + READS_MAPPED_TO_MULTIPLE_PROBES_REPORT_NAME);
+			try {
+				FileUtil.createNewFile(readsMappedToMultipleProbesFile);
+				readsMappedToMultipleProbesWriter = new TabDelimitedFileWriter(readsMappedToMultipleProbesFile, new String[] { "read_name", "probe" });
+			} catch (IOException e) {
+				throw new IllegalStateException(e);
+			}
+
 			File uidCompositionByProbeFile = new File(outputDirectory, outputFilePrefix + UID_COMPOSITION_REPORT_NAME);
 			try {
 				FileUtil.createNewFile(uidCompositionByProbeFile);
@@ -157,6 +160,14 @@ public class ReportManager {
 				throw new IllegalStateException(e);
 			}
 
+			File partiallyMappedFile = new File(outputDirectory, outputFilePrefix + PARTIALLY_MAPPED_READS_REPORT_NAME);
+			try {
+				FileUtil.createNewFile(partiallyMappedFile);
+				partiallyMappedReadsWriter = samFactory.makeBAMWriter(samFileHeader, true, partiallyMappedFile);
+			} catch (IOException e) {
+				throw new IllegalStateException(e);
+			}
+
 			File detailsReportFile = new File(outputDirectory, outputFilePrefix + PROBE_DETAILS_REPORT_NAME);
 			try {
 				FileUtil.createNewFile(detailsReportFile);
@@ -170,7 +181,7 @@ public class ReportManager {
 			summaryReportFile = new File(outputDirectory, outputFilePrefix + SUMMARY_REPORT_NAME);
 			try {
 				FileUtil.createNewFile(summaryReportFile);
-				summaryReport = new SummaryReport(summaryReportFile, extensionUidLength, ligationUidLength);
+				summaryReport = new SummaryReport(softwareName, softwareVersion, summaryReportFile, extensionUidLength, ligationUidLength);
 			} catch (IOException e) {
 				throw new IllegalStateException(e);
 			}
@@ -186,9 +197,6 @@ public class ReportManager {
 			ambiguousMappingWriter.close();
 		}
 
-		if (probeUidQualityWriter != null) {
-			probeUidQualityWriter.close();
-		}
 		if (unableToAlignPrimerWriter != null) {
 			unableToAlignPrimerWriter.close();
 		}
@@ -204,6 +212,10 @@ public class ReportManager {
 
 		if (probeCoverageWriter != null) {
 			probeCoverageWriter.close();
+		}
+
+		if (readsMappedToMultipleProbesWriter != null) {
+			readsMappedToMultipleProbesWriter.close();
 		}
 
 		if (uidCompositionByProbeWriter != null) {
@@ -230,6 +242,10 @@ public class ReportManager {
 			unmappedReadsWriter.close();
 		}
 
+		if (partiallyMappedReadsWriter != null) {
+			partiallyMappedReadsWriter.close();
+		}
+
 	}
 
 	public ProbeDetailsReport getDetailsReport() {
@@ -244,16 +260,16 @@ public class ReportManager {
 		return probeCoverageWriter;
 	}
 
+	public TabDelimitedFileWriter getReadsMappedToMultipleProbesWriter() {
+		return readsMappedToMultipleProbesWriter;
+	}
+
 	public TabDelimitedFileWriter getUidCompisitionByProbeWriter() {
 		return uidCompositionByProbeWriter;
 	}
 
 	public SummaryReport getSummaryReport() {
 		return summaryReport;
-	}
-
-	public TabDelimitedFileWriter getProbeUidQualityWriter() {
-		return probeUidQualityWriter;
 	}
 
 	public TabDelimitedFileWriter getUnableToAlignPrimerWriter() {
@@ -284,8 +300,12 @@ public class ReportManager {
 		return unmappedReadsWriter;
 	}
 
-	public void completeSummaryReport(TallyMap<String> readNamesToDistinctProbeAssignmentCount, Set<ISequence> distinctUids, List<ISequence> nonDistinctUids, long processingTimeInMs, int totalProbes,
-			int totalReads, int totalMappedReads) {
+	public SAMFileWriter getPartiallyMappedReadPairsWriter() {
+		return partiallyMappedReadsWriter;
+	}
+
+	public void completeSummaryReport(Map<String, Set<Probe>> readNamesToDistinctProbeAssignmentCount, Set<ISequence> distinctUids, List<ISequence> nonDistinctUids, long processingTimeInMs,
+			int totalProbes, int totalReads, int totalFullyMappedOffTargetReads, int totalPartiallyMappedReads, int totalFullyUnmappedReads, int totalFullyMappedOnTargetReads) {
 		summaryReport.setProcessingTimeInMs(processingTimeInMs);
 		summaryReport.setDuplicateReadPairsRemoved(detailsReport.getDuplicateReadPairsRemoved());
 		summaryReport.setProbesWithNoMappedReadPairs(detailsReport.getProbesWithNoMappedReadPairs());
@@ -297,8 +317,8 @@ public class ReportManager {
 		summaryReport.setAverageNumberOfReadPairsPerProbeUid(detailsReport.getAverageNumberOfReadPairsPerProbeUid());
 
 		int readPairsAssignedToMultipleProbes = 0;
-		for (int counts : readNamesToDistinctProbeAssignmentCount.getTalliesAsMap().values()) {
-			if (counts > 1) {
+		for (Set<Probe> probes : readNamesToDistinctProbeAssignmentCount.values()) {
+			if (probes.size() > 1) {
 				readPairsAssignedToMultipleProbes++;
 			}
 		}
@@ -306,8 +326,15 @@ public class ReportManager {
 		summaryReport.setDistinctUidsFound(distinctUids.size());
 		summaryReport.setTotalProbes(totalProbes);
 
-		summaryReport.setUnmappedReads(totalReads - totalMappedReads);
-		summaryReport.setMappedReads(totalMappedReads);
+		summaryReport.setTotalFullyMappedOffTargetReads(totalFullyMappedOffTargetReads);
+
+		summaryReport.setTotalPartiallyMappedReads(totalPartiallyMappedReads);
+
+		summaryReport.setTotalFullyUnmappedReads(totalFullyUnmappedReads);
+
+		summaryReport.setTotalFullyMappedOnTargetReads(totalFullyMappedOnTargetReads);
+
+		summaryReport.setTotalReads(totalReads);
 	}
 
 }
