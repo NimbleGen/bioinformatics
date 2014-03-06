@@ -185,8 +185,6 @@ class FilterByUid {
 
 			totalDuplicateReadPairsRemoved += (pairsDataByUid.size() - 1);
 
-			printProbeUidQualities(probe, pairsDataByUid, reportManager);
-
 			IReadPair bestPair = findBestData(pairsDataByUid);
 
 			readPairs.add(bestPair);
@@ -284,47 +282,6 @@ class FilterByUid {
 		}
 
 	};
-
-	/**
-	 * Report on the probe UID qualities
-	 * 
-	 * @param probe
-	 * @param data
-	 * @param probeUidQualityWriter
-	 */
-	private static void printProbeUidQualities(Probe probe, List<IReadPair> data, ReportManager reportManager) {
-		if (reportManager.isReporting()) {
-			for (IReadPair currentPair : data) {
-				String probeId = "";
-				String extensionUid = "";
-				String ligationUid = "";
-				String sequenceQualityScore = "";
-				String sequenceTwoQualityScore = "";
-				String totalQualityScore = "";
-				String readName = "";
-
-				String sequenceOne = "";
-				String sequenceTwo = "";
-
-				if (currentPair != null) {
-					probeId = probe.getProbeId();
-
-					extensionUid = "" + currentPair.getExtensionUid();
-					ligationUid = "" + currentPair.getLigationUid();
-					readName = currentPair.getReadName();
-
-					sequenceQualityScore = "" + currentPair.getSequenceOneQualityScore();
-					sequenceTwoQualityScore = "" + currentPair.getSequenceTwoQualityScore();
-					totalQualityScore = "" + currentPair.getTotalSequenceQualityScore();
-					sequenceOne = currentPair.getSequenceOne();
-					sequenceTwo = currentPair.getSequenceTwo();
-
-				}
-				reportManager.getProbeUidQualityWriter().writeLine(probeId, extensionUid.toUpperCase(), ligationUid.toUpperCase(), sequenceQualityScore, sequenceTwoQualityScore, totalQualityScore,
-						readName, sequenceOne, sequenceTwo);
-			}
-		}
-	}
 
 	/**
 	 * @param data
