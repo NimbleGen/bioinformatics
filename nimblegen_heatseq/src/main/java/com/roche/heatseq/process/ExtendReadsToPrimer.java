@@ -264,10 +264,10 @@ public final class ExtendReadsToPrimer {
 		}
 
 		if (probeEndIndexInRead != null) {
+			// indexes are zero based and counts are one based so subtract one
 			probeEndIndexInRead -= 1;
 		}
 
-		// indexes are zero based and counts are one based so subtract one
 		return probeEndIndexInRead;
 	}
 
