@@ -57,11 +57,9 @@ import com.roche.heatseq.qualityreport.ReportManager;
 import com.roche.heatseq.utils.BamFileUtil;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.heatseq.utils.SAMRecordUtil;
-import com.roche.heatseq.utils.SAMRecordUtil.SamReadCount;
 import com.roche.heatseq.utils.TabDelimitedFileWriter;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
-import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
@@ -128,8 +126,9 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		}
 
 		// Set up the reports files
-		ReportManager reportManager = new ReportManager(applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix(), applicationSettings.getExtensionUidLength(),
-				applicationSettings.getLigationUidLength(), samHeader, applicationSettings.isShouldOutputQualityReports());
+		ReportManager reportManager = new ReportManager(applicationSettings.getProgramName(), applicationSettings.getProgramVersion(), applicationSettings.getOutputDirectory(),
+				applicationSettings.getOutputFilePrefix(), applicationSettings.getExtensionUidLength(), applicationSettings.getLigationUidLength(), samHeader,
+				applicationSettings.isShouldOutputQualityReports());
 
 		// Actually do the work
 		filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings, probeInfo, reportManager);
@@ -203,19 +202,13 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 		Set<String> sequenceNames = probeInfo.getSequenceNames();
 
-		TallyMap<String> readNamesToDistinctProbeAssignmentCount = new TallyMap<String>();
+		Map<String, Set<Probe>> readNamesToDistinctProbeAssignment = new HashMap<String, Set<Probe>>();
 		Set<ISequence> distinctUids = Collections.newSetFromMap(new ConcurrentHashMap<ISequence, Boolean>());
 		List<ISequence> uids = new ArrayList<ISequence>();
 
 		SAMFileWriter samWriter = null;
 
 		try (SAMFileReader samReader = new SAMFileReader(applicationSettings.getBamFile(), applicationSettings.getBamFileIndex())) {
-
-			if (reportManager.isReporting()) {
-				SamReadCount readCount = SAMRecordUtil.countReads(samReader);
-				reportManager.getSummaryReport().setUnmappedReads(readCount.getTotalUnmappedReads());
-				reportManager.getSummaryReport().setMappedReads(readCount.getTotalMappedReads());
-			}
 
 			String outputUnsortedBamFileName = FileUtil.getFileNameWithoutExtension(applicationSettings.getOriginalBamFileName()) + "_UNSORTED_REDUCED."
 					+ FileUtil.getFileExtension(applicationSettings.getBamFile());
@@ -323,10 +316,16 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					// remove any records that don't have both pairs
 					Map<String, SAMRecordPair> readNameToCompleteRecordsMap = new HashMap<String, SAMRecordPair>();
 					for (Entry<String, SAMRecordPair> entry : readNameToRecordsMap.entrySet()) {
+						String readName = entry.getKey();
 						SAMRecordPair pair = entry.getValue();
 						if (pair.getFirstOfPairRecord() != null && pair.getSecondOfPairRecord() != null) {
-							readNameToCompleteRecordsMap.put(entry.getKey(), pair);
-							readNamesToDistinctProbeAssignmentCount.add(entry.getKey());
+							readNameToCompleteRecordsMap.put(readName, pair);
+							Set<Probe> probesAssignedToRead = readNamesToDistinctProbeAssignment.get(readName);
+							if (probesAssignedToRead == null) {
+								probesAssignedToRead = new HashSet<Probe>();
+							}
+							probesAssignedToRead.add(probe);
+							readNamesToDistinctProbeAssignment.put(readName, probesAssignedToRead);
 						}
 					}
 
@@ -364,7 +363,10 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 			if (reportManager.isReporting()) {
 				int totalReads = 0;
-				int totalMappedReads = 0;
+				int totalFullyMappedOffTargetReads = 0;
+				int totalPartiallyMappedReads = 0;
+				int totalFullyUnmappedReads = 0;
+				int totalFullyMappedOnTargetReads = 0;
 
 				Set<String> unmappedReadPairReadNames = new HashSet<String>();
 
@@ -372,21 +374,26 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 				while (samRecordIter.hasNext()) {
 					SAMRecord record = samRecordIter.next();
 					totalReads++;
-					if (!record.getReadUnmappedFlag()) {
-						totalMappedReads++;
-					}
-					Set<String> mappedOnTargetReadNames = readNamesToDistinctProbeAssignmentCount.getTalliesAsMap().keySet();
+					Set<String> mappedOnTargetReadNames = readNamesToDistinctProbeAssignment.keySet();
 					String readName = IlluminaFastQHeader.getUniqueIdForReadHeader(record.getReadName());
 					boolean readAndMateMapped = !record.getMateUnmappedFlag() && !record.getReadUnmappedFlag();
-					if (!readAndMateMapped) {
+					boolean partiallyMapped = (!record.getMateUnmappedFlag() && record.getReadUnmappedFlag()) || (record.getMateUnmappedFlag() && !record.getReadUnmappedFlag());
+					if (partiallyMapped) {
+						reportManager.getPartiallyMappedReadPairsWriter().addAlignment(record);
+						unmappedReadPairReadNames.add(record.getReadName());
+						totalPartiallyMappedReads++;
+					} else if (!readAndMateMapped) {
 						reportManager.getUnMappedReadPairsWriter().addAlignment(record);
 						unmappedReadPairReadNames.add(record.getReadName());
+						totalFullyUnmappedReads++;
 					} else if (readAndMateMapped && !mappedOnTargetReadNames.contains(readName)) {
 						reportManager.getMappedOffTargetReadsWriter().addAlignment(record);
+						totalFullyMappedOffTargetReads++;
 					} else {
 						// the only remaining possible option is that it is mapped and on target so verify this
 						boolean mappedAndOnTarget = readAndMateMapped && mappedOnTargetReadNames.contains(readName);
 						assert mappedAndOnTarget;
+						totalFullyMappedOnTargetReads++;
 					}
 				}
 
@@ -415,8 +422,19 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 				samRecordIter.close();
 
+				for (Entry<String, Set<Probe>> entry : readNamesToDistinctProbeAssignment.entrySet()) {
+					String readName = entry.getKey();
+					Set<Probe> assignedProbeIds = entry.getValue();
+					if (assignedProbeIds.size() > 1) {
+						for (Probe probe : assignedProbeIds) {
+							reportManager.getReadsMappedToMultipleProbesWriter().writeLine(readName, probe.getProbeId());
+						}
+					}
+				}
+
 				long processingTimeInMs = end - start;
-				reportManager.completeSummaryReport(readNamesToDistinctProbeAssignmentCount, distinctUids, uids, processingTimeInMs, totalProbes, totalReads, totalMappedReads);
+				reportManager.completeSummaryReport(readNamesToDistinctProbeAssignment, distinctUids, uids, processingTimeInMs, totalProbes, totalReads, totalFullyMappedOffTargetReads,
+						totalPartiallyMappedReads, totalFullyUnmappedReads, totalFullyMappedOnTargetReads);
 			}
 
 			samReader.close();

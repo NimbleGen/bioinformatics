@@ -262,8 +262,13 @@ public final class ExtendReadsToPrimer {
 				i++;
 			}
 		}
+
+		if (probeEndIndexInRead != null) {
+			probeEndIndexInRead -= 1;
+		}
+
 		// indexes are zero based and counts are one based so subtract one
-		return probeEndIndexInRead - 1;
+		return probeEndIndexInRead;
 	}
 
 	static List<IReadPair> extendReadsToPrimers(Probe probe, List<IReadPair> readPairs, IAlignmentScorer alignmentScorer) {

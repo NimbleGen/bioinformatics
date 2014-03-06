@@ -302,26 +302,11 @@ public class IlluminaFastQHeader {
 	 * @return
 	 */
 	public static String getUniqueIdForReadHeader(String readHeader) {
-		String uniqueId = "";
-		int indexOfThirdColon = StringUtil.nthOccurrence(readHeader, ':', 3);
-
-		int indexOfSixthColon = StringUtil.nthOccurrence(readHeader, ':', 5);
-
-		// Find the space after the Y value
-		int indexOfSpaceAfterSixthColon = -1;
-		if (indexOfSixthColon != -1) {
-			indexOfSpaceAfterSixthColon = readHeader.indexOf(' ', indexOfSixthColon);
-			if (indexOfSpaceAfterSixthColon == -1) {
-				indexOfSpaceAfterSixthColon = readHeader.length();
-			}
-		}
-
-		if (indexOfThirdColon != -1) {
-			uniqueId = readHeader.substring(indexOfThirdColon + 1, indexOfSpaceAfterSixthColon);
-		} else {
-			throw new IllegalStateException("Could not parse read header[" + readHeader + "].");
-		}
-		return uniqueId;
+		// sample read name:M01077:35:000000000-A3J96:1:1102:13646:7860 1:N:0:1
+		// originally this code only used information from the third colon to the sixth colon
+		// but if reads are combined across multiple runs the information before the
+		// third colon is necessary to uniquely identify the read
+		return getBaseHeader(readHeader);
 	}
 
 	public static void main(String[] args) {

@@ -18,8 +18,11 @@ public class SummaryReport {
 
 	private long processingTimeInMs;
 
-	private int mappedReads;
-	private int unmappedReads;
+	private int totalReads = 0;
+	private int totalFullyMappedOffTargetReads = 0;
+	private int totalPartiallyMappedReads = 0;
+	private int totalFullyUnmappedReads;
+	private int totalFullyMappedOnTargetReads = 0;
 
 	private int duplicateReadPairsRemoved;
 
@@ -37,9 +40,14 @@ public class SummaryReport {
 
 	private double averageNumberOfReadPairsPerProbeUid;
 
-	SummaryReport(File summaryReportFile, int extensionUidLength, int ligationUidLength) throws IOException {
+	private final String softwareName;
+	private final String softwareVersion;
+
+	SummaryReport(String softwareName, String softwareVersion, File summaryReportFile, int extensionUidLength, int ligationUidLength) throws IOException {
 		this.extensionUidLength = extensionUidLength;
 		this.ligationUidLength = ligationUidLength;
+		this.softwareName = softwareName;
+		this.softwareVersion = softwareVersion;
 		FileUtil.createNewFile(summaryReportFile);
 		detailsReportWriter = new PrintWriter(summaryReportFile);
 		detailsReportWriter.flush();
@@ -55,14 +63,6 @@ public class SummaryReport {
 
 	public void setReadPairsAssignedToMultipleProbes(int readPairsAssignedToMultipleProbes) {
 		this.readPairsAssignedToMultipleProbes = readPairsAssignedToMultipleProbes;
-	}
-
-	public void setMappedReads(int mappedReads) {
-		this.mappedReads = mappedReads;
-	}
-
-	public void setUnmappedReads(int unmappedReads) {
-		this.unmappedReads = unmappedReads;
 	}
 
 	public void setProbesWithNoMappedReadPairs(int probesWithNoMappedReadPairs) {
@@ -97,26 +97,46 @@ public class SummaryReport {
 		this.averageNumberOfReadPairsPerProbeUid = averageNumberOfReadPairsPerUid;
 	}
 
+	public void setTotalFullyMappedOffTargetReads(int totalFullyMappedOffTargetReads) {
+		this.totalFullyMappedOffTargetReads = totalFullyMappedOffTargetReads;
+	}
+
+	public void setTotalPartiallyMappedReads(int totalPartiallyMappedReads) {
+		this.totalPartiallyMappedReads = totalPartiallyMappedReads;
+	}
+
+	public void setTotalFullyUnmappedReads(int totalFullyUnmappedReads) {
+		this.totalFullyUnmappedReads = totalFullyUnmappedReads;
+	}
+
+	public void setTotalFullyMappedOnTargetReads(int totalFullyMappedOnTargetReads) {
+		this.totalFullyMappedOnTargetReads = totalFullyMappedOnTargetReads;
+	}
+
+	public void setTotalReads(int totalReads) {
+		this.totalReads = totalReads;
+	}
+
 	void close() {
 		long theoreticalUniqueUids = Math.round(Math.pow(4, extensionUidLength + ligationUidLength));
 		double uidRatio = (double) distinctUidsFound / (double) theoreticalUniqueUids;
 		DecimalFormat formatter = new DecimalFormat("0.0000");
-		int onTargetReadPairs = (totalReadPairsAfterReduction + duplicateReadPairsRemoved);
-		int onTargetReads = onTargetReadPairs * 2;
-		int offTargetMappedReads = mappedReads - onTargetReads;
+		int onTargetReadPairs = (totalFullyMappedOnTargetReads / 2);
 		double onTargetDuplicateRate = (double) duplicateReadPairsRemoved / (double) (onTargetReadPairs);
 		int probeSpecificReads = (duplicateReadPairsRemoved + totalReadPairsAfterReduction) * 2;
-		double probeSpecificToTotalReadsRatio = (double) probeSpecificReads / (double) (mappedReads + unmappedReads);
+		double probeSpecificToTotalReadsRatio = (double) probeSpecificReads / (double) (totalReads);
 
-		double percentMappedReadsOnTarget = (double) onTargetReads / (double) mappedReads;
+		double percentMappedReadsOnTarget = (double) totalFullyMappedOnTargetReads / (double) (totalFullyMappedOffTargetReads + totalFullyMappedOnTargetReads);
 
+		detailsReportWriter.println(softwareName + "_version" + StringUtil.TAB + softwareVersion);
 		detailsReportWriter.println("processing_time(HH:MM:SS)" + StringUtil.TAB + DateUtil.convertMillisecondsToHHMMSS(processingTimeInMs));
-		detailsReportWriter.println("total_input_reads" + StringUtil.TAB + (mappedReads + unmappedReads));
-		detailsReportWriter.println("input_unmapped_reads" + StringUtil.TAB + unmappedReads);
-		detailsReportWriter.println("input_mapped_reads" + StringUtil.TAB + mappedReads);
-		detailsReportWriter.println("on_target_reads" + StringUtil.TAB + onTargetReads);
-		detailsReportWriter.println("off_target_mapped_reads" + StringUtil.TAB + offTargetMappedReads);
-		detailsReportWriter.println("percent_mapped_reads_on_target" + StringUtil.TAB + formatter.format(percentMappedReadsOnTarget));
+		detailsReportWriter.println("total_input_reads" + StringUtil.TAB + (totalReads));
+		detailsReportWriter.println("input_fully_unmapped_reads" + StringUtil.TAB + totalFullyUnmappedReads);
+		detailsReportWriter.println("input_fully_mapped_reads" + StringUtil.TAB + (totalFullyMappedOffTargetReads + totalFullyMappedOnTargetReads));
+		detailsReportWriter.println("input_partially_mapped_reads" + StringUtil.TAB + totalPartiallyMappedReads);
+		detailsReportWriter.println("on_target_reads" + StringUtil.TAB + totalFullyMappedOnTargetReads);
+		detailsReportWriter.println("off_target_fully_mapped_reads" + StringUtil.TAB + totalFullyMappedOffTargetReads);
+		detailsReportWriter.println("percent_fully_mapped_reads_on_target" + StringUtil.TAB + formatter.format(percentMappedReadsOnTarget));
 		detailsReportWriter.println("duplicate_read_pairs_removed" + StringUtil.TAB + duplicateReadPairsRemoved);
 		detailsReportWriter.println("read_pairs_assigned_to_multiple_probes" + StringUtil.TAB + readPairsAssignedToMultipleProbes);
 		detailsReportWriter.println("probes_with_no_mapped_read_pairs" + StringUtil.TAB + probesWithNoMappedReadPairs);
