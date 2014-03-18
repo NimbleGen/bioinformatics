@@ -14,10 +14,10 @@ import net.sf.samtools.SAMFileWriterFactory;
 
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.process.PrefuppCli;
-import com.roche.heatseq.utils.TabDelimitedFileWriter;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
+import com.roche.sequencing.bioinformatics.common.utils.TabDelimitedFileWriter;
 
 public class ReportManager {
 
