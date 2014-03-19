@@ -573,6 +573,10 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 
 		private static SAMRecord mergePairs(IReadPair readPair) {
 			SAMRecord mergedRecord = new SAMRecord(readPair.getSamHeader());
+
+			String readGroup = readPair.getReadGroup();
+			mergedRecord.setAttribute(SAMRecordUtil.READ_GROUP_ATTRIBUTE_TAG, readGroup);
+
 			mergedRecord.setReadPairedFlag(false);
 
 			SAMRecord record = readPair.getRecord();
