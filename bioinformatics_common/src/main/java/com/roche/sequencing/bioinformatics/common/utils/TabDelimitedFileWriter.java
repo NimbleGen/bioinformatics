@@ -1,17 +1,20 @@
 package com.roche.sequencing.bioinformatics.common.utils;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.Writer;
 import java.text.DecimalFormat;
 
 public class TabDelimitedFileWriter implements AutoCloseable {
-
+	// 1 mb buffer
+	private final static int DEFAULT_BUFFER_SIZE = (int) (Math.pow(1024, 2));
 	private static final DecimalFormat decimalFormat = new DecimalFormat("##.##");
-	private PrintWriter printWriter = null;
+	private Writer writer = null;
 	private int columnCount = -1;
 	private final boolean shouldValidateColumnCount;
+	private final File outputFile;
 
 	/**
 	 * Make a tab delimited file writer with the provided output file
@@ -47,23 +50,24 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 
 	private TabDelimitedFileWriter(File outputFile, String preHeader, String[] headers, boolean shouldValidateColumnCount) throws IOException {
 		// Keep track of how many columns we should expect to see
+		this.outputFile = outputFile;
 		this.columnCount = headers.length;
-		this.printWriter = new PrintWriter(new FileWriter(outputFile));
+		this.writer = new BufferedWriter(new FileWriter(outputFile), DEFAULT_BUFFER_SIZE);
 		boolean firstHeader = true;
 		synchronized (this) {
 			if (preHeader != null && !preHeader.isEmpty()) {
-				printWriter.println(preHeader);
+				writer.write(preHeader + StringUtil.NEWLINE);
 			}
 
 			for (String header : headers) {
 				if (!firstHeader) {
-					printWriter.write(StringUtil.TAB);
+					writer.write(StringUtil.TAB);
 				}
 				firstHeader = false;
-				printWriter.write(header);
+				writer.write(header);
 			}
-			printWriter.println();
-			printWriter.flush();
+			writer.write(StringUtil.NEWLINE);
+			writer.flush();
 		}
 		this.shouldValidateColumnCount = false;
 	}
@@ -75,33 +79,37 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 	 */
 	public void writeLine(Object... values) {
 		synchronized (this) {
-			if (printWriter == null) {
-				throw new IllegalArgumentException("Trying to write a line to a writer thas has been closed");
-			}
-
-			if (shouldValidateColumnCount && values.length != columnCount) {
-				throw new IllegalArgumentException("Passed in " + values.length + " values to a writer with " + columnCount + " columns.");
-			}
-
-			boolean firstValue = true;
-			for (Object value : values) {
-				if (!firstValue) {
-					printWriter.write(StringUtil.TAB);
+			try {
+				if (writer == null) {
+					throw new IllegalArgumentException("Trying to write a line to a writer thas has been closed");
 				}
-				firstValue = false;
 
-				if (value != null) {
-					if (value instanceof Number) {
-						// We want all numeric values to be formatted
-						printWriter.write(decimalFormat.format(value));
-					} else {
-						// Convert the value to a string
-						printWriter.write(value.toString());
+				if (shouldValidateColumnCount && values.length != columnCount) {
+					throw new IllegalArgumentException("Passed in " + values.length + " values to a writer with " + columnCount + " columns.");
+				}
+
+				boolean firstValue = true;
+				for (Object value : values) {
+					if (!firstValue) {
+						writer.write(StringUtil.TAB);
+					}
+					firstValue = false;
+
+					if (value != null) {
+						if (value instanceof Number) {
+							// We want all numeric values to be formatted
+							writer.write(decimalFormat.format(value));
+						} else {
+							// Convert the value to a string
+							writer.write(value.toString());
+						}
 					}
 				}
+				writer.write(StringUtil.NEWLINE);
+				writer.flush();
+			} catch (IOException e) {
+				throw new IllegalStateException("Unable to write to file[" + outputFile.getAbsolutePath() + "].");
 			}
-			printWriter.println();
-			printWriter.flush();
 		}
 	}
 
@@ -110,11 +118,15 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 	 */
 	public void close() {
 		synchronized (this) {
-			if (printWriter != null) {
-				printWriter.flush();
-				printWriter.close();
+			if (writer != null) {
+				try {
+					writer.flush();
+					writer.close();
+				} catch (IOException e) {
+					throw new IllegalStateException("Unable to close file[" + outputFile.getAbsolutePath() + "].");
+				}
 			}
-			printWriter = null;
+			writer = null;
 		}
 	}
 }
