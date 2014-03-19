@@ -7,6 +7,8 @@ public class RunningStats {
 
 	private BigDecimal sumOfValues;
 	private BigDecimal sumOfSquares;
+	private double minValue;
+	private double maxValue;
 	private int numberOfValues;
 
 	private final static MathContext MATH_CONTEXT = new MathContext(1000);
@@ -15,10 +17,14 @@ public class RunningStats {
 		numberOfValues = 0;
 		sumOfValues = new BigDecimal(0);
 		sumOfSquares = new BigDecimal(0);
+		minValue = Double.MAX_VALUE;
+		maxValue = -Double.MAX_VALUE;
 	}
 
 	public synchronized void addValue(double value) {
 		BigDecimal valueAsBigDecimal = new BigDecimal(value);
+		minValue = Math.min(minValue, value);
+		maxValue = Math.max(maxValue,value);
 		sumOfValues = sumOfValues.add(valueAsBigDecimal);
 		sumOfSquares = sumOfSquares.add(valueAsBigDecimal.multiply(valueAsBigDecimal));
 		numberOfValues++;

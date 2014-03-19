@@ -1,12 +1,10 @@
-package com.roche.heatseq.utils;
+package com.roche.sequencing.bioinformatics.common.utils;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.DecimalFormat;
-
-import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class TabDelimitedFileWriter implements AutoCloseable {
 
@@ -22,7 +20,7 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 	 * @throws IOException
 	 */
 	public TabDelimitedFileWriter(File outputFile) throws IOException {
-		this(outputFile, new String[0], false);
+		this(outputFile, null, new String[0], false);
 	}
 
 	/**
@@ -33,15 +31,30 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 	 * @throws IOException
 	 */
 	public TabDelimitedFileWriter(File outputFile, String[] headers) throws IOException {
-		this(outputFile, headers, true);
+		this(outputFile, null, headers, true);
 	}
 
-	private TabDelimitedFileWriter(File outputFile, String[] headers, boolean shouldValidateColumnCount) throws IOException {
+	/**
+	 * Make a tab delimited file writer with the provided output file and header line
+	 * 
+	 * @param outputFile
+	 * @param headers
+	 * @throws IOException
+	 */
+	public TabDelimitedFileWriter(File outputFile, String preHeader, String[] headers) throws IOException {
+		this(outputFile, preHeader, headers, true);
+	}
+
+	private TabDelimitedFileWriter(File outputFile, String preHeader, String[] headers, boolean shouldValidateColumnCount) throws IOException {
 		// Keep track of how many columns we should expect to see
 		this.columnCount = headers.length;
 		this.printWriter = new PrintWriter(new FileWriter(outputFile));
 		boolean firstHeader = true;
 		synchronized (this) {
+			if (preHeader != null && !preHeader.isEmpty()) {
+				printWriter.println(preHeader);
+			}
+
 			for (String header : headers) {
 				if (!firstHeader) {
 					printWriter.write(StringUtil.TAB);

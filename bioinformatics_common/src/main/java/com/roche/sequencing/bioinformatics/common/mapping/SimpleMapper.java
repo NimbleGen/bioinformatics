@@ -34,10 +34,10 @@ import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
  */
 public class SimpleMapper<O> {
 
-	private final static int DEFAULT_COMPARISON_SEQUENCE_SIZE = 10;
-	private final static int DEFAULT_MAX_REFERENCE_DEPTH = 10;
+	private final static int DEFAULT_COMPARISON_SEQUENCE_SIZE = 5;
+	private final static int DEFAULT_MAX_REFERENCE_DEPTH = 30;
 	private final static int DEFAULT_MAX_QUERY_DEPTH = 1;
-	private final static int DEFAULT_MIN_HIT_THRESHOLD = 3;
+	private final static int DEFAULT_MIN_HIT_THRESHOLD = 1;
 
 	private final int comparisonSequenceSize;
 	private final int maxReferenceDepth;
