@@ -76,7 +76,7 @@ public class SAMRecordUtil {
 	 * @return the UID contained within the provided sequence
 	 */
 	public static String parseUidFromReadTwo(String sequence, int ligationUidLength) {
-		String uidSequence = sequence.substring(sequence.length() - ligationUidLength, sequence.length());
+		String uidSequence = sequence.substring(0, ligationUidLength);
 		return uidSequence;
 	}
 
@@ -96,7 +96,7 @@ public class SAMRecordUtil {
 	 * @return a read sequence without the UID
 	 */
 	public static String removeUidFromReadTwo(String sequence, int ligationUidLength) {
-		sequence = sequence.substring(0, sequence.length() - ligationUidLength);
+		sequence = sequence.substring(ligationUidLength, sequence.length());
 		return sequence;
 	}
 
