@@ -137,6 +137,36 @@ public class ParsedCommandLine {
 		return argumentToValueMap.containsKey(option);
 	}
 
+	/**
+	 * @param option
+	 * @return true if the provided options were all found within the arguments passed into the application
+	 */
+	public boolean isAllOptionsPresent(CommandLineOption[] options) {
+		boolean allOptionsArePresent = true;
+		optionLoop: for (CommandLineOption option : options) {
+			allOptionsArePresent = allOptionsArePresent && argumentToValueMap.containsKey(option);
+			if (!allOptionsArePresent) {
+				break optionLoop;
+			}
+		}
+		return allOptionsArePresent;
+	}
+
+	/**
+	 * @param option
+	 * @return true if any of the provided options were found within the arguments passed into the application
+	 */
+	public boolean isAnyOptionPresent(CommandLineOption[] options) {
+		boolean isAnyOptionPresent = false;
+		optionLoop: for (CommandLineOption option : options) {
+			isAnyOptionPresent = argumentToValueMap.containsKey(option);
+			if (isAnyOptionPresent) {
+				break optionLoop;
+			}
+		}
+		return isAnyOptionPresent;
+	}
+
 	private void setShortFormArgumentValue(char shortFormOption, String value) {
 		CommandLineOption option = group.getMatchingCommandLineOptionForShortFormOption(shortFormOption);
 		if (option == null) {
