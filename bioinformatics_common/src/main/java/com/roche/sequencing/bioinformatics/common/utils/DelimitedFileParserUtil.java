@@ -322,4 +322,20 @@ public final class DelimitedFileParserUtil {
 		return headerNameToValueMap;
 	}
 
+	public static boolean isHeaderNameFoundInHeader(String headerName, File delimitedFile, String columnDelimiter) throws IOException {
+		boolean headerWithNameFound = false;
+		InputStream fileInputStream = new FileInputStream(delimitedFile);
+		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fileInputStream, Charset.forName("UTF-8")));
+		try {
+			String headerLine = findHeaderLine(delimitedFile, new String[] { headerName }, columnDelimiter, bufferedReader);
+			headerWithNameFound = headerLine != null;
+		} finally {
+			if (bufferedReader != null) {
+				bufferedReader.close();
+			}
+		}
+
+		return headerWithNameFound;
+	}
+
 }

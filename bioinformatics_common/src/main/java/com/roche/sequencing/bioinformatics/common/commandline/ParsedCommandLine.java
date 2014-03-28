@@ -141,15 +141,14 @@ public class ParsedCommandLine {
 	 * @param option
 	 * @return true if the provided options were all found within the arguments passed into the application
 	 */
-	public boolean isAllOptionsPresent(CommandLineOption[] options) {
-		boolean allOptionsArePresent = true;
-		optionLoop: for (CommandLineOption option : options) {
-			allOptionsArePresent = allOptionsArePresent && argumentToValueMap.containsKey(option);
-			if (!allOptionsArePresent) {
-				break optionLoop;
+	public CommandLineOption[] getMissingOptions(CommandLineOption[] options) {
+		List<CommandLineOption> missingOptions = new ArrayList<CommandLineOption>();
+		for (CommandLineOption option : options) {
+			if (!argumentToValueMap.containsKey(option)) {
+				missingOptions.add(option);
 			}
 		}
-		return allOptionsArePresent;
+		return missingOptions.toArray(new CommandLineOption[0]);
 	}
 
 	/**
