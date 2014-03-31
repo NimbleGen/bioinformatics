@@ -181,7 +181,8 @@ public final class DelimitedFileParserUtil {
 
 	}
 
-	public static Iterator<Map<String, String>> getHeaderNameToValueMapRowIteratorFromDelimitedFile(File delimitedFile, String[] headerNames, String columnDelimiter) throws IOException {
+	public static Iterator<Map<String, String>> getHeaderNameToValueMapRowIteratorFromDelimitedFile(File delimitedFile, String[] headerNames, String columnDelimiter)
+			throws UnableToFindHeaderException, IOException {
 		InputStream fileInputStream = new FileInputStream(delimitedFile);
 		DelimitedFileLineIterator delimitedFileLineIterator = null;
 		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fileInputStream, Charset.forName("UTF-8")));
@@ -205,7 +206,7 @@ public final class DelimitedFileParserUtil {
 	 * @return a list of row entries for each provided header name
 	 * @throws IOException
 	 */
-	public static Map<String, List<String>> getHeaderNameToValuesMapFromDelimitedFile(File delimitedFile, String[] headerNames, String columnDelimiter) throws IOException {
+	public static Map<String, List<String>> getHeaderNameToValuesMapFromDelimitedFile(File delimitedFile, String[] headerNames, String columnDelimiter) throws UnableToFindHeaderException, IOException {
 		String fileName = delimitedFile.getAbsolutePath();
 		Map<String, List<String>> headerNameToValuesMap = new HashMap<String, List<String>>();
 
@@ -258,7 +259,7 @@ public final class DelimitedFileParserUtil {
 				for (String headerName : headerNames) {
 					headerNamesAsString.append(headerName + " ");
 				}
-				throw new IllegalStateException("Could not find header containing header names[" + headerNamesAsString.toString() + "] in file[" + delimitedFile.getAbsolutePath() + "].");
+				throw new UnableToFindHeaderException("Could not find header containing header names[" + headerNamesAsString.toString() + "] in file[" + delimitedFile.getAbsolutePath() + "].");
 			}
 
 			// make sure all the header names were found
@@ -270,7 +271,7 @@ public final class DelimitedFileParserUtil {
 					}
 				}
 				if (headerNamesNotFound.length() > 0) {
-					throw new IllegalStateException("Could not find the following header columns in file[" + fileName + "]: " + headerNamesNotFound.toString());
+					throw new UnableToFindHeaderException("Could not find the following header columns in file[" + fileName + "]: " + headerNamesNotFound.toString());
 				}
 			}
 		}
