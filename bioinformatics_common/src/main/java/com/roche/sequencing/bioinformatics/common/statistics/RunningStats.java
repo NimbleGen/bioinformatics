@@ -24,7 +24,7 @@ public class RunningStats {
 	public synchronized void addValue(double value) {
 		BigDecimal valueAsBigDecimal = new BigDecimal(value);
 		minValue = Math.min(minValue, value);
-		maxValue = Math.max(maxValue,value);
+		maxValue = Math.max(maxValue, value);
 		sumOfValues = sumOfValues.add(valueAsBigDecimal);
 		sumOfSquares = sumOfSquares.add(valueAsBigDecimal.multiply(valueAsBigDecimal));
 		numberOfValues++;
@@ -92,6 +92,11 @@ public class RunningStats {
 
 	public int getCurrentNumberOfValues() {
 		return numberOfValues;
+	}
+
+	@Override
+	public String toString() {
+		return "RunningStats [sumOfValues=" + sumOfValues + ", sumOfSquares=" + sumOfSquares + ", minValue=" + minValue + ", maxValue=" + maxValue + ", numberOfValues=" + numberOfValues + "]";
 	}
 
 }

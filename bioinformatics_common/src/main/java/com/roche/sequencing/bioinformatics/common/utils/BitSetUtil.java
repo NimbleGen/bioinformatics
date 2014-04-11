@@ -67,4 +67,25 @@ public final class BitSetUtil {
 		return returnString.toString();
 	}
 
+	/**
+	 * combine a variable number of bitsets of the same length
+	 * 
+	 * @param length
+	 * @param bitsets
+	 * @return
+	 */
+	public static BitSet combine(int length, BitSet... bitsets) {
+		BitSet combinedBitSet = new BitSet();
+		int currentBitset = 0;
+		for (BitSet bitset : bitsets) {
+			for (int i = 0; i < length; i++) {
+				if (bitset.get(i)) {
+					combinedBitSet.set((currentBitset * length) + i);
+				}
+			}
+			currentBitset++;
+		}
+		return combinedBitSet;
+	}
+
 }

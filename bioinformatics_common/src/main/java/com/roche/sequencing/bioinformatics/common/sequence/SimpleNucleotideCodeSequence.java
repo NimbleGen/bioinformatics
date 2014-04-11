@@ -29,33 +29,21 @@ import com.roche.sequencing.bioinformatics.common.utils.BitSetUtil;
  * Sequence composed of IUPAC codes
  * 
  */
-public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacNucleotideCodeSequence> {
-	private static final int BITS_PER_NUCLEOTIDE = 5;
+public class SimpleNucleotideCodeSequence implements ISequence, Comparable<SimpleNucleotideCodeSequence> {
+	public static final int BITS_PER_NUCLEOTIDE = 3;
 	private static final int BITS_PER_BYTE = 8;
 
 	private static final BiMap<BitSet, IupacNucleotideCode> BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP = HashBiMap.create();
 
 	static {
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("00000"), IupacNucleotideCode.A);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("10000"), IupacNucleotideCode.B);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("01000"), IupacNucleotideCode.C);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("11000"), IupacNucleotideCode.D);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("00100"), IupacNucleotideCode.G);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("10100"), IupacNucleotideCode.GAP);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("01100"), IupacNucleotideCode.H);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("11100"), IupacNucleotideCode.K);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("00010"), IupacNucleotideCode.M);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("10010"), IupacNucleotideCode.N);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("01010"), IupacNucleotideCode.R);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("11010"), IupacNucleotideCode.S);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("00110"), IupacNucleotideCode.T);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("10110"), IupacNucleotideCode.U);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("01110"), IupacNucleotideCode.V);
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("11110"), IupacNucleotideCode.W);
-
-		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("00001"), IupacNucleotideCode.Y);
-
-		// open bits "10001","01001","11001","00101","10101","01101","11101","00011","10011","01011","11011","00111","10111","01111","11111"
+		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("000"), IupacNucleotideCode.A);
+		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("100"), IupacNucleotideCode.C);
+		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("010"), IupacNucleotideCode.G);
+		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("110"), IupacNucleotideCode.T);
+		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("001"), IupacNucleotideCode.U);
+		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("101"), IupacNucleotideCode.GAP);
+		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("011"), IupacNucleotideCode.N);
+		// open bits "111"
 	}
 
 	private final BitSet sequenceAsBits;
@@ -66,23 +54,23 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 	 * 
 	 * @param iupacNucleotideCodesAsString
 	 */
-	public IupacNucleotideCodeSequence(String iupacNucleotideCodesAsString) {
+	public SimpleNucleotideCodeSequence(String iupacNucleotideCodesAsString) {
 		this(IupacNucleotideCode.getCodesFromString(iupacNucleotideCodesAsString));
 	}
 
 	/**
 	 * Empty Constructor
 	 */
-	public IupacNucleotideCodeSequence() {
+	public SimpleNucleotideCodeSequence() {
 		this("");
 	}
 
-	public IupacNucleotideCodeSequence(int numberOfBits, BitSet sequenceAsBits) {
+	public SimpleNucleotideCodeSequence(int numberOfBits, BitSet sequenceAsBits) {
 		this.currentNumberOfBits = numberOfBits;
 		this.sequenceAsBits = sequenceAsBits;
 	}
 
-	IupacNucleotideCodeSequence(ICode[] codes) {
+	SimpleNucleotideCodeSequence(ICode[] codes) {
 		Objects.requireNonNull(codes, "argument[codes] cannot be null");
 
 		if (codes instanceof IupacNucleotideCode[]) {
@@ -102,7 +90,7 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 
 	@Override
 	public ISequence subSequence(int start, int end) {
-		IupacNucleotideCodeSequence subSequence = new IupacNucleotideCodeSequence();
+		SimpleNucleotideCodeSequence subSequence = new SimpleNucleotideCodeSequence();
 
 		end = Math.min(end, size() - 1);
 
@@ -118,8 +106,8 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 
 	@Override
 	public synchronized void append(ISequence codeSequenceToAppend) {
-		if (codeSequenceToAppend instanceof IupacNucleotideCodeSequence) {
-			IupacNucleotideCodeSequence codeSequenceToAppendAsIupacSequence = (IupacNucleotideCodeSequence) codeSequenceToAppend;
+		if (codeSequenceToAppend instanceof SimpleNucleotideCodeSequence) {
+			SimpleNucleotideCodeSequence codeSequenceToAppendAsIupacSequence = (SimpleNucleotideCodeSequence) codeSequenceToAppend;
 
 			for (int i = codeSequenceToAppendAsIupacSequence.currentNumberOfBits - 1; i >= 0; i--) {
 				if (codeSequenceToAppendAsIupacSequence.sequenceAsBits.get(i)) {
@@ -129,7 +117,7 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 
 			currentNumberOfBits += codeSequenceToAppendAsIupacSequence.currentNumberOfBits;
 		} else {
-			throw new IllegalArgumentException("The passed in ISequence codeSequenceToAppend must be of type IupacNucleotideCodeSequence to be utilized by the append method.");
+			throw new IllegalArgumentException("The passed in ISequence codeSequenceToAppend must be of type SimpleNucleotideCodeSequence to be utilized by the append method.");
 		}
 	}
 
@@ -142,7 +130,7 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 		if (code instanceof IupacNucleotideCode) {
 			IupacNucleotideCode codeAsIupacCode = (IupacNucleotideCode) code;
 
-			append(new IupacNucleotideCodeSequence(new IupacNucleotideCode[] { codeAsIupacCode }));
+			append(new SimpleNucleotideCodeSequence(new IupacNucleotideCode[] { codeAsIupacCode }));
 		}
 	}
 
@@ -200,7 +188,7 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 			codes[size() - i - 1] = code;
 		}
 
-		return new IupacNucleotideCodeSequence(codes);
+		return new SimpleNucleotideCodeSequence(codes);
 	}
 
 	@Override
@@ -213,7 +201,7 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 			codes[size() - i - 1] = code.getComplimentCode();
 		}
 
-		return new IupacNucleotideCodeSequence(codes);
+		return new SimpleNucleotideCodeSequence(codes);
 	}
 
 	@Override
@@ -226,7 +214,7 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 			codes[i] = code.getComplimentCode();
 		}
 
-		return new IupacNucleotideCodeSequence(codes);
+		return new SimpleNucleotideCodeSequence(codes);
 	}
 
 	@Override
@@ -253,7 +241,7 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 			return false;
 		}
 
-		IupacNucleotideCodeSequence other = (IupacNucleotideCodeSequence) obj;
+		SimpleNucleotideCodeSequence other = (SimpleNucleotideCodeSequence) obj;
 
 		if (currentNumberOfBits != other.currentNumberOfBits) {
 			return false;
@@ -301,7 +289,7 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 	}
 
 	@Override
-	public int compareTo(IupacNucleotideCodeSequence o) {
+	public int compareTo(SimpleNucleotideCodeSequence o) {
 		int result = 0;
 		compareLoop: for (int i = 0; i < Math.min(o.size(), size()); i++) {
 			result = getCodeAt(i).getIupaceNucleotideCodeEquivalent().compareTo(o.getCodeAt(i).getIupaceNucleotideCodeEquivalent());

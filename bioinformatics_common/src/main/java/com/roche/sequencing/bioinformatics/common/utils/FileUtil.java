@@ -65,7 +65,7 @@ public final class FileUtil {
 	 * @param fileName
 	 * @return extension
 	 */
-	private static String getFileExtension(String fileName) {
+	public static String getFileExtension(String fileName) {
 		String extension = "";
 		int index = fileName.lastIndexOf('.');
 
@@ -133,13 +133,14 @@ public final class FileUtil {
 
 		return success;
 	}
-	
+
 	/**
 	 * Create a directory and any parent directories that do not exist.
+	 * 
 	 * @param newDirectory
-	 * @throws IOException 
+	 * @throws IOException
 	 */
-	public static void createDirectory(File newDirectory) throws IOException{
+	public static void createDirectory(File newDirectory) throws IOException {
 		FileUtils.forceMkdir(newDirectory);
 	}
 

@@ -78,8 +78,8 @@ class FilterByUid {
 
 		// Process the data into a list
 		List<IReadPair> datas = new ArrayList<IReadPair>();
-		for (Entry<String, SAMRecordPair> compressedReadNameToSamRecordPairEntry : readNameToRecordsMap.entrySet()) {
-			SAMRecordPair recordPair = compressedReadNameToSamRecordPairEntry.getValue();
+		for (Entry<String, SAMRecordPair> readNameToSamRecordPairEntry : readNameToRecordsMap.entrySet()) {
+			SAMRecordPair recordPair = readNameToSamRecordPairEntry.getValue();
 			SAMRecord record = recordPair.getFirstOfPairRecord();
 			SAMRecord mate = recordPair.getSecondOfPairRecord();
 			boolean readPairAlignsWithProbeCoordinates = true;
