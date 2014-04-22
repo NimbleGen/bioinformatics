@@ -36,7 +36,7 @@ public class SimpleMapperTest {
 		String refOne = "chr1";
 		String refTwo = "chr2";
 		String refThree = "chr3";
-		SimpleMapper<String> simpleMapper = new SimpleMapper<String>(5, 3, 1, 1);
+		SimpleMapper<String> simpleMapper = new SimpleMapper<String>();
 		simpleMapper.addReferenceSequence(new NucleotideCodeSequence("AACCGGTT"), refOne);
 		simpleMapper.addReferenceSequence(new NucleotideCodeSequence("ATATATAAT"), refTwo);
 		simpleMapper.addReferenceSequence(new NucleotideCodeSequence("CGATCGATT"), refThree);
@@ -44,6 +44,21 @@ public class SimpleMapperTest {
 		String querySequence = "ATACGA";
 		Set<String> candidates = simpleMapper.getBestCandidateReferences(new NucleotideCodeSequence(querySequence));
 		assertEquals(candidates.size(), 0);
+	}
+
+	@Test(groups = { "integration" })
+	public void mappingTwoTest() {
+		String refOne = "chr1";
+		String refTwo = "chr2";
+		String refThree = "chr3";
+		SimpleMapper<String> simpleMapper = new SimpleMapper<String>();
+		simpleMapper.addReferenceSequence(new NucleotideCodeSequence("TGAAGGGAGGATGGGC"), refOne);
+		simpleMapper.addReferenceSequence(new NucleotideCodeSequence("ATATATAAT"), refTwo);
+		simpleMapper.addReferenceSequence(new NucleotideCodeSequence("CGATCGATT"), refThree);
+
+		String querySequence = "TGAAGGGAGGATGGGC";
+		Set<String> candidates = simpleMapper.getBestCandidateReferences(new NucleotideCodeSequence(querySequence));
+		assertEquals(candidates.size(), 1);
 	}
 
 }

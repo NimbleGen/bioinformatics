@@ -82,4 +82,12 @@ public final class ArraysUtil {
 		return doubleArray;
 	}
 
+	public static double[] convertToDoubleArray(Integer[] values) {
+		double[] doubleArray = new double[values.length];
+		for (int i = 0; i < values.length; i++) {
+			doubleArray[i] = values[i];
+		}
+		return doubleArray;
+	}
+
 }

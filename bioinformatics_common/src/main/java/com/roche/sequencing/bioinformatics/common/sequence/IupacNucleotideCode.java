@@ -17,7 +17,11 @@
 package com.roche.sequencing.bioinformatics.common.sequence;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * 
@@ -38,6 +42,19 @@ public enum IupacNucleotideCode implements ICode, Comparable<IupacNucleotideCode
 	private final NucleotideCode[] nucleotideCodes;
 	private final String complimentAbbreviation;
 
+	private static Map<Set<NucleotideCode>, IupacNucleotideCode> reverseCodeMap = new HashMap<Set<NucleotideCode>, IupacNucleotideCode>();
+	static {
+		for (IupacNucleotideCode code : IupacNucleotideCode.values()) {
+			if (code != IupacNucleotideCode.U) {
+				Set<NucleotideCode> key = new HashSet<NucleotideCode>();
+				for (NucleotideCode nucleotideCode : code.nucleotideCodes) {
+					key.add(nucleotideCode);
+				}
+				reverseCodeMap.put(key, code);
+			}
+		}
+	}
+
 	private IupacNucleotideCode(String abbreviation, NucleotideCode nucleotideCode, String complimentAbbreviation) {
 		this(abbreviation, new NucleotideCode[] { nucleotideCode }, complimentAbbreviation);
 	}
@@ -50,6 +67,10 @@ public enum IupacNucleotideCode implements ICode, Comparable<IupacNucleotideCode
 		this.abbreviations = Arrays.copyOf(abbreviations, abbreviations.length);
 		this.nucleotideCodes = Arrays.copyOf(nucleotides, nucleotides.length);
 		this.complimentAbbreviation = complimentAbbreviation;
+	}
+
+	public static IupacNucleotideCode getCode(Set<NucleotideCode> nucleotideCodes) {
+		return reverseCodeMap.get(nucleotideCodes);
 	}
 
 	/**

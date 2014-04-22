@@ -18,6 +18,7 @@ package com.roche.sequencing.bioinformatics.common.mapping;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -35,14 +36,12 @@ import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 public class SimpleMapper<O> {
 
 	private final static int DEFAULT_COMPARISON_SEQUENCE_SIZE = 5;
-	private final static int DEFAULT_MAX_REFERENCE_DEPTH = 30;
-	private final static int DEFAULT_MAX_QUERY_DEPTH = 1;
-	private final static int DEFAULT_MIN_HIT_THRESHOLD = 1;
-
+	private final static int DEFAULT_REFERENCE_SPACING = 1;
+	private final static int DEFAULT_QUERY_SPACING = 1;
+	private final static int DEFAULT_BEST_CANDIDATE_LIMIT = 10;
 	private final int comparisonSequenceSize;
-	private final int maxReferenceDepth;
-	private final int maxQueryDepth;
-	private final int minHitThreshold;
+	private final int referenceSpacing;
+	private final int querySpacing;
 
 	private final Map<ISequence, Set<O>> sequenceSliceToReferenceAddressMap;
 
@@ -50,26 +49,25 @@ public class SimpleMapper<O> {
 	 * Default Constructor
 	 */
 	public SimpleMapper() {
-		this(DEFAULT_COMPARISON_SEQUENCE_SIZE, DEFAULT_MAX_REFERENCE_DEPTH, DEFAULT_MAX_QUERY_DEPTH, DEFAULT_MIN_HIT_THRESHOLD);
+		this(DEFAULT_COMPARISON_SEQUENCE_SIZE, DEFAULT_REFERENCE_SPACING, DEFAULT_QUERY_SPACING);
 	}
 
 	/**
 	 * Constructor
 	 * 
 	 * @param comparisonSequenceSize
+	 *            the size of the chunks that should be used for comparing
 	 * @param maxReferenceDepth
-	 * @param maxQueryDepth
+	 *            the number of spaces to skip when building a library of chunks to compare against
+	 * @param querySpacing
+	 *            the number of spaces to skip when comparing chunks from a query sequence
 	 * @param minHitThreshold
+	 *            min number of hits required to return as a best candidate reference
 	 */
-	public SimpleMapper(int comparisonSequenceSize, int maxReferenceDepth, int maxQueryDepth, int minHitThreshold) {
-		if (maxQueryDepth != 1 && maxReferenceDepth != 1) {
-			throw new IllegalStateException("Either the max reference depth[" + maxReferenceDepth + "] or the max query depth[" + maxQueryDepth
-					+ "] must equal 1 to ensure that reference sequences match with query sequence.");
-		}
+	public SimpleMapper(int comparisonSequenceSize, int referenceSpacing, int querySpacing) {
 		this.comparisonSequenceSize = comparisonSequenceSize;
-		this.maxReferenceDepth = maxReferenceDepth;
-		this.maxQueryDepth = maxQueryDepth;
-		this.minHitThreshold = minHitThreshold;
+		this.referenceSpacing = referenceSpacing;
+		this.querySpacing = querySpacing;
 		sequenceSliceToReferenceAddressMap = new ConcurrentHashMap<ISequence, Set<O>>();
 	}
 
@@ -81,9 +79,8 @@ public class SimpleMapper<O> {
 	 */
 	public void addReferenceSequence(ISequence referenceSequence, O sequenceAddress) {
 		if (referenceSequence.size() >= comparisonSequenceSize) {
-			int sliceSpacing = (int) Math.ceil((double) comparisonSequenceSize / (double) maxReferenceDepth);
-			for (int subsequenceStartIndex = 0; subsequenceStartIndex < referenceSequence.size() - comparisonSequenceSize; subsequenceStartIndex += sliceSpacing) {
-				addSliceToReferenceMap(referenceSequence.subSequence(subsequenceStartIndex, subsequenceStartIndex + comparisonSequenceSize), sequenceAddress);
+			for (int subsequenceStartIndex = 0; subsequenceStartIndex < referenceSequence.size() - comparisonSequenceSize; subsequenceStartIndex += referenceSpacing) {
+				addSliceToReferenceMap(referenceSequence.subSequence(subsequenceStartIndex, subsequenceStartIndex + comparisonSequenceSize - 1), sequenceAddress);
 			}
 		} else {
 			throw new IllegalStateException("comparison sequence size[" + comparisonSequenceSize + "] must be less than the size of all sequences -- the current sequence size is "
@@ -125,11 +122,23 @@ public class SimpleMapper<O> {
 	 * @return the set of unique identifiers/keys/sequence addresses that best map to the provided query sequence
 	 */
 	@SuppressWarnings("unchecked")
-	public Set<O> getBestCandidateReferences(ISequence querySequence) {
+	public Set<O> getBestCandidateReferences(ISequence querySequence, int limit) {
 		TallyMap<O> matchTallies = getReferenceTallyMap(querySequence);
-		Set<O> bestCandidates = null;
-		if (matchTallies.getLargestCount() >= minHitThreshold) {
-			bestCandidates = matchTallies.getObjectsWithLargestCount();
+
+		int lastAddedSize = 0;
+
+		Set<O> bestCandidates = new LinkedHashSet<O>();
+		if (matchTallies.getLargestCount() > 0) {
+			entryLoop: for (Entry<O, Integer> entry : matchTallies.getObjectsSortedFromMostTalliesToLeast()) {
+
+				if (bestCandidates.size() >= limit && entry.getValue() < lastAddedSize) {
+					break entryLoop;
+				} else {
+					bestCandidates.add(entry.getKey());
+					lastAddedSize = entry.getValue();
+				}
+
+			}
 		} else {
 			bestCandidates = (Set<O>) Collections.EMPTY_SET;
 		}
@@ -138,14 +147,22 @@ public class SimpleMapper<O> {
 
 	/**
 	 * @param querySequence
+	 * @return the set of unique identifiers/keys/sequence addresses that best map to the provided query sequence
+	 */
+	public Set<O> getBestCandidateReferences(ISequence querySequence) {
+		return getBestCandidateReferences(querySequence, DEFAULT_BEST_CANDIDATE_LIMIT);
+	}
+
+	/**
+	 * @param querySequence
 	 * @return the tallyMap associated with hits for this query sequence
 	 */
 	public TallyMap<O> getReferenceTallyMap(ISequence querySequence) {
 		TallyMap<O> matchTallies = new TallyMap<O>();
-		int sliceSpacing = (int) Math.ceil(((double) comparisonSequenceSize / (double) maxQueryDepth));
-		for (int i = 0; i < querySequence.size() - comparisonSequenceSize; i += sliceSpacing) {
-			ISequence querySequenceSlice = querySequence.subSequence(i, i + comparisonSequenceSize);
-			matchTallies.addAll(sequenceSliceToReferenceAddressMap.get(querySequenceSlice));
+		for (int i = 0; i < querySequence.size() - comparisonSequenceSize; i += querySpacing) {
+			ISequence querySequenceSlice = querySequence.subSequence(i, i + comparisonSequenceSize - 1);
+			Set<O> addresses = sequenceSliceToReferenceAddressMap.get(querySequenceSlice);
+			matchTallies.addAll(addresses);
 		}
 		return matchTallies;
 	}

@@ -454,7 +454,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 		private final Set<ISequence> distinctUids;
 		private final List<ISequence> uids;
 		private final ReportManager reportManager;
-		Map<String, SAMRecordPair> readNameToRecordsMap;
+		private final Map<String, SAMRecordPair> readNameToRecordsMap;
 
 		/**
 		 * All the information we need to filter by UID and extend reads to primers. We provide thread safety by synchronizing on the writers for all blocks that should write data for one probe.
