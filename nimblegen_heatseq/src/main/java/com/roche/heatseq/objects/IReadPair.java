@@ -72,4 +72,8 @@ public interface IReadPair {
 	boolean isReadOneExtended();
 
 	boolean isReadTwoExtended();
+
+	String getReadOnePrimerMismatchDetails();
+
+	String getReadTwoPrimerMismatchDetails();
 }

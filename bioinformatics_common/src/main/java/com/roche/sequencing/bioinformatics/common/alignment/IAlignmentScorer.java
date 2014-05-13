@@ -40,7 +40,13 @@ public interface IAlignmentScorer {
 
 	/**
 	 * 
-	 * @return true if gaps at the beginning or end of an alignment should be penalized
+	 * @return true if gaps at the beginning of an alignment should be penalized
 	 */
-	boolean shouldPenalizeTerminalGaps();
+	boolean shouldPenalizeStartingTerminalGaps();
+
+	/**
+	 * 
+	 * @return true if gaps at the end of an alignment should be penalized
+	 */
+	boolean shouldPenalizeEndingTerminalGaps();
 }

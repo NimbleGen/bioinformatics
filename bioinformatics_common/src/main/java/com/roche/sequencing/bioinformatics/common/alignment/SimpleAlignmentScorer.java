@@ -29,7 +29,8 @@ public class SimpleAlignmentScorer implements IAlignmentScorer {
 	private final double mismatch;
 	private final double gapExtension;
 	private final double gapStart;
-	private final boolean shouldPenalizeTerminalGaps;
+	private final boolean shouldPenalizeStartingTerminalGaps;
+	private final boolean shouldPenalizeEndingTerminalGaps;
 
 	public SimpleAlignmentScorer() {
 		super();
@@ -37,16 +38,22 @@ public class SimpleAlignmentScorer implements IAlignmentScorer {
 		this.mismatch = DEFAULT_MISMATCH_PENALTY;
 		this.gapExtension = DEFAULT_GAP_EXTEND_PENALTY;
 		this.gapStart = DEFAULT_GAP_OPEN_PENALTY;
-		shouldPenalizeTerminalGaps = false;
+		shouldPenalizeStartingTerminalGaps = false;
+		shouldPenalizeEndingTerminalGaps = false;
 	}
 
 	public SimpleAlignmentScorer(double match, double mismatch, double gapExtension, double gapStart, boolean shouldPenalizeTerminalGaps) {
+		this(match, mismatch, gapExtension, gapStart, shouldPenalizeTerminalGaps, shouldPenalizeTerminalGaps);
+	}
+
+	public SimpleAlignmentScorer(double match, double mismatch, double gapExtension, double gapStart, boolean shouldPenalizeStartingTerminalGaps, boolean shouldPenalizeEndingTerminalGaps) {
 		super();
 		this.match = match;
 		this.mismatch = mismatch;
 		this.gapExtension = gapExtension;
 		this.gapStart = gapStart;
-		this.shouldPenalizeTerminalGaps = shouldPenalizeTerminalGaps;
+		this.shouldPenalizeStartingTerminalGaps = shouldPenalizeStartingTerminalGaps;
+		this.shouldPenalizeEndingTerminalGaps = shouldPenalizeEndingTerminalGaps;
 	}
 
 	@Override
@@ -73,8 +80,13 @@ public class SimpleAlignmentScorer implements IAlignmentScorer {
 	}
 
 	@Override
-	public boolean shouldPenalizeTerminalGaps() {
-		return shouldPenalizeTerminalGaps;
+	public boolean shouldPenalizeStartingTerminalGaps() {
+		return shouldPenalizeStartingTerminalGaps;
+	}
+
+	@Override
+	public boolean shouldPenalizeEndingTerminalGaps() {
+		return shouldPenalizeEndingTerminalGaps;
 	}
 
 }

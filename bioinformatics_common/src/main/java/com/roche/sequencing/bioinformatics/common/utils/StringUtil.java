@@ -142,6 +142,17 @@ public final class StringUtil {
 	}
 
 	/**
+	 * 
+	 * @param reference
+	 * @param query
+	 * @return the number of query strings found in the reference
+	 */
+	public static int countMatches(String reference, String query) {
+		int count = reference.length() - reference.replaceAll(query, "").length();
+		return count;
+	}
+
+	/**
 	 * insert a string into the base string at intervals of spaces For example: insertStringEveryNSpaces("abcdefghijk","z",2) would return "abzcdzefzghzijzk"
 	 * 
 	 * @param baseString

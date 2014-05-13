@@ -29,9 +29,11 @@ import com.roche.heatseq.objects.IReadPair;
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ReadPair;
 import com.roche.heatseq.utils.SAMRecordUtil;
+import com.roche.sequencing.bioinformatics.common.alignment.AlignmentPair;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarString;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
+import com.roche.sequencing.bioinformatics.common.alignment.SimpleAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.ICode;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCode;
@@ -87,6 +89,8 @@ public final class ExtendReadsToPrimer {
 			String readGroup, ISequence sequenceOne, String sequenceOneQualityString, ISequence sequenceTwo, String sequenceTwoQualityString, int oneMappingQuality, int twoMappingQuality,
 			IAlignmentScorer alignmentScorer) {
 		IReadPair extendedReadPair = null;
+		String readOnePrimerMismatchDetails = null;
+		String readTwoPrimerMismatchDetails = null;
 		boolean readOneExtended = false;
 		boolean readTwoExtended = false;
 
@@ -110,8 +114,8 @@ public final class ExtendReadsToPrimer {
 			SAMRecord readOneRecord = null;
 
 			if (readOneExtensionDetails != null) {
-				ISequence readOneExtendedSequence = sequenceOne.subSequence(readOneExtensionDetails.getReadStart(), sequenceOne.size());
-				String readOneExtendedBaseQualities = sequenceOneQualityString.substring(readOneExtensionDetails.getReadStart(), sequenceOneQualityString.length()).toString();
+				ISequence readOneExtendedSequence = sequenceOne.subSequence(readOneExtensionDetails.getReadStart(), readOneExtensionDetails.getReadStop());
+				String readOneExtendedBaseQualities = sequenceOneQualityString.substring(readOneExtensionDetails.getReadStart(), readOneExtensionDetails.getReadStop() + 1).toString();
 				int readOneReferenceLength = probe.getCaptureTargetSequence().size();
 				primerReferencePositionAdjacentToSequence = probe.getLigationPrimerStart();
 				if (readOneIsOnReverseStrand) {
@@ -133,8 +137,8 @@ public final class ExtendReadsToPrimer {
 			SAMRecord readTwoRecord = null;
 
 			if (readTwoExtensionDetails != null) {
-				String readTwoExtendedBaseQualities = sequenceTwoQualityString.substring(readTwoExtensionDetails.getReadStart(), sequenceTwoQualityString.length());
-				ISequence readTwoExtendedSequence = sequenceTwo.subSequence(readTwoExtensionDetails.getReadStart(), sequenceTwo.size()).getCompliment();
+				ISequence readTwoExtendedSequence = sequenceTwo.subSequence(readTwoExtensionDetails.getReadStart(), readTwoExtensionDetails.getReadStop()).getCompliment();
+				String readTwoExtendedBaseQualities = sequenceTwoQualityString.substring(readTwoExtensionDetails.getReadStart(), readTwoExtensionDetails.getReadStop() + 1);
 				int readTwoReferenceLength = probe.getCaptureTargetSequence().size();
 				if (readTwoIsOnReverseStrand) {
 					readTwoExtendedSequence = readTwoExtendedSequence.getReverseCompliment();
@@ -151,7 +155,8 @@ public final class ExtendReadsToPrimer {
 				SAMRecordUtil.setSAMRecordsAsPair(readOneRecord, readTwoRecord);
 			}
 
-			extendedReadPair = new ReadPair(readOneRecord, readTwoRecord, extensionUid, ligationUid, probe.getCaptureTargetSequence(), probe.getProbeId(), readOneExtended, readTwoExtended);
+			extendedReadPair = new ReadPair(readOneRecord, readTwoRecord, extensionUid, ligationUid, probe.getCaptureTargetSequence(), probe.getProbeId(), readOneExtended, readTwoExtended,
+					readOnePrimerMismatchDetails, readTwoPrimerMismatchDetails);
 
 		} catch (Exception e) {
 			logger.warn(e.getMessage(), e);
@@ -170,30 +175,46 @@ public final class ExtendReadsToPrimer {
 			captureSequence = captureSequence.getReverse();
 		}
 
-		Integer primerEndIndexInRead = getPrimerEndIndexInRead(primerSequence, readSequence, alignmentScorer);
+		PrimerEndIndexInReadAndMismatchDetails primerEndIndexInReadAndMismatchDetails = getPrimerEndIndexInRead(primerSequence, readSequence, alignmentScorer);
+		Integer primerEndIndexInRead = primerEndIndexInReadAndMismatchDetails.getPrimerEndIndexInRead();
+
 		boolean primerAlignedSuccesfully = (primerEndIndexInRead != null) && (primerEndIndexInRead >= 0) && (primerEndIndexInRead < readSequence.size());
 
 		if (primerAlignedSuccesfully) {
 			int captureTargetStartIndexInRead = primerEndIndexInRead + 1;
 			ISequence readWithoutPrimer = readSequence.subSequence(captureTargetStartIndexInRead, readSequence.size());
 			NeedlemanWunschGlobalAlignment readAlignmentWithReference = new NeedlemanWunschGlobalAlignment(captureSequence, readWithoutPrimer, alignmentScorer);
+
 			boolean readAlignedSuccesfully = readAlignmentWithReference.getLengthNormalizedAlignmentScore() > 0;
 
 			if (readAlignedSuccesfully) {
-				CigarString cigarString = readAlignmentWithReference.getCigarString();
-				String mismatchDetailsString = readAlignmentWithReference.getMismatchDetailsString();
+
+				AlignmentPair alignmentWithoutEndingAndBeginningQueryInserts = readAlignmentWithReference.getAlignmentPair().getAlignmentWithoutEndingAndBeginningQueryInserts();
+				AlignmentPair alignmentWithoutEndingAndBeginningQueryAndReferenceInserts = alignmentWithoutEndingAndBeginningQueryInserts.getAlignmentWithoutEndingAndBeginningReferenceInserts();
+
+				CigarString cigarString = alignmentWithoutEndingAndBeginningQueryAndReferenceInserts.getCigarString();
+				String mismatchDetailsString = alignmentWithoutEndingAndBeginningQueryAndReferenceInserts.getMismatchDetailsString();
 				int alignmentStartInReference = 0;
 
-				ISequence referenceAlignment = readAlignmentWithReference.getAlignmentPair().getReferenceAlignmentWithoutEndingInserts();
+				// if the read without primer is longer than the reference/capture target we need to walk backwards through
+				// the reference until we find the first non-gap
+				ISequence referenceAlignment = readAlignmentWithReference.getAlignmentPair().getAlignmentWithoutEndingQueryInserts().getReferenceAlignment();
+
+				int lastNonGapIndexInReference = referenceAlignment.size() - 1;
+				while (referenceAlignment.getCodeAt(lastNonGapIndexInReference).equals(IupacNucleotideCode.GAP) && lastNonGapIndexInReference >= 0) {
+					lastNonGapIndexInReference--;
+				}
+
 				if (isReversed) {
-					cigarString = readAlignmentWithReference.getReverseCigarString();
-					mismatchDetailsString = readAlignmentWithReference.getReverseMismatchDetailsString();
-					alignmentStartInReference = primerReferencePositionAdjacentToSequence - referenceAlignment.size();
+					cigarString = alignmentWithoutEndingAndBeginningQueryAndReferenceInserts.getReverseCigarString();
+					mismatchDetailsString = alignmentWithoutEndingAndBeginningQueryAndReferenceInserts.getReverseMismatchDetailsString();
+
+					alignmentStartInReference = primerReferencePositionAdjacentToSequence - (lastNonGapIndexInReference + 1);
 				} else {
-					int offset = readAlignmentWithReference.getAlignmentPair().getFirstNonInsertMatchInReference();
+					int offset = readAlignmentWithReference.getAlignmentPair().getFirstNonInsertQueryMatchInReference();
 					alignmentStartInReference = primerReferencePositionAdjacentToSequence + offset + 1;
 				}
-				readExtensionDetails = new ReadExtensionDetails(alignmentStartInReference, captureTargetStartIndexInRead, cigarString, mismatchDetailsString);
+				readExtensionDetails = new ReadExtensionDetails(alignmentStartInReference, captureTargetStartIndexInRead, cigarString, mismatchDetailsString, lastNonGapIndexInReference);
 			}
 		}
 
@@ -230,23 +251,46 @@ public final class ExtendReadsToPrimer {
 		return record;
 	}
 
-	static Integer getPrimerEndIndexInRead(ISequence primerSequence, ISequence readSequence, IAlignmentScorer alignmentScorer) {
+	static class PrimerEndIndexInReadAndMismatchDetails {
+		private final Integer primerEndIndexInRead;
+
+		public PrimerEndIndexInReadAndMismatchDetails(Integer primerEndIndexInRead) {
+			super();
+			this.primerEndIndexInRead = primerEndIndexInRead;
+		}
+
+		public Integer getPrimerEndIndexInRead() {
+			return primerEndIndexInRead;
+		}
+	}
+
+	static PrimerEndIndexInReadAndMismatchDetails getPrimerEndIndexInRead(ISequence primerSequence, ISequence readSequence, IAlignmentScorer alignmentScorer) {
 		// cutoff excess sequence beyond primer
 		readSequence = readSequence.subSequence(0, Math.min(readSequence.size() - 1, primerSequence.size() + PRIMER_ALIGNMENT_BUFFER));
-		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(readSequence, primerSequence, alignmentScorer);
+
+		IAlignmentScorer scorer = new SimpleAlignmentScorer(SimpleAlignmentScorer.DEFAULT_MATCH_SCORE, SimpleAlignmentScorer.DEFAULT_MISMATCH_PENALTY,
+				SimpleAlignmentScorer.DEFAULT_GAP_EXTEND_PENALTY, SimpleAlignmentScorer.DEFAULT_GAP_OPEN_PENALTY, true, false);
+
+		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(readSequence, primerSequence, scorer);
 		ISequence readAlignment = alignment.getAlignmentPair().getReferenceAlignment();
 		ISequence primerAlignment = alignment.getAlignmentPair().getQueryAlignment();
 
-		double lengthNormalizedAlignmentScore = alignment.getLengthNormalizedAlignmentScore();
-		Integer probeEndIndexInRead = null;
+		ISequence primer = alignment.getAlignmentPair().getQueryAlignment();
+		int primerIndex = 0;
+		while (primer.getCodeAt(primerIndex).equals(IupacNucleotideCode.GAP)) {
+			primerIndex++;
+		}
 
-		if (lengthNormalizedAlignmentScore > 0) {
+		double lengthNormalizedAlignmentScore = alignment.getLengthNormalizedAlignmentScore();
+		Integer primerEndIndexInRead = null;
+
+		if (lengthNormalizedAlignmentScore > -10) {
 			// walk backwards until we stop seeing gaps
 			ISequence reverseReadAlignment = readAlignment.getReverse();
 			ISequence reversePrimerAlignment = primerAlignment.getReverse();
 			boolean passedTrailingPrimerGaps = false;
 			int i = 0;
-			probeEndIndexInRead = 0;
+			primerEndIndexInRead = 0;
 			while (i < reverseReadAlignment.size()) {
 				ICode currentReadCode = reverseReadAlignment.getCodeAt(i);
 				ICode currentPrimerCode = reversePrimerAlignment.getCodeAt(i);
@@ -256,19 +300,19 @@ public final class ExtendReadsToPrimer {
 
 				// start counting all based in read when the initial primer gaps have been passed
 				if (passedTrailingPrimerGaps && !currentReadCode.matches(IupacNucleotideCode.GAP)) {
-					probeEndIndexInRead++;
+					primerEndIndexInRead++;
 				}
 
 				i++;
 			}
 		}
 
-		if (probeEndIndexInRead != null) {
+		if (primerEndIndexInRead != null) {
 			// indexes are zero based and counts are one based so subtract one
-			probeEndIndexInRead -= 1;
+			primerEndIndexInRead -= 1;
 		}
 
-		return probeEndIndexInRead;
+		return new PrimerEndIndexInReadAndMismatchDetails(primerEndIndexInRead);
 	}
 
 	static List<IReadPair> extendReadsToPrimers(Probe probe, List<IReadPair> readPairs, IAlignmentScorer alignmentScorer) {
@@ -300,15 +344,21 @@ public final class ExtendReadsToPrimer {
 	private static class ReadExtensionDetails {
 		private final int alignmentStartInReference;
 		private final int readStart;
+		private final int readLength;
 		private final CigarString alignmentCigarString;
-		private final String mismatchDetailsString;
+		private final String captureTargetMismatchDetailsString;
 
-		public ReadExtensionDetails(int alignmentStartInReference, int readStart, CigarString alignmentCigarString, String mdString) {
+		public ReadExtensionDetails(int alignmentStartInReference, int readStart, CigarString captureTargetAlignmentCigarString, String captureTargetMismatchDetailsString, int readLength) {
 			super();
 			this.alignmentStartInReference = alignmentStartInReference;
 			this.readStart = readStart;
-			this.alignmentCigarString = alignmentCigarString;
-			this.mismatchDetailsString = mdString;
+			this.alignmentCigarString = captureTargetAlignmentCigarString;
+			this.captureTargetMismatchDetailsString = captureTargetMismatchDetailsString;
+			this.readLength = readLength;
+		}
+
+		public int getReadStop() {
+			return readStart + readLength;
 		}
 
 		public int getAlignmentStartInReference() {
@@ -324,7 +374,7 @@ public final class ExtendReadsToPrimer {
 		}
 
 		public String getMismatchDetailsString() {
-			return mismatchDetailsString;
+			return captureTargetMismatchDetailsString;
 		}
 
 	}
