@@ -498,7 +498,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 			try {
 				UidReductionResultsForAProbe probeReductionResults = FilterByUid.reduceReadsByProbeAndUid(probe, readNameToRecordsMap, reportManager, applicationSettings.isAllowVariableLengthUids(),
 						applicationSettings.getExtensionUidLength(), applicationSettings.getLigationUidLength(), alignmentScorer, distinctUids, uids, applicationSettings.isMarkDuplicates(),
-						applicationSettings.isUseStrictReadToProbeMatching());
+						applicationSettings.isKeepDuplicates(), applicationSettings.isUseStrictReadToProbeMatching());
 
 				List<IReadPair> reducedReads = probeReductionResults.getReadPairs();
 				List<IReadPair> readsToWrite = ExtendReadsToPrimer.extendReadsToPrimers(probe, reducedReads, alignmentScorer);
@@ -508,6 +508,8 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 					if (!readPair.isReadOneExtended() || !readPair.isReadTwoExtended()) {
 						countOfUniqueReadsUnableToExtend++;
 					}
+					reportManager.addExtensionPrimerMismatchDetails(readPair.getReadOnePrimerMismatchDetails());
+					reportManager.addLigationPrimerMismatchDetails(readPair.getReadTwoPrimerMismatchDetails());
 				}
 				probeReductionResults.getProbeProcessingStats().setExtensionErrors(countOfUniqueReadsUnableToExtend);
 

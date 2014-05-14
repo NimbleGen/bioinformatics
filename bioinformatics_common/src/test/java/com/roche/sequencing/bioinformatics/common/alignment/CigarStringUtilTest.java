@@ -68,8 +68,8 @@ public class CigarStringUtilTest {
 		ISequence sequenceTwo = new IupacNucleotideCodeSequence("GCCCCCCCAGCTTGTGGAGCCTCTTACACCCAGTGGAGAAGCTCCCAACCAAGCTCTCTTGAGGATCTTGAAGGAAACTGAATTCAAAAAGATCAAAGTGCTGGGCTCCGGTGCGTTCGGCACGGTGT");
 		NeedlemanWunschGlobalAlignment globalAlignment = new NeedlemanWunschGlobalAlignment(sequenceOne, sequenceTwo);
 		AlignmentPair alignmentPair = globalAlignment.getAlignmentPair();
-		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair.getReferenceAlignmentWithoutEndingAndBeginningInserts(),
-				alignmentPair.getQueryAlignmentWithoutEndingAndBeginningInserts(), globalAlignment.getCigarString());
+		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts().getReferenceAlignment(), alignmentPair
+				.getAlignmentWithoutEndingAndBeginningQueryInserts().getQueryAlignment(), globalAlignment.getCigarString());
 		assertEquals(mismatchDetailsString, "0T127");
 	}
 
@@ -81,8 +81,8 @@ public class CigarStringUtilTest {
 				.getReverse();
 		NeedlemanWunschGlobalAlignment globalAlignment = new NeedlemanWunschGlobalAlignment(sequenceOne, sequenceTwo);
 		AlignmentPair alignmentPair = globalAlignment.getAlignmentPair();
-		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair.getReferenceAlignmentWithoutEndingAndBeginningInserts().getReverse(), alignmentPair
-				.getQueryAlignmentWithoutEndingAndBeginningInserts().getReverse(), globalAlignment.getReverseCigarString());
+		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts().getReferenceAlignment().getReverse(), alignmentPair
+				.getAlignmentWithoutEndingAndBeginningQueryInserts().getQueryAlignment().getReverse(), globalAlignment.getReverseCigarString());
 		assertEquals(mismatchDetailsString, "11C118");
 	}
 

@@ -47,6 +47,7 @@ public class ApplicationSettings {
 	private final int extensionUidLength;
 	private final int ligationUidLength;
 	private final boolean markDuplicates;
+	private final boolean keepDuplicates;
 	private final boolean mergePairs;
 	private final boolean useStrictReadToProbeMatching;
 
@@ -71,8 +72,8 @@ public class ApplicationSettings {
 	 */
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
 			String originalBamFileName, boolean shouldOutputQualityReports, String commandLineSignature, String programName, String programVersion, int numProcessors, boolean allowVariableLengthUids,
-			IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinTheCaptureTargetSequence, int extensionUidLength, int ligationUidLength, boolean markDuplicates, boolean mergePairs,
-			boolean useStrictReadToProbeMatching) {
+			IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinTheCaptureTargetSequence, int extensionUidLength, int ligationUidLength, boolean markDuplicates, boolean keepDuplicates,
+			boolean mergePairs, boolean useStrictReadToProbeMatching) {
 		super();
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;
@@ -94,6 +95,7 @@ public class ApplicationSettings {
 		this.extensionUidLength = extensionUidLength;
 		this.ligationUidLength = ligationUidLength;
 		this.markDuplicates = markDuplicates;
+		this.keepDuplicates = keepDuplicates;
 		this.mergePairs = mergePairs;
 		this.useStrictReadToProbeMatching = useStrictReadToProbeMatching;
 	}
@@ -243,6 +245,13 @@ public class ApplicationSettings {
 	 */
 	public boolean isMarkDuplicates() {
 		return markDuplicates;
+	}
+
+	/**
+	 * @return true if duplicates should be kept in the bam file opposed to removed or marked
+	 */
+	public boolean isKeepDuplicates() {
+		return keepDuplicates;
 	}
 
 	/**

@@ -175,14 +175,7 @@ public class NeedlemanWunschGlobalAlignment {
 	 * @return a string representation of this alignment
 	 */
 	public String getAlignmentAsString() {
-		StringBuilder alignmentAsStringBuilder = new StringBuilder();
-
-		AlignmentPair alignmentPair = getAlignmentPair();
-
-		alignmentAsStringBuilder.append(alignmentPair.getReferenceAlignment().toString() + StringUtil.NEWLINE);
-		alignmentAsStringBuilder.append(alignmentPair.getQueryAlignment().toString() + StringUtil.NEWLINE);
-
-		return alignmentAsStringBuilder.toString();
+		return getAlignmentPair().getAlignmentAsString();
 	}
 
 	/**
@@ -278,7 +271,7 @@ public class NeedlemanWunschGlobalAlignment {
 		boolean isVerticalGapContinuation = ((sourceOfCellAbove != null) && (sourceOfCellAbove.getColumnIndex() == cellAbove.getColumnIndex()));
 		double verticalScore = cellAbove.getScore();
 
-		if (!isEndOfRow || getAlignmentScorer().shouldPenalizeTerminalGaps()) {
+		if (!isEndOfRow || getAlignmentScorer().shouldPenalizeEndingTerminalGaps()) {
 			if (isVerticalGapContinuation) {
 				verticalScore += getAlignmentScorer().getGapScore();
 			} else {
@@ -290,7 +283,7 @@ public class NeedlemanWunschGlobalAlignment {
 		boolean isHorizontalGapContinuation = ((sourceOfCellToLeft != null) && (sourceOfCellToLeft.getRowIndex() == cellToLeft.getRowIndex()));
 		double horizontalScore = cellToLeft.getScore();
 
-		if (!isBottomOfColumn || getAlignmentScorer().shouldPenalizeTerminalGaps()) {
+		if (!isBottomOfColumn || getAlignmentScorer().shouldPenalizeEndingTerminalGaps()) {
 			if (isHorizontalGapContinuation) {
 				horizontalScore += getAlignmentScorer().getGapScore();
 			} else {
@@ -343,13 +336,13 @@ public class NeedlemanWunschGlobalAlignment {
 		double score = 0;
 
 		if ((rowIndex == 0) && (columnIndex != 0)) {
-			if (getAlignmentScorer().shouldPenalizeTerminalGaps()) {
+			if (getAlignmentScorer().shouldPenalizeStartingTerminalGaps()) {
 				score = getAlignmentScorer().getGapStartScore() + (columnIndex - 1) * getAlignmentScorer().getGapScore();
 			} else {
 				score = 0;
 			}
 		} else if ((columnIndex == 0) && (rowIndex != 0)) {
-			if (getAlignmentScorer().shouldPenalizeTerminalGaps()) {
+			if (getAlignmentScorer().shouldPenalizeStartingTerminalGaps()) {
 				score = getAlignmentScorer().getGapStartScore() + (rowIndex - 1) * getAlignmentScorer().getGapScore();
 			} else {
 				score = 0;

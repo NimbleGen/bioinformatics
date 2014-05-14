@@ -2,6 +2,7 @@ package com.roche.heatseq.qualityreport;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -14,6 +15,8 @@ import net.sf.samtools.SAMFileWriterFactory;
 
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.process.PrefuppCli;
+import com.roche.sequencing.bioinformatics.common.alignment.CigarStringUtil;
+import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
@@ -36,6 +39,7 @@ public class ReportManager {
 	private final static String MAPPED_OFF_TARGET_READS_REPORT_NAME = "mapped_off_target_reads.bam";
 	private final static String UNMAPPED_READS_REPORT_NAME = "unmapped_read_pairs.bam";
 	private final static String PARTIALLY_MAPPED_READS_REPORT_NAME = "partially_mapped_read_pairs.bam";
+	private final static String PRIMER_ACCURACY_REPORT_NAME = "primer_accuracy.txt";
 
 	private TabDelimitedFileWriter ambiguousMappingWriter;
 	private TabDelimitedFileWriter unableToAlignPrimerWriter;
@@ -44,6 +48,7 @@ public class ReportManager {
 	private TabDelimitedFileWriter probeCoverageWriter;
 	private TabDelimitedFileWriter uidCompositionByProbeWriter;
 	private TabDelimitedFileWriter readsMappedToMultipleProbesWriter;
+	private TabDelimitedFileWriter primerAccuracyWriter;
 
 	private SAMFileWriter mappedOffTargetReadsWriter;
 	private SAMFileWriter unmappedReadsWriter;
@@ -56,10 +61,33 @@ public class ReportManager {
 
 	private final boolean shouldOutputReports;
 
+	private final List<TallyMap<Character>> ligationMismatchDetailsByIndex;
+	private final List<TallyMap<Character>> extensionMismatchDetailsByIndex;
+
+	private final List<Integer> numberOfLigationErrors;
+	private final List<Integer> numberOfExtensionErrors;
+	private final List<Integer> numberOfLigationInsertions;
+	private final List<Integer> numberOfExtensionInsertions;
+	private final List<Integer> numberOfLigationDeletions;
+	private final List<Integer> numberOfExtensionDeletions;
+	private final List<Integer> numberOfLigationGains;
+	private final List<Integer> numberOfExtensionGains;
+
 	public ReportManager(String softwareName, String softwareVersion, File outputDirectory, String outputFilePrefix, int extensionUidLength, int ligationUidLength, SAMFileHeader samFileHeader,
 			boolean shouldOutputReports) {
 
 		this.shouldOutputReports = shouldOutputReports;
+
+		ligationMismatchDetailsByIndex = new ArrayList<TallyMap<Character>>();
+		extensionMismatchDetailsByIndex = new ArrayList<TallyMap<Character>>();
+		numberOfLigationErrors = new ArrayList<Integer>();
+		numberOfExtensionErrors = new ArrayList<Integer>();
+		numberOfLigationInsertions = new ArrayList<Integer>();
+		numberOfExtensionInsertions = new ArrayList<Integer>();
+		numberOfLigationDeletions = new ArrayList<Integer>();
+		numberOfExtensionDeletions = new ArrayList<Integer>();
+		numberOfLigationGains = new ArrayList<Integer>();
+		numberOfExtensionGains = new ArrayList<Integer>();
 
 		if (shouldOutputReports) {
 			File ambiguousMappingFile = new File(outputDirectory, outputFilePrefix + DUPLICATE_MAPPINGS_REPORT_NAME);
@@ -142,6 +170,15 @@ public class ReportManager {
 				throw new IllegalStateException(e);
 			}
 
+			File primerAccuracyFile = new File(outputDirectory, outputFilePrefix + PRIMER_ACCURACY_REPORT_NAME);
+			try {
+				FileUtil.createNewFile(primerAccuracyFile);
+				primerAccuracyWriter = new TabDelimitedFileWriter(primerAccuracyFile, new String[] { "PRIMER_TYPE", "INDEX", "MATCHES", "MISMATCHES", "INSERTIONS", "DELETIONS", "TOTAL", "MATCH_PROB",
+						"MISMATCH_PROB", "INSERTION_PROB", "DELETION_PROB" });
+			} catch (IOException e) {
+				throw new IllegalStateException(e);
+			}
+
 			SAMFileWriterFactory samFactory = new SAMFileWriterFactory();
 
 			File mappedOffTargetFile = new File(outputDirectory, outputFilePrefix + MAPPED_OFF_TARGET_READS_REPORT_NAME);
@@ -190,6 +227,45 @@ public class ReportManager {
 
 	public boolean isReporting() {
 		return shouldOutputReports;
+	}
+
+	private void writeToPrimerAccuracyFile(String primerType, List<TallyMap<Character>> mismatchDetailsByIndex) {
+		for (int index = 0; index < mismatchDetailsByIndex.size(); index++) {
+			TallyMap<Character> tally = mismatchDetailsByIndex.get(index);
+			int matches = tally.getCount(CigarStringUtil.CIGAR_SEQUENCE_MATCH);
+			int mismatches = tally.getCount(CigarStringUtil.CIGAR_SEQUENCE_MISMATCH);
+			int insertions = tally.getCount(CigarStringUtil.CIGAR_INSERTION_TO_REFERENCE);
+			int deletions = tally.getCount(CigarStringUtil.CIGAR_DELETION_FROM_REFERENCE);
+			int total = tally.getSumOfAllBins();
+			double matchProb = (double) matches / (double) total;
+			double mismatchProb = (double) mismatches / (double) total;
+			double insertionProb = (double) insertions / (double) total;
+			double deletionProb = (double) deletions / (double) total;
+			primerAccuracyWriter.writeLine(primerType, index, matches, mismatches, insertions, deletions, total, matchProb, mismatchProb, insertionProb, deletionProb);
+		}
+	}
+
+	private void writePrimerAccuracyFile() {
+		writeToPrimerAccuracyFile("extension", extensionMismatchDetailsByIndex);
+		writeToPrimerAccuracyFile("ligation", ligationMismatchDetailsByIndex);
+
+		primerAccuracyWriter.writeLine("extension errors:");
+		primerAccuracyWriter.writeLine(numberOfExtensionErrors.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine("extension insertions:");
+		primerAccuracyWriter.writeLine(numberOfExtensionInsertions.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine("extension deletions:");
+		primerAccuracyWriter.writeLine(numberOfExtensionDeletions.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine("extension gains");
+		primerAccuracyWriter.writeLine(numberOfExtensionGains.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine("ligation errors:");
+		primerAccuracyWriter.writeLine(numberOfLigationErrors.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine("ligation insertions:");
+		primerAccuracyWriter.writeLine(numberOfLigationInsertions.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine("ligation deletions:");
+		primerAccuracyWriter.writeLine(numberOfLigationDeletions.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine("ligation gains:");
+		primerAccuracyWriter.writeLine(numberOfLigationGains.toArray(new Integer[0]));
+
 	}
 
 	public void close() {
@@ -244,6 +320,11 @@ public class ReportManager {
 
 		if (partiallyMappedReadsWriter != null) {
 			partiallyMappedReadsWriter.close();
+		}
+
+		if (primerAccuracyWriter != null) {
+			writePrimerAccuracyFile();
+			primerAccuracyWriter.close();
 		}
 
 	}
@@ -335,6 +416,50 @@ public class ReportManager {
 		summaryReport.setTotalFullyMappedOnTargetReads(totalFullyMappedOnTargetReads);
 
 		summaryReport.setTotalReads(totalReads);
+	}
+
+	public void addExtensionPrimerMismatchDetails(String extensionPrimerMismatchAlignment) {
+		if (extensionPrimerMismatchAlignment != null) {
+			String extensionPrimerMismatchDetails = extensionPrimerMismatchAlignment.split("\\?read\\?")[0];
+			numberOfExtensionErrors.add(extensionPrimerMismatchDetails.length() - StringUtil.countMatches(extensionPrimerMismatchDetails, "" + CigarStringUtil.CIGAR_SEQUENCE_MATCH));
+			int insertions = StringUtil.countMatches(extensionPrimerMismatchDetails, "" + CigarStringUtil.CIGAR_INSERTION_TO_REFERENCE);
+			int deletions = StringUtil.countMatches(extensionPrimerMismatchDetails, "" + CigarStringUtil.CIGAR_DELETION_FROM_REFERENCE);
+			numberOfExtensionInsertions.add(insertions);
+			numberOfExtensionDeletions.add(deletions);
+			numberOfExtensionGains.add(deletions - insertions);
+			for (int i = 0; i < extensionPrimerMismatchDetails.length(); i++) {
+				TallyMap<Character> tally = null;
+				if (i < extensionMismatchDetailsByIndex.size()) {
+					tally = extensionMismatchDetailsByIndex.get(i);
+				} else {
+					tally = new TallyMap<Character>();
+					extensionMismatchDetailsByIndex.add(tally);
+				}
+				tally.add(extensionPrimerMismatchDetails.charAt(i));
+			}
+		}
+	}
+
+	public void addLigationPrimerMismatchDetails(String ligationPrimerMismatchAlignment) {
+		if (ligationPrimerMismatchAlignment != null) {
+			String ligationPrimerMismatchDetails = ligationPrimerMismatchAlignment.split("\\?read\\?")[0];
+			numberOfLigationErrors.add(ligationPrimerMismatchDetails.length() - StringUtil.countMatches(ligationPrimerMismatchDetails, "" + CigarStringUtil.CIGAR_SEQUENCE_MATCH));
+			int insertions = StringUtil.countMatches(ligationPrimerMismatchDetails, "" + CigarStringUtil.CIGAR_INSERTION_TO_REFERENCE);
+			int deletions = StringUtil.countMatches(ligationPrimerMismatchDetails, "" + CigarStringUtil.CIGAR_DELETION_FROM_REFERENCE);
+			numberOfLigationInsertions.add(insertions);
+			numberOfLigationDeletions.add(deletions);
+			numberOfLigationGains.add(deletions - insertions);
+			for (int i = 0; i < ligationPrimerMismatchDetails.length(); i++) {
+				TallyMap<Character> tally = null;
+				if (i < ligationMismatchDetailsByIndex.size()) {
+					tally = ligationMismatchDetailsByIndex.get(i);
+				} else {
+					tally = new TallyMap<Character>();
+					ligationMismatchDetailsByIndex.add(tally);
+				}
+				tally.add(ligationPrimerMismatchDetails.charAt(i));
+			}
+		}
 	}
 
 }

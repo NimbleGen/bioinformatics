@@ -71,7 +71,7 @@ class FilterByUid {
 	 */
 	static UidReductionResultsForAProbe reduceReadsByProbeAndUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, ReportManager reportManager, boolean allowVariableLengthUids,
 			int expectedExtensionUidLength, int expectedLigationUidLength, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids, boolean markDuplicates,
-			boolean useStrictReadToProbeMatching) {
+			boolean keepDuplicates, boolean useStrictReadToProbeMatching) {
 		List<IReadPair> readPairs = new ArrayList<IReadPair>();
 
 		long probeProcessingStartInMs = System.currentTimeMillis();
@@ -126,7 +126,7 @@ class FilterByUid {
 					mate.setReadString(readTwoString);
 					mate.setBaseQualityString(readTwoBaseQualityString);
 
-					datas.add(new ReadPair(record, mate, extensionUid, ligationUid, probe.getCaptureTargetSequence(), probe.getProbeId(), false, false));
+					datas.add(new ReadPair(record, mate, extensionUid, ligationUid, probe.getCaptureTargetSequence(), probe.getProbeId(), false, false, null, null));
 				} else {
 					boolean extensionFailed = extensionUid == null;
 					boolean ligationFailed = ligationUid == null;
@@ -188,10 +188,12 @@ class FilterByUid {
 			IReadPair bestPair = findBestData(pairsDataByUid);
 
 			readPairs.add(bestPair);
-			if (markDuplicates) {
+			if (markDuplicates || keepDuplicates) {
 				for (IReadPair readPair : pairsDataByUid) {
 					if (!readPair.equals(bestPair)) {
-						readPair.markAsDuplicate();
+						if (markDuplicates) {
+							readPair.markAsDuplicate();
+						}
 						readPairs.add(readPair);
 					}
 				}

@@ -18,6 +18,7 @@ package com.roche.sequencing.bioinformatics.common.alignment;
 
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCode;
+import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 /**
  * 
@@ -28,24 +29,49 @@ public class AlignmentPair {
 	private final ISequence referenceAlignment;
 	private final ISequence queryAlignment;
 
-	private int firstNonDeletionIndex;
-	private int lastNonDeletionIndex;
+	private int firstNonDeletionIndexInQuery;
+	private int lastNonDeletionIndexInQuery;
+
+	private int firstNonDeletionIndexInReference;
+	private int lastNonDeletionIndexInReference;
 
 	AlignmentPair(ISequence referenceAlignment, ISequence queryAlignment) {
 		super();
 		this.referenceAlignment = referenceAlignment;
 		this.queryAlignment = queryAlignment;
 
-		firstNonDeletionIndex = 0;
-		while ((firstNonDeletionIndex < queryAlignment.size()) && (queryAlignment.getCodeAt(firstNonDeletionIndex) == IupacNucleotideCode.GAP)) {
-			firstNonDeletionIndex++;
+		firstNonDeletionIndexInQuery = 0;
+		while ((firstNonDeletionIndexInQuery < queryAlignment.size()) && (queryAlignment.getCodeAt(firstNonDeletionIndexInQuery) == IupacNucleotideCode.GAP)) {
+			firstNonDeletionIndexInQuery++;
 		}
 
-		lastNonDeletionIndex = queryAlignment.size() - 1;
-		while ((lastNonDeletionIndex >= 0) && (queryAlignment.getCodeAt(lastNonDeletionIndex) == IupacNucleotideCode.GAP)) {
-			lastNonDeletionIndex--;
+		lastNonDeletionIndexInQuery = queryAlignment.size() - 1;
+		while ((lastNonDeletionIndexInQuery >= 0) && (queryAlignment.getCodeAt(lastNonDeletionIndexInQuery) == IupacNucleotideCode.GAP)) {
+			lastNonDeletionIndexInQuery--;
 		}
 
+		firstNonDeletionIndexInReference = 0;
+		while ((firstNonDeletionIndexInReference < referenceAlignment.size()) && (referenceAlignment.getCodeAt(firstNonDeletionIndexInReference) == IupacNucleotideCode.GAP)) {
+			firstNonDeletionIndexInReference++;
+		}
+
+		lastNonDeletionIndexInReference = queryAlignment.size() - 1;
+		while ((lastNonDeletionIndexInReference >= 0) && (referenceAlignment.getCodeAt(lastNonDeletionIndexInReference) == IupacNucleotideCode.GAP)) {
+			lastNonDeletionIndexInReference--;
+		}
+
+	}
+
+	/**
+	 * @return a string representation of this alignment
+	 */
+	public String getAlignmentAsString() {
+		StringBuilder alignmentAsStringBuilder = new StringBuilder();
+
+		alignmentAsStringBuilder.append(getReferenceAlignment().toString() + StringUtil.NEWLINE);
+		alignmentAsStringBuilder.append(getQueryAlignment().toString() + StringUtil.NEWLINE);
+
+		return alignmentAsStringBuilder.toString();
 	}
 
 	/**
@@ -65,22 +91,31 @@ public class AlignmentPair {
 	/**
 	 * @return the reference sequence alignment with no beginning or ending gaps
 	 */
-	public ISequence getReferenceAlignmentWithoutEndingAndBeginningInserts() {
-		return referenceAlignment.subSequence(firstNonDeletionIndex, lastNonDeletionIndex);
-	}
-
-	/**
-	 * @return the query sequence alignment with no beginning or ending gaps
-	 */
-	public ISequence getQueryAlignmentWithoutEndingAndBeginningInserts() {
-		return queryAlignment.subSequence(firstNonDeletionIndex, lastNonDeletionIndex);
+	public AlignmentPair getAlignmentWithoutEndingAndBeginningQueryInserts() {
+		return new AlignmentPair(referenceAlignment.subSequence(firstNonDeletionIndexInQuery, lastNonDeletionIndexInQuery), queryAlignment.subSequence(firstNonDeletionIndexInQuery,
+				lastNonDeletionIndexInQuery));
 	}
 
 	/**
 	 * @return the reference sequence alignment with no beginning or ending gaps
 	 */
-	public ISequence getReferenceAlignmentWithoutEndingInserts() {
-		return referenceAlignment.subSequence(0, lastNonDeletionIndex);
+	public AlignmentPair getAlignmentWithoutEndingReferenceInserts() {
+		return new AlignmentPair(referenceAlignment.subSequence(0, lastNonDeletionIndexInReference), queryAlignment.subSequence(0, lastNonDeletionIndexInReference));
+	}
+
+	/**
+	 * @return the reference sequence alignment with no beginning or ending gaps
+	 */
+	public AlignmentPair getAlignmentWithoutEndingAndBeginningReferenceInserts() {
+		return new AlignmentPair(referenceAlignment.subSequence(firstNonDeletionIndexInQuery, lastNonDeletionIndexInReference), queryAlignment.subSequence(firstNonDeletionIndexInReference,
+				lastNonDeletionIndexInReference));
+	}
+
+	/**
+	 * @return the reference sequence alignment with no beginning or ending gaps
+	 */
+	public AlignmentPair getAlignmentWithoutEndingQueryInserts() {
+		return new AlignmentPair(referenceAlignment.subSequence(0, lastNonDeletionIndexInQuery), queryAlignment.subSequence(0, lastNonDeletionIndexInQuery));
 	}
 
 	/**
@@ -108,12 +143,15 @@ public class AlignmentPair {
 	 * @return the reverse of the mismatch details string
 	 */
 	public String getReverseMismatchDetailsString() {
-		return CigarStringUtil.getMismatchDetailsString(getReferenceAlignmentWithoutEndingAndBeginningInserts().getReverse(), getQueryAlignmentWithoutEndingAndBeginningInserts().getReverse(),
-				getReverseCigarString());
+		AlignmentPair alignmentWithoutEndingAndBeginningQueryInserts = getAlignmentWithoutEndingAndBeginningQueryInserts();
+		ISequence referenceSequenceAlignment = alignmentWithoutEndingAndBeginningQueryInserts.getReferenceAlignment();
+		ISequence querySequenceAlignment = alignmentWithoutEndingAndBeginningQueryInserts.getQueryAlignment();
+
+		return CigarStringUtil.getMismatchDetailsString(referenceSequenceAlignment.getReverse(), querySequenceAlignment.getReverse(), getReverseCigarString());
 	}
 
-	public int getFirstNonInsertMatchInReference() {
-		return firstNonDeletionIndex;
+	public int getFirstNonInsertQueryMatchInReference() {
+		return firstNonDeletionIndexInQuery;
 	}
 
 }

@@ -77,6 +77,47 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 	 * 
 	 * @param values
 	 */
+	public void writeLineFromArray(Object[] values) {
+		synchronized (this) {
+			try {
+				if (writer == null) {
+					throw new IllegalArgumentException("Trying to write a line to a writer thas has been closed");
+				}
+
+				if (shouldValidateColumnCount && values.length != columnCount) {
+					throw new IllegalArgumentException("Passed in " + values.length + " values to a writer with " + columnCount + " columns.");
+				}
+
+				boolean firstValue = true;
+				for (Object value : values) {
+					if (!firstValue) {
+						writer.write(StringUtil.TAB);
+					}
+					firstValue = false;
+
+					if (value != null) {
+						if (value instanceof Number) {
+							// We want all numeric values to be formatted
+							writer.write(decimalFormat.format(value));
+						} else {
+							// Convert the value to a string
+							writer.write(value.toString());
+						}
+					}
+				}
+				writer.write(StringUtil.NEWLINE);
+				writer.flush();
+			} catch (IOException e) {
+				throw new IllegalStateException("Unable to write to file[" + outputFile.getAbsolutePath() + "].");
+			}
+		}
+	}
+
+	/**
+	 * Write the provided values to the file. Ensures that the number of values matches the number of header columns. Formats numeric values consistently.
+	 * 
+	 * @param values
+	 */
 	public void writeLine(Object... values) {
 		synchronized (this) {
 			try {
