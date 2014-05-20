@@ -140,6 +140,7 @@ public final class ExtendReadsToPrimer {
 				ISequence readTwoExtendedSequence = sequenceTwo.subSequence(readTwoExtensionDetails.getReadStart(), readTwoExtensionDetails.getReadStop()).getCompliment();
 				String readTwoExtendedBaseQualities = sequenceTwoQualityString.substring(readTwoExtensionDetails.getReadStart(), readTwoExtensionDetails.getReadStop() + 1);
 				int readTwoReferenceLength = probe.getCaptureTargetSequence().size();
+
 				if (readTwoIsOnReverseStrand) {
 					readTwoExtendedSequence = readTwoExtendedSequence.getReverseCompliment();
 					readTwoExtendedBaseQualities = StringUtil.reverse(readTwoExtendedBaseQualities);
@@ -199,22 +200,42 @@ public final class ExtendReadsToPrimer {
 				// if the read without primer is longer than the reference/capture target we need to walk backwards through
 				// the reference until we find the first non-gap
 				ISequence referenceAlignment = readAlignmentWithReference.getAlignmentPair().getAlignmentWithoutEndingQueryInserts().getReferenceAlignment();
+				ISequence queryAlignment = readAlignmentWithReference.getAlignmentPair().getQueryAlignment();
 
-				int lastNonGapIndexInReference = referenceAlignment.size() - 1;
-				while (referenceAlignment.getCodeAt(lastNonGapIndexInReference).equals(IupacNucleotideCode.GAP) && lastNonGapIndexInReference >= 0) {
-					lastNonGapIndexInReference--;
+				int lastNonGapIndexInReferenceWithNonGapInQuery = referenceAlignment.size() - 1;
+				while (referenceAlignment.getCodeAt(lastNonGapIndexInReferenceWithNonGapInQuery).equals(IupacNucleotideCode.GAP) && lastNonGapIndexInReferenceWithNonGapInQuery >= 0) {
+					lastNonGapIndexInReferenceWithNonGapInQuery--;
+				}
+
+				while (queryAlignment.getCodeAt(lastNonGapIndexInReferenceWithNonGapInQuery).equals(IupacNucleotideCode.GAP) && lastNonGapIndexInReferenceWithNonGapInQuery >= 0) {
+					lastNonGapIndexInReferenceWithNonGapInQuery--;
+				}
+
+				int referenceInserts = 0;
+				for (int i = 0; i < lastNonGapIndexInReferenceWithNonGapInQuery; i++) {
+					if (referenceAlignment.getCodeAt(i).equals(IupacNucleotideCode.GAP)) {
+						referenceInserts++;
+					}
+				}
+
+				int queryInserts = 0;
+				for (int i = 0; i < lastNonGapIndexInReferenceWithNonGapInQuery; i++) {
+					if (queryAlignment.getCodeAt(i).equals(IupacNucleotideCode.GAP)) {
+						queryInserts++;
+					}
 				}
 
 				if (isReversed) {
 					cigarString = alignmentWithoutEndingAndBeginningQueryAndReferenceInserts.getReverseCigarString();
 					mismatchDetailsString = alignmentWithoutEndingAndBeginningQueryAndReferenceInserts.getReverseMismatchDetailsString();
 
-					alignmentStartInReference = primerReferencePositionAdjacentToSequence - (lastNonGapIndexInReference + 1);
+					alignmentStartInReference = primerReferencePositionAdjacentToSequence - (lastNonGapIndexInReferenceWithNonGapInQuery + 1) + referenceInserts;
 				} else {
 					int offset = readAlignmentWithReference.getAlignmentPair().getFirstNonInsertQueryMatchInReference();
 					alignmentStartInReference = primerReferencePositionAdjacentToSequence + offset + 1;
 				}
-				readExtensionDetails = new ReadExtensionDetails(alignmentStartInReference, captureTargetStartIndexInRead, cigarString, mismatchDetailsString, lastNonGapIndexInReference);
+				readExtensionDetails = new ReadExtensionDetails(alignmentStartInReference, captureTargetStartIndexInRead, cigarString, mismatchDetailsString,
+						lastNonGapIndexInReferenceWithNonGapInQuery - queryInserts);
 			}
 		}
 

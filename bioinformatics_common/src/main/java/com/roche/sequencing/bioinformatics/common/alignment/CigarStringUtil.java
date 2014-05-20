@@ -80,7 +80,7 @@ public class CigarStringUtil {
 	}
 
 	static String getMismatchDetailsString(ISequence referenceAlignmentSequence, ISequence queryAlignmentSequence, CigarString cigarString) {
-		String summarizedCigarStringWithMisMatches = cigarString.getCigarString(true, true);
+		String summarizedCigarStringWithMisMatches = cigarString.getCigarString(true, true, true);
 		StringBuilder mismatchDetailsStringBuilder = new StringBuilder();
 
 		StringBuilder currentString = new StringBuilder();
@@ -163,7 +163,7 @@ public class CigarStringUtil {
 
 	static int getEditDistance(CigarString cigarString) {
 		int editDistance = 0;
-		String nonSummarizedCigarStringWithMisMatches = cigarString.getCigarString(false, true);
+		String nonSummarizedCigarStringWithMisMatches = cigarString.getCigarString(false, true, false);
 		for (char currentChar : nonSummarizedCigarStringWithMisMatches.toCharArray()) {
 
 			if ((currentChar == CIGAR_INSERTION_TO_REFERENCE) || (currentChar == CIGAR_SEQUENCE_MISMATCH)) {
