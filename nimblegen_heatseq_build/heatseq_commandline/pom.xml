@@ -13,7 +13,7 @@
 	<packaging>pom</packaging>
 	<name>Heatseq Command Line</name>
 	<description>Command line tool for heatseq</description>
-	<version>v22alpha</version>
+	<version>v22</version>
 	
 	<modules>
 		<module>../../bioinformatics_common</module>

@@ -74,6 +74,18 @@ public class CigarStringUtilTest {
 	}
 
 	@Test(groups = { "integration" })
+	public void mismatchDetailsFourTest() {
+		ISequence sequenceOne = new IupacNucleotideCodeSequence(
+				"GACCCTTGTCTCTGTGTTCTTGTCCCCCCCAGCTTGTGGAGCCTCTTACACCCAGTGGAGAAGCTCCCAACCAAGCTCTCTTGAGGAGGGTCTTGAAGGAAACTGAATTCAAAAAGATCAAAGTGCTGGGCTCCGGTGCGTTCGGCACGGTGT");
+		ISequence sequenceTwo = new IupacNucleotideCodeSequence("GCCCCCCCAGCTTGTGGAGCCTCTTACACCCAGTGGAGAAGCTCCCAACCAAGCTCTCTTGAGGATCTTGAAGGAAACTGAATTCAAAAAGATCAAAGTGCTGGGCTCCGGTGCGTTCGGCACGGTGT");
+		NeedlemanWunschGlobalAlignment globalAlignment = new NeedlemanWunschGlobalAlignment(sequenceOne, sequenceTwo);
+		AlignmentPair alignmentPair = globalAlignment.getAlignmentPair();
+		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts().getReferenceAlignment(), alignmentPair
+				.getAlignmentWithoutEndingAndBeginningQueryInserts().getQueryAlignment(), globalAlignment.getCigarString());
+		assertEquals(mismatchDetailsString, "0T127");
+	}
+
+	@Test(groups = { "integration" })
 	public void mismatchReverseDetailsTest() {
 		ISequence sequenceOne = new IupacNucleotideCodeSequence(
 				"CATTCCAGGCCTAAGATCCCGTCCATCGCCACTGGGATGGTGGGGGCCCTCCTCTTGCTGCTGGTGGTGGCCCTGGGGATCGGCCTCTTCATGCGAAGGCGCCACATCGTTCGGAAGCGCACGCTGCGGAGGCTGCTGCAGGAGAGGGAG").getReverse();

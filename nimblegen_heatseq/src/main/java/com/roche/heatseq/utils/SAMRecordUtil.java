@@ -207,7 +207,7 @@ public class SAMRecordUtil {
 		int numberOfSubstitutions = 0;
 
 		CigarString cigarString = alignment.getCigarString();
-		String sequenceCigarString = cigarString.getCigarString(false, true);
+		String sequenceCigarString = cigarString.getCigarString(false, true, false);
 		int insertsSinceLastInsertionOrMismatch = 0;
 		for (Character character : sequenceCigarString.toCharArray()) {
 			if (character == CigarStringUtil.CIGAR_SEQUENCE_MISMATCH) {

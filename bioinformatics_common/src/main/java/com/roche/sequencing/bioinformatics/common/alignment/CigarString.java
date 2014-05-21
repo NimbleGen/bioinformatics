@@ -37,7 +37,14 @@ public class CigarString {
 	}
 
 	public String getCigarString(boolean summarize, boolean includeSequenceMismatches) {
+		return getCigarString(summarize, includeSequenceMismatches, false);
+	}
+
+	public String getCigarString(boolean summarize, boolean includeSequenceMismatches, boolean ignoreSequenceDeletions) {
 		String cigarString = nonSummarizedCigarString;
+		if (ignoreSequenceDeletions) {
+			cigarString = cigarString.replaceAll("D", "");
+		}
 		if (!includeSequenceMismatches) {
 			cigarString = CigarStringUtil.replaceSequenceMatchesAndMismatchesFromCigarString(cigarString);
 		}
@@ -52,7 +59,7 @@ public class CigarString {
 	 * @return a standard cigar string as found in BAM files (for example, 45M1I37M)
 	 */
 	public String getStandardCigarString() {
-		return getCigarString(true, false);
+		return getCigarString(true, false, false);
 	}
 
 	/**
