@@ -264,8 +264,8 @@ public class CommandLineParser {
 
 		if (!unrecognizedCommandError.isEmpty() || !missingOptionsError.isEmpty() || !unrecognizedLongOptionsError.isEmpty() || !unrecognizedShortOptionsError.isEmpty()
 				|| !duplicateArguments.isEmpty() || !flagOptionWithArgumentsError.isEmpty() || !nonFlagOptionWithoutArgumentsError.isEmpty()) {
-			throw new IllegalStateException(missingOptionsError + unrecognizedLongOptionsError + unrecognizedShortOptionsError + duplicateArgumentsError + flagOptionWithArgumentsError
-					+ nonFlagOptionWithoutArgumentsError);
+			throw new IllegalStateException(unrecognizedCommandError + missingOptionsError + unrecognizedLongOptionsError + unrecognizedShortOptionsError + duplicateArgumentsError
+					+ flagOptionWithArgumentsError + nonFlagOptionWithoutArgumentsError);
 		}
 	}
 

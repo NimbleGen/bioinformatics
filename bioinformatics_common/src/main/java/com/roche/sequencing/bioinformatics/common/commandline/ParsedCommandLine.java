@@ -245,10 +245,11 @@ public class ParsedCommandLine {
 	 */
 	public CommandLineOption[] getMissingRequiredOptions() {
 		Set<CommandLineOption> missingRequiredOptions = new LinkedHashSet<CommandLineOption>();
-
-		for (CommandLineOption argument : group) {
-			if (argument.isRequired() && !(argumentToValueMap.containsKey(argument) || nonFlagOptionWithoutArguments.contains(argument))) {
-				missingRequiredOptions.add(argument);
+		if (group != null) {
+			for (CommandLineOption argument : group) {
+				if (argument.isRequired() && !(argumentToValueMap.containsKey(argument) || nonFlagOptionWithoutArguments.contains(argument))) {
+					missingRequiredOptions.add(argument);
+				}
 			}
 		}
 
