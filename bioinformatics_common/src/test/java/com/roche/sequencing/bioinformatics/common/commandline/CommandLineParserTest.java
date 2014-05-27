@@ -159,7 +159,33 @@ public class CommandLineParserTest {
 		CommandLineOptionsGroup group = new CommandLineOptionsGroup("Command Line Usage:");
 		group.addOption(new CommandLineOption("a", "ab", 'a', "a", true, false));
 		CommandLineParser.parseCommandLineWithExceptions(new String[] { "--ab", "-100" }, group);
+	}
 
+	@Test(groups = { "integration" })
+	public void multipleCommandsTest() {
+		Commands commands = new Commands();
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup();
+		group.addOption(new CommandLineOption("a", "ab", 'a', "a", true, false));
+		commands.addCommand(new Command("alpha", "alpha command", group));
+		CommandLineOptionsGroup group2 = new CommandLineOptionsGroup();
+		group2.addOption(new CommandLineOption("b", "bb", 'b', "b", true, false));
+		commands.addCommand(new Command("beta", "beta command", group2));
+
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "alpha", "--ab", "100" }, commands);
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "beta", "--bb", "100" }, commands);
+	}
+
+	@Test(expectedExceptions = IllegalStateException.class, groups = { "integration" })
+	public void multipleCommandsWrongArgumentTest() {
+		Commands commands = new Commands("Command Line Usage:");
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup();
+		group.addOption(new CommandLineOption("a", "ab", 'a', "a", true, false));
+		commands.addCommand(new Command("alpha", "alpha command", group));
+		CommandLineOptionsGroup group2 = new CommandLineOptionsGroup();
+		group2.addOption(new CommandLineOption("b", "bb", 'b', "b", true, false));
+		commands.addCommand(new Command("beta", "beta command", group2));
+		System.out.println(commands.getUsage());
+		CommandLineParser.parseCommandLineWithExceptions(new String[] { "alpha", "--bb", "100" }, commands);
 	}
 
 }
