@@ -1,5 +1,6 @@
 package com.roche.sequencing.bioinformatics.common.commandline;
 
+import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class Command {
 
@@ -66,6 +67,16 @@ public class Command {
 	@Override
 	public String toString() {
 		return "Command [commandName=" + commandName + ", commandDescription=" + commandDescription + ", commandOptions=" + commandOptions + "]";
+	}
+
+	public String getUsage() {
+		StringBuilder usageBuilder = new StringBuilder();
+		usageBuilder.append(getCommandName() + StringUtil.NEWLINE);
+		usageBuilder.append(StringUtil.TAB + getCommandDescription() + StringUtil.NEWLINE);
+		usageBuilder.append(StringUtil.NEWLINE);
+		usageBuilder.append(StringUtil.TAB + "OPTIONS:" + StringUtil.NEWLINE);
+		usageBuilder.append(getCommandOptions().getUsage());
+		return usageBuilder.toString();
 	}
 
 }

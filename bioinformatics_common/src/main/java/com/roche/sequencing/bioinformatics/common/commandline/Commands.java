@@ -1,7 +1,7 @@
 package com.roche.sequencing.bioinformatics.common.commandline;
 
-import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
@@ -13,7 +13,7 @@ public class Commands implements Iterable<Command> {
 
 	public Commands(String usageBanner) {
 		super();
-		this.commands = new ArrayList<Command>();
+		this.commands = new LinkedList<Command>();
 		this.usageBanner = usageBanner;
 	}
 
@@ -38,11 +38,9 @@ public class Commands implements Iterable<Command> {
 		}
 
 		for (Command command : commands) {
-			usageBuilder.append(command.getCommandName() + StringUtil.NEWLINE);
-			usageBuilder.append(StringUtil.TAB + command.getCommandDescription() + StringUtil.NEWLINE);
+			usageBuilder.append(command.getUsage());
 			usageBuilder.append(StringUtil.NEWLINE);
-			usageBuilder.append(StringUtil.TAB + "OPTIONS:" + StringUtil.NEWLINE);
-			usageBuilder.append(command.getCommandOptions().getUsage());
+			usageBuilder.append(StringUtil.NEWLINE);
 		}
 
 		return usageBuilder.toString();
