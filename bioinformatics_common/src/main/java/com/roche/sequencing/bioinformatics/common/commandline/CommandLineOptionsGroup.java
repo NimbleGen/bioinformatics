@@ -42,6 +42,10 @@ public class CommandLineOptionsGroup implements Iterable<CommandLineOption> {
 		options = new LinkedHashSet<CommandLineOption>();
 	}
 
+	public CommandLineOptionsGroup() {
+		this(null);
+	}
+
 	/**
 	 * @return the usage associated with this CommandLineOptionsGroup
 	 */
