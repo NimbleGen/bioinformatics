@@ -18,6 +18,7 @@ package com.roche.heatseq.objects;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +29,7 @@ import java.util.Set;
  * A map for organizing probes by sequence name
  * 
  */
-public class ProbesBySequenceName {
+public class ProbesBySequenceName implements Iterable<Probe> {
 	private final Map<String, List<Probe>> probesBySequence;
 
 	public ProbesBySequenceName() {
@@ -91,6 +92,11 @@ public class ProbesBySequenceName {
 	 */
 	public boolean containsSequenceName(String sequenceName) {
 		return probesBySequence.containsKey(sequenceName);
+	}
+
+	@Override
+	public Iterator<Probe> iterator() {
+		return getProbes().iterator();
 	}
 
 }

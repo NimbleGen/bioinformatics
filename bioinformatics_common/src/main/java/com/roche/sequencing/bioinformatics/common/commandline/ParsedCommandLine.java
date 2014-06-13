@@ -44,6 +44,10 @@ public class ParsedCommandLine {
 	private final Map<CommandLineOption, String> flagOptionWithArguments;
 	private final Set<CommandLineOption> nonFlagOptionWithoutArguments;
 
+	private String unrecognizedCommand;
+	private Command activeCommand;
+	private Commands commands;
+
 	ParsedCommandLine(CommandLineOptionsGroup group) {
 		this.group = group;
 		argumentToValueMap = new LinkedHashMap<CommandLineOption, String>();
@@ -54,6 +58,31 @@ public class ParsedCommandLine {
 		nonOptionArguments = new ArrayList<String>();
 		flagOptionWithArguments = new LinkedHashMap<CommandLineOption, String>();
 		nonFlagOptionWithoutArguments = new LinkedHashSet<CommandLineOption>();
+		unrecognizedCommand = null;
+	}
+
+	void setUnrecognizedCommand(String unrecognizedCommand) {
+		this.unrecognizedCommand = unrecognizedCommand;
+	}
+
+	void setActiveCommand(Command command) {
+		this.activeCommand = command;
+	}
+
+	String getUnrecognizedCommand() {
+		return unrecognizedCommand;
+	}
+
+	public Command getActiveCommand() {
+		return activeCommand;
+	}
+
+	void setCommands(Commands commands) {
+		this.commands = commands;
+	}
+
+	public Commands getCommands() {
+		return commands;
 	}
 
 	private void markArgumentAsFound(String argumentName) {
@@ -216,10 +245,11 @@ public class ParsedCommandLine {
 	 */
 	public CommandLineOption[] getMissingRequiredOptions() {
 		Set<CommandLineOption> missingRequiredOptions = new LinkedHashSet<CommandLineOption>();
-
-		for (CommandLineOption argument : group) {
-			if (argument.isRequired() && !(argumentToValueMap.containsKey(argument) || nonFlagOptionWithoutArguments.contains(argument))) {
-				missingRequiredOptions.add(argument);
+		if (group != null) {
+			for (CommandLineOption argument : group) {
+				if (argument.isRequired() && !(argumentToValueMap.containsKey(argument) || nonFlagOptionWithoutArguments.contains(argument))) {
+					missingRequiredOptions.add(argument);
+				}
 			}
 		}
 

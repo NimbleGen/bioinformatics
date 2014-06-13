@@ -39,6 +39,42 @@ public class CommandLineParser {
 		throw new AssertionError();
 	}
 
+	public static ParsedCommandLine parseCommandLine(String[] arguments, Commands commands) {
+		ParsedCommandLine parsedCommandLine = null;
+
+		Command command = findMatchingCommand(arguments, commands);
+		if (command != null) {
+			parsedCommandLine = parseCommandLine(arguments, command.getCommandOptions());
+			parsedCommandLine.setActiveCommand(command);
+		} else {
+			parsedCommandLine = new ParsedCommandLine(null);
+			String firstArgument = null;
+			if (arguments.length > 0) {
+				firstArgument = arguments[0];
+			}
+			parsedCommandLine.setUnrecognizedCommand(firstArgument);
+		}
+		parsedCommandLine.setCommands(commands);
+		return parsedCommandLine;
+	}
+
+	static Command findMatchingCommand(String[] arguments, Commands commands) {
+		Command matchingCommand = null;
+		if (commands != null) {
+			commandLoop: for (Command command : commands) {
+				String firstArgumentLowerCase = null;
+				if (arguments.length > 0) {
+					firstArgumentLowerCase = arguments[0].toLowerCase();
+				}
+				if (command.getCommandName().toLowerCase().equals(firstArgumentLowerCase)) {
+					matchingCommand = command;
+					break commandLoop;
+				}
+			}
+		}
+		return matchingCommand;
+	}
+
 	/**
 	 * Parse the provided arguments given the commanLineOptionGroup(which defines what arguments are expected)
 	 * 
@@ -116,12 +152,37 @@ public class CommandLineParser {
 	}
 
 	/**
+	 * Parse the provided arguments given the commans(which defines what arguments are expected) and throw an exception if any errors occur
+	 * 
+	 * @param arguments
+	 * @param Commands
+	 * @return ParsedCommandLine
+	 */
+	public static ParsedCommandLine parseCommandLineWithExceptions(String[] arguments, Commands commands) {
+		ParsedCommandLine parsedCommandLine = parseCommandLine(arguments, commands);
+
+		throwCommandLineParsingExceptions(parsedCommandLine);
+		return parsedCommandLine;
+	}
+
+	/**
 	 * Take a ParsedCommandLine and throw any exceptions if the ParsedCommandLine did not parse without errors.
 	 * 
 	 * @param parsedCommandLine
 	 */
 	public static void throwCommandLineParsingExceptions(ParsedCommandLine parsedCommandLine) {
 		CommandLineOption[] missingOptions = parsedCommandLine.getMissingRequiredOptions();
+
+		String unrecognizedCommandError = "";
+		if (parsedCommandLine.getUnrecognizedCommand() != null) {
+			StringBuilder validCommandsBuilder = new StringBuilder();
+			for (Command command : parsedCommandLine.getCommands()) {
+				validCommandsBuilder.append(StringUtil.TAB + command.getCommandName() + StringUtil.NEWLINE);
+			}
+			unrecognizedCommandError = "The provided command[" + parsedCommandLine.getUnrecognizedCommand() + "] is not recognized.  Valid commands are the following:" + StringUtil.NEWLINE
+					+ validCommandsBuilder.toString();
+		}
+
 		String missingOptionsError = "";
 
 		if (missingOptions.length > 0) {
@@ -212,10 +273,10 @@ public class CommandLineParser {
 			nonFlagOptionWithoutArgumentsError = nonFlagOptionWithoutArgumentsErrorBuilder.toString();
 		}
 
-		if (!missingOptionsError.isEmpty() || !unrecognizedLongOptionsError.isEmpty() || !unrecognizedShortOptionsError.isEmpty() || !duplicateArguments.isEmpty()
-				|| !flagOptionWithArgumentsError.isEmpty() || !nonFlagOptionWithoutArgumentsError.isEmpty()) {
-			throw new IllegalStateException(missingOptionsError + unrecognizedLongOptionsError + unrecognizedShortOptionsError + duplicateArgumentsError + flagOptionWithArgumentsError
-					+ nonFlagOptionWithoutArgumentsError);
+		if (!unrecognizedCommandError.isEmpty() || !missingOptionsError.isEmpty() || !unrecognizedLongOptionsError.isEmpty() || !unrecognizedShortOptionsError.isEmpty()
+				|| !duplicateArguments.isEmpty() || !flagOptionWithArgumentsError.isEmpty() || !nonFlagOptionWithoutArgumentsError.isEmpty()) {
+			throw new IllegalStateException(unrecognizedCommandError + missingOptionsError + unrecognizedLongOptionsError + unrecognizedShortOptionsError + duplicateArgumentsError
+					+ flagOptionWithArgumentsError + nonFlagOptionWithoutArgumentsError);
 		}
 	}
 
