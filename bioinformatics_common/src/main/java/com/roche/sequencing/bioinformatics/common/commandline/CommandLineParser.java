@@ -41,13 +41,18 @@ public class CommandLineParser {
 
 	public static ParsedCommandLine parseCommandLine(String[] arguments, Commands commands) {
 		ParsedCommandLine parsedCommandLine = null;
+
 		Command command = findMatchingCommand(arguments, commands);
 		if (command != null) {
 			parsedCommandLine = parseCommandLine(arguments, command.getCommandOptions());
 			parsedCommandLine.setActiveCommand(command);
 		} else {
 			parsedCommandLine = new ParsedCommandLine(null);
-			parsedCommandLine.setUnrecognizedCommand(arguments[0]);
+			String firstArgument = null;
+			if (arguments.length > 0) {
+				firstArgument = arguments[0];
+			}
+			parsedCommandLine.setUnrecognizedCommand(firstArgument);
 		}
 		parsedCommandLine.setCommands(commands);
 		return parsedCommandLine;
@@ -55,10 +60,16 @@ public class CommandLineParser {
 
 	static Command findMatchingCommand(String[] arguments, Commands commands) {
 		Command matchingCommand = null;
-		commandLoop: for (Command command : commands) {
-			if (command.getCommandName().toLowerCase().equals(arguments[0].toLowerCase())) {
-				matchingCommand = command;
-				break commandLoop;
+		if (commands != null) {
+			commandLoop: for (Command command : commands) {
+				String firstArgumentLowerCase = null;
+				if (arguments.length > 0) {
+					firstArgumentLowerCase = arguments[0].toLowerCase();
+				}
+				if (command.getCommandName().toLowerCase().equals(firstArgumentLowerCase)) {
+					matchingCommand = command;
+					break commandLoop;
+				}
 			}
 		}
 		return matchingCommand;

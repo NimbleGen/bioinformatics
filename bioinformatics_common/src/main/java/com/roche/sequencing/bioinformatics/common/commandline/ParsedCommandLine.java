@@ -73,7 +73,7 @@ public class ParsedCommandLine {
 		return unrecognizedCommand;
 	}
 
-	Command getActiveCommand() {
+	public Command getActiveCommand() {
 		return activeCommand;
 	}
 
@@ -81,7 +81,7 @@ public class ParsedCommandLine {
 		this.commands = commands;
 	}
 
-	Commands getCommands() {
+	public Commands getCommands() {
 		return commands;
 	}
 

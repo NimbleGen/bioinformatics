@@ -103,6 +103,10 @@ public class BamFileUtil {
 
 	}
 
+	public static void convertSamToBam(File inputSamFile, File outputBamFile) {
+		picardSortAndCompress(inputSamFile, outputBamFile, SortOrder.coordinate);
+	}
+
 	/**
 	 * Sort the provided input file by readname and place the result in output
 	 * 
@@ -230,9 +234,10 @@ public class BamFileUtil {
 
 	public static void main(String[] args) {
 		// File inputBamFile = new File("S:\\public\\candace\\dsHybrid.bam");
-		File inputBamFile = new File("C:\\Users\\heilmank\\Desktop\\junk\\dsHybrid.srt_REDUCED.bam");
-		File outputErrorFile = new File("C:\\Users\\heilmank\\Desktop\\junk\\validation_errors.txt");
-		validateSamFile(inputBamFile, outputErrorFile);
+		// File inputBamFile = new File("C:\\Users\\heilmank\\Desktop\\junk\\dsHybrid.srt_REDUCED.bam");
+		// File outputErrorFile = new File("C:\\Users\\heilmank\\Desktop\\junk\\validation_errors.txt");
+		// validateSamFile(inputBamFile, outputErrorFile);
+		createIndex(new File("D:/trim/kurt_trimmed.bam"));
 	}
 
 }
