@@ -5,6 +5,7 @@ import com.roche.sequencing.bioinformatics.common.commandline.CommandLineParser;
 import com.roche.sequencing.bioinformatics.common.commandline.Commands;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
 import com.roche.sequencing.bioinformatics.common.utils.ManifestUtil;
+import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class HsqUtilsCli {
 
@@ -61,7 +62,7 @@ public class HsqUtilsCli {
 	}
 
 	private static Commands getCommands() {
-		Commands commands = new Commands("Command Line Usage:");
+		Commands commands = new Commands("Available Commands:" + StringUtil.NEWLINE + "Command" + StringUtil.TAB + "Description");
 		commands.addCommand(new Command(TRIM_COMMAND_NAME, "Trim reads within the fastq files to represent the capture target regions.", TrimCli.getCommandLineOptionsGroupForTrimming()));
 		commands.addCommand(new Command(IDENTIFY_DUPLICATES_COMMAND_NAME,
 				"Identify duplicate reads and include only portions of the read that overlap with the capture target sequence in the sequence alignment (BAM file).", IdentifyDuplicatesCli

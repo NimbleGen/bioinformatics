@@ -38,8 +38,7 @@ public class Commands implements Iterable<Command> {
 		}
 
 		for (Command command : commands) {
-			usageBuilder.append(command.getUsage());
-			usageBuilder.append(StringUtil.NEWLINE);
+			usageBuilder.append(command.getCommandName() + StringUtil.TAB + command.getCommandDescription());
 			usageBuilder.append(StringUtil.NEWLINE);
 		}
 
