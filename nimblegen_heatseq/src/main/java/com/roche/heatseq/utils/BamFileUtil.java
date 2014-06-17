@@ -163,7 +163,7 @@ public class BamFileUtil {
 	 * @param inputBamFile
 	 * @param outputErrorFile
 	 */
-	private static void validateSamFile(File inputBamFile, File outputErrorFile) {
+	public static void validateSamFile(File inputBamFile, File outputErrorFile) {
 		ValidateSamFile.main(new String[] { "INPUT=" + inputBamFile.getAbsolutePath(), "OUTPUT=" + outputErrorFile.getAbsolutePath() });
 	}
 

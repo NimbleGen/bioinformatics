@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 
 import com.roche.sequencing.bioinformatics.common.commandline.Command;
-import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineParser;
 import com.roche.sequencing.bioinformatics.common.commandline.Commands;
@@ -14,14 +13,11 @@ import com.roche.sequencing.bioinformatics.common.utils.ManifestUtil;
 
 public class RocheNimbleGenCommandLineUtils {
 
-	public final static String APPLICATION_NAME = "RNGUtils";
+	public final static String APPLICATION_NAME = "HSQUtils";
 	private static String applicationVersionFromManifest = "unversioned";
 
 	private final static String TRIM_COMMAND_NAME = "Trim";
 	private final static String IDENTIFY_DUPLICATES_COMMAND_NAME = "IdentifyDuplicates";
-
-	private final static CommandLineOption PATH_TO_BWA_OPTION = new CommandLineOption("Path to BWA", "bwa", null, "Location of the installed BWA executable.", true, false);
-	private final static CommandLineOption SAMPLE_NAME_OPTION = new CommandLineOption("Sample Name.", "sampleName", null, "Sample name.", true, false);
 
 	public static void main(String[] args) {
 		runCommandLineApp(args);
@@ -69,26 +65,7 @@ public class RocheNimbleGenCommandLineUtils {
 
 	}
 
-	private static class TrimmedFastqFiles {
-		private final File fastqOne;
-		private final File fastqTwo;
-
-		public TrimmedFastqFiles(File fastqOne, File fastqTwo) {
-			super();
-			this.fastqOne = fastqOne;
-			this.fastqTwo = fastqTwo;
-		}
-
-		public File getFastqOne() {
-			return fastqOne;
-		}
-
-		public File getFastqTwo() {
-			return fastqTwo;
-		}
-	}
-
-	private static TrimmedFastqFiles trim(ParsedCommandLine parsedCommandLine) {
+	private static void trim(ParsedCommandLine parsedCommandLine) {
 		String outputDirectoryString = parsedCommandLine.getOptionsValue(PrefuppCli.OUTPUT_DIR_OPTION);
 		File outputDirectory = null;
 		if (outputDirectoryString != null) {
@@ -144,7 +121,6 @@ public class RocheNimbleGenCommandLineUtils {
 			throw new IllegalStateException(e);
 		}
 
-		return new TrimmedFastqFiles(outputFastQ1File, outputFastQ2File);
 	}
 
 	private static Commands getCommands() {
@@ -164,24 +140,6 @@ public class RocheNimbleGenCommandLineUtils {
 		group.addOption(PrefuppCli.PROBE_OPTION);
 		group.addOption(PrefuppCli.OUTPUT_DIR_OPTION);
 		group.addOption(PrefuppCli.OUTPUT_FILE_PREFIX_OPTION);
-		return group;
-	}
-
-	private static CommandLineOptionsGroup getCommandLineOptionsGroupForTrimMapAndIdentifyDuplicates() {
-		CommandLineOptionsGroup group = new CommandLineOptionsGroup();
-		group.addOption(PrefuppCli.USAGE_OPTION);
-		group.addOption(PrefuppCli.FASTQ_ONE_OPTION);
-		group.addOption(PrefuppCli.FASTQ_TWO_OPTION);
-		group.addOption(PrefuppCli.PROBE_OPTION);
-		group.addOption(PATH_TO_BWA_OPTION);
-		group.addOption(SAMPLE_NAME_OPTION);
-		group.addOption(PrefuppCli.OUTPUT_DIR_OPTION);
-		group.addOption(PrefuppCli.OUTPUT_FILE_PREFIX_OPTION);
-		group.addOption(PrefuppCli.NUM_PROCESSORS_OPTION);
-		group.addOption(PrefuppCli.OUTPUT_BAM_FILE_NAME_OPTION);
-		group.addOption(PrefuppCli.MERGE_PAIRS_OPTION);
-		group.addOption(PrefuppCli.TMP_DIR_OPTION);
-
 		return group;
 	}
 

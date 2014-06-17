@@ -250,21 +250,21 @@ public class ReportManager {
 		writeToPrimerAccuracyFile("ligation", ligationMismatchDetailsByIndex);
 
 		primerAccuracyWriter.writeLine("extension errors:");
-		primerAccuracyWriter.writeLine(numberOfExtensionErrors.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine((Object[]) numberOfExtensionErrors.toArray(new Integer[0]));
 		primerAccuracyWriter.writeLine("extension insertions:");
-		primerAccuracyWriter.writeLine(numberOfExtensionInsertions.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine((Object[]) numberOfExtensionInsertions.toArray(new Integer[0]));
 		primerAccuracyWriter.writeLine("extension deletions:");
-		primerAccuracyWriter.writeLine(numberOfExtensionDeletions.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine((Object[]) numberOfExtensionDeletions.toArray(new Integer[0]));
 		primerAccuracyWriter.writeLine("extension gains");
-		primerAccuracyWriter.writeLine(numberOfExtensionGains.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine((Object[]) numberOfExtensionGains.toArray(new Integer[0]));
 		primerAccuracyWriter.writeLine("ligation errors:");
-		primerAccuracyWriter.writeLine(numberOfLigationErrors.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine((Object[]) numberOfLigationErrors.toArray(new Integer[0]));
 		primerAccuracyWriter.writeLine("ligation insertions:");
-		primerAccuracyWriter.writeLine(numberOfLigationInsertions.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine((Object[]) numberOfLigationInsertions.toArray(new Integer[0]));
 		primerAccuracyWriter.writeLine("ligation deletions:");
-		primerAccuracyWriter.writeLine(numberOfLigationDeletions.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine((Object[]) numberOfLigationDeletions.toArray(new Integer[0]));
 		primerAccuracyWriter.writeLine("ligation gains:");
-		primerAccuracyWriter.writeLine(numberOfLigationGains.toArray(new Integer[0]));
+		primerAccuracyWriter.writeLine((Object[]) numberOfLigationGains.toArray(new Integer[0]));
 
 	}
 
