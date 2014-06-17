@@ -1,0 +1,70 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.roche.sequencing</groupId>
+		<artifactId>superpom</artifactId>
+		<version>1.0</version>
+		<relativePath>../../superpom/pom.xml</relativePath>
+	</parent>
+
+	<artifactId>hsqutils</artifactId>
+	<packaging>pom</packaging>
+	<name>HSQ Utils</name>
+	<description>Command line tool for Heatseq Utilities</description>
+	<version>v1</version>
+	
+	<modules>
+		<module>../../bioinformatics_common</module>
+		<module>../../nimblegen_heatseq</module>		
+	</modules>	
+	
+	<dependencies>
+		<dependency>
+			<groupId>com.roche.sequencing</groupId>
+			<artifactId>nimblegen_heatseq</artifactId>
+			<version>0.0.1-SNAPSHOT</version>			
+		</dependency>
+	</dependencies>
+	
+	<build>
+		<finalName>${project.artifactId}_${project.version}</finalName>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>1.7</source>
+					<target>1.7</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<configuration>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+					<appendAssemblyId>false</appendAssemblyId>
+					<archive>
+						<manifestEntries>
+							<Main-Class>com/roche/heatseq/process/RocheNimbleGenCommandLineUtils</Main-Class>
+							<Implementation-Build>${maven.build.timestamp}</Implementation-Build>
+							<version>${project.version}</version>
+						</manifestEntries>
+					</archive>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+	
+</project>

@@ -199,7 +199,7 @@ public class FastqAndBamFileMerger {
 	 * @param outputBamFile
 	 * @return
 	 */
-	static File createMergedFastqAndBamFileFromUnsortedFiles(File unsortedBamFile, File unsortedFastq1File, File unsortedFastq2File, File outputBamFile) {
+	public static File createMergedFastqAndBamFileFromUnsortedFiles(File unsortedBamFile, File unsortedFastq1File, File unsortedFastq2File, File outputBamFile) {
 		// Each new iteration starts at the first record.
 		try (SAMFileReader samReader = new SAMFileReader(unsortedBamFile)) {
 

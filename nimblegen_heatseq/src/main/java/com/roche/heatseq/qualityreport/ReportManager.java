@@ -13,8 +13,8 @@ import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileWriter;
 import net.sf.samtools.SAMFileWriterFactory;
 
+import com.roche.heatseq.cli.IdentifyDuplicatesCli;
 import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.process.PrefuppCli;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarStringUtil;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
@@ -27,7 +27,7 @@ public class ReportManager {
 	private final static String DUPLICATE_MAPPINGS_REPORT_NAME = "duplicate_mappings.txt";
 
 	public final static String PROBE_DETAILS_REPORT_NAME = "probe_details.txt";
-	public final static String SUMMARY_REPORT_NAME = PrefuppCli.APPLICATION_NAME + "_summary.txt";
+	public final static String SUMMARY_REPORT_NAME = IdentifyDuplicatesCli.APPLICATION_NAME + "_summary.txt";
 	private final static String UID_COMPOSITION_REPORT_NAME = "uid_composition_by_probe.txt";
 	private final static String UNABLE_TO_ALIGN_PRIMER_REPORT_NAME = "unable_to_align_primer_for_variable_length_uid.txt";
 	public final static String UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME = "unable_to_map_one.fastq";
