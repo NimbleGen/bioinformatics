@@ -1,16 +1,3 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <configuration debug="false">
-
-	<appender name="FILE" class="ch.qos.logback.core.FileAppender">
-		<file>prefupp.log</file>
-		<append>true</append>
-		<encoder>
-			<pattern>%msg %date %level [%file:%line]%n%n</pattern>
-		</encoder>
-	</appender>
-
-	<root>
-		<level value="ALL" />
-		<appender-ref ref="FILE" />
-	</root>
 </configuration>

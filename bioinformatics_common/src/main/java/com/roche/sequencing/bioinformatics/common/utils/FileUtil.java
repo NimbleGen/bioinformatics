@@ -20,9 +20,11 @@ import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Scanner;
 
 import org.apache.commons.io.FileUtils;
 
@@ -96,7 +98,7 @@ public final class FileUtil {
 	 * Simple utility to read the entire contents of a file into a string This code was taken from http://snippets.dzone.com/posts/show/1335
 	 * 
 	 */
-	static String readFileAsString(File file) throws java.io.IOException {
+	public static String readFileAsString(File file) throws java.io.IOException {
 		StringBuilder fileData = new StringBuilder(STRING_BUILDER_INITIAL_SIZE);
 
 		try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
@@ -110,6 +112,19 @@ public final class FileUtil {
 			return fileData.toString();
 		}
 
+	}
+
+	/**
+	 * read the first line of a file as a string
+	 * 
+	 * @throws FileNotFoundException
+	 */
+	public static String readFirstLineAsString(File file) throws FileNotFoundException {
+		String firstLine = null;
+		try (Scanner scanner = new Scanner(file)) {
+			firstLine = scanner.nextLine();
+		}
+		return firstLine;
 	}
 
 	/**

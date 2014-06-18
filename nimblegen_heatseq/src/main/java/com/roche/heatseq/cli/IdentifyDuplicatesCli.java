@@ -17,6 +17,7 @@
 package com.roche.heatseq.cli;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,6 +32,7 @@ import com.roche.heatseq.objects.ApplicationSettings;
 import com.roche.heatseq.process.FastqAndBamFileMerger;
 import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentification;
 import com.roche.heatseq.utils.BamFileUtil;
+import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.SimpleAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
@@ -38,12 +40,11 @@ import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptions
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.LoggingUtil;
 
 public class IdentifyDuplicatesCli {
 	private final static Logger logger = LoggerFactory.getLogger(IdentifyDuplicatesCli.class);
 
-	public final static String APPLICATION_NAME = "prefupp";
-	private static String applicationVersionFromManifest = "unversioned";
 	public final static int DEFAULT_EXTENSION_UID_LENGTH = 10;
 	public final static int DEFAULT_LIGATION_UID_LENGTH = 0;
 	public final static String BAM_EXTENSION = ".bam";
@@ -56,17 +57,8 @@ public class IdentifyDuplicatesCli {
 	public final static CommandLineOption OUTPUT_DIR_OPTION = new CommandLineOption("Output Directory", "outputDir", null, "Location to store resultant files.", false, false);
 	public final static CommandLineOption OUTPUT_FILE_PREFIX_OPTION = new CommandLineOption("Output File Prefix", "outputPrefix", null, "Text to put at beginning of output file names.", false, false);
 	public final static CommandLineOption TMP_DIR_OPTION = new CommandLineOption("Temporary Directory", "tmpDir", null, "Location to store temporary files.", false, false);
-	private final static CommandLineOption SAVE_TMP_DIR_OPTION = new CommandLineOption("Save Temporary Files", "saveTmpFiles", null, "Save temporary files for later debugging.", false, true);
-	private final static CommandLineOption SHOULD_OUTPUT_REPORTS_OPTION = new CommandLineOption("Should Output Quality Reports", "outputReports", 'r', "Should this utility generate quality reports?",
-			false, true);
 	public final static CommandLineOption NUM_PROCESSORS_OPTION = new CommandLineOption("Number of Processors", "numProcessors", null,
 			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.", false, false);
-	private final static CommandLineOption EXTENSION_UID_LENGTH_OPTION = new CommandLineOption("Length of Extension UID in Bases", "extensionUidLength", null,
-			"Length of the Universal Identifier.  If not specified this will default to " + DEFAULT_EXTENSION_UID_LENGTH + " bases.", false, false);
-	private final static CommandLineOption LIGATION_UID_LENGTH_OPTION = new CommandLineOption("Length of Ligation UID in Bases", "ligationUidLength", null,
-			"Length of the Universal Identifier connected to the Ligation Primer.  If not specified this will default to " + DEFAULT_LIGATION_UID_LENGTH + " bases.", false, false);
-	private final static CommandLineOption ALLOW_VARIABLE_LENGTH_UIDS_OPTION = new CommandLineOption("Allow Variable Length UIDs", "allowVariableLengthUids", null, "Allow Variable Length UIDs.",
-			false, true);
 	public final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o', "Name for output bam file.", true, false);
 	private final static CommandLineOption MATCH_SCORE_OPTION = new CommandLineOption("Match Score", "matchScore", null,
 			"The score given to matching nucleotides when extending alignments to the primers. (Default: " + SimpleAlignmentScorer.DEFAULT_MATCH_SCORE + ")", false, false);
@@ -85,14 +77,18 @@ public class IdentifyDuplicatesCli {
 	public final static CommandLineOption MERGE_PAIRS_OPTION = new CommandLineOption("Merge Pairs", "mergePairs", null, "Merge pairs using the highest quality base reads from each read.", false, true);
 	private final static CommandLineOption NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION = new CommandLineOption("Reads Are Not Trimmed To Within Capture Target", "readsNotTrimmedWithinCaptureTarget",
 			null, "The reads have not been trimmed to an area within the capture target.", false, true);
-	private final static CommandLineOption STRICT_READ_TO_PROBE_MATCHING_OPTION = new CommandLineOption(
-			"Strict Probe to Read Matching",
-			"strictMatching",
-			null,
-			"Only match reads with a probe if they align perfectly.  This will reduce the number of reads assigned to multiple probes but might also remove actual reads that should be assigned to any given probe.",
-			false, true);
 
-	static void identifyDuplicates(ParsedCommandLine parsedCommandLine, String commandLineSignature) {
+	// Note: these variables are for debugging purposes
+	// saveTemporaryFiles default is false
+	private final static boolean saveTemporaryFiles = false;
+	// allowVaraibleLengthUids default is false
+	private final static boolean allowVariableLengthUids = false;
+	// useStrictReadToProbeMatching default is false
+	private final static boolean useStrictReadToProbeMatching = false;
+	// shouldOutputQualityReports default is true
+	private final static boolean shouldOutputQualityReports = true;
+
+	static void identifyDuplicates(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion) {
 		String outputDirectoryString = parsedCommandLine.getOptionsValue(OUTPUT_DIR_OPTION);
 		File outputDirectory = null;
 		if (outputDirectoryString != null) {
@@ -117,6 +113,18 @@ public class IdentifyDuplicatesCli {
 			outputFilePrefix = "";
 		}
 
+		String logFileName = outputFilePrefix + "_" + applicationName + "_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS() + ".log";
+		logFileName = logFileName.replaceAll(" ", "_");
+		logFileName = logFileName.replaceAll("/", "_");
+		logFileName = logFileName.replaceAll(":", "-");
+		File logFile = new File(outputDirectory, logFileName);
+		try {
+			LoggingUtil.setLogFile(logFile);
+		} catch (IOException e2) {
+			throw new IllegalStateException("Unable to create log file at " + logFile.getAbsolutePath() + ".", e2);
+		}
+		logger.info(commandLineSignature);
+
 		String tempDirectoryString = parsedCommandLine.getOptionsValue(TMP_DIR_OPTION);
 		File tempDirectory = null;
 		if (tempDirectoryString != null) {
@@ -133,8 +141,6 @@ public class IdentifyDuplicatesCli {
 			// default temp directory
 			tempDirectory = FileUtil.getSystemSpecificTempDirectory();
 		}
-
-		boolean saveTmpFiles = parsedCommandLine.isOptionPresent(SAVE_TMP_DIR_OPTION);
 
 		File fastQ1WithUidsFile = new File(parsedCommandLine.getOptionsValue(FASTQ_ONE_OPTION));
 
@@ -164,40 +170,29 @@ public class IdentifyDuplicatesCli {
 			}
 		}
 
-		int extensionUidLength = DEFAULT_EXTENSION_UID_LENGTH;
-		boolean uidLengthOptionIsPresent = parsedCommandLine.isOptionPresent(EXTENSION_UID_LENGTH_OPTION);
-		if (uidLengthOptionIsPresent) {
-			try {
-				extensionUidLength = Integer.parseInt(parsedCommandLine.getOptionsValue(EXTENSION_UID_LENGTH_OPTION));
-			} catch (NumberFormatException ex) {
-				throw new IllegalStateException("UID length specified is not an integer[" + parsedCommandLine.getOptionsValue(EXTENSION_UID_LENGTH_OPTION) + "].");
+		Integer extensionUidLength;
+		try {
+			extensionUidLength = ProbeFileUtil.extractExtensionUidLength(probeFile);
+			if (extensionUidLength == null) {
+				extensionUidLength = DEFAULT_EXTENSION_UID_LENGTH;
 			}
+		} catch (FileNotFoundException e1) {
+			throw new IllegalStateException(e1);
 		}
 
-		int ligationUidLength = DEFAULT_LIGATION_UID_LENGTH;
-		boolean ligationUidLengthOptionIsPresent = parsedCommandLine.isOptionPresent(LIGATION_UID_LENGTH_OPTION);
-		if (ligationUidLengthOptionIsPresent) {
-			try {
-				ligationUidLength = Integer.parseInt(parsedCommandLine.getOptionsValue(LIGATION_UID_LENGTH_OPTION));
-			} catch (NumberFormatException ex) {
-				throw new IllegalStateException("Ligation UID length specified is not an integer[" + parsedCommandLine.getOptionsValue(LIGATION_UID_LENGTH_OPTION) + "].");
+		Integer ligationUidLength;
+		try {
+			ligationUidLength = ProbeFileUtil.extractLigationUidLength(probeFile);
+			if (ligationUidLength == null) {
+				ligationUidLength = DEFAULT_LIGATION_UID_LENGTH;
 			}
+		} catch (FileNotFoundException e1) {
+			throw new IllegalStateException(e1);
 		}
-
-		boolean allowVariableLengthUids = parsedCommandLine.isOptionPresent(ALLOW_VARIABLE_LENGTH_UIDS_OPTION);
-		boolean useStrictReadToProbeMatching = parsedCommandLine.isOptionPresent(STRICT_READ_TO_PROBE_MATCHING_OPTION);
 
 		String outputBamFileName = parsedCommandLine.getOptionsValue(OUTPUT_BAM_FILE_NAME_OPTION);
 		if (!outputBamFileName.endsWith(BAM_EXTENSION)) {
 			outputBamFileName += BAM_EXTENSION;
-		}
-
-		boolean shouldOutputQualityReports = parsedCommandLine.isOptionPresent(SHOULD_OUTPUT_REPORTS_OPTION);
-		if (shouldOutputQualityReports) {
-			if (!parsedCommandLine.isOptionPresent(OUTPUT_FILE_PREFIX_OPTION)) {
-				throw new IllegalStateException("When the --" + SHOULD_OUTPUT_REPORTS_OPTION.getLongFormOption() + " option is specified the --" + OUTPUT_FILE_PREFIX_OPTION.getLongFormOption()
-						+ " option must also be specified");
-			}
 		}
 
 		// Set up our alignment scorer
@@ -276,7 +271,7 @@ public class IdentifyDuplicatesCli {
 			Path tempOutputDirectoryPath = Files.createTempDirectory(tempDirectory.toPath(), "nimblegen_");
 			final File tempOutputDirectory = tempOutputDirectoryPath.toFile();
 			// Delete our temporary directory when we shut down the JVM if the user hasn't asked us to keep it
-			if (!saveTmpFiles) {
+			if (!saveTemporaryFiles) {
 				Runtime.getRuntime().addShutdownHook(new Thread() {
 					@Override
 					public void run() {
@@ -322,9 +317,9 @@ public class IdentifyDuplicatesCli {
 				}
 			}
 
-			sortMergeFilterAndExtendReads(probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, tempOutputDirectory,
-					shouldOutputQualityReports, commandLineSignature, numProcessors, extensionUidLength, ligationUidLength, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget,
-					markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching);
+			sortMergeFilterAndExtendReads(applicationName, applicationVersion, probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix,
+					tempOutputDirectory, shouldOutputQualityReports, commandLineSignature, numProcessors, extensionUidLength, ligationUidLength, allowVariableLengthUids, alignmentScorer,
+					notTrimmedToWithinCaptureTarget, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching);
 
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
@@ -332,10 +327,10 @@ public class IdentifyDuplicatesCli {
 
 	}
 
-	public static void sortMergeFilterAndExtendReads(File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName,
-			String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputQualityReports, String commandLineSignature, int numProcessors, int extensionUidLength, int ligationUidLength,
-			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinCaptureTarget, boolean markDuplicates, boolean keepDuplicates, boolean mergePairs,
-			boolean useStrictReadToProbeMatching) {
+	public static void sortMergeFilterAndExtendReads(String applicationName, String applicationVersion, File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File,
+			File outputDirectory, String outputBamFileName, String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputQualityReports, String commandLineSignature, int numProcessors,
+			int extensionUidLength, int ligationUidLength, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinCaptureTarget, boolean markDuplicates,
+			boolean keepDuplicates, boolean mergePairs, boolean useStrictReadToProbeMatching) {
 		try {
 
 			final File mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", tempOutputDirectory);
@@ -357,9 +352,9 @@ public class IdentifyDuplicatesCli {
 			samReader.close();
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
-					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, commandLineSignature, APPLICATION_NAME,
-					applicationVersionFromManifest, numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, extensionUidLength, ligationUidLength, markDuplicates,
-					keepDuplicates, mergePairs, useStrictReadToProbeMatching);
+					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputQualityReports, commandLineSignature, applicationName, applicationVersion,
+					numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, extensionUidLength, ligationUidLength, markDuplicates, keepDuplicates, mergePairs,
+					useStrictReadToProbeMatching);
 
 			PrimerReadExtensionAndPcrDuplicateIdentification.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
@@ -386,12 +381,7 @@ public class IdentifyDuplicatesCli {
 		group.addOption(OUTPUT_BAM_FILE_NAME_OPTION);
 		group.addOption(OUTPUT_FILE_PREFIX_OPTION);
 		group.addOption(TMP_DIR_OPTION);
-		group.addOption(SAVE_TMP_DIR_OPTION);
-		group.addOption(SHOULD_OUTPUT_REPORTS_OPTION);
 		group.addOption(NUM_PROCESSORS_OPTION);
-		group.addOption(EXTENSION_UID_LENGTH_OPTION);
-		group.addOption(LIGATION_UID_LENGTH_OPTION);
-		group.addOption(ALLOW_VARIABLE_LENGTH_UIDS_OPTION);
 		group.addOption(MATCH_SCORE_OPTION);
 		group.addOption(MISMATCH_PENALTY_OPTION);
 		group.addOption(GAP_OPEN_PENALTY_OPTION);
@@ -401,7 +391,6 @@ public class IdentifyDuplicatesCli {
 		group.addOption(KEEP_DUPLICATES_OPTION);
 		group.addOption(MERGE_PAIRS_OPTION);
 		group.addOption(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
-		group.addOption(STRICT_READ_TO_PROBE_MATCHING_OPTION);
 		return group;
 	}
 }

@@ -12,8 +12,8 @@ public class HsqUtilsCli {
 	public final static String APPLICATION_NAME = "HSQUtils";
 	private static String applicationVersionFromManifest = "unversioned";
 
-	private final static String TRIM_COMMAND_NAME = "Trim";
-	private final static String IDENTIFY_DUPLICATES_COMMAND_NAME = "IdentifyDuplicates";
+	private final static String TRIM_COMMAND_NAME = "trim";
+	private final static String IDENTIFY_DUPLICATES_COMMAND_NAME = "dedup";
 
 	public static void main(String[] args) {
 		runCommandLineApp(args);
@@ -24,7 +24,7 @@ public class HsqUtilsCli {
 		if (version != null) {
 			applicationVersionFromManifest = version;
 		}
-		outputToConsole("Roche NimbleGen Command Line Utilities (version:" + applicationVersionFromManifest + ")");
+		outputToConsole("Roche NimbleGen HeatSeq Utilities (version:" + applicationVersionFromManifest + ")");
 
 		String commandLineSignature = CommandLineParser.getCommandLineCallSignature(APPLICATION_NAME, args, true);
 		outputToConsole(commandLineSignature);
@@ -49,9 +49,9 @@ public class HsqUtilsCli {
 
 			if (activeCommand != null) {
 				if (activeCommand.getCommandName().equals(TRIM_COMMAND_NAME)) {
-					TrimCli.trim(parsedCommandLine);
+					TrimCli.trim(parsedCommandLine, commandLineSignature, APPLICATION_NAME);
 				} else if (activeCommand.getCommandName().equals(IDENTIFY_DUPLICATES_COMMAND_NAME)) {
-					IdentifyDuplicatesCli.identifyDuplicates(parsedCommandLine, commandLineSignature);
+					IdentifyDuplicatesCli.identifyDuplicates(parsedCommandLine, commandLineSignature, APPLICATION_NAME, applicationVersionFromManifest);
 				} else {
 					throw new AssertionError();
 				}

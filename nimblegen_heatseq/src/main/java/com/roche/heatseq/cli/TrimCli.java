@@ -3,14 +3,21 @@ package com.roche.heatseq.cli;
 import java.io.File;
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.roche.heatseq.process.FastqReadTrimmer;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
+import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.LoggingUtil;
 
 public class TrimCli {
 
-	public static void trim(ParsedCommandLine parsedCommandLine) {
+	private static final Logger logger = LoggerFactory.getLogger(TrimCli.class);
+
+	public static void trim(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName) {
 		String outputDirectoryString = parsedCommandLine.getOptionsValue(IdentifyDuplicatesCli.OUTPUT_DIR_OPTION);
 		File outputDirectory = null;
 		if (outputDirectoryString != null) {
@@ -59,6 +66,19 @@ public class TrimCli {
 
 		File outputFastQ1File = new File(outputDirectory, outputFilePrefix + "trimmed_" + FileUtil.getFileNameWithoutExtension(fastQ1File.getName()) + ".fastq");
 		File outputFastQ2File = new File(outputDirectory, outputFilePrefix + "trimmed_" + FileUtil.getFileNameWithoutExtension(fastQ2File.getName()) + ".fastq");
+
+		String logFileName = applicationName + "_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS() + ".log";
+		logFileName = logFileName.replaceAll(" ", "_");
+		logFileName = logFileName.replaceAll("/", "_");
+		logFileName = logFileName.replaceAll(":", "-");
+		File logFile = new File(outputDirectory, logFileName);
+		try {
+			LoggingUtil.setLogFile(logFile);
+		} catch (IOException e2) {
+			throw new IllegalStateException("Unable to create log file at " + logFile.getAbsolutePath() + ".", e2);
+		}
+
+		logger.info(commandLineSignature);
 
 		try {
 			FastqReadTrimmer.trimReads(fastQ1File, fastQ2File, probeFile, IdentifyDuplicatesCli.DEFAULT_EXTENSION_UID_LENGTH, IdentifyDuplicatesCli.DEFAULT_LIGATION_UID_LENGTH, outputFastQ1File,
