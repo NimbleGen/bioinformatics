@@ -64,7 +64,8 @@ public class TrimCli {
 			FastqReadTrimmer.trimReads(fastQ1File, fastQ2File, probeFile, IdentifyDuplicatesCli.DEFAULT_EXTENSION_UID_LENGTH, IdentifyDuplicatesCli.DEFAULT_LIGATION_UID_LENGTH, outputFastQ1File,
 					outputFastQ2File);
 		} catch (IOException e) {
-			throw new IllegalStateException(e);
+			throw new IllegalStateException("Unable to trim reads from fastq1File[" + fastQ1File.getAbsolutePath() + "] and fastq2File[" + fastQ1File + "] using probe information file["
+					+ probeFile.getAbsolutePath() + "].");
 		}
 
 	}
