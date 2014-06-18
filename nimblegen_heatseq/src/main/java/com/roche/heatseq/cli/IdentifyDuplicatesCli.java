@@ -14,7 +14,7 @@
  *   limitations under the License.
  */
 
-package com.roche.heatseq.process;
+package com.roche.heatseq.cli;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,19 +28,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.ApplicationSettings;
+import com.roche.heatseq.process.FastqAndBamFileMerger;
+import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentification;
 import com.roche.heatseq.utils.BamFileUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.SimpleAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
-import com.roche.sequencing.bioinformatics.common.commandline.CommandLineParser;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
-import com.roche.sequencing.bioinformatics.common.utils.ManifestUtil;
 
-public class PrefuppCli {
-	private final static Logger logger = LoggerFactory.getLogger(PrefuppCli.class);
+public class IdentifyDuplicatesCli {
+	private final static Logger logger = LoggerFactory.getLogger(IdentifyDuplicatesCli.class);
 
 	public final static String APPLICATION_NAME = "prefupp";
 	private static String applicationVersionFromManifest = "unversioned";
@@ -91,40 +91,6 @@ public class PrefuppCli {
 			null,
 			"Only match reads with a probe if they align perfectly.  This will reduce the number of reads assigned to multiple probes but might also remove actual reads that should be assigned to any given probe.",
 			false, true);
-
-	public static void main(String[] args) {
-		String version = ManifestUtil.getManifestValue("version");
-		if (version != null) {
-			applicationVersionFromManifest = version;
-		}
-		outputToConsole("Primer Read Extension and Filtering of Unique PCR Probes (version:" + applicationVersionFromManifest + ")");
-
-		try {
-			runCommandLineApp(args);
-		} catch (IllegalStateException e) {
-			outputToConsole(e.getMessage());
-			System.exit(-1);
-		}
-	}
-
-	static void runCommandLineApp(String[] args) {
-		long start = System.currentTimeMillis();
-		String commandLineSignature = CommandLineParser.getCommandLineCallSignature(APPLICATION_NAME, args, true);
-		outputToConsole(commandLineSignature);
-		outputToConsole("");
-		ParsedCommandLine parsedCommandLine = CommandLineParser.parseCommandLine(args, getCommandLineOptionsGroup());
-		boolean noOptionsProvided = (args.length == 0);
-		boolean showUsage = parsedCommandLine.isOptionPresent(USAGE_OPTION) || noOptionsProvided;
-
-		if (showUsage) {
-			outputToConsole(parsedCommandLine.getCommandLineOptionsGroup().getUsage());
-		} else {
-			CommandLineParser.throwCommandLineParsingExceptions(parsedCommandLine);
-
-			long end = System.currentTimeMillis();
-			outputToConsole("Processing Completed (Total time: " + DateUtil.convertMillisecondsToHHMMSS(end - start) + ").");
-		}
-	}
 
 	static void identifyDuplicates(ParsedCommandLine parsedCommandLine, String commandLineSignature) {
 		String outputDirectoryString = parsedCommandLine.getOptionsValue(OUTPUT_DIR_OPTION);
@@ -395,7 +361,7 @@ public class PrefuppCli {
 					applicationVersionFromManifest, numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, extensionUidLength, ligationUidLength, markDuplicates,
 					keepDuplicates, mergePairs, useStrictReadToProbeMatching);
 
-			PrimerReadExtensionAndFilteringOfUniquePcrProbes.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
+			PrimerReadExtensionAndPcrDuplicateIdentification.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
 			long totalTimeStop = System.currentTimeMillis();
 			logger.debug("done - Total time: (" + DateUtil.convertMillisecondsToHHMMSS(totalTimeStop - totalTimeStart) + ")");

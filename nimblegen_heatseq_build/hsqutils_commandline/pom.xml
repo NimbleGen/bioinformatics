@@ -9,11 +9,11 @@
 		<relativePath>../../superpom/pom.xml</relativePath>
 	</parent>
 
-	<artifactId>prefupp</artifactId>
+	<artifactId>hsqutils</artifactId>
 	<packaging>pom</packaging>
-	<name>Heatseq Command Line</name>
-	<description>Command line tool for heatseq</description>
-	<version>v22</version>
+	<name>HSQ Utils</name>
+	<description>Command line tool for Heatseq Utilities</description>
+	<version>v1</version>
 	
 	<modules>
 		<module>../../bioinformatics_common</module>
@@ -49,7 +49,7 @@
 					<appendAssemblyId>false</appendAssemblyId>
 					<archive>
 						<manifestEntries>
-							<Main-Class>com/roche/heatseq/process/PrefuppCli</Main-Class>
+							<Main-Class>com/roche/heatseq/process/RocheNimbleGenCommandLineUtils</Main-Class>
 							<Implementation-Build>${maven.build.timestamp}</Implementation-Build>
 							<version>${project.version}</version>
 						</manifestEntries>
