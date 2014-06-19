@@ -78,9 +78,9 @@ import com.roche.sequencing.bioinformatics.common.utils.TabDelimitedFileWriter;
  * Fastq2 always has opposite strandedness as probe
  * 
  */
-class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
+public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
-	private static Logger logger = LoggerFactory.getLogger(PrimerReadExtensionAndFilteringOfUniquePcrProbes.class);
+	private static Logger logger = LoggerFactory.getLogger(PrimerReadExtensionAndPcrDuplicateIdentification.class);
 
 	private static volatile Semaphore primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore = null;
 	private final static int READ_TO_PROBE_ALIGNMENT_BUFFER = 0;
@@ -88,7 +88,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	/**
 	 * We never create instances of this class, we only expose static methods
 	 */
-	private PrimerReadExtensionAndFilteringOfUniquePcrProbes() {
+	private PrimerReadExtensionAndPcrDuplicateIdentification() {
 		throw new AssertionError();
 	}
 
@@ -98,7 +98,7 @@ class PrimerReadExtensionAndFilteringOfUniquePcrProbes {
 	 * @param applicationSettings
 	 *            The context our application is running under.
 	 */
-	static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings) {
+	public static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings) {
 
 		// Initialize the thread semaphore if it hasn't already been initialized
 

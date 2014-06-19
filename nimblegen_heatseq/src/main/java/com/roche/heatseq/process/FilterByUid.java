@@ -92,9 +92,9 @@ class FilterByUid {
 					ligationUid = SAMRecordUtil.getLigationVariableLengthUid(mate, probe, reportManager, alignmentScorer);
 
 					if (useStrictReadToProbeMatching && (extensionUid != null) && (ligationUid != null)) {
-						boolean readOneAlignsWithProbeCoordinates = PrimerReadExtensionAndFilteringOfUniquePcrProbes.readPairAlignsWithProbeCoordinates(probe, record, true, extensionUid.length(),
+						boolean readOneAlignsWithProbeCoordinates = PrimerReadExtensionAndPcrDuplicateIdentification.readPairAlignsWithProbeCoordinates(probe, record, true, extensionUid.length(),
 								ligationUid.length());
-						boolean readTwoAlignsWithProbeCoordinates = PrimerReadExtensionAndFilteringOfUniquePcrProbes.readPairAlignsWithProbeCoordinates(probe, mate, false, ligationUid.length(),
+						boolean readTwoAlignsWithProbeCoordinates = PrimerReadExtensionAndPcrDuplicateIdentification.readPairAlignsWithProbeCoordinates(probe, mate, false, ligationUid.length(),
 								ligationUid.length());
 						readPairAlignsWithProbeCoordinates = readOneAlignsWithProbeCoordinates && readTwoAlignsWithProbeCoordinates;
 					}
