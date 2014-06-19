@@ -17,7 +17,7 @@ public class TrimCli {
 
 	private static final Logger logger = LoggerFactory.getLogger(TrimCli.class);
 
-	public static void trim(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName) {
+	public static void trim(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion) {
 		String outputDirectoryString = parsedCommandLine.getOptionsValue(IdentifyDuplicatesCli.OUTPUT_DIR_OPTION);
 		File outputDirectory = null;
 		if (outputDirectoryString != null) {
@@ -78,7 +78,8 @@ public class TrimCli {
 			throw new IllegalStateException("Unable to create log file at " + logFile.getAbsolutePath() + ".", e2);
 		}
 
-		logger.info(commandLineSignature);
+		logger.info(applicationName + " version:" + applicationVersion);
+		logger.info("command line signature: " + commandLineSignature);
 
 		try {
 			FastqReadTrimmer.trimReads(fastQ1File, fastQ2File, probeFile, IdentifyDuplicatesCli.DEFAULT_EXTENSION_UID_LENGTH, IdentifyDuplicatesCli.DEFAULT_LIGATION_UID_LENGTH, outputFastQ1File,

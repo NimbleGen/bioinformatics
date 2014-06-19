@@ -1,5 +1,8 @@
 package com.roche.heatseq.cli;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.roche.sequencing.bioinformatics.common.commandline.Command;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineParser;
 import com.roche.sequencing.bioinformatics.common.commandline.Commands;
@@ -9,6 +12,8 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class HsqUtilsCli {
 
+	private static Logger logger = LoggerFactory.getLogger(HsqUtilsCli.class);
+
 	public final static String APPLICATION_NAME = "HSQUtils";
 	private static String applicationVersionFromManifest = "unversioned";
 
@@ -16,7 +21,11 @@ public class HsqUtilsCli {
 	private final static String IDENTIFY_DUPLICATES_COMMAND_NAME = "dedup";
 
 	public static void main(String[] args) {
-		runCommandLineApp(args);
+		try {
+			runCommandLineApp(args);
+		} catch (Throwable t) {
+			logger.warn(t.getMessage(), t);
+		}
 	}
 
 	public static void runCommandLineApp(String[] args) {
@@ -49,7 +58,7 @@ public class HsqUtilsCli {
 
 			if (activeCommand != null) {
 				if (activeCommand.getCommandName().equals(TRIM_COMMAND_NAME)) {
-					TrimCli.trim(parsedCommandLine, commandLineSignature, APPLICATION_NAME);
+					TrimCli.trim(parsedCommandLine, commandLineSignature, APPLICATION_NAME, applicationVersionFromManifest);
 				} else if (activeCommand.getCommandName().equals(IDENTIFY_DUPLICATES_COMMAND_NAME)) {
 					IdentifyDuplicatesCli.identifyDuplicates(parsedCommandLine, commandLineSignature, APPLICATION_NAME, applicationVersionFromManifest);
 				} else {

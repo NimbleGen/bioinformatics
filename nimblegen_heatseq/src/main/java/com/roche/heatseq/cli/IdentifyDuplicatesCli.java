@@ -123,7 +123,8 @@ public class IdentifyDuplicatesCli {
 		} catch (IOException e2) {
 			throw new IllegalStateException("Unable to create log file at " + logFile.getAbsolutePath() + ".", e2);
 		}
-		logger.info(commandLineSignature);
+		logger.info(applicationName + " version:" + applicationVersion);
+		logger.info("command line signature: " + commandLineSignature);
 
 		String tempDirectoryString = parsedCommandLine.getOptionsValue(TMP_DIR_OPTION);
 		File tempDirectory = null;
@@ -142,10 +143,10 @@ public class IdentifyDuplicatesCli {
 			tempDirectory = FileUtil.getSystemSpecificTempDirectory();
 		}
 
-		File fastQ1WithUidsFile = new File(parsedCommandLine.getOptionsValue(FASTQ_ONE_OPTION));
+		File fastQ1File = new File(parsedCommandLine.getOptionsValue(FASTQ_ONE_OPTION));
 
-		if (!fastQ1WithUidsFile.exists()) {
-			throw new IllegalStateException("Unable to find provided FASTQ1 file[" + fastQ1WithUidsFile.getAbsolutePath() + "].");
+		if (!fastQ1File.exists()) {
+			throw new IllegalStateException("Unable to find provided FASTQ1 file[" + fastQ1File.getAbsolutePath() + "].");
 		}
 
 		File fastQ2File = new File(parsedCommandLine.getOptionsValue(FASTQ_TWO_OPTION));
@@ -287,37 +288,44 @@ public class IdentifyDuplicatesCli {
 			// Try to locate or create an index file for the input bam file
 			File bamIndexFile = null;
 
-			// Look for the index in the same location as the file but with a .bai extension instead of a .bam extension
-			File tempBamIndexfile = new File(FileUtil.getFileNameWithoutExtension(bamFileString) + ".bai");
-			if (tempBamIndexfile.exists()) {
-				bamIndexFile = tempBamIndexfile;
-				outputToConsole("Using the BAM Index File located at [" + bamIndexFile + "].");
-			}
+			try (SAMFileReader samReader = new SAMFileReader(bamFile)) {
+				boolean isSamFormat = !samReader.isBinary();
 
-			// Try looking for a .bai file in the same location as the bam file
-			if (bamIndexFile == null) {
-				// Try looking for a .bam.bai file in the same location as the bam file
-				tempBamIndexfile = new File(bamFileString + ".bai");
-				if (tempBamIndexfile.exists()) {
-					bamIndexFile = tempBamIndexfile;
-					outputToConsole("Using the BAM Index File located at [" + bamIndexFile + "].");
+				if (!isSamFormat) {
+
+					// Look for the index in the same location as the file but with a .bai extension instead of a .bam extension
+					File tempBamIndexfile = new File(FileUtil.getFileNameWithoutExtension(bamFileString) + ".bai");
+					if (tempBamIndexfile.exists()) {
+						bamIndexFile = tempBamIndexfile;
+						outputToConsole("Using the BAM Index File located at [" + bamIndexFile + "].");
+					}
+
+					// Try looking for a .bai file in the same location as the bam file
+					if (bamIndexFile == null) {
+						// Try looking for a .bam.bai file in the same location as the bam file
+						tempBamIndexfile = new File(bamFileString + ".bai");
+						if (tempBamIndexfile.exists()) {
+							bamIndexFile = tempBamIndexfile;
+							outputToConsole("Using the BAM Index File located at [" + bamIndexFile + "].");
+						}
+					}
+
+					// We couldn't find an index file, create one in our temp directory
+					if ((bamIndexFile == null) || !bamIndexFile.exists()) {
+						// a bam index file was not provided so create one in the default location
+						bamIndexFile = File.createTempFile("bam_index_", ".bai", tempOutputDirectory);
+						outputToConsole("A BAM Index File was not found in the default location so creating bam index file at:" + bamIndexFile);
+						try {
+
+							BamFileUtil.createIndex(samReader, bamIndexFile);
+						} catch (Exception e) {
+							throw new IllegalStateException("Could not find or create bam index file at [" + bamIndexFile.getAbsolutePath() + "].", e);
+						}
+					}
 				}
 			}
 
-			// We couldn't find an index file, create one in our temp directory
-			if ((bamIndexFile == null) || !bamIndexFile.exists()) {
-				// a bam index file was not provided so create one in the default location
-				bamIndexFile = File.createTempFile("bam_index_", ".bai", tempOutputDirectory);
-				outputToConsole("A BAM Index File was not found in the default location so creating bam index file at:" + bamIndexFile);
-				try {
-					SAMFileReader samReader = new SAMFileReader(bamFile);
-					BamFileUtil.createIndex(samReader, bamIndexFile);
-				} catch (Exception e) {
-					throw new IllegalStateException("Could not find or create bam index file at [" + bamIndexFile.getAbsolutePath() + "].", e);
-				}
-			}
-
-			sortMergeFilterAndExtendReads(applicationName, applicationVersion, probeFile, bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix,
+			sortMergeFilterAndExtendReads(applicationName, applicationVersion, probeFile, bamFile, bamIndexFile, fastQ1File, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix,
 					tempOutputDirectory, shouldOutputQualityReports, commandLineSignature, numProcessors, extensionUidLength, ligationUidLength, allowVariableLengthUids, alignmentScorer,
 					notTrimmedToWithinCaptureTarget, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching);
 
@@ -338,7 +346,7 @@ public class IdentifyDuplicatesCli {
 
 			long totalTimeStart = System.currentTimeMillis();
 
-			FastqAndBamFileMerger.createMergedFastqAndBamFileFromUnsortedFiles(bamFile, fastQ1WithUidsFile, fastQ2File, mergedBamFileSortedByCoordinates);
+			FastqAndBamFileMerger.createMergedFastqAndBamFileFromUnsortedFiles(bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, mergedBamFileSortedByCoordinates);
 			long timeAfterMergeUnsorted = System.currentTimeMillis();
 			logger.debug("done merging bam and fastqfiles ... result[" + mergedBamFileSortedByCoordinates.getAbsolutePath() + "] in " + (timeAfterMergeUnsorted - totalTimeStart) + "ms.");
 
