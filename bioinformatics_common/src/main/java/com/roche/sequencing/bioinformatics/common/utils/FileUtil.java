@@ -24,6 +24,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Scanner;
 
 import org.apache.commons.io.FileUtils;
@@ -102,6 +103,26 @@ public final class FileUtil {
 		StringBuilder fileData = new StringBuilder(STRING_BUILDER_INITIAL_SIZE);
 
 		try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+			char[] buf = new char[BYTES_PER_KB];
+			int numRead = 0;
+
+			while ((numRead = reader.read(buf)) != -1) {
+				fileData.append(buf, 0, numRead);
+			}
+
+			return fileData.toString();
+		}
+
+	}
+
+	/**
+	 * Simple utility to read the entire contents of a file into a string This code was taken from http://snippets.dzone.com/posts/show/1335
+	 * 
+	 */
+	public static String readStreamAsString(InputStream stream) throws java.io.IOException {
+		StringBuilder fileData = new StringBuilder(STRING_BUILDER_INITIAL_SIZE);
+
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
 			char[] buf = new char[BYTES_PER_KB];
 			int numRead = 0;
 
