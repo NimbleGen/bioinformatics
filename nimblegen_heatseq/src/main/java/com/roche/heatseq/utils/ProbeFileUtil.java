@@ -47,6 +47,7 @@ public final class ProbeFileUtil {
 
 	private final static String EXTENSION_UID_NAME_IN_PROBE_INFO_HEADER = "extension_uid";
 	private final static String LIGATION_UID_NAME_IN_PROBE_INFO_HEADER = "ligation_uid";
+	private final static String GENOME_NAME_IN_PROBE_INFO_HEADER = "genome";
 
 	private ProbeFileUtil() {
 		throw new AssertionError();
@@ -183,8 +184,8 @@ public final class ProbeFileUtil {
 		Map<String, String> nameValuePairsMap = new HashMap<String, String>();
 		String firstLine = FileUtil.readFirstLineAsString(probeFile);
 		if (firstLine.startsWith("#")) {
-			String firstLineWithoutPound = firstLine.substring(1, firstLine.length() - 1);
-			String[] nameValuePairs = firstLineWithoutPound.split(" ");
+			String firstLineWithPound = firstLine.substring(1, firstLine.length());
+			String[] nameValuePairs = firstLineWithPound.split(" ");
 			for (String nameValuePair : nameValuePairs) {
 				String[] splitNameValuePair = nameValuePair.split("=");
 				if (splitNameValuePair.length == 2) {
@@ -194,6 +195,20 @@ public final class ProbeFileUtil {
 		}
 		return nameValuePairsMap;
 
+	}
+
+	public static Integer extractLigationUidLength(File probeFile) throws FileNotFoundException {
+		Integer ligationUidLength = null;
+		Map<String, String> nameValuePairs = parseHeaderNameValuePairs(probeFile);
+		String ligationUidLengthAsString = nameValuePairs.get(LIGATION_UID_NAME_IN_PROBE_INFO_HEADER);
+		if (ligationUidLengthAsString != null) {
+			try {
+				ligationUidLength = Integer.parseInt(ligationUidLengthAsString);
+			} catch (NumberFormatException e) {
+				logger.warn("Unable to parse extension uid length from probe information header[" + ligationUidLengthAsString + "] as integer.");
+			}
+		}
+		return ligationUidLength;
 	}
 
 	public static Integer extractExtensionUidLength(File probeFile) throws FileNotFoundException {
@@ -210,18 +225,13 @@ public final class ProbeFileUtil {
 		return extensionUidLength;
 	}
 
-	public static Integer extractLigationUidLength(File probeFile) throws FileNotFoundException {
-		Integer ligationUidLength = null;
+	public static String extractGenomeNameInLowerCase(File probeFile) throws FileNotFoundException {
 		Map<String, String> nameValuePairs = parseHeaderNameValuePairs(probeFile);
-		String ligationUidLengthAsString = nameValuePairs.get(LIGATION_UID_NAME_IN_PROBE_INFO_HEADER);
-		if (ligationUidLengthAsString != null) {
-			try {
-				ligationUidLength = Integer.parseInt(ligationUidLengthAsString);
-			} catch (NumberFormatException e) {
-				logger.warn("Unable to parse extension uid length from probe information header[" + ligationUidLengthAsString + "] as integer.");
-			}
+		String genomeName = nameValuePairs.get(GENOME_NAME_IN_PROBE_INFO_HEADER);
+		if (genomeName != null) {
+			genomeName = genomeName.toLowerCase();
 		}
-		return ligationUidLength;
+		return genomeName;
 	}
 
 }

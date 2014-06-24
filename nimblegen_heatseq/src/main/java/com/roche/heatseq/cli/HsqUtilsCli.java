@@ -1,6 +1,9 @@
 package com.roche.heatseq.cli;
 
+import java.io.File;
+
 import com.roche.heatseq.qualityreport.FunGeneralErrors;
+import com.roche.heatseq.qualityreport.LoggingUtil;
 import com.roche.sequencing.bioinformatics.common.commandline.Command;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineParser;
 import com.roche.sequencing.bioinformatics.common.commandline.Commands;
@@ -19,16 +22,21 @@ public class HsqUtilsCli {
 	public final static String FILE_LOGGER_NAME = "root";
 
 	public static void main(String[] args) {
+		String funError = FunGeneralErrors.getFunError();
 		try {
 			runCommandLineApp(args);
 		} catch (Throwable t) {
-			String funError = FunGeneralErrors.getFunError();
+			File logFile = LoggingUtil.getLogFile();
+
 			String underlineFrame = StringUtil.repeatString("_", funError.length());
 			CliStatusConsole.logError(underlineFrame);
 			CliStatusConsole.logError("");
 			CliStatusConsole.logError(funError);
 			CliStatusConsole.logError("");
 			CliStatusConsole.logError(t);
+			if (logFile != null) {
+				CliStatusConsole.logError("You may find additional details regarding your error in the log file [" + logFile.getAbsolutePath() + "].");
+			}
 			CliStatusConsole.logError("If you are unable to fix this issue and believe the application is in error please contact technical support at http://www.nimblegen.com/arraysupport/.");
 			CliStatusConsole.logError("");
 			CliStatusConsole.logError(underlineFrame);

@@ -8,16 +8,21 @@ import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.process.FastqReadTrimmer;
 import com.roche.heatseq.qualityreport.LoggingUtil;
+import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class TrimCli {
 
 	private static final Logger logger = LoggerFactory.getLogger(TrimCli.class);
 
 	public static void trim(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion) {
+
+		CliStatusConsole.logStatus("Trimming has started." + StringUtil.NEWLINE);
+
 		String outputDirectoryString = parsedCommandLine.getOptionsValue(DeduplicationCli.OUTPUT_DIR_OPTION);
 		File outputDirectory = null;
 		if (outputDirectoryString != null) {
@@ -67,7 +72,7 @@ public class TrimCli {
 		File outputFastQ1File = new File(outputDirectory, outputFilePrefix + "trimmed_" + FileUtil.getFileNameWithoutExtension(fastQ1File.getName()) + ".fastq");
 		File outputFastQ2File = new File(outputDirectory, outputFilePrefix + "trimmed_" + FileUtil.getFileNameWithoutExtension(fastQ2File.getName()) + ".fastq");
 
-		String logFileName = applicationName + "_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS() + ".log";
+		String logFileName = applicationName + "_trim_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS() + ".log";
 		logFileName = logFileName.replaceAll(" ", "_");
 		logFileName = logFileName.replaceAll("/", "_");
 		logFileName = logFileName.replaceAll(":", "-");
@@ -84,6 +89,14 @@ public class TrimCli {
 		try {
 			FastqReadTrimmer.trimReads(fastQ1File, fastQ2File, probeFile, DeduplicationCli.DEFAULT_EXTENSION_UID_LENGTH, DeduplicationCli.DEFAULT_LIGATION_UID_LENGTH, outputFastQ1File,
 					outputFastQ2File);
+
+			CliStatusConsole.logStatus(StringUtil.NEWLINE + "Trimming completed succesfully." + StringUtil.NEWLINE);
+
+			String genomeNameFromProbeInfoFile = ProbeFileUtil.extractGenomeNameInLowerCase(probeFile);
+			if (genomeNameFromProbeInfoFile != null) {
+				CliStatusConsole.logStatus("Please make sure to use genome build [" + genomeNameFromProbeInfoFile
+						+ "] when mapping these reads to ensure the mappings correspond with the correct locations defined in the probe information file.");
+			}
 		} catch (IOException e) {
 			throw new IllegalStateException("Unable to trim reads from fastq1File[" + fastQ1File.getAbsolutePath() + "] and fastq2File[" + fastQ1File + "] using probe information file["
 					+ probeFile.getAbsolutePath() + "].");

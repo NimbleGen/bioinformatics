@@ -15,7 +15,7 @@ public class FunGeneralErrors {
 
 	private static String[] funErrorsFromFile;
 	private static String DEFAULT_ERROR = "There has been a problem.";
-	private static boolean FUN_ERRORS_RETRIEVED = false;
+	private static boolean FUN_ERRORS_RETRIEVAL_ATTEMPTED = false;
 
 	private FunGeneralErrors() {
 		throw new AssertionError();
@@ -23,7 +23,7 @@ public class FunGeneralErrors {
 
 	public static String getFunError() {
 		String funError = DEFAULT_ERROR;
-		if (!FUN_ERRORS_RETRIEVED) {
+		if (!FUN_ERRORS_RETRIEVAL_ATTEMPTED) {
 			retrieveFunErrorsFromFile();
 		}
 
@@ -40,7 +40,7 @@ public class FunGeneralErrors {
 	}
 
 	private static void retrieveFunErrorsFromFile() {
-		FUN_ERRORS_RETRIEVED = true;
+		FUN_ERRORS_RETRIEVAL_ATTEMPTED = true;
 		try {
 			InputStream stream = FunGeneralErrors.class.getResourceAsStream("fun_errors.txt");
 			String fileAsString = FileUtil.readStreamAsString(stream);
