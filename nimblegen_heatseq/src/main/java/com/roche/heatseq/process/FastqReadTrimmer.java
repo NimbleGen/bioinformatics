@@ -8,11 +8,19 @@ import net.sf.picard.fastq.FastqRecord;
 import net.sf.picard.fastq.FastqWriter;
 import net.sf.picard.fastq.FastqWriterFactory;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.roche.heatseq.cli.CliStatusConsole;
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.heatseq.utils.ProbeFileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class FastqReadTrimmer {
+
+	private static Logger logger = LoggerFactory.getLogger(FastqReadTrimmer.class);
 
 	public static void trimReads(File inputFastqOneFile, File inputFastqTwoFile, File probeInfoFile, int extensionUidLength, int ligationUidLength, File outputFastqOneFile, File outputFastqTwoFile)
 			throws IOException {
@@ -20,11 +28,22 @@ public class FastqReadTrimmer {
 
 		ProbeInfoStats probeInfoStats = collectStatsFromProbeInformation(probes);
 
-		int readOneTrimFromStart = extensionUidLength + probeInfoStats.getMaxExtensionPrimerLength();
-		int readTwoTrimFromStart = ligationUidLength + probeInfoStats.getMaxLigationPrimerLength();
+		logger.info(probeInfoStats.toString());
 
-		trimReads(inputFastqOneFile, outputFastqOneFile, readOneTrimFromStart, probeInfoStats.getMinCaptureTargetLength() + probeInfoStats.getMinLigationPrimerLength());
-		trimReads(inputFastqTwoFile, outputFastqTwoFile, readTwoTrimFromStart, probeInfoStats.getMinCaptureTargetLength() + probeInfoStats.getMinExtensionPrimerLength());
+		int readOneTrimFromStart = extensionUidLength + probeInfoStats.getMaxExtensionPrimerLength();
+		int readOneTrimStop = probeInfoStats.getMinCaptureTargetLength() + probeInfoStats.getMinLigationPrimerLength();
+		int readTwoTrimFromStart = ligationUidLength + probeInfoStats.getMaxLigationPrimerLength();
+		int readTwoTrimStop = probeInfoStats.getMinCaptureTargetLength() + probeInfoStats.getMinExtensionPrimerLength();
+
+		logger.info("read one--first base to keep:" + readOneTrimFromStart + "  lastBaseToKeep:" + readOneTrimStop);
+		logger.info("read two--first base to keep:" + readTwoTrimFromStart + "  lastBaseToKeep:" + readTwoTrimStop);
+
+		trimReads(inputFastqOneFile, outputFastqOneFile, readOneTrimFromStart, readOneTrimStop);
+		CliStatusConsole.logStatus("Finished trimming (1 of 2): " + inputFastqOneFile.getAbsolutePath() + ".  The trimmed output has been placed at " + outputFastqOneFile.getAbsolutePath() + "."
+				+ StringUtil.NEWLINE);
+		trimReads(inputFastqTwoFile, outputFastqTwoFile, readTwoTrimFromStart, readTwoTrimStop);
+		CliStatusConsole.logStatus("Finished trimming (2 of 2):" + inputFastqTwoFile.getAbsolutePath() + ".  The trimmed output has been placed at " + outputFastqTwoFile.getAbsolutePath() + "."
+				+ StringUtil.NEWLINE);
 	}
 
 	static ProbeInfoStats collectStatsFromProbeInformation(ProbesBySequenceName probes) throws IOException {
@@ -95,9 +114,17 @@ public class FastqReadTrimmer {
 		public int getMinCaptureTargetLength() {
 			return minCaptureTargetLength;
 		}
+
+		@Override
+		public String toString() {
+			return "ProbeInfoStats [maxExtensionPrimerLength=" + maxExtensionPrimerLength + ", maxLigationPrimerLength=" + maxLigationPrimerLength + ", maxCaptureTargetLength="
+					+ maxCaptureTargetLength + ", minExtensionPrimerLength=" + minExtensionPrimerLength + ", minLigationPrimerLength=" + minLigationPrimerLength + ", minCaptureTargetLength="
+					+ minCaptureTargetLength + "]";
+		}
+
 	}
 
-	public static void trimReads(File inputFastqFile, File outputFastqFile, int firstBaseToKeep, int lastBaseToKeep) {
+	public static void trimReads(File inputFastqFile, File outputFastqFile, int firstBaseToKeep, int lastBaseToKeep) throws IOException {
 		if (firstBaseToKeep < 0) {
 			throw new IllegalArgumentException("First base to keep[" + firstBaseToKeep + "] must be greater than zero.");
 		}
@@ -106,16 +133,24 @@ public class FastqReadTrimmer {
 			throw new IllegalArgumentException("Last base to keep[" + lastBaseToKeep + "] must be greater than the first base to keep[" + firstBaseToKeep + "].");
 		}
 
+		if (outputFastqFile.exists()) {
+			outputFastqFile.delete();
+		}
+		FileUtil.createNewFile(outputFastqFile);
+
 		FastqWriterFactory factory = new FastqWriterFactory();
 		FastqWriter fastQWriter = factory.newWriter(outputFastqFile);
-		try (FastqReader fastQReader = new FastqReader(inputFastqFile)) {
-			while (fastQReader.hasNext()) {
-				FastqRecord record = fastQReader.next();
-				FastqRecord newRecord = trim(record, firstBaseToKeep, lastBaseToKeep);
-				fastQWriter.write(newRecord);
+		try {
+			try (FastqReader fastQReader = new FastqReader(inputFastqFile)) {
+				while (fastQReader.hasNext()) {
+					FastqRecord record = fastQReader.next();
+					FastqRecord newRecord = trim(record, firstBaseToKeep, lastBaseToKeep);
+					fastQWriter.write(newRecord);
+				}
 			}
+		} finally {
+			fastQWriter.close();
 		}
-		fastQWriter.close();
 	}
 
 	static FastqRecord trim(FastqRecord record, int firstBaseToKeep, int lastBaseToKeep) {

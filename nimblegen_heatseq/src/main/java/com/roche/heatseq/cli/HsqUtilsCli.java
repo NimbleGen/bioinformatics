@@ -1,5 +1,9 @@
 package com.roche.heatseq.cli;
 
+import java.io.File;
+
+import com.roche.heatseq.qualityreport.FunGeneralErrors;
+import com.roche.heatseq.qualityreport.LoggingUtil;
 import com.roche.sequencing.bioinformatics.common.commandline.Command;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineParser;
 import com.roche.sequencing.bioinformatics.common.commandline.Commands;
@@ -10,13 +14,35 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 public class HsqUtilsCli {
 
 	public final static String APPLICATION_NAME = "HSQUtils";
-	private static String applicationVersionFromManifest = "unversioned";
+	private static String applicationVersionFromManifest = "unversioned--currently running in eclipse";
 
-	private final static String TRIM_COMMAND_NAME = "Trim";
-	private final static String IDENTIFY_DUPLICATES_COMMAND_NAME = "IdentifyDuplicates";
+	private final static String TRIM_COMMAND_NAME = "trim";
+	private final static String DEDUPLICATION_COMMAND_NAME = "dedup";
+
+	public final static String FILE_LOGGER_NAME = "root";
 
 	public static void main(String[] args) {
-		runCommandLineApp(args);
+		String funError = FunGeneralErrors.getFunError();
+		try {
+			runCommandLineApp(args);
+		} catch (Throwable t) {
+			File logFile = LoggingUtil.getLogFile();
+
+			String underlineFrame = StringUtil.repeatString("_", funError.length());
+			CliStatusConsole.logError(underlineFrame);
+			CliStatusConsole.logError("");
+			CliStatusConsole.logError(funError);
+			CliStatusConsole.logError("");
+			CliStatusConsole.logError(t);
+			if (logFile != null) {
+				CliStatusConsole.logError("You may find additional details regarding your error in the log file [" + logFile.getAbsolutePath() + "].");
+			}
+			CliStatusConsole.logError("If you are unable to fix this issue and believe the application is in error please contact technical support at http://www.nimblegen.com/arraysupport/.");
+			CliStatusConsole.logError("");
+			CliStatusConsole.logError(underlineFrame);
+			CliStatusConsole.logError("");
+			System.exit(1);
+		}
 	}
 
 	public static void runCommandLineApp(String[] args) {
@@ -24,24 +50,43 @@ public class HsqUtilsCli {
 		if (version != null) {
 			applicationVersionFromManifest = version;
 		}
-		outputToConsole("Roche NimbleGen Command Line Utilities (version:" + applicationVersionFromManifest + ")");
 
 		String commandLineSignature = CommandLineParser.getCommandLineCallSignature(APPLICATION_NAME, args, true);
-		outputToConsole(commandLineSignature);
-		outputToConsole("");
-
+		CliStatusConsole.logStatus("");
+		CliStatusConsole.logStatus("---------------------------------");
+		CliStatusConsole.logStatus("Roche NimbleGen HeatSeq Utilities (version:" + applicationVersionFromManifest + ")");
+		CliStatusConsole.logStatus("---------------------------------");
+		CliStatusConsole.logStatus("");
+		CliStatusConsole.logStatus("The command line you typed was interpreted as follows:");
+		CliStatusConsole.logStatus(commandLineSignature);
+		CliStatusConsole.logStatus("");
 		Commands commands = getCommands();
 		ParsedCommandLine parsedCommandLine = CommandLineParser.parseCommandLine(args, commands);
 		Command activeCommand = parsedCommandLine.getActiveCommand();
 		boolean noOptionsProvided = (args.length == 0);
 		boolean onlyCommandOptionProvided = (activeCommand != null) && (args.length == 1);
-		boolean showUsage = parsedCommandLine.isOptionPresent(IdentifyDuplicatesCli.USAGE_OPTION) || noOptionsProvided || onlyCommandOptionProvided;
+		boolean showUsage = parsedCommandLine.isOptionPresent(DeduplicationCli.USAGE_OPTION) || noOptionsProvided || onlyCommandOptionProvided;
 
 		if (showUsage) {
 			if (activeCommand != null) {
-				outputToConsole(activeCommand.getUsage());
+				CliStatusConsole.logStatus(activeCommand.getUsage());
 			} else {
-				outputToConsole(commands.getUsage());
+				if (noOptionsProvided) {
+					CliStatusConsole.logStatus("");
+					CliStatusConsole.logStatus("___________________________________________________________________");
+					CliStatusConsole.logStatus("");
+					CliStatusConsole.logStatus("A command was not provided.  Please select from the commands below.");
+					CliStatusConsole.logStatus("As an example, trimming would be executed as follows:");
+					CliStatusConsole.logStatus(APPLICATION_NAME + " " + TRIM_COMMAND_NAME + " <trim specific arguments>");
+					CliStatusConsole.logStatus("");
+				} else {
+					CliStatusConsole.logStatus("");
+					CliStatusConsole.logStatus("___________________________________________________________________");
+					CliStatusConsole.logStatus("");
+				}
+				CliStatusConsole.logStatus(commands.getUsage());
+				CliStatusConsole.logStatus("___________________________________________________________________");
+				CliStatusConsole.logStatus("");
 			}
 
 		} else {
@@ -49,9 +94,9 @@ public class HsqUtilsCli {
 
 			if (activeCommand != null) {
 				if (activeCommand.getCommandName().equals(TRIM_COMMAND_NAME)) {
-					TrimCli.trim(parsedCommandLine);
-				} else if (activeCommand.getCommandName().equals(IDENTIFY_DUPLICATES_COMMAND_NAME)) {
-					IdentifyDuplicatesCli.identifyDuplicates(parsedCommandLine, commandLineSignature);
+					TrimCli.trim(parsedCommandLine, commandLineSignature, APPLICATION_NAME, applicationVersionFromManifest);
+				} else if (activeCommand.getCommandName().equals(DEDUPLICATION_COMMAND_NAME)) {
+					DeduplicationCli.identifyDuplicates(parsedCommandLine, commandLineSignature, APPLICATION_NAME, applicationVersionFromManifest);
 				} else {
 					throw new AssertionError();
 				}
@@ -62,15 +107,13 @@ public class HsqUtilsCli {
 	}
 
 	private static Commands getCommands() {
-		Commands commands = new Commands("Available Commands:" + StringUtil.NEWLINE + "Command" + StringUtil.TAB + "Description");
+		Commands commands = new Commands("Available Commands:" + StringUtil.NEWLINE + "Command" + StringUtil.TAB + StringUtil.TAB + "Description" + StringUtil.NEWLINE + "------" + StringUtil.TAB
+				+ StringUtil.TAB + "-----------");
 		commands.addCommand(new Command(TRIM_COMMAND_NAME, "Trim reads within the fastq files to represent the capture target regions.", TrimCli.getCommandLineOptionsGroupForTrimming()));
-		commands.addCommand(new Command(IDENTIFY_DUPLICATES_COMMAND_NAME,
-				"Identify duplicate reads and include only portions of the read that overlap with the capture target sequence in the sequence alignment (BAM file).", IdentifyDuplicatesCli
+		commands.addCommand(new Command(DEDUPLICATION_COMMAND_NAME,
+				"Eliminate or Identify duplicate reads and include only portions of the read that overlap with the capture target sequence in the sequence alignment (BAM file).", DeduplicationCli
 						.getCommandLineOptionsGroup()));
 		return commands;
 	}
 
-	private static void outputToConsole(String output) {
-		System.out.println(output);
-	}
 }
