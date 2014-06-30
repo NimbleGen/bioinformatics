@@ -5,3 +5,7 @@ I've given her all she's got captain and it's not working.
 We're sorry.  There has been an error.
 Unfortunately we've ran into a little hiccup.
 It seems as though we've hit a little bump in the road.
+Danger, Will Robinson! Danger! We have a problem.
+Sorry, Something went wrong when executing the application.
+Unfortunately it appears that we've hit a little snag.
+There has been a problem.  What's the problem?   Dave, I think you know what the problem is just as well as I do.  I don't know what you're talking about, HAL.  

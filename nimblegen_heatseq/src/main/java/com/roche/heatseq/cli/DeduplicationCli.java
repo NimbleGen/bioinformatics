@@ -206,6 +206,10 @@ public class DeduplicationCli {
 		}
 
 		String outputBamFileName = parsedCommandLine.getOptionsValue(OUTPUT_BAM_FILE_NAME_OPTION);
+		if (outputBamFileName.contains("/") || outputBamFileName.contains("\\")) {
+			throw new IllegalStateException("The value specified for " + OUTPUT_BAM_FILE_NAME_OPTION.getOptionName() + "[" + outputBamFileName
+					+ "] contains a file path opposed to just a file name, which is what is expected.");
+		}
 		if (!outputBamFileName.endsWith(BAM_EXTENSION)) {
 			outputBamFileName += BAM_EXTENSION;
 		}
