@@ -79,7 +79,6 @@ public class FastqAndBamFileMerger {
 	 * @param samWriter
 	 */
 	private static void mergeAndOutputRecords(Map<String, SimpleFastqRecord> nameToFastQRecord, SAMFileReader samReader, boolean processFirstOfPairReads, SAMFileWriter samWriter) {
-
 		SAMRecordIterator samIter = samReader.iterator();
 
 		// Scan through the entire bam, finding matches by name to the fastq data in our hash
@@ -199,9 +198,17 @@ public class FastqAndBamFileMerger {
 	 * @param outputBamFile
 	 * @return
 	 */
-	public static File createMergedFastqAndBamFileFromUnsortedFiles(File unsortedBamFile, File unsortedFastq1File, File unsortedFastq2File, File outputBamFile) {
+	public static File createMergedFastqAndBamFileFromUnsortedFiles(File unsortedBamFile, File unsortedBamFileIndex, File unsortedFastq1File, File unsortedFastq2File, File outputBamFile) {
 		// Each new iteration starts at the first record.
-		try (SAMFileReader samReader = new SAMFileReader(unsortedBamFile)) {
+		SAMFileReader samReader = null;
+
+		try {
+			if (unsortedBamFileIndex == null) {
+				// this is more than likely a SAM file which cannot be indexed
+				samReader = new SAMFileReader(unsortedBamFile);
+			} else {
+				samReader = new SAMFileReader(unsortedBamFile, unsortedBamFileIndex);
+			}
 
 			SAMFileHeader header = samReader.getFileHeader();
 			header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
@@ -215,10 +222,26 @@ public class FastqAndBamFileMerger {
 			// Process the first of pair reads and the first fastQ file.
 			createMergedFastqAndBamFileFromUnsortedFiles(samReader, unsortedFastq1File, true, samWriter, maximumHashSize);
 
+			// since the samReader.iterator for a samReader initialized using a sam file behaves differently than for a samReader initialized using a bam file (the former starts where the last
+			// iterator ended)
+			// we need to reinitialize the sam reader (this wouldn't be necessary for the bam file but since
+			// I'm not positive that sam files can't have indexes--which is what I'm using for an indicator of the sam file--I will reinitialize for both cases.
+			samReader.close();
+			if (unsortedBamFileIndex == null) {
+				// this is more than likely a SAM file which cannot be indexed
+				samReader = new SAMFileReader(unsortedBamFile);
+			} else {
+				samReader = new SAMFileReader(unsortedBamFile, unsortedBamFileIndex);
+			}
+
 			// Process the second of pair reads and the second fastQ file.
 			createMergedFastqAndBamFileFromUnsortedFiles(samReader, unsortedFastq2File, false, samWriter, maximumHashSize);
 
 			samWriter.close();
+		} finally {
+			if (samReader != null) {
+				samReader.close();
+			}
 		}
 
 		return outputBamFile;

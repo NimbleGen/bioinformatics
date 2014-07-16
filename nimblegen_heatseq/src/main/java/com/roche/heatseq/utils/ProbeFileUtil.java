@@ -18,8 +18,10 @@ package com.roche.heatseq.utils;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +36,7 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.DelimitedFileParserUtil;
+import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public final class ProbeFileUtil {
@@ -41,6 +44,9 @@ public final class ProbeFileUtil {
 
 	private final static String[] PROBE_INFO_HEADER_NAMES = new String[] { "probe_id", "chromosome", "probe_strand", "ext_start", "ext_stop", "ext_sequence", "lig_start", "lig_stop", "lig_sequence",
 			"target_start", "target_stop", "target_sequence", "annotation" };
+
+	private final static String EXTENSION_UID_NAME_IN_PROBE_INFO_HEADER = "extension_uid";
+	private final static String LIGATION_UID_NAME_IN_PROBE_INFO_HEADER = "ligation_uid";
 
 	private ProbeFileUtil() {
 		throw new AssertionError();
@@ -171,6 +177,51 @@ public final class ProbeFileUtil {
 		}
 
 		probeWriter.close();
+	}
+
+	public static Map<String, String> parseHeaderNameValuePairs(File probeFile) throws FileNotFoundException {
+		Map<String, String> nameValuePairsMap = new HashMap<String, String>();
+		String firstLine = FileUtil.readFirstLineAsString(probeFile);
+		if (firstLine.startsWith("#")) {
+			String firstLineWithoutPound = firstLine.substring(1, firstLine.length() - 1);
+			String[] nameValuePairs = firstLineWithoutPound.split(" ");
+			for (String nameValuePair : nameValuePairs) {
+				String[] splitNameValuePair = nameValuePair.split("=");
+				if (splitNameValuePair.length == 2) {
+					nameValuePairsMap.put(splitNameValuePair[0].toLowerCase(), splitNameValuePair[1].toLowerCase());
+				}
+			}
+		}
+		return nameValuePairsMap;
+
+	}
+
+	public static Integer extractExtensionUidLength(File probeFile) throws FileNotFoundException {
+		Integer extensionUidLength = null;
+		Map<String, String> nameValuePairs = parseHeaderNameValuePairs(probeFile);
+		String extensionUidLengthAsString = nameValuePairs.get(EXTENSION_UID_NAME_IN_PROBE_INFO_HEADER);
+		if (extensionUidLengthAsString != null) {
+			try {
+				extensionUidLength = Integer.parseInt(extensionUidLengthAsString);
+			} catch (NumberFormatException e) {
+				logger.warn("Unable to parse extension uid length from probe information header[" + extensionUidLengthAsString + "] as integer.");
+			}
+		}
+		return extensionUidLength;
+	}
+
+	public static Integer extractLigationUidLength(File probeFile) throws FileNotFoundException {
+		Integer ligationUidLength = null;
+		Map<String, String> nameValuePairs = parseHeaderNameValuePairs(probeFile);
+		String ligationUidLengthAsString = nameValuePairs.get(LIGATION_UID_NAME_IN_PROBE_INFO_HEADER);
+		if (ligationUidLengthAsString != null) {
+			try {
+				ligationUidLength = Integer.parseInt(ligationUidLengthAsString);
+			} catch (NumberFormatException e) {
+				logger.warn("Unable to parse extension uid length from probe information header[" + ligationUidLengthAsString + "] as integer.");
+			}
+		}
+		return ligationUidLength;
 	}
 
 }
