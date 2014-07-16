@@ -39,4 +39,11 @@ public class ProbeFileUtilTest {
 		Assert.assertEquals((int) ligationUidLength, 0);
 	}
 
+	@Test(groups = { "unit" })
+	public void extractGenomeTest() throws FileNotFoundException, URISyntaxException {
+		File probeInfoFile = new File(ProbeFileUtilTest.class.getResource("probe_info_with_header.txt").toURI());
+		String genome = ProbeFileUtil.extractGenomeNameInLowerCase(probeInfoFile);
+		Assert.assertEquals(genome, "hg19");
+	}
+
 }

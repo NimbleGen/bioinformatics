@@ -11,10 +11,12 @@ import net.sf.picard.fastq.FastqWriterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.roche.heatseq.cli.CliStatusConsole;
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class FastqReadTrimmer {
 
@@ -37,7 +39,11 @@ public class FastqReadTrimmer {
 		logger.info("read two--first base to keep:" + readTwoTrimFromStart + "  lastBaseToKeep:" + readTwoTrimStop);
 
 		trimReads(inputFastqOneFile, outputFastqOneFile, readOneTrimFromStart, readOneTrimStop);
+		CliStatusConsole.logStatus("Finished trimming (1 of 2): " + inputFastqOneFile.getAbsolutePath() + ".  The trimmed output has been placed at " + outputFastqOneFile.getAbsolutePath() + "."
+				+ StringUtil.NEWLINE);
 		trimReads(inputFastqTwoFile, outputFastqTwoFile, readTwoTrimFromStart, readTwoTrimStop);
+		CliStatusConsole.logStatus("Finished trimming (2 of 2):" + inputFastqTwoFile.getAbsolutePath() + ".  The trimmed output has been placed at " + outputFastqTwoFile.getAbsolutePath() + "."
+				+ StringUtil.NEWLINE);
 	}
 
 	static ProbeInfoStats collectStatsFromProbeInformation(ProbesBySequenceName probes) throws IOException {

@@ -21,9 +21,14 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
+import net.sf.samtools.SAMFileHeader;
+import net.sf.samtools.SAMFileHeader.SortOrder;
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMFileReader.ValidationStringency;
+import net.sf.samtools.SAMRecord;
+import net.sf.samtools.SAMRecordIterator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +46,8 @@ import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptions
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
+import com.roche.sequencing.bioinformatics.genome.GenomeIdentifier;
 
 public class DeduplicationCli {
 	private final static Logger logger = LoggerFactory.getLogger(DeduplicationCli.class);
@@ -90,6 +97,9 @@ public class DeduplicationCli {
 	private final static boolean shouldOutputQualityReports = true;
 
 	static void identifyDuplicates(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion) {
+
+		CliStatusConsole.logStatus("Deduplication has started." + StringUtil.NEWLINE);
+
 		String outputDirectoryString = parsedCommandLine.getOptionsValue(OUTPUT_DIR_OPTION);
 		File outputDirectory = null;
 		if (outputDirectoryString != null) {
@@ -118,7 +128,7 @@ public class DeduplicationCli {
 		if (!outputFilePrefix.isEmpty()) {
 			logFileName = outputFilePrefix + "_";
 		}
-		logFileName = logFileName + applicationName + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS() + ".log";
+		logFileName = logFileName + applicationName + "_dedup_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS() + ".log";
 		logFileName = logFileName.replaceAll(" ", "_");
 		logFileName = logFileName.replaceAll("/", "_");
 		logFileName = logFileName.replaceAll(":", "-");
@@ -196,6 +206,10 @@ public class DeduplicationCli {
 		}
 
 		String outputBamFileName = parsedCommandLine.getOptionsValue(OUTPUT_BAM_FILE_NAME_OPTION);
+		if (outputBamFileName.contains("/") || outputBamFileName.contains("\\")) {
+			throw new IllegalStateException("The value specified for " + OUTPUT_BAM_FILE_NAME_OPTION.getOptionName() + "[" + outputBamFileName
+					+ "] contains a file path opposed to just a file name, which is what is expected.");
+		}
 		if (!outputBamFileName.endsWith(BAM_EXTENSION)) {
 			outputBamFileName += BAM_EXTENSION;
 		}
@@ -267,10 +281,10 @@ public class DeduplicationCli {
 
 		try {
 			String bamFileString = parsedCommandLine.getOptionsValue(INPUT_BAM_OPTION);
-			File bamFile = new File(bamFileString);
+			File samOrBamFile = new File(bamFileString);
 
-			if (!bamFile.exists()) {
-				throw new IllegalStateException("Unable to find provided BAM file[" + bamFile.getAbsolutePath() + "].");
+			if (!samOrBamFile.exists()) {
+				throw new IllegalStateException("Unable to find provided BAM file[" + samOrBamFile.getAbsolutePath() + "].");
 			}
 
 			Path tempOutputDirectoryPath = Files.createTempDirectory(tempDirectory.toPath(), "nimblegen_");
@@ -283,7 +297,7 @@ public class DeduplicationCli {
 						try {
 							FileUtil.deleteDirectory(tempOutputDirectory);
 						} catch (IOException e) {
-							outputToConsole("Couldn't delete temp directory [" + tempOutputDirectory.getAbsolutePath() + "]:" + e.getMessage());
+							CliStatusConsole.logStatus("Couldn't delete temp directory [" + tempOutputDirectory.getAbsolutePath() + "]:" + e.getMessage());
 						}
 					}
 				});
@@ -291,17 +305,95 @@ public class DeduplicationCli {
 
 			// Try to locate or create an index file for the input bam file
 			File bamIndexFile = null;
+			File sortedBamFile = null;
+			File samFile = null;
+			File validSamOrBamInputFile = null;
+			boolean isSamFormat = false;
 
-			try (SAMFileReader samReader = new SAMFileReader(bamFile)) {
-				boolean isSamFormat = !samReader.isBinary();
+			try (SAMFileReader samReader = new SAMFileReader(samOrBamFile)) {
+				isSamFormat = !samReader.isBinary();
 
-				if (!isSamFormat) {
+				if (isSamFormat) {
+					samFile = samOrBamFile;
+				} else {
 
+					SAMFileHeader header = samReader.getFileHeader();
+
+					try {
+						String genomeNameFromProbeInfoFile = ProbeFileUtil.extractGenomeNameInLowerCase(probeFile);
+						if (genomeNameFromProbeInfoFile != null) {
+							header = samReader.getFileHeader();
+							Map<String, Integer> containerSizesByNameFromBam = BamFileUtil.getContainerSizesFromHeader(header);
+							String matchingGenomeBasedOnContainerSizes = GenomeIdentifier.getMatchingGenomeName(containerSizesByNameFromBam);
+							if (!genomeNameFromProbeInfoFile.equals(matchingGenomeBasedOnContainerSizes)) {
+
+								logger.info("Mismatch Genome Report" + StringUtil.NEWLINE + GenomeIdentifier.createMismatchGenomeReportText(genomeNameFromProbeInfoFile, containerSizesByNameFromBam));
+
+								CliStatusConsole
+										.logStatus(StringUtil.NEWLINE
+												+ "It appears that the incorrect genome was used for mapping.  The names and sizes of the genome sequences used for mapping found in the provided BAM/SAM file ["
+												+ samOrBamFile.getAbsolutePath() + "] do not match the sequence sizes expected based on the indicated genome build [" + genomeNameFromProbeInfoFile
+												+ "] by the probe information file [" + probeFile.getAbsolutePath()
+												+ "].  Deduplication will continue but the results should be classified as suspect.  Please review the mismatch genome report in the log file["
+												+ logFile.getAbsolutePath() + "] for details on how the expected genome and provided genome differ." + StringUtil.NEWLINE);
+							}
+						}
+					} catch (FileNotFoundException e1) {
+						throw new IllegalStateException(e1);
+					}
+
+					boolean isSortIndicatedInHeader = header.getSortOrder().equals(SortOrder.coordinate);
+
+					if (isSortIndicatedInHeader) {
+						logger.debug("The input BAM file[" + samOrBamFile.getAbsolutePath() + "] was deemed sorted based on header information.");
+					}
+					if (!isSortIndicatedInHeader) {
+						boolean isSorted = true;
+						long sortedCheckStart = System.currentTimeMillis();
+						// verify the file is sorted by comparing lines
+						SAMRecordIterator iter = samReader.iterator();
+						SAMRecord lastRecord = null;
+						while (iter.hasNext() && isSorted) {
+							SAMRecord currentRecord = iter.next();
+							if (lastRecord != null) {
+								isSorted = lastRecord.getReferenceIndex() <= currentRecord.getReferenceIndex() && lastRecord.getAlignmentStart() <= currentRecord.getAlignmentStart();
+							}
+							lastRecord = currentRecord;
+
+						}
+						iter.close();
+						long sortedCheckStop = System.currentTimeMillis();
+						logger.debug("Time to check if sorted:" + (sortedCheckStop - sortedCheckStart));
+
+						if (isSorted) {
+							logger.debug("The input BAM file[" + samOrBamFile.getAbsolutePath() + "] is sorted.");
+							sortedBamFile = samOrBamFile;
+						} else {
+							CliStatusConsole.logStatus("The input BAM file is not sorted.");
+							sortedBamFile = new File(tempOutputDirectory, "sorted_" + FileUtil.getFileNameWithoutExtension(samOrBamFile.getName()) + ".bam");
+							CliStatusConsole.logStatus("Creating a sorted input BAM file at [" + sortedBamFile.getAbsolutePath() + "].");
+
+							long sortStart = System.currentTimeMillis();
+							BamFileUtil.sortOnCoordinates(samOrBamFile, sortedBamFile);
+							long sortStop = System.currentTimeMillis();
+							CliStatusConsole.logStatus("Done creating a sorted BAM file in " + DateUtil.convertMillisecondsToHHMMSS(sortStop - sortStart) + ".");
+						}
+
+					} else {
+						CliStatusConsole.logStatus("The BAM header indicates that the BAM file is sorted.");
+						sortedBamFile = samOrBamFile;
+					}
+				}
+
+			}
+
+			if (sortedBamFile != null) {
+				try (SAMFileReader samReader = new SAMFileReader(sortedBamFile)) {
 					// Look for the index in the same location as the file but with a .bai extension instead of a .bam extension
 					File tempBamIndexfile = new File(FileUtil.getFileNameWithoutExtension(bamFileString) + ".bai");
 					if (tempBamIndexfile.exists()) {
 						bamIndexFile = tempBamIndexfile;
-						outputToConsole("Using the BAM Index File located at [" + bamIndexFile + "].");
+						CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
 					}
 
 					// Try looking for a .bai file in the same location as the bam file
@@ -310,7 +402,7 @@ public class DeduplicationCli {
 						tempBamIndexfile = new File(bamFileString + ".bai");
 						if (tempBamIndexfile.exists()) {
 							bamIndexFile = tempBamIndexfile;
-							outputToConsole("Using the BAM Index File located at [" + bamIndexFile + "].");
+							CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
 						}
 					}
 
@@ -318,20 +410,25 @@ public class DeduplicationCli {
 					if ((bamIndexFile == null) || !bamIndexFile.exists()) {
 						// a bam index file was not provided so create one in the default location
 						bamIndexFile = File.createTempFile("bam_index_", ".bai", tempOutputDirectory);
-						outputToConsole("A BAM Index File was not found in the default location so creating bam index file at:" + bamIndexFile);
+						CliStatusConsole.logStatus("A BAM Index File was not found in the default location so creating bam index file at:" + bamIndexFile);
+						long indexStart = System.currentTimeMillis();
 						try {
-
 							BamFileUtil.createIndex(samReader, bamIndexFile);
+							long indexStop = System.currentTimeMillis();
+							CliStatusConsole.logStatus("Done creating the BAM Index File in " + DateUtil.convertMillisecondsToHHMMSS(indexStop - indexStart) + ".");
 						} catch (Exception e) {
-							throw new IllegalStateException("Could not find or create bam index file at [" + bamIndexFile.getAbsolutePath() + "].", e);
+							throw new IllegalStateException("Could create bam index file at [" + bamIndexFile.getAbsolutePath() + "].", e);
 						}
 					}
 				}
+				validSamOrBamInputFile = sortedBamFile;
+			} else {
+				validSamOrBamInputFile = samFile;
 			}
 
-			sortMergeFilterAndExtendReads(applicationName, applicationVersion, probeFile, bamFile, bamIndexFile, fastQ1File, fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix,
-					tempOutputDirectory, shouldOutputQualityReports, commandLineSignature, numProcessors, extensionUidLength, ligationUidLength, allowVariableLengthUids, alignmentScorer,
-					notTrimmedToWithinCaptureTarget, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching);
+			sortMergeFilterAndExtendReads(applicationName, applicationVersion, probeFile, validSamOrBamInputFile, bamIndexFile, fastQ1File, fastQ2File, outputDirectory, outputBamFileName,
+					outputFilePrefix, tempOutputDirectory, shouldOutputQualityReports, commandLineSignature, numProcessors, extensionUidLength, ligationUidLength, allowVariableLengthUids,
+					alignmentScorer, notTrimmedToWithinCaptureTarget, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching);
 
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
@@ -375,10 +472,6 @@ public class DeduplicationCli {
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
-	}
-
-	private static void outputToConsole(String output) {
-		System.out.println(output);
 	}
 
 	public static CommandLineOptionsGroup getCommandLineOptionsGroup() {

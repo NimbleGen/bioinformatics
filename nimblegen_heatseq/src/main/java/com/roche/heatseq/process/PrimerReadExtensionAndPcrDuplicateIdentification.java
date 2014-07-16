@@ -244,8 +244,8 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 			for (String sequenceName : sequenceNames) {
 
 				if (!referenceSequenceNamesInBam.contains(sequenceName)) {
-					throw new IllegalStateException("Sequence[" + sequenceName
-							+ "] from probe file is not present as a reference sequence in the bam file.  Please make sure your probe sequence names match bam file reference sequence names.");
+					throw new IllegalStateException("Sequence [" + sequenceName
+							+ "] from the probe file is not present as a reference sequence in the bam file.  Please make sure your probe sequence names match bam file reference sequence names.");
 				}
 
 				List<Probe> probes = probeInfo.getProbesBySequenceName(sequenceName);

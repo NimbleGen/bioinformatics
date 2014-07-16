@@ -16,6 +16,8 @@ import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 
 public class LoggingUtil {
 
+	private static File currentLogFile;
+
 	private LoggingUtil() {
 		throw new AssertionError();
 	}
@@ -24,6 +26,8 @@ public class LoggingUtil {
 		if (!logFile.exists()) {
 			FileUtil.createNewFile(logFile);
 		}
+
+		currentLogFile = logFile;
 
 		LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
 
@@ -34,7 +38,7 @@ public class LoggingUtil {
 
 		PatternLayoutEncoder encoder = new PatternLayoutEncoder();
 		encoder.setContext(loggerContext);
-		encoder.setPattern("%r %thread %level - %msg%n");
+		encoder.setPattern("%r %d{HH:mm:ss.SSS} - %msg%n");
 		encoder.setImmediateFlush(true);
 		encoder.start();
 
@@ -45,6 +49,10 @@ public class LoggingUtil {
 		Logger logbackLogger = loggerContext.getLogger(loggerName);
 		logbackLogger.setLevel(Level.ALL);
 		logbackLogger.addAppender(fileAppender);
+	}
+
+	public static File getLogFile() {
+		return currentLogFile;
 	}
 
 }

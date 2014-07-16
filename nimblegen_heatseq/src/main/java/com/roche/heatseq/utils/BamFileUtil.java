@@ -18,7 +18,9 @@ package com.roche.heatseq.utils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import net.sf.picard.io.IoUtil;
 import net.sf.picard.sam.ValidateSamFile;
@@ -230,6 +232,27 @@ public class BamFileUtil {
 		}
 		newHeader.setSequenceDictionary(sequenceDictionary);
 		return newHeader;
+	}
+
+	public static Map<String, Integer> getContainerSizesFromHeader(SAMFileHeader header) {
+		Map<String, Integer> containerSizesByContainerName = new LinkedHashMap<String, Integer>();
+		for (SAMSequenceRecord sequence : header.getSequenceDictionary().getSequences()) {
+			containerSizesByContainerName.put(sequence.getSequenceName(), sequence.getSequenceLength());
+		}
+		return containerSizesByContainerName;
+	}
+
+	public static boolean isSortedBasedOnHeader(File bamFile, SortOrder sortOrder) {
+		IoUtil.assertFileIsReadable(bamFile);
+
+		final SAMFileReader reader = new SAMFileReader(IoUtil.openFileForReading(bamFile));
+
+		SAMFileHeader header = reader.getFileHeader();
+		boolean isSorted = header.getSortOrder().equals(SortOrder.coordinate);
+
+		reader.close();
+
+		return isSorted;
 	}
 
 	public static void main(String[] args) {
