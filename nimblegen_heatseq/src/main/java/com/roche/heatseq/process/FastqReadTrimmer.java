@@ -161,8 +161,10 @@ public class FastqReadTrimmer {
 			throw new IllegalArgumentException("Unable to trim " + firstBaseToKeep + " bases from the beginning of a sequence with length[" + readString.length() + "]");
 		}
 
-		String newReadString = readString.substring(firstBaseToKeep, lastBaseToKeep + 1);
-		String newReadQuality = readQuality.substring(firstBaseToKeep, lastBaseToKeep + 1);
+		int lastBase = Math.min(lastBaseToKeep, readString.length() - 1);
+
+		String newReadString = readString.substring(firstBaseToKeep, lastBase + 1);
+		String newReadQuality = readQuality.substring(firstBaseToKeep, lastBase + 1);
 
 		FastqRecord newRecord = new FastqRecord(record.getReadHeader(), newReadString, record.getBaseQualityHeader(), newReadQuality);
 		return newRecord;
