@@ -186,7 +186,8 @@ class FilterByUid {
 			totalDuplicateReadPairsRemoved += (pairsDataByUid.size() - 1);
 
 			IReadPair bestPair = findBestData(pairsDataByUid);
-
+			bestPair.annotateProbueUidGroup(probe, uid);
+			bestPair.annotateAsBestPairInProbueUidGroup();
 			readPairs.add(bestPair);
 			if (markDuplicates || keepDuplicates) {
 				for (IReadPair readPair : pairsDataByUid) {
@@ -194,6 +195,7 @@ class FilterByUid {
 						if (markDuplicates) {
 							readPair.markAsDuplicate();
 						}
+						readPair.annotateProbueUidGroup(probe, uid);
 						readPairs.add(readPair);
 					}
 				}

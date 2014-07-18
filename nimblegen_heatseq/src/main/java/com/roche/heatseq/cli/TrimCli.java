@@ -11,19 +11,20 @@ import com.roche.heatseq.qualityreport.LoggingUtil;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
-import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class TrimCli {
 
 	private static final Logger logger = LoggerFactory.getLogger(TrimCli.class);
+	private static final String FASTQ_EXTENSION = ".fastq";
 
 	public static void trim(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion) {
 
 		CliStatusConsole.logStatus("Trimming has started." + StringUtil.NEWLINE);
 
 		String outputDirectoryString = parsedCommandLine.getOptionsValue(DeduplicationCli.OUTPUT_DIR_OPTION);
+
 		File outputDirectory = null;
 		if (outputDirectoryString != null) {
 			outputDirectory = new File(outputDirectoryString);
@@ -69,14 +70,19 @@ public class TrimCli {
 			throw new IllegalStateException("Unable to find provided PROBE file[" + probeFile.getAbsolutePath() + "].");
 		}
 
-		File outputFastQ1File = new File(outputDirectory, outputFilePrefix + "trimmed_" + FileUtil.getFileNameWithoutExtension(fastQ1File.getName()) + ".fastq");
-		File outputFastQ2File = new File(outputDirectory, outputFilePrefix + "trimmed_" + FileUtil.getFileNameWithoutExtension(fastQ2File.getName()) + ".fastq");
+		String outputFastQ1FileName = new File(outputDirectory, outputFilePrefix + "trimmed_" + FileUtil.getFileNameWithoutExtension(fastQ1File.getName())).getAbsolutePath();
+		if (!outputFastQ1FileName.toLowerCase().endsWith(FASTQ_EXTENSION)) {
+			outputFastQ1FileName += FASTQ_EXTENSION;
+		}
+		File outputFastQ1File = new File(outputFastQ1FileName);
 
-		String logFileName = applicationName + "_trim_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS() + ".log";
-		logFileName = logFileName.replaceAll(" ", "_");
-		logFileName = logFileName.replaceAll("/", "_");
-		logFileName = logFileName.replaceAll(":", "-");
-		File logFile = new File(outputDirectory, logFileName);
+		String outputFastQ2FileName = new File(outputDirectory, outputFilePrefix + "trimmed_" + FileUtil.getFileNameWithoutExtension(fastQ2File.getName())).getAbsolutePath();
+		if (!outputFastQ2FileName.toLowerCase().endsWith(FASTQ_EXTENSION)) {
+			outputFastQ2FileName += FASTQ_EXTENSION;
+		}
+		File outputFastQ2File = new File(outputFastQ2FileName);
+
+		File logFile = HsqUtilsCli.getLogFile(outputDirectory, outputFilePrefix, applicationName, "trim");
 		try {
 			LoggingUtil.setLogFile(HsqUtilsCli.FILE_LOGGER_NAME, logFile);
 		} catch (IOException e2) {
@@ -99,7 +105,7 @@ public class TrimCli {
 			}
 		} catch (IOException e) {
 			throw new IllegalStateException("Unable to trim reads from fastq1File[" + fastQ1File.getAbsolutePath() + "] and fastq2File[" + fastQ1File + "] using probe information file["
-					+ probeFile.getAbsolutePath() + "].");
+					+ probeFile.getAbsolutePath() + "].", e);
 		}
 
 	}

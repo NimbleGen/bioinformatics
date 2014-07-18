@@ -20,7 +20,6 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.sf.picard.fastq.FastqReader;
 import net.sf.picard.fastq.FastqRecord;
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileReader;
@@ -33,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.IlluminaFastQHeader;
+import com.roche.heatseq.utils.FastqReader;
 import com.roche.heatseq.utils.SAMRecordUtil;
 
 /**
