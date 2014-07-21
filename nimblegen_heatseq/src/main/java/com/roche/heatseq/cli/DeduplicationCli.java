@@ -57,8 +57,10 @@ public class DeduplicationCli {
 	public final static String BAM_EXTENSION = ".bam";
 
 	public final static CommandLineOption USAGE_OPTION = new CommandLineOption("Print Usage", "usage", 'h', "Print Usage.", false, true);
-	public final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("FastQ One File", "r1", null, "Path to first input fastq file.", true, false);
-	public final static CommandLineOption FASTQ_TWO_OPTION = new CommandLineOption("FastQ Two File", "r2", null, "Path to second input fastq file.", true, false);
+	public final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("FastQ One File", "r1", null,
+			"Path to first input fastq file (as an uncompressed file with a fastq extension or a compressed file with the gz extension).", true, false);
+	public final static CommandLineOption FASTQ_TWO_OPTION = new CommandLineOption("FastQ Two File", "r2", null,
+			"Path to second input fastq file (as an uncompressed file with a fastq extension or a compressed file with the gz extension).", true, false);
 	public final static CommandLineOption INPUT_BAM_OPTION = new CommandLineOption("Input BAM or SAM File Path", "inputBam", null, "Path to input BAM or SAM file containing the aligned reads.", true,
 			false);
 	public final static CommandLineOption PROBE_OPTION = new CommandLineOption("Probe Information File", "probe", null, "NimbleGen probe file.", true, false);
@@ -124,15 +126,8 @@ public class DeduplicationCli {
 			outputFilePrefix = "";
 		}
 
-		String logFileName = outputFilePrefix;
-		if (!outputFilePrefix.isEmpty()) {
-			logFileName = outputFilePrefix + "_";
-		}
-		logFileName = logFileName + applicationName + "_dedup_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS() + ".log";
-		logFileName = logFileName.replaceAll(" ", "_");
-		logFileName = logFileName.replaceAll("/", "_");
-		logFileName = logFileName.replaceAll(":", "-");
-		File logFile = new File(outputDirectory, logFileName);
+		File logFile = HsqUtilsCli.getLogFile(outputDirectory, outputFilePrefix, applicationName, "dedup");
+
 		try {
 			LoggingUtil.setLogFile(HsqUtilsCli.FILE_LOGGER_NAME, logFile);
 		} catch (IOException e2) {
@@ -287,7 +282,8 @@ public class DeduplicationCli {
 				throw new IllegalStateException("Unable to find provided BAM file[" + samOrBamFile.getAbsolutePath() + "].");
 			}
 
-			Path tempOutputDirectoryPath = Files.createTempDirectory(tempDirectory.toPath(), "nimblegen_");
+			String tempPrefix = HsqUtilsCli.getTempPrefix(applicationName, outputFilePrefix);
+			Path tempOutputDirectoryPath = Files.createTempDirectory(tempDirectory.toPath(), tempPrefix);
 			final File tempOutputDirectory = tempOutputDirectoryPath.toFile();
 			// Delete our temporary directory when we shut down the JVM if the user hasn't asked us to keep it
 			if (!saveTemporaryFiles) {

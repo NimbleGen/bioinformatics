@@ -8,6 +8,7 @@ import com.roche.sequencing.bioinformatics.common.commandline.Command;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineParser;
 import com.roche.sequencing.bioinformatics.common.commandline.Commands;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
+import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.ManifestUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
@@ -114,6 +115,32 @@ public class HsqUtilsCli {
 				"Eliminate or Identify duplicate reads and include only portions of the read that overlap with the capture target sequence in the sequence alignment (BAM file).", DeduplicationCli
 						.getCommandLineOptionsGroup()));
 		return commands;
+	}
+
+	public static File getLogFile(File outputDirectory, String outputFilePrefix, String applicationName, String command) {
+		if (outputFilePrefix == null) {
+			outputFilePrefix = "";
+		}
+		String logFileName = outputFilePrefix;
+		if (!outputFilePrefix.isEmpty()) {
+			logFileName = outputFilePrefix + "_";
+		}
+		logFileName = logFileName + applicationName + "_" + applicationName + "_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS() + ".log";
+		logFileName = logFileName.replaceAll(" ", "_");
+		logFileName = logFileName.replaceAll("/", "_");
+		logFileName = logFileName.replaceAll(":", "-");
+		File logFile = new File(outputDirectory, logFileName);
+		return logFile;
+	}
+
+	public static String getTempPrefix(String applicationName, String outputFilePrefix) {
+		String tempPrefix = outputFilePrefix;
+		if (!tempPrefix.isEmpty()) {
+			tempPrefix += "_" + applicationName + "_";
+		} else {
+			tempPrefix = applicationName + "_";
+		}
+		return tempPrefix;
 	}
 
 }
