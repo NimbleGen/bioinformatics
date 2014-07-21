@@ -34,6 +34,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentificationTest {
 		String downstreamQuality = "HHHHHHHH";
 		MergeInformation mergeInformation = PrimerReadExtensionAndPcrDuplicateIdentification.mergeSequences(false, upstreamSequence, downstreamSequence, upstreamQuality, downstreamQuality, 10, 16);
 		assertEquals(mergeInformation.getMergedSequence(), new IupacNucleotideCodeSequence("AACCGGTTGGAACC"));
+		assertEquals(mergeInformation.getMergedQuality(), "HHHHHHHHHHHHHH");
 	}
 
 	@Test(groups = { "unit" })
@@ -44,6 +45,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentificationTest {
 		String downstreamQuality = "HHHHHHHH";
 		MergeInformation mergeInformation = PrimerReadExtensionAndPcrDuplicateIdentification.mergeSequences(false, upstreamSequence, downstreamSequence, upstreamQuality, downstreamQuality, 10, 20);
 		assertEquals(mergeInformation.getMergedSequence(), new IupacNucleotideCodeSequence("AACCGGTTNNTTGGAACC"));
+		assertEquals(mergeInformation.getMergedQuality(), "HHHHHHHH!!HHHHHHHH");
 	}
 
 	@Test(groups = { "unit" })
@@ -54,6 +56,17 @@ public class PrimerReadExtensionAndPcrDuplicateIdentificationTest {
 		String downstreamQuality = "HHHHHHHH";
 		MergeInformation mergeInformation = PrimerReadExtensionAndPcrDuplicateIdentification.mergeSequences(false, upstreamSequence, downstreamSequence, upstreamQuality, downstreamQuality, 10, 16);
 		assertEquals(mergeInformation.getMergedSequence(), new IupacNucleotideCodeSequence("AACCGGTCGGAACC"));
+		assertEquals(mergeInformation.getMergedQuality(), "HHHHHHHIHHHHHH");
 	}
 
+	@Test(groups = { "unit" })
+	public void noOverlapOneTest() {
+		ISequence upstreamSequence = new IupacNucleotideCodeSequence("AACCGGTC");
+		String upstreamQuality = "HHHHHHHH";
+		ISequence downstreamSequence = new IupacNucleotideCodeSequence("TTGGAACC");
+		String downstreamQuality = "HHHHHHHH";
+		MergeInformation mergeInformation = PrimerReadExtensionAndPcrDuplicateIdentification.mergeSequences(false, upstreamSequence, downstreamSequence, upstreamQuality, downstreamQuality, 1, 9);
+		assertEquals(mergeInformation.getMergedSequence(), new IupacNucleotideCodeSequence("AACCGGTCTTGGAACC"));
+		assertEquals(mergeInformation.getMergedQuality(), "HHHHHHHHHHHHHHHH");
+	}
 }
