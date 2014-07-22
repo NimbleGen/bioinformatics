@@ -69,4 +69,15 @@ public class PrimerReadExtensionAndPcrDuplicateIdentificationTest {
 		assertEquals(mergeInformation.getMergedSequence(), new IupacNucleotideCodeSequence("AACCGGTCTTGGAACC"));
 		assertEquals(mergeInformation.getMergedQuality(), "HHHHHHHHHHHHHHHH");
 	}
+
+	@Test(groups = { "unit" })
+	public void onlyOverlapOneTest() {
+		ISequence upstreamSequence = new IupacNucleotideCodeSequence("AACCGGTC");
+		String upstreamQuality = "HHHHHHHH";
+		ISequence downstreamSequence = new IupacNucleotideCodeSequence("AACCGGTC");
+		String downstreamQuality = "HHHHHHHH";
+		MergeInformation mergeInformation = PrimerReadExtensionAndPcrDuplicateIdentification.mergeSequences(false, upstreamSequence, downstreamSequence, upstreamQuality, downstreamQuality, 1, 1);
+		assertEquals(mergeInformation.getMergedSequence(), new IupacNucleotideCodeSequence("AACCGGTC"));
+		assertEquals(mergeInformation.getMergedQuality(), "HHHHHHHH");
+	}
 }
