@@ -798,8 +798,8 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 			// use quality scores to resolve conflicts when merging content in the overlap region
 			for (int i = 0; i < overlapLength; i++) {
-				short upstreamQualityScoreAtPosition = BamFileUtil.getQualityScore(upstreamOverlapQuality.substring(i, i));
-				short downstreamQualityScoreAtPosition = BamFileUtil.getQualityScore(downstreamQuality.substring(i, i));
+				short upstreamQualityScoreAtPosition = BamFileUtil.getQualityScore(upstreamOverlapQuality.substring(i, i + 1));
+				short downstreamQualityScoreAtPosition = BamFileUtil.getQualityScore(downstreamQuality.substring(i, i + 1));
 				// a higher quality score indicates a smaller probability of error (source: http://www.illumina.com/truseq/quality_101/quality_scores.ilmn)
 				if (upstreamQualityScoreAtPosition >= downstreamQualityScoreAtPosition) {
 					overlappingSequenceBuilder.append(upstreamOverlapSequence.getCodeAt(i).toString());
