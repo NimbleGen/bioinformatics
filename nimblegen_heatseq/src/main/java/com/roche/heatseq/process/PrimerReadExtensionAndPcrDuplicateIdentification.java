@@ -658,49 +658,132 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 	static MergeInformation mergeSequences(boolean isNegativeStrand, ISequence upstreamSequence, ISequence downstreamSequence, String upstreamQuality, String downstreamQuality,
 			int upstreamAlignmentStart, int downstreamAlignmentStart) {
 
-		int overlapStartIndexInGenome = downstreamAlignmentStart;
-		int overlapEndIndexInGenome = upstreamAlignmentStart + upstreamSequence.size();
+		// the following assertions are because I assume the genomic positions are 1-based and that zeros will not be encountered
+		assert upstreamAlignmentStart >= 1;
+		assert downstreamAlignmentStart >= 1;
 
-		int overlapLength = overlapEndIndexInGenome - overlapStartIndexInGenome;
+		// establish end genomic positions for the upstream and downstream sequences using their lengths
+		int upstreamLength = upstreamSequence.size();
+		int downstreamLength = downstreamSequence.size();
+		int upstreamAlignmentEnd = upstreamAlignmentStart + upstreamLength - 1;
+		int downstreamAlignmentEnd = downstreamAlignmentStart + downstreamLength - 1;
 
+		// initialize variables for three potential sections of the merged sequence, the lead, the overlap, and the trail
+		int leadStartPosition = 0;
+		int leadEndPosition = 0;
+		int leadLength = 0;
+		int overlapStartPosition = 0;
+		int overlapEndPosition = 0;
+		int overlapLength = 0;
+		int trailStartPosition = 0;
+		int trailEndPosition = 0;
+		int trailLength = 0;
+
+		// determine min and max alignment ends to assist in calculation overlap end and trail start and end
+		int minAlignmentEnd = Math.min(upstreamAlignmentEnd, downstreamAlignmentEnd);
+		int maxAlignmentEnd = Math.max(upstreamAlignmentEnd, downstreamAlignmentEnd);
+		// determine which source (upstream or downstream) is the correct one to use to extract trailing sequence/quality from
+		ISequence trailSourceSequence = null;
+		String trailSourceQuality = null;
+		int trailSourceAlignmentStart = 0;
+		if (downstreamAlignmentEnd == maxAlignmentEnd) {
+			trailSourceSequence = downstreamSequence;
+			trailSourceQuality = downstreamQuality;
+			trailSourceAlignmentStart = downstreamAlignmentStart;
+		} else {
+			trailSourceSequence = upstreamSequence;
+			trailSourceQuality = upstreamQuality;
+			trailSourceAlignmentStart = upstreamAlignmentStart;
+		}
+
+		// determine if an overlap has occurred and delineate lead and trail regions if present
+		if (downstreamAlignmentStart <= upstreamAlignmentEnd) {
+			// classification as downstream has already established a start position at or to the right of the upstream sequence
+			overlapStartPosition = downstreamAlignmentStart;
+			overlapEndPosition = minAlignmentEnd;
+			overlapLength = overlapEndPosition - overlapStartPosition + 1;
+			if (upstreamAlignmentStart < overlapStartPosition) {
+				// there is a leading sequence upstream of the overlap
+				leadStartPosition = upstreamAlignmentStart;
+				leadEndPosition = overlapStartPosition - 1;
+				leadLength = leadEndPosition - leadStartPosition + 1;
+			}
+			if (maxAlignmentEnd > overlapEndPosition) {
+				// there is a trailing sequence downstream of the overlap
+				trailStartPosition = overlapEndPosition + 1;
+				trailEndPosition = maxAlignmentEnd;
+				trailLength = trailEndPosition - trailStartPosition + 1;
+			}
+		} else {
+			// without an overlap the upstream sequence becomes the lead and the downstream becomes the trail
+			leadStartPosition = upstreamAlignmentStart;
+			leadEndPosition = leadStartPosition + upstreamLength - 1;
+			leadLength = leadEndPosition - leadStartPosition + 1;
+			trailStartPosition = downstreamAlignmentStart;
+			trailEndPosition = trailStartPosition + downstreamLength - 1;
+			trailLength = trailEndPosition - trailStartPosition + 1;
+		}
+
+		// individually sections for the merge may be validly missing but when present should have positive starts with ends at or greater than the starts
+		assert ((leadLength == 0) || (leadLength >= 1 && leadEndPosition >= leadStartPosition));
+		assert ((overlapLength == 0) || (overlapLength >= 1 && overlapEndPosition >= overlapStartPosition));
+		assert ((trailLength == 0) || (trailLength >= 1 && trailEndPosition >= trailStartPosition));
+
+		// overlaps optionally have leads and or trails but in the absence of overlap there should be both a lead and a trail
+		assert (overlapLength >= 1 || (leadLength >= 1 && trailLength >= 1));
+
+		// initialize variables to record the merged sequence/quality results
 		ISequence overlappingSequence = null;
 		String overlappingQuality = null;
-		ISequence sequenceStart = null;
-		String qualityStart = null;
-		ISequence sequenceEnd = null;
-		String qualityEnd = null;
+		ISequence leadSequence = null;
+		String leadQuality = null;
+		ISequence trailSequence = null;
+		String trailQuality = null;
 
-		if (overlapLength < 0) {
+		if (overlapLength == 0) {
 			// there is no overlap so fill the gap with N's and give these bases a poor quality score
-			int fillSize = -overlapLength;
 
-			overlappingSequence = new IupacNucleotideCodeSequence(StringUtil.repeatString("N", fillSize));
-			// ! represents the worst quality score
-			overlappingQuality = StringUtil.repeatString("!", fillSize);
+			int gapStartPosition = leadEndPosition + 1;
+			int gapEndPosition = trailStartPosition - 1;
 
-			sequenceStart = upstreamSequence;
-			qualityStart = upstreamQuality;
+			int fillSize = (gapEndPosition >= gapStartPosition ? (gapEndPosition - gapStartPosition + 1) : 0);
 
-			sequenceEnd = downstreamSequence;
-			qualityEnd = downstreamQuality;
-		} else {
-			int overlapStartIndexInUpstreamRecord = overlapStartIndexInGenome - upstreamAlignmentStart;
-			int overlapEndIndexInUpstreamRecord = upstreamSequence.size() - 1;
+			if (fillSize > 0) {
+				overlappingSequence = new IupacNucleotideCodeSequence(StringUtil.repeatString("N", fillSize));
+				// ! represents the worst quality score
+				overlappingQuality = StringUtil.repeatString("!", fillSize);
+				// resetting overlapLength due to the artificial gap overlap creation will be used as a signal to inclusion in the final sequence and quality strings
+				overlapLength = fillSize;
+			}
+			// sequences without overlaps but also without gaps (so that they abut each other) will not update overlapLength forcing an empty string to be used for the overlap sequence and quality
+			// strings
 
-			int sizeOfUpstreamOverlap = (overlapEndIndexInUpstreamRecord - overlapStartIndexInUpstreamRecord + 1);
+			// in the absence of a true overlap, the lead and trail sequence and quality content can be used without modification
+			leadSequence = upstreamSequence;
+			leadQuality = upstreamQuality;
 
-			int overlapStartIndexInDownstreamRecord = 0;
-			int overlapEndIndexInDownstreamRecord = sizeOfUpstreamOverlap - 1;
+			trailSequence = downstreamSequence;
+			trailQuality = downstreamQuality;
+		} else if (overlapLength >= 1) {
+			// extract the lead, overlap, and trail sequence/quality where available
 
-			sequenceStart = upstreamSequence.subSequence(0, overlapStartIndexInUpstreamRecord - 1);
-			qualityStart = upstreamQuality.substring(0, overlapStartIndexInUpstreamRecord);
-			assert sequenceStart.size() == qualityStart.length();
+			if (leadLength >= 1) {
+				// extract the lead sequence/quality
+				int leadStartIndexInUpstreamRecord = leadStartPosition - upstreamAlignmentStart;
+				int leadEndIndexInUpstreamRecord = leadEndPosition - upstreamAlignmentStart;
 
-			sequenceEnd = downstreamSequence.subSequence(overlapEndIndexInDownstreamRecord + 1, downstreamSequence.size() - 1);
-			qualityEnd = downstreamQuality.substring(overlapEndIndexInDownstreamRecord + 1, downstreamSequence.size());
-			assert sequenceEnd.size() == qualityEnd.length();
+				leadSequence = upstreamSequence.subSequence(leadStartIndexInUpstreamRecord, leadEndIndexInUpstreamRecord);
+				leadQuality = upstreamQuality.substring(leadStartIndexInUpstreamRecord, leadEndIndexInUpstreamRecord + 1);
+				assert leadSequence.size() == leadQuality.length();
+			}
 
-			assert overlapEndIndexInUpstreamRecord == (upstreamSequence.size() - 1);
+			// extract the overlap sequence/quality from both the upstream and downstream sources
+			int overlapStartIndexInUpstreamRecord = overlapStartPosition - upstreamAlignmentStart;
+			int overlapEndIndexInUpstreamRecord = overlapEndPosition - upstreamAlignmentStart;
+
+			int overlapStartIndexInDownstreamRecord = overlapStartPosition - downstreamAlignmentStart;
+			int overlapEndIndexInDownstreamRecord = overlapEndPosition - downstreamAlignmentStart;
+
 			ISequence upstreamOverlapSequence = upstreamSequence.subSequence(overlapStartIndexInUpstreamRecord, overlapEndIndexInUpstreamRecord);
 			String upstreamOverlapQuality = upstreamQuality.substring(overlapStartIndexInUpstreamRecord, overlapEndIndexInUpstreamRecord + 1);
 			assert upstreamOverlapSequence.size() == upstreamOverlapQuality.length();
@@ -713,11 +796,8 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 			StringBuilder overlappingSequenceBuilder = new StringBuilder();
 			StringBuilder overlappingQualityBuilder = new StringBuilder();
 
-			int sizeOfDownstreamOverlap = (overlapEndIndexInDownstreamRecord - overlapStartIndexInDownstreamRecord + 1);
-			assert sizeOfUpstreamOverlap == sizeOfDownstreamOverlap;
-			int sizeOfOverlap = sizeOfUpstreamOverlap;
-
-			for (int i = 0; i < sizeOfOverlap; i++) {
+			// use quality scores to resolve conflicts when merging content in the overlap region
+			for (int i = 0; i < overlapLength; i++) {
 				short upstreamQualityScoreAtPosition = BamFileUtil.getQualityScore(upstreamOverlapQuality.substring(i, i));
 				short downstreamQualityScoreAtPosition = BamFileUtil.getQualityScore(downstreamQuality.substring(i, i));
 				// a higher quality score indicates a smaller probability of error (source: http://www.illumina.com/truseq/quality_101/quality_scores.ilmn)
@@ -730,19 +810,36 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 				}
 			}
 
+			if (trailLength >= 1) {
+				// extract the trail sequence/quality
+				int trailStartIndexInSourceRecord = trailStartPosition - trailSourceAlignmentStart;
+				int trailEndIndexInSourceRecord = trailEndPosition - trailSourceAlignmentStart;
+				trailSequence = trailSourceSequence.subSequence(trailStartIndexInSourceRecord, trailEndIndexInSourceRecord);
+				trailQuality = trailSourceQuality.substring(trailStartIndexInSourceRecord, trailEndIndexInSourceRecord + 1);
+				assert trailSequence.size() == trailQuality.length();
+			}
+
 			overlappingSequence = new IupacNucleotideCodeSequence(overlappingSequenceBuilder.toString());
 			overlappingQuality = overlappingQualityBuilder.toString();
 
 		}
 
+		// merge the sections of the sequence and quality strings where sections may be validly empty
 		ISequence mergedSequence = new IupacNucleotideCodeSequence();
-		mergedSequence.append(sequenceStart);
-		mergedSequence.append(overlappingSequence);
-		mergedSequence.append(sequenceEnd);
+		if (leadLength > 0) {
+			mergedSequence.append(leadSequence);
+		}
+		if (overlapLength > 0) {
+			mergedSequence.append(overlappingSequence);
+		}
+		if (trailLength > 0) {
+			mergedSequence.append(trailSequence);
+		}
 
-		String mergedQuality = qualityStart + overlappingQuality + qualityEnd;
+		String mergedQuality = (leadLength > 0 ? leadQuality : "") + (overlapLength > 0 ? overlappingQuality : "") + (trailLength > 0 ? trailQuality : "");
 
 		if (isNegativeStrand) {
+			// transform the sequences as necessary when they are from the negative strand
 			mergedSequence = mergedSequence.getReverseCompliment();
 			mergedQuality = StringUtil.reverse(mergedQuality);
 		}
