@@ -3,7 +3,6 @@ package com.roche.heatseq.process;
 import java.io.File;
 import java.io.IOException;
 
-import net.sf.picard.fastq.FastqReader;
 import net.sf.picard.fastq.FastqRecord;
 import net.sf.picard.fastq.FastqWriter;
 import net.sf.picard.fastq.FastqWriterFactory;
@@ -14,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import com.roche.heatseq.cli.CliStatusConsole;
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ProbesBySequenceName;
+import com.roche.heatseq.utils.FastqReader;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
@@ -124,7 +124,7 @@ public class FastqReadTrimmer {
 
 	}
 
-	public static void trimReads(File inputFastqFile, File outputFastqFile, int firstBaseToKeep, int lastBaseToKeep) throws IOException {
+	public static void trimReads(File inputFastqFile, File outputFastqFile, int firstBaseToKeep, int lastBaseToKeep) {
 		if (firstBaseToKeep < 0) {
 			throw new IllegalArgumentException("First base to keep[" + firstBaseToKeep + "] must be greater than zero.");
 		}
@@ -136,7 +136,11 @@ public class FastqReadTrimmer {
 		if (outputFastqFile.exists()) {
 			outputFastqFile.delete();
 		}
-		FileUtil.createNewFile(outputFastqFile);
+		try {
+			FileUtil.createNewFile(outputFastqFile);
+		} catch (IOException e) {
+			throw new IllegalStateException("Unable to create an output file at [" + outputFastqFile.getAbsolutePath() + "].", e);
+		}
 
 		FastqWriterFactory factory = new FastqWriterFactory();
 		FastqWriter fastQWriter = factory.newWriter(outputFastqFile);
@@ -161,8 +165,10 @@ public class FastqReadTrimmer {
 			throw new IllegalArgumentException("Unable to trim " + firstBaseToKeep + " bases from the beginning of a sequence with length[" + readString.length() + "]");
 		}
 
-		String newReadString = readString.substring(firstBaseToKeep, lastBaseToKeep + 1);
-		String newReadQuality = readQuality.substring(firstBaseToKeep, lastBaseToKeep + 1);
+		int lastBase = Math.min(lastBaseToKeep, readString.length() - 1);
+
+		String newReadString = readString.substring(firstBaseToKeep, lastBase + 1);
+		String newReadQuality = readQuality.substring(firstBaseToKeep, lastBase + 1);
 
 		FastqRecord newRecord = new FastqRecord(record.getReadHeader(), newReadString, record.getBaseQualityHeader(), newReadQuality);
 		return newRecord;

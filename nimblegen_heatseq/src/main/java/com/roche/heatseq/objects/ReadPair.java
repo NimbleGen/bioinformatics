@@ -182,4 +182,17 @@ public class ReadPair implements IReadPair {
 		return readTwoPrimerMismatchDetails;
 	}
 
+	@Override
+	public void annotateAsBestPairInProbueUidGroup() {
+		record.setAttribute(SAMRecordUtil.BEST_DUPLICATE_ATTRIBUTE_TAG, "best_duplicate");
+		mate.setAttribute(SAMRecordUtil.BEST_DUPLICATE_ATTRIBUTE_TAG, "best_duplicate");
+	}
+
+	@Override
+	public void annotateProbueUidGroup(Probe probe, String uid) {
+		int duplicateGroupId = SAMRecordUtil.getDuplicateGroupId(probe, uid);
+		record.setAttribute(SAMRecordUtil.DUPLICATE_GROUP_ATTRIBUTE_TAG, duplicateGroupId);
+		mate.setAttribute(SAMRecordUtil.DUPLICATE_GROUP_ATTRIBUTE_TAG, duplicateGroupId);
+	}
+
 }

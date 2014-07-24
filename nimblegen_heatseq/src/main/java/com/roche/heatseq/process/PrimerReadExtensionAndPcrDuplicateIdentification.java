@@ -32,7 +32,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-import net.sf.picard.fastq.FastqReader;
 import net.sf.picard.fastq.FastqRecord;
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileReader;
@@ -55,6 +54,7 @@ import com.roche.heatseq.objects.UidReductionResultsForAProbe;
 import com.roche.heatseq.qualityreport.ProbeDetailsReport;
 import com.roche.heatseq.qualityreport.ReportManager;
 import com.roche.heatseq.utils.BamFileUtil;
+import com.roche.heatseq.utils.FastqReader;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.heatseq.utils.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
@@ -598,100 +598,12 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 			boolean isNegativeStrand = record.getReadNegativeStrandFlag();
 			ISequence captureTargetSequence = readPair.getCaptureTargetSequence();
 
-			int overlapStartIndexInGenome = downstreamRecord.getAlignmentStart();
-			int overlapEndIndexInGenome = upstreamRecord.getAlignmentStart() + upstreamRecord.getReadLength();
+			MergeInformation mergeInformation = mergeSequences(isNegativeStrand, new IupacNucleotideCodeSequence(upstreamRecord.getReadString()),
+					new IupacNucleotideCodeSequence(downstreamRecord.getReadString()), upstreamRecord.getBaseQualityString(), downstreamRecord.getBaseQualityString(),
+					upstreamRecord.getAlignmentStart(), downstreamRecord.getAlignmentStart());
 
-			int overlapLength = overlapEndIndexInGenome - overlapStartIndexInGenome;
-
-			ISequence overlappingSequence = null;
-			String overlappingQuality = null;
-			ISequence sequenceStart = null;
-			String qualityStart = null;
-			ISequence sequenceEnd = null;
-			String qualityEnd = null;
-
-			if (overlapLength < 0) {
-				// there is no overlap so fill the gap with N's and give these bases a poor quality score
-				int fillSize = -overlapLength;
-
-				overlappingSequence = new IupacNucleotideCodeSequence(StringUtil.repeatString("N", fillSize));
-				// ! represents the worst quality score
-				overlappingQuality = StringUtil.repeatString("!", fillSize);
-
-				sequenceStart = new IupacNucleotideCodeSequence(upstreamRecord.getReadString());
-				qualityStart = upstreamRecord.getBaseQualityString();
-
-				sequenceEnd = new IupacNucleotideCodeSequence(downstreamRecord.getReadString());
-				qualityEnd = downstreamRecord.getBaseQualityString();
-			} else {
-				int overlapStartIndexInUpstreamRecord = overlapStartIndexInGenome - upstreamRecord.getAlignmentStart();
-				int overlapEndIndexInUpstreamRecord = upstreamRecord.getReadLength() - 1;
-
-				int sizeOfUpstreamOverlap = (overlapEndIndexInUpstreamRecord - overlapStartIndexInUpstreamRecord + 1);
-
-				int overlapStartIndexInDownstreamRecord = 0;
-				int overlapEndIndexInDownstreamRecord = sizeOfUpstreamOverlap - 1;
-
-				String upstreamQuality = upstreamRecord.getBaseQualityString();
-				ISequence upstreamSequence = new IupacNucleotideCodeSequence(upstreamRecord.getReadString());
-
-				String downstreamQuality = downstreamRecord.getBaseQualityString();
-				ISequence downstreamSequence = new IupacNucleotideCodeSequence(downstreamRecord.getReadString());
-
-				sequenceStart = upstreamSequence.subSequence(0, overlapStartIndexInUpstreamRecord - 1);
-				qualityStart = upstreamQuality.substring(0, overlapStartIndexInUpstreamRecord);
-				assert sequenceStart.size() == qualityStart.length();
-
-				sequenceEnd = downstreamSequence.subSequence(overlapEndIndexInDownstreamRecord + 1, downstreamRecord.getReadLength() - 1);
-				qualityEnd = downstreamQuality.substring(overlapEndIndexInDownstreamRecord + 1, downstreamRecord.getReadLength());
-				assert sequenceEnd.size() == qualityEnd.length();
-
-				assert overlapEndIndexInUpstreamRecord == (upstreamSequence.size() - 1);
-				ISequence upstreamOverlapSequence = upstreamSequence.subSequence(overlapStartIndexInUpstreamRecord, overlapEndIndexInUpstreamRecord);
-				String upstreamOverlapQuality = upstreamQuality.substring(overlapStartIndexInUpstreamRecord, overlapEndIndexInUpstreamRecord + 1);
-				assert upstreamOverlapSequence.size() == upstreamOverlapQuality.length();
-
-				ISequence downstreamOverlapSequenceOnPositiveStrand = downstreamSequence.subSequence(overlapStartIndexInDownstreamRecord, overlapEndIndexInDownstreamRecord);
-				String downstreamOverlapQualityOnPositiveStrand = downstreamQuality.substring(overlapStartIndexInDownstreamRecord, overlapEndIndexInDownstreamRecord + 1);
-				assert downstreamOverlapSequenceOnPositiveStrand.size() == downstreamOverlapQualityOnPositiveStrand.length();
-				assert upstreamOverlapSequence.size() == downstreamOverlapSequenceOnPositiveStrand.size();
-
-				StringBuilder overlappingSequenceBuilder = new StringBuilder();
-				StringBuilder overlappingQualityBuilder = new StringBuilder();
-
-				int sizeOfDownstreamOverlap = (overlapEndIndexInDownstreamRecord - overlapStartIndexInDownstreamRecord + 1);
-				assert sizeOfUpstreamOverlap == sizeOfDownstreamOverlap;
-				int sizeOfOverlap = sizeOfUpstreamOverlap;
-
-				for (int i = 0; i < sizeOfOverlap; i++) {
-					short upstreamQualityScoreAtPosition = BamFileUtil.getQualityScore(upstreamOverlapQuality.substring(i, i));
-					short downstreamQualityScoreAtPosition = BamFileUtil.getQualityScore(downstreamQuality.substring(i, i));
-					// a higher quality score indicates a smaller probability of error (source: http://www.illumina.com/truseq/quality_101/quality_scores.ilmn)
-					if (upstreamQualityScoreAtPosition >= downstreamQualityScoreAtPosition) {
-						overlappingSequenceBuilder.append(upstreamOverlapSequence.getCodeAt(i).toString());
-						overlappingQualityBuilder.append(upstreamOverlapQuality.charAt(i));
-					} else {
-						overlappingSequenceBuilder.append(downstreamOverlapSequenceOnPositiveStrand.getCodeAt(i).toString());
-						overlappingQualityBuilder.append(downstreamOverlapQualityOnPositiveStrand.charAt(i));
-					}
-				}
-
-				overlappingSequence = new IupacNucleotideCodeSequence(overlappingSequenceBuilder.toString());
-				overlappingQuality = overlappingQualityBuilder.toString();
-
-			}
-
-			ISequence mergedSequence = new IupacNucleotideCodeSequence();
-			mergedSequence.append(sequenceStart);
-			mergedSequence.append(overlappingSequence);
-			mergedSequence.append(sequenceEnd);
-
-			String mergedQuality = qualityStart + overlappingQuality + qualityEnd;
-
-			if (isNegativeStrand) {
-				mergedSequence = mergedSequence.getReverseCompliment();
-				mergedQuality = StringUtil.reverse(mergedQuality);
-			}
+			ISequence mergedSequence = mergeInformation.getMergedSequence();
+			String mergedQuality = mergeInformation.getMergedQuality();
 
 			NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(captureTargetSequence, mergedSequence);
 			String cigarString = alignment.getCigarString().getStandardCigarString();
@@ -721,5 +633,120 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 			return mergedRecord;
 		}
+	}
+
+	static class MergeInformation {
+		private final ISequence overlappingSequence;
+		private final String overlappingQuality;
+
+		public MergeInformation(ISequence overlappingSequence, String overlappingQuality) {
+			super();
+			this.overlappingSequence = overlappingSequence;
+			this.overlappingQuality = overlappingQuality;
+		}
+
+		public ISequence getMergedSequence() {
+			return overlappingSequence;
+		}
+
+		public String getMergedQuality() {
+			return overlappingQuality;
+		}
+
+	}
+
+	static MergeInformation mergeSequences(boolean isNegativeStrand, ISequence upstreamSequence, ISequence downstreamSequence, String upstreamQuality, String downstreamQuality,
+			int upstreamAlignmentStart, int downstreamAlignmentStart) {
+
+		int overlapStartIndexInGenome = downstreamAlignmentStart;
+		int overlapEndIndexInGenome = upstreamAlignmentStart + upstreamSequence.size();
+
+		int overlapLength = overlapEndIndexInGenome - overlapStartIndexInGenome;
+
+		ISequence overlappingSequence = null;
+		String overlappingQuality = null;
+		ISequence sequenceStart = null;
+		String qualityStart = null;
+		ISequence sequenceEnd = null;
+		String qualityEnd = null;
+
+		if (overlapLength < 0) {
+			// there is no overlap so fill the gap with N's and give these bases a poor quality score
+			int fillSize = -overlapLength;
+
+			overlappingSequence = new IupacNucleotideCodeSequence(StringUtil.repeatString("N", fillSize));
+			// ! represents the worst quality score
+			overlappingQuality = StringUtil.repeatString("!", fillSize);
+
+			sequenceStart = upstreamSequence;
+			qualityStart = upstreamQuality;
+
+			sequenceEnd = downstreamSequence;
+			qualityEnd = downstreamQuality;
+		} else {
+			int overlapStartIndexInUpstreamRecord = overlapStartIndexInGenome - upstreamAlignmentStart;
+			int overlapEndIndexInUpstreamRecord = upstreamSequence.size() - 1;
+
+			int sizeOfUpstreamOverlap = (overlapEndIndexInUpstreamRecord - overlapStartIndexInUpstreamRecord + 1);
+
+			int overlapStartIndexInDownstreamRecord = 0;
+			int overlapEndIndexInDownstreamRecord = sizeOfUpstreamOverlap - 1;
+
+			sequenceStart = upstreamSequence.subSequence(0, overlapStartIndexInUpstreamRecord - 1);
+			qualityStart = upstreamQuality.substring(0, overlapStartIndexInUpstreamRecord);
+			assert sequenceStart.size() == qualityStart.length();
+
+			sequenceEnd = downstreamSequence.subSequence(overlapEndIndexInDownstreamRecord + 1, downstreamSequence.size() - 1);
+			qualityEnd = downstreamQuality.substring(overlapEndIndexInDownstreamRecord + 1, downstreamSequence.size());
+			assert sequenceEnd.size() == qualityEnd.length();
+
+			assert overlapEndIndexInUpstreamRecord == (upstreamSequence.size() - 1);
+			ISequence upstreamOverlapSequence = upstreamSequence.subSequence(overlapStartIndexInUpstreamRecord, overlapEndIndexInUpstreamRecord);
+			String upstreamOverlapQuality = upstreamQuality.substring(overlapStartIndexInUpstreamRecord, overlapEndIndexInUpstreamRecord + 1);
+			assert upstreamOverlapSequence.size() == upstreamOverlapQuality.length();
+
+			ISequence downstreamOverlapSequenceOnPositiveStrand = downstreamSequence.subSequence(overlapStartIndexInDownstreamRecord, overlapEndIndexInDownstreamRecord);
+			String downstreamOverlapQualityOnPositiveStrand = downstreamQuality.substring(overlapStartIndexInDownstreamRecord, overlapEndIndexInDownstreamRecord + 1);
+			assert downstreamOverlapSequenceOnPositiveStrand.size() == downstreamOverlapQualityOnPositiveStrand.length();
+			assert upstreamOverlapSequence.size() == downstreamOverlapSequenceOnPositiveStrand.size();
+
+			StringBuilder overlappingSequenceBuilder = new StringBuilder();
+			StringBuilder overlappingQualityBuilder = new StringBuilder();
+
+			int sizeOfDownstreamOverlap = (overlapEndIndexInDownstreamRecord - overlapStartIndexInDownstreamRecord + 1);
+			assert sizeOfUpstreamOverlap == sizeOfDownstreamOverlap;
+			int sizeOfOverlap = sizeOfUpstreamOverlap;
+
+			for (int i = 0; i < sizeOfOverlap; i++) {
+				short upstreamQualityScoreAtPosition = BamFileUtil.getQualityScore(upstreamOverlapQuality.substring(i, i));
+				short downstreamQualityScoreAtPosition = BamFileUtil.getQualityScore(downstreamQuality.substring(i, i));
+				// a higher quality score indicates a smaller probability of error (source: http://www.illumina.com/truseq/quality_101/quality_scores.ilmn)
+				if (upstreamQualityScoreAtPosition >= downstreamQualityScoreAtPosition) {
+					overlappingSequenceBuilder.append(upstreamOverlapSequence.getCodeAt(i).toString());
+					overlappingQualityBuilder.append(upstreamOverlapQuality.charAt(i));
+				} else {
+					overlappingSequenceBuilder.append(downstreamOverlapSequenceOnPositiveStrand.getCodeAt(i).toString());
+					overlappingQualityBuilder.append(downstreamOverlapQualityOnPositiveStrand.charAt(i));
+				}
+			}
+
+			overlappingSequence = new IupacNucleotideCodeSequence(overlappingSequenceBuilder.toString());
+			overlappingQuality = overlappingQualityBuilder.toString();
+
+		}
+
+		ISequence mergedSequence = new IupacNucleotideCodeSequence();
+		mergedSequence.append(sequenceStart);
+		mergedSequence.append(overlappingSequence);
+		mergedSequence.append(sequenceEnd);
+
+		String mergedQuality = qualityStart + overlappingQuality + qualityEnd;
+
+		if (isNegativeStrand) {
+			mergedSequence = mergedSequence.getReverseCompliment();
+			mergedQuality = StringUtil.reverse(mergedQuality);
+		}
+
+		return new MergeInformation(mergedSequence, mergedQuality);
 	}
 }
