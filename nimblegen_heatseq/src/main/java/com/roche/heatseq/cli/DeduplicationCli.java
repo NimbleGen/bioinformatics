@@ -52,6 +52,8 @@ import com.roche.sequencing.bioinformatics.genome.GenomeIdentifier;
 public class DeduplicationCli {
 	private final static Logger logger = LoggerFactory.getLogger(DeduplicationCli.class);
 
+	private final static int MAX_NUMBER_OF_PROCESSORS = 10;
+
 	public final static int DEFAULT_EXTENSION_UID_LENGTH = 10;
 	public final static int DEFAULT_LIGATION_UID_LENGTH = 0;
 	public final static String BAM_EXTENSION = ".bam";
@@ -68,7 +70,8 @@ public class DeduplicationCli {
 	public final static CommandLineOption OUTPUT_FILE_PREFIX_OPTION = new CommandLineOption("Output File Prefix", "outputPrefix", null, "Text to put at beginning of output file names.", false, false);
 	public final static CommandLineOption TMP_DIR_OPTION = new CommandLineOption("Temporary Directory", "tmpDir", null, "Location to store temporary files.", false, false);
 	public final static CommandLineOption NUM_PROCESSORS_OPTION = new CommandLineOption("Number of Processors", "numProcessors", null,
-			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.", false, false);
+			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.  The designated value and default value will be capped at "
+					+ MAX_NUMBER_OF_PROCESSORS + ".", false, false);
 	public final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o', "Name for output bam file.", true, false);
 	private final static CommandLineOption MATCH_SCORE_OPTION = new CommandLineOption("Match Score", "matchScore", null,
 			"The score given to matching nucleotides when extending alignments to the primers. (Default: " + SimpleAlignmentScorer.DEFAULT_MATCH_SCORE + ")", false, false);
@@ -178,6 +181,11 @@ public class DeduplicationCli {
 			} catch (NumberFormatException ex) {
 				throw new IllegalStateException("Value specified for number of processors is not an integer[" + parsedCommandLine.getOptionsValue(NUM_PROCESSORS_OPTION) + "].");
 			}
+		}
+		if (numProcessors > MAX_NUMBER_OF_PROCESSORS) {
+			logger.info("The requested number of processors[" + numProcessors + "] is greater than the max number of processors allowed [" + MAX_NUMBER_OF_PROCESSORS
+					+ "] so the max number of processors allowed will be used.");
+			numProcessors = MAX_NUMBER_OF_PROCESSORS;
 		}
 
 		Integer extensionUidLength;
