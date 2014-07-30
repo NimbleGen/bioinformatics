@@ -440,7 +440,6 @@ public class DeduplicationCli {
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
-
 	}
 
 	public static void sortMergeFilterAndExtendReads(String applicationName, String applicationVersion, File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File,

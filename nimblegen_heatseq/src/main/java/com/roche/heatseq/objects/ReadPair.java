@@ -39,6 +39,7 @@ public class ReadPair implements IReadPair {
 	private final boolean readTwoExtended;
 	private final String readOnePrimerMismatchDetails;
 	private final String readTwoPrimerMismatchDetails;
+	private boolean isBestPairInUidGroup;
 
 	public ReadPair(SAMRecord record, SAMRecord mate, String extensionUid, String ligationUid, ISequence captureTargetSequence, String probeId, boolean readOneExtended, boolean readTwoExtended,
 			String readOnePrimerMismatchDetails, String readTwoPrimerMismatchDetails) {
@@ -53,6 +54,7 @@ public class ReadPair implements IReadPair {
 		this.readTwoExtended = readTwoExtended;
 		this.readOnePrimerMismatchDetails = readOnePrimerMismatchDetails;
 		this.readTwoPrimerMismatchDetails = readTwoPrimerMismatchDetails;
+		this.isBestPairInUidGroup = false;
 	}
 
 	@Override
@@ -183,16 +185,13 @@ public class ReadPair implements IReadPair {
 	}
 
 	@Override
-	public void annotateAsBestPairInProbueUidGroup() {
-		record.setAttribute(SAMRecordUtil.BEST_DUPLICATE_ATTRIBUTE_TAG, "best_duplicate");
-		mate.setAttribute(SAMRecordUtil.BEST_DUPLICATE_ATTRIBUTE_TAG, "best_duplicate");
+	public void setAsBestPairInUidGroup() {
+		isBestPairInUidGroup = true;
 	}
 
 	@Override
-	public void annotateProbueUidGroup(Probe probe, String uid) {
-		int duplicateGroupId = SAMRecordUtil.getDuplicateGroupId(probe, uid);
-		record.setAttribute(SAMRecordUtil.DUPLICATE_GROUP_ATTRIBUTE_TAG, duplicateGroupId);
-		mate.setAttribute(SAMRecordUtil.DUPLICATE_GROUP_ATTRIBUTE_TAG, duplicateGroupId);
+	public boolean isBestPairDuplicateGroup() {
+		return isBestPairInUidGroup;
 	}
 
 }
