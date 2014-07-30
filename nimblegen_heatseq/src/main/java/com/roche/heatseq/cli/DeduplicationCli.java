@@ -127,6 +127,9 @@ public class DeduplicationCli {
 		String outputFilePrefix = parsedCommandLine.getOptionsValue(OUTPUT_FILE_PREFIX_OPTION);
 		if (outputFilePrefix == null) {
 			outputFilePrefix = "";
+		} else if (!outputFilePrefix.isEmpty() && outputFilePrefix.charAt(outputFilePrefix.length() - 1) != '_') {
+			// Add an underscore as a separation character for the prefix if there is not already an underscore as the last prefix character
+			outputFilePrefix = outputFilePrefix + "_";
 		}
 
 		File logFile = HsqUtilsCli.getLogFile(outputDirectory, outputFilePrefix, applicationName, "dedup");
