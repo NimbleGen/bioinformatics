@@ -122,10 +122,7 @@ public class HsqUtilsCli {
 			outputFilePrefix = "";
 		}
 		String logFileName = outputFilePrefix;
-		if (!outputFilePrefix.isEmpty()) {
-			logFileName = outputFilePrefix + "_";
-		}
-		logFileName = logFileName + applicationName + "_" + applicationName + "_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS() + ".log";
+		logFileName = logFileName + applicationName + "_" + command + "_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS() + ".log";
 		logFileName = logFileName.replaceAll(" ", "_");
 		logFileName = logFileName.replaceAll("/", "_");
 		logFileName = logFileName.replaceAll(":", "-");
@@ -136,7 +133,7 @@ public class HsqUtilsCli {
 	public static String getTempPrefix(String applicationName, String outputFilePrefix) {
 		String tempPrefix = outputFilePrefix;
 		if (!tempPrefix.isEmpty()) {
-			tempPrefix += "_" + applicationName + "_";
+			tempPrefix += applicationName + "_";
 		} else {
 			tempPrefix = applicationName + "_";
 		}
