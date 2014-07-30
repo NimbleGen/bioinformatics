@@ -18,10 +18,12 @@ package com.roche.sequencing.bioinformatics.common.utils;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -223,6 +225,13 @@ public final class FileUtil {
 			} catch (InterruptedException e1) {
 			}
 			FileUtils.deleteDirectory(directory);
+		}
+	}
+
+	public static void writeStringToFile(File file, String stringToWrite) throws IOException {
+		createNewFile(file);
+		try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+			writer.write(stringToWrite);
 		}
 	}
 }

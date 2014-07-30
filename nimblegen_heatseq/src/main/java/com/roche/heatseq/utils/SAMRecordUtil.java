@@ -60,6 +60,8 @@ public class SAMRecordUtil {
 	public static final String BEST_DUPLICATE_ATTRIBUTE_TAG = "BD";
 	public static final String DUPLICATE_GROUP_ATTRIBUTE_TAG = "DG";
 
+	public static final String BEST_DUPLICATE_ATTRIBUTE_TEXT = "best_duplicate";
+
 	private static final Map<String, Integer> probeIdAndUidPairToIdMap = new HashMap<String, Integer>();
 
 	private SAMRecordUtil() {
@@ -328,9 +330,14 @@ public class SAMRecordUtil {
 
 	}
 
-	public static int getDuplicateGroupId(Probe probe, String uid) {
+	public static boolean isBestDuplicate(SAMRecord record) {
+		boolean isBestDuplicate = BEST_DUPLICATE_ATTRIBUTE_TEXT.equals(record.getAttribute(SAMRecordUtil.BEST_DUPLICATE_ATTRIBUTE_TAG));
+		return isBestDuplicate;
+	}
+
+	public static int getDuplicateGroupId(String probeId, String uid) {
 		int duplicateGroupId = 0;
-		String probeUidPairString = probe.getProbeId() + uid;
+		String probeUidPairString = probeId + uid;
 		if (probeIdAndUidPairToIdMap.containsKey(probeUidPairString)) {
 			duplicateGroupId = probeIdAndUidPairToIdMap.get(probeUidPairString);
 		} else {
@@ -338,5 +345,14 @@ public class SAMRecordUtil {
 			probeIdAndUidPairToIdMap.put(probeUidPairString, duplicateGroupId);
 		}
 		return duplicateGroupId;
+	}
+
+	public static void setAsBestPairInDuplicateGroup(SAMRecord record) {
+		record.setAttribute(SAMRecordUtil.BEST_DUPLICATE_ATTRIBUTE_TAG, SAMRecordUtil.BEST_DUPLICATE_ATTRIBUTE_TEXT);
+	}
+
+	public static void setDuplicateGroup(SAMRecord record, String probeId, String uid) {
+		int duplicateGroupId = SAMRecordUtil.getDuplicateGroupId(probeId, uid);
+		record.setAttribute(SAMRecordUtil.DUPLICATE_GROUP_ATTRIBUTE_TAG, duplicateGroupId);
 	}
 }
