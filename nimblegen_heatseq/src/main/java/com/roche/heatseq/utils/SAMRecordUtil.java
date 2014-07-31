@@ -17,9 +17,9 @@
 package com.roche.heatseq.utils;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.sf.samtools.AbstractBAMFileIndex;
 import net.sf.samtools.BAMIndexMetaData;
@@ -62,7 +62,7 @@ public class SAMRecordUtil {
 
 	public static final String BEST_DUPLICATE_ATTRIBUTE_TEXT = "best_duplicate";
 
-	private static final Map<String, Integer> probeIdAndUidPairToIdMap = new HashMap<String, Integer>();
+	private static final Map<String, Integer> probeIdAndUidPairToIdMap = new ConcurrentHashMap<String, Integer>();
 
 	private SAMRecordUtil() {
 		throw new AssertionError();
