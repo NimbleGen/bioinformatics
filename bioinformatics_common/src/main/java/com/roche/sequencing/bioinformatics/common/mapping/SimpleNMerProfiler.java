@@ -149,6 +149,7 @@ public class SimpleNMerProfiler<O> {
 		return permutationToIndexMap;
 	}
 
+	@SuppressWarnings("unused")
 	private static double[] getNMerProfile(int n, ISequence sequence) {
 		Map<ISequence, Integer> permutationToIndexMap = getNMerSequencePermutationToIndexMap(n);
 		return getNMerProfile(n, permutationToIndexMap, sequence);
