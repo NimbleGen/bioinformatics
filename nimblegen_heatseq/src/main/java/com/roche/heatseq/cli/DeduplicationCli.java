@@ -103,7 +103,8 @@ public class DeduplicationCli {
 
 	static void identifyDuplicates(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion) {
 
-		CliStatusConsole.logStatus("Deduplication has started." + StringUtil.NEWLINE);
+		long applicationStart = System.currentTimeMillis();
+		CliStatusConsole.logStatus("Deduplication has started at " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "." + StringUtil.NEWLINE);
 
 		String outputDirectoryString = parsedCommandLine.getOptionsValue(OUTPUT_DIR_OPTION);
 		File outputDirectory = null;
@@ -437,10 +438,14 @@ public class DeduplicationCli {
 					outputFilePrefix, tempOutputDirectory, shouldOutputQualityReports, commandLineSignature, numProcessors, extensionUidLength, ligationUidLength, allowVariableLengthUids,
 					alignmentScorer, notTrimmedToWithinCaptureTarget, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching);
 
+			long applicationStop = System.currentTimeMillis();
+			CliStatusConsole.logStatus("Deduplication has completed succesfully.");
+			CliStatusConsole.logStatus("Start Time: " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "  Stop Time: " + DateUtil.convertTimeInMillisecondsToDate(applicationStop)
+					+ "  Total Time (hh:mm:ss): " + DateUtil.convertMillisecondsToHHMMSS(applicationStop - applicationStart) + StringUtil.NEWLINE);
+
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
-
 	}
 
 	public static void sortMergeFilterAndExtendReads(String applicationName, String applicationVersion, File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File,

@@ -11,6 +11,7 @@ import com.roche.heatseq.qualityreport.LoggingUtil;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
+import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
@@ -20,8 +21,8 @@ public class TrimCli {
 	private static final String FASTQ_EXTENSION = ".fastq";
 
 	public static void trim(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion) {
-
-		CliStatusConsole.logStatus("Trimming has started." + StringUtil.NEWLINE);
+		long applicationStart = System.currentTimeMillis();
+		CliStatusConsole.logStatus("Trimming has started at " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "." + StringUtil.NEWLINE);
 
 		String outputDirectoryString = parsedCommandLine.getOptionsValue(DeduplicationCli.OUTPUT_DIR_OPTION);
 
@@ -99,7 +100,10 @@ public class TrimCli {
 			FastqReadTrimmer.trimReads(fastQ1File, fastQ2File, probeFile, DeduplicationCli.DEFAULT_EXTENSION_UID_LENGTH, DeduplicationCli.DEFAULT_LIGATION_UID_LENGTH, outputFastQ1File,
 					outputFastQ2File);
 
-			CliStatusConsole.logStatus(StringUtil.NEWLINE + "Trimming completed succesfully." + StringUtil.NEWLINE);
+			long applicationStop = System.currentTimeMillis();
+			CliStatusConsole.logStatus(StringUtil.NEWLINE + "Trimming has completed succesfully.");
+			CliStatusConsole.logStatus("Start Time: " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "  Stop Time: " + DateUtil.convertTimeInMillisecondsToDate(applicationStop)
+					+ "  Total Time  (hh:mm:ss): " + DateUtil.convertMillisecondsToHHMMSS(applicationStop - applicationStart) + StringUtil.NEWLINE);
 
 			String genomeNameFromProbeInfoFile = ProbeFileUtil.extractGenomeNameInLowerCase(probeFile);
 			if (genomeNameFromProbeInfoFile != null) {

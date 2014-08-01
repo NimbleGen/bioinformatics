@@ -66,7 +66,8 @@ public final class ExtendReadsToPrimer {
 	private static IReadPair extendReadPair(Probe probe, IReadPair readPair, IAlignmentScorer alignmentScorer) {
 		return extendReadPair(readPair.isMarkedDuplicate(), readPair.getExtensionUid(), readPair.getLigationUid(), probe, readPair.getSamHeader(), readPair.getSequenceName(), readPair.getReadName(),
 				readPair.getReadGroup(), new IupacNucleotideCodeSequence(readPair.getSequenceOne()), readPair.getSequenceOneQualityString(),
-				new IupacNucleotideCodeSequence(readPair.getSequenceTwo()), readPair.getSequenceTwoQualityString(), readPair.getOneMappingQuality(), readPair.getTwoMappingQuality(), alignmentScorer);
+				new IupacNucleotideCodeSequence(readPair.getSequenceTwo()), readPair.getSequenceTwoQualityString(), readPair.getOneMappingQuality(), readPair.getTwoMappingQuality(),
+				readPair.isBestPairDuplicateGroup(), alignmentScorer);
 	}
 
 	/**
@@ -87,7 +88,7 @@ public final class ExtendReadsToPrimer {
 	 */
 	public static IReadPair extendReadPair(boolean isMarkedDuplicate, String extensionUid, String ligationUid, Probe probe, SAMFileHeader samHeader, String sequenceName, String readName,
 			String readGroup, ISequence sequenceOne, String sequenceOneQualityString, ISequence sequenceTwo, String sequenceTwoQualityString, int oneMappingQuality, int twoMappingQuality,
-			IAlignmentScorer alignmentScorer) {
+			boolean isBestDuplicate, IAlignmentScorer alignmentScorer) {
 		IReadPair extendedReadPair = null;
 		String readOnePrimerMismatchDetails = null;
 		String readTwoPrimerMismatchDetails = null;
@@ -128,7 +129,7 @@ public final class ExtendReadsToPrimer {
 				readOneExtended = true;
 				readOneRecord = createRecord(samHeader, readName, readGroup, readOneIsOnReverseStrand, readOneExtensionDetails.getAlignmentCigarString(),
 						readOneExtensionDetails.getMismatchDetailsString(), readOneExtensionDetails.getAlignmentStartInReference(), readOneExtendedSequence.toString(), readOneExtendedBaseQualities,
-						sequenceName, oneMappingQuality, readOneReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId());
+						sequenceName, oneMappingQuality, readOneReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId(), isBestDuplicate);
 			}
 
 			ReadExtensionDetails readTwoExtensionDetails = calculateDetailsForReadExtensionToPrimer(ligationPrimer, primerReferencePositionAdjacentToSequence, captureTargetSequence, sequenceTwo,
@@ -149,7 +150,7 @@ public final class ExtendReadsToPrimer {
 				readTwoExtended = true;
 				readTwoRecord = createRecord(samHeader, readName, readGroup, readTwoIsOnReverseStrand, readTwoExtensionDetails.getAlignmentCigarString(),
 						readTwoExtensionDetails.getMismatchDetailsString(), readTwoExtensionDetails.getAlignmentStartInReference(), readTwoExtendedSequence.toString(), readTwoExtendedBaseQualities,
-						sequenceName, twoMappingQuality, readTwoReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId());
+						sequenceName, twoMappingQuality, readTwoReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId(), isBestDuplicate);
 			}
 
 			if (readOneRecord != null && readTwoRecord != null) {
@@ -244,7 +245,7 @@ public final class ExtendReadsToPrimer {
 
 	public static SAMRecord createRecord(SAMFileHeader samHeader, String readName, String readGroup, boolean isNegativeStrand, CigarString cigarString, String mismatchDetailsString,
 			int alignmentStartInReference, String readString, String baseQualityString, String sequenceName, int mappingQuality, int referenceLength, boolean isMarkedDuplicate, String extensionUid,
-			String ligationUid, String probeId) {
+			String ligationUid, String probeId, boolean isBestDuplicate) {
 		if (readString.length() != baseQualityString.length()) {
 			throw new IllegalStateException("SAMRecord read[" + readString + "] length[" + readString.length() + "] and base quality[" + baseQualityString + "] length[" + baseQualityString.length()
 					+ "] must be the same.");
@@ -269,6 +270,10 @@ public final class ExtendReadsToPrimer {
 		}
 		record.setAttribute(SAMRecordUtil.READ_GROUP_ATTRIBUTE_TAG, readGroup);
 		record.setAttribute(SAMRecordUtil.EDIT_DISTANCE_ATTRIBUTE_TAG, cigarString.getEditDistance());
+		if (isBestDuplicate) {
+			SAMRecordUtil.setAsBestPairInDuplicateGroup(record);
+		}
+		SAMRecordUtil.setDuplicateGroup(record, probeId, extensionUid + ligationUid);
 		return record;
 	}
 

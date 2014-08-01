@@ -77,7 +77,7 @@ public interface IReadPair {
 
 	String getReadTwoPrimerMismatchDetails();
 
-	void annotateAsBestPairInProbueUidGroup();
+	void setAsBestPairInUidGroup();
 
-	void annotateProbueUidGroup(Probe probe, String uid);
+	boolean isBestPairDuplicateGroup();
 }
