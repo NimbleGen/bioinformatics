@@ -338,11 +338,13 @@ public class SAMRecordUtil {
 	public static int getDuplicateGroupId(String probeId, String uid) {
 		int duplicateGroupId = 0;
 		String probeUidPairString = probeId + uid;
-		if (probeIdAndUidPairToIdMap.containsKey(probeUidPairString)) {
-			duplicateGroupId = probeIdAndUidPairToIdMap.get(probeUidPairString);
-		} else {
-			duplicateGroupId = probeIdAndUidPairToIdMap.size() + 1;
-			probeIdAndUidPairToIdMap.put(probeUidPairString, duplicateGroupId);
+		synchronized (probeIdAndUidPairToIdMap) {
+			if (probeIdAndUidPairToIdMap.containsKey(probeUidPairString)) {
+				duplicateGroupId = probeIdAndUidPairToIdMap.get(probeUidPairString);
+			} else {
+				duplicateGroupId = probeIdAndUidPairToIdMap.size() + 1;
+				probeIdAndUidPairToIdMap.put(probeUidPairString, duplicateGroupId);
+			}
 		}
 		return duplicateGroupId;
 	}
