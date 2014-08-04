@@ -85,6 +85,24 @@ public class ReportManager {
 		numberOfLigationGains = new ArrayList<Integer>();
 		numberOfExtensionGains = new ArrayList<Integer>();
 
+		// the summary file is produced regardless of shouldOutputReports
+		File detailsReportFile = new File(outputDirectory, outputFilePrefix + PROBE_DETAILS_REPORT_NAME);
+		try {
+			FileUtil.createNewFile(detailsReportFile);
+			detailsReport = new ProbeDetailsReport(detailsReportFile);
+		} catch (IOException e) {
+			throw new IllegalStateException(e);
+		}
+
+		File summaryReportFile = null;
+		summaryReportFile = new File(outputDirectory, outputFilePrefix + SUMMARY_REPORT_NAME);
+		try {
+			FileUtil.createNewFile(summaryReportFile);
+			summaryReport = new SummaryReport(softwareName, softwareVersion, summaryReportFile, extensionUidLength, ligationUidLength);
+		} catch (IOException e) {
+			throw new IllegalStateException(e);
+		}
+
 		if (shouldOutputReports) {
 			File ambiguousMappingFile = new File(outputDirectory, outputFilePrefix + DUPLICATE_MAPPINGS_REPORT_NAME);
 			try {
@@ -201,30 +219,6 @@ public class ReportManager {
 				throw new IllegalStateException(e);
 			}
 
-			File detailsReportFile = new File(outputDirectory, outputFilePrefix + PROBE_DETAILS_REPORT_NAME);
-			try {
-				FileUtil.createNewFile(detailsReportFile);
-				detailsReport = new ProbeDetailsReport(detailsReportFile);
-			} catch (IOException e) {
-				throw new IllegalStateException(e);
-			}
-
-		} else {
-			try {
-				detailsReport = new ProbeDetailsReport();
-			} catch (IOException e) {
-				throw new IllegalStateException(e);
-			}
-		}
-
-		// the summary file is produced regardless of shouldOutputReports
-		File summaryReportFile = null;
-		summaryReportFile = new File(outputDirectory, outputFilePrefix + SUMMARY_REPORT_NAME);
-		try {
-			FileUtil.createNewFile(summaryReportFile);
-			summaryReport = new SummaryReport(softwareName, softwareVersion, summaryReportFile, extensionUidLength, ligationUidLength);
-		} catch (IOException e) {
-			throw new IllegalStateException(e);
 		}
 
 	}

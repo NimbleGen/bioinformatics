@@ -21,10 +21,6 @@ public class ProbeDetailsReport {
 	private int totalProbes;
 	private double sumOfAverageNumberOfReadPairsPerProbeUid;
 
-	ProbeDetailsReport() throws IOException {
-		this(null);
-	}
-
 	ProbeDetailsReport(File detailsReportFile) throws IOException {
 		duplicateReadPairsRemoved = 0;
 		probesWithNoMappedReadPairs = 0;
