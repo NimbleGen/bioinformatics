@@ -59,8 +59,6 @@ public class ReportManager {
 	private FastqWriter fastqOneUnableToMapWriter;
 	private FastqWriter fastqTwoUnableToMapWriter;
 
-	private final boolean shouldOutputReports;
-
 	private final List<TallyMap<Character>> ligationMismatchDetailsByIndex;
 	private final List<TallyMap<Character>> extensionMismatchDetailsByIndex;
 
@@ -75,8 +73,6 @@ public class ReportManager {
 
 	public ReportManager(String softwareName, String softwareVersion, File outputDirectory, String outputFilePrefix, int extensionUidLength, int ligationUidLength, SAMFileHeader samFileHeader,
 			boolean shouldOutputReports) {
-
-		this.shouldOutputReports = shouldOutputReports;
 
 		ligationMismatchDetailsByIndex = new ArrayList<TallyMap<Character>>();
 		extensionMismatchDetailsByIndex = new ArrayList<TallyMap<Character>>();
@@ -213,20 +209,24 @@ public class ReportManager {
 				throw new IllegalStateException(e);
 			}
 
-			File summaryReportFile = null;
-
-			summaryReportFile = new File(outputDirectory, outputFilePrefix + SUMMARY_REPORT_NAME);
+		} else {
 			try {
-				FileUtil.createNewFile(summaryReportFile);
-				summaryReport = new SummaryReport(softwareName, softwareVersion, summaryReportFile, extensionUidLength, ligationUidLength);
+				detailsReport = new ProbeDetailsReport();
 			} catch (IOException e) {
 				throw new IllegalStateException(e);
 			}
 		}
-	}
 
-	public boolean isReporting() {
-		return shouldOutputReports;
+		// the summary file is produced regardless of shouldOutputReports
+		File summaryReportFile = null;
+		summaryReportFile = new File(outputDirectory, outputFilePrefix + SUMMARY_REPORT_NAME);
+		try {
+			FileUtil.createNewFile(summaryReportFile);
+			summaryReport = new SummaryReport(softwareName, softwareVersion, summaryReportFile, extensionUidLength, ligationUidLength);
+		} catch (IOException e) {
+			throw new IllegalStateException(e);
+		}
+
 	}
 
 	private void writeToPrimerAccuracyFile(String primerType, List<TallyMap<Character>> mismatchDetailsByIndex) {

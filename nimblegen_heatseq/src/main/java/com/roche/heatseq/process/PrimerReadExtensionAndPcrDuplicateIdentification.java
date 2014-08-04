@@ -128,7 +128,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		// Set up the reports files
 		ReportManager reportManager = new ReportManager(applicationSettings.getProgramName(), applicationSettings.getProgramVersion(), applicationSettings.getOutputDirectory(),
 				applicationSettings.getOutputFilePrefix(), applicationSettings.getExtensionUidLength(), applicationSettings.getLigationUidLength(), samHeader,
-				applicationSettings.isShouldOutputQualityReports());
+				applicationSettings.isShouldOutputReports());
 
 		// Actually do the work
 		filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings, probeInfo, reportManager);
@@ -361,41 +361,48 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 			long end = System.currentTimeMillis();
 
-			if (reportManager.isReporting()) {
-				int totalReads = 0;
-				int totalFullyMappedOffTargetReads = 0;
-				int totalPartiallyMappedReads = 0;
-				int totalFullyUnmappedReads = 0;
-				int totalFullyMappedOnTargetReads = 0;
+			int totalReads = 0;
+			int totalFullyMappedOffTargetReads = 0;
+			int totalPartiallyMappedReads = 0;
+			int totalFullyUnmappedReads = 0;
+			int totalFullyMappedOnTargetReads = 0;
 
-				Set<String> unmappedReadPairReadNames = new HashSet<String>();
+			Set<String> unmappedReadPairReadNames = new HashSet<String>();
 
-				SAMRecordIterator samRecordIter = samReader.iterator();
-				while (samRecordIter.hasNext()) {
-					SAMRecord record = samRecordIter.next();
-					totalReads++;
-					Set<String> mappedOnTargetReadNames = readNamesToDistinctProbeAssignment.keySet();
-					String readName = IlluminaFastQHeader.getUniqueIdForReadHeader(record.getReadName());
-					boolean readAndMateMapped = !record.getMateUnmappedFlag() && !record.getReadUnmappedFlag();
-					boolean partiallyMapped = (!record.getMateUnmappedFlag() && record.getReadUnmappedFlag()) || (record.getMateUnmappedFlag() && !record.getReadUnmappedFlag());
-					if (partiallyMapped) {
+			SAMRecordIterator samRecordIter = samReader.iterator();
+			while (samRecordIter.hasNext()) {
+				SAMRecord record = samRecordIter.next();
+				totalReads++;
+				Set<String> mappedOnTargetReadNames = readNamesToDistinctProbeAssignment.keySet();
+				String readName = IlluminaFastQHeader.getUniqueIdForReadHeader(record.getReadName());
+				boolean readAndMateMapped = !record.getMateUnmappedFlag() && !record.getReadUnmappedFlag();
+				boolean partiallyMapped = (!record.getMateUnmappedFlag() && record.getReadUnmappedFlag()) || (record.getMateUnmappedFlag() && !record.getReadUnmappedFlag());
+				if (partiallyMapped) {
+					if (reportManager.getPartiallyMappedReadPairsWriter() != null) {
 						reportManager.getPartiallyMappedReadPairsWriter().addAlignment(record);
-						unmappedReadPairReadNames.add(record.getReadName());
-						totalPartiallyMappedReads++;
-					} else if (!readAndMateMapped) {
-						reportManager.getUnMappedReadPairsWriter().addAlignment(record);
-						unmappedReadPairReadNames.add(record.getReadName());
-						totalFullyUnmappedReads++;
-					} else if (readAndMateMapped && !mappedOnTargetReadNames.contains(readName)) {
-						reportManager.getMappedOffTargetReadsWriter().addAlignment(record);
-						totalFullyMappedOffTargetReads++;
-					} else {
-						// the only remaining possible option is that it is mapped and on target so verify this
-						boolean mappedAndOnTarget = readAndMateMapped && mappedOnTargetReadNames.contains(readName);
-						assert mappedAndOnTarget;
-						totalFullyMappedOnTargetReads++;
 					}
+					unmappedReadPairReadNames.add(record.getReadName());
+					totalPartiallyMappedReads++;
+				} else if (!readAndMateMapped) {
+					if (reportManager.getUnMappedReadPairsWriter() != null) {
+						reportManager.getUnMappedReadPairsWriter().addAlignment(record);
+					}
+					unmappedReadPairReadNames.add(record.getReadName());
+					totalFullyUnmappedReads++;
+				} else if (readAndMateMapped && !mappedOnTargetReadNames.contains(readName)) {
+					if (reportManager.getMappedOffTargetReadsWriter() != null) {
+						reportManager.getMappedOffTargetReadsWriter().addAlignment(record);
+					}
+					totalFullyMappedOffTargetReads++;
+				} else {
+					// the only remaining possible option is that it is mapped and on target so verify this
+					boolean mappedAndOnTarget = readAndMateMapped && mappedOnTargetReadNames.contains(readName);
+					assert mappedAndOnTarget;
+					totalFullyMappedOnTargetReads++;
 				}
+			}
+
+			if (reportManager.getFastqOneUnableToMapWriter() != null && reportManager.getFastqTwoUnableToMapWriter() != null) {
 
 				try (FastqReader fastQOneReader = new FastqReader(applicationSettings.getFastQ1WithUidsFile())) {
 					try (FastqReader fastQTwoReader = new FastqReader(applicationSettings.getFastQ2File())) {
@@ -419,23 +426,23 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 						}
 					}
 				}
+			}
 
-				samRecordIter.close();
+			samRecordIter.close();
 
-				for (Entry<String, Set<Probe>> entry : readNamesToDistinctProbeAssignment.entrySet()) {
-					String readName = entry.getKey();
-					Set<Probe> assignedProbeIds = entry.getValue();
-					if (assignedProbeIds.size() > 1) {
-						for (Probe probe : assignedProbeIds) {
-							reportManager.getReadsMappedToMultipleProbesWriter().writeLine(readName, probe.getProbeId());
-						}
+			for (Entry<String, Set<Probe>> entry : readNamesToDistinctProbeAssignment.entrySet()) {
+				String readName = entry.getKey();
+				Set<Probe> assignedProbeIds = entry.getValue();
+				if (assignedProbeIds.size() > 1) {
+					for (Probe probe : assignedProbeIds) {
+						reportManager.getReadsMappedToMultipleProbesWriter().writeLine(readName, probe.getProbeId());
 					}
 				}
-
-				long processingTimeInMs = end - start;
-				reportManager.completeSummaryReport(readNamesToDistinctProbeAssignment, distinctUids, uids, processingTimeInMs, totalProbes, totalReads, totalFullyMappedOffTargetReads,
-						totalPartiallyMappedReads, totalFullyUnmappedReads, totalFullyMappedOnTargetReads);
 			}
+
+			long processingTimeInMs = end - start;
+			reportManager.completeSummaryReport(readNamesToDistinctProbeAssignment, distinctUids, uids, processingTimeInMs, totalProbes, totalReads, totalFullyMappedOffTargetReads,
+					totalPartiallyMappedReads, totalFullyUnmappedReads, totalFullyMappedOnTargetReads);
 
 			samReader.close();
 			reportManager.close();
@@ -513,13 +520,15 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 				}
 				probeReductionResults.getProbeProcessingStats().setExtensionErrors(countOfUniqueReadsUnableToExtend);
 
-				if (reportManager.isReporting()) {
-					ProbeDetailsReport detailsReport = reportManager.getDetailsReport();
+				ProbeDetailsReport detailsReport = reportManager.getDetailsReport();
+				if (detailsReport != null) {
 					synchronized (detailsReport) {
 						detailsReport.writeEntry(probeReductionResults.getProbeProcessingStats());
 					}
+				}
 
-					TabDelimitedFileWriter uidCompositionByProbeReport = reportManager.getUidCompisitionByProbeWriter();
+				TabDelimitedFileWriter uidCompositionByProbeReport = reportManager.getUidCompisitionByProbeWriter();
+				if (uidCompositionByProbeReport != null) {
 					synchronized (uidCompositionByProbeReport) {
 						if (uidCompositionByProbeReport != null) {
 							uidCompositionByProbeReport.writeLine(probe.getProbeId() + StringUtil.TAB + probeReductionResults.getProbeProcessingStats().toUidCompositionByProbeString());

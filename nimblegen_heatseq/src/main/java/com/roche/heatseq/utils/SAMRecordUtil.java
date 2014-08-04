@@ -235,7 +235,7 @@ public class SAMRecordUtil {
 		int editDistanceCutoff = (primerSequence.size() / 4);
 
 		if (editDistance > 0 && editDistance < editDistanceCutoff) {
-			if (reportManager.isReporting()) {
+			if (reportManager.getPrimerAlignmentWriter() != null) {
 				int cutoffIndex = editDistanceCutoff + primerSequence.size() + uidLength;
 				ISequence referenceSequence = alignment.getAlignmentPair().getReferenceAlignment().subSequence(0, cutoffIndex);
 				ISequence querySequence = alignment.getAlignmentPair().getQueryAlignment().subSequence(0, cutoffIndex);

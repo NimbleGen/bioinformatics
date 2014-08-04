@@ -21,6 +21,10 @@ public class ProbeDetailsReport {
 	private int totalProbes;
 	private double sumOfAverageNumberOfReadPairsPerProbeUid;
 
+	ProbeDetailsReport() throws IOException {
+		this(null);
+	}
+
 	ProbeDetailsReport(File detailsReportFile) throws IOException {
 		duplicateReadPairsRemoved = 0;
 		probesWithNoMappedReadPairs = 0;
@@ -33,13 +37,17 @@ public class ProbeDetailsReport {
 
 		sumOfAverageNumberOfReadPairsPerProbeUid = 0;
 
-		FileUtil.createNewFile(detailsReportFile);
-		detailsReportWriter = new PrintWriter(detailsReportFile);
-		detailsReportWriter.println("probe_id" + StringUtil.TAB + "total_uids" + StringUtil.TAB + "average_number_of_read_pairs_per_uid" + StringUtil.TAB + "standard_deviation_of_read_pairs_per_uid"
-				+ StringUtil.TAB + "min_read_pairs_per_uid" + StringUtil.TAB + "max_read_pairs_per_uid" + StringUtil.TAB + "uid_with_max_read_pairs" + StringUtil.TAB
-				+ "total_duplicate_read_pairs_removed" + StringUtil.TAB + "total_read_pairs_after_duplicate_removal" + StringUtil.TAB + "unique_reads_with_extension_errors" + StringUtil.TAB
-				+ "on_target_duplicate_rate" + StringUtil.TAB + "total_time_to_process_in_ms");
-		detailsReportWriter.flush();
+		if (detailsReportFile != null) {
+			FileUtil.createNewFile(detailsReportFile);
+			detailsReportWriter = new PrintWriter(detailsReportFile);
+			detailsReportWriter.println("probe_id" + StringUtil.TAB + "total_uids" + StringUtil.TAB + "average_number_of_read_pairs_per_uid" + StringUtil.TAB
+					+ "standard_deviation_of_read_pairs_per_uid" + StringUtil.TAB + "min_read_pairs_per_uid" + StringUtil.TAB + "max_read_pairs_per_uid" + StringUtil.TAB + "uid_with_max_read_pairs"
+					+ StringUtil.TAB + "total_duplicate_read_pairs_removed" + StringUtil.TAB + "total_read_pairs_after_duplicate_removal" + StringUtil.TAB + "unique_reads_with_extension_errors"
+					+ StringUtil.TAB + "on_target_duplicate_rate" + StringUtil.TAB + "total_time_to_process_in_ms");
+			detailsReportWriter.flush();
+		} else {
+			detailsReportWriter = null;
+		}
 	}
 
 	public void writeEntry(ProbeProcessingStats probeProcessingStats) {
@@ -53,8 +61,10 @@ public class ProbeDetailsReport {
 
 		sumOfAverageNumberOfReadPairsPerProbeUid += probeProcessingStats.getAverageNumberOfReadPairsPerUid();
 
-		detailsReportWriter.print(probeProcessingStats.toReportString());
-		detailsReportWriter.flush();
+		if (detailsReportWriter != null) {
+			detailsReportWriter.print(probeProcessingStats.toReportString());
+			detailsReportWriter.flush();
+		}
 
 		totalProbes++;
 		totalNonZeroProbes++;
@@ -92,7 +102,9 @@ public class ProbeDetailsReport {
 	}
 
 	void close() {
-		detailsReportWriter.close();
+		if (detailsReportWriter != null) {
+			detailsReportWriter.close();
+		}
 	}
 
 }

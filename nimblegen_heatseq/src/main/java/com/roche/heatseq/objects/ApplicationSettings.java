@@ -36,7 +36,7 @@ public class ApplicationSettings {
 	private final String outputBamFileName;
 	private final String outputFilePrefix;
 	private final String originalBamFileName;
-	private final boolean shouldOutputQualityReports;
+	private final boolean shouldOutputReports;
 	private final String commandLineSignature;
 	private final String programName;
 	private final String programVersion;
@@ -62,7 +62,7 @@ public class ApplicationSettings {
 	 * @param outputDirectory
 	 * @param outputFilePrefix
 	 * @param originalBamFileName
-	 * @param shouldOutputQualityReports
+	 * @param shouldOutputReports
 	 * @param shouldOutputFastq
 	 * @param shouldExtendReads
 	 * @param commandLineSignature
@@ -71,7 +71,7 @@ public class ApplicationSettings {
 	 * @param numProcessors
 	 */
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
-			String originalBamFileName, boolean shouldOutputQualityReports, String commandLineSignature, String programName, String programVersion, int numProcessors, boolean allowVariableLengthUids,
+			String originalBamFileName, boolean shouldOutputReports, String commandLineSignature, String programName, String programVersion, int numProcessors, boolean allowVariableLengthUids,
 			IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinTheCaptureTargetSequence, int extensionUidLength, int ligationUidLength, boolean markDuplicates, boolean keepDuplicates,
 			boolean mergePairs, boolean useStrictReadToProbeMatching) {
 		super();
@@ -84,7 +84,7 @@ public class ApplicationSettings {
 		this.outputBamFileName = outputBamFileName;
 		this.outputFilePrefix = outputFilePrefix;
 		this.originalBamFileName = originalBamFileName;
-		this.shouldOutputQualityReports = shouldOutputQualityReports;
+		this.shouldOutputReports = shouldOutputReports;
 		this.commandLineSignature = commandLineSignature;
 		this.programName = programName;
 		this.programVersion = programVersion;
@@ -173,8 +173,8 @@ public class ApplicationSettings {
 	/**
 	 * @return true if the outputQualityReports should be created
 	 */
-	public boolean isShouldOutputQualityReports() {
-		return shouldOutputQualityReports;
+	public boolean isShouldOutputReports() {
+		return shouldOutputReports;
 	}
 
 	/**

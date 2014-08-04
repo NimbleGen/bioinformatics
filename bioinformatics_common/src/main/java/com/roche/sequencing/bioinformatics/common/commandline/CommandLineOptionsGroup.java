@@ -57,7 +57,9 @@ public class CommandLineOptionsGroup implements Iterable<CommandLineOption> {
 		}
 
 		for (CommandLineOption option : options) {
-			usageBuilder.append(option.getUsage());
+			if (!option.isHidden()) {
+				usageBuilder.append(option.getUsage());
+			}
 		}
 
 		return usageBuilder.toString();
