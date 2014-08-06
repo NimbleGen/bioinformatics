@@ -27,7 +27,7 @@ public class ReportManager {
 	private final static String DUPLICATE_MAPPINGS_REPORT_NAME = "duplicate_mappings.txt";
 
 	public final static String PROBE_DETAILS_REPORT_NAME = "probe_details.txt";
-	public final static String SUMMARY_REPORT_NAME = HsqUtilsCli.APPLICATION_NAME + "_summary.txt";
+	public final static String SUMMARY_REPORT_NAME = HsqUtilsCli.APPLICATION_NAME + "_" + HsqUtilsCli.DEDUPLICATION_COMMAND_NAME + "_summary.txt";
 	private final static String UID_COMPOSITION_REPORT_NAME = "uid_composition_by_probe.txt";
 	private final static String UNABLE_TO_ALIGN_PRIMER_REPORT_NAME = "unable_to_align_primer_for_variable_length_uid.txt";
 	public final static String UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME = "unable_to_map_one.fastq";
@@ -59,8 +59,6 @@ public class ReportManager {
 	private FastqWriter fastqOneUnableToMapWriter;
 	private FastqWriter fastqTwoUnableToMapWriter;
 
-	private final boolean shouldOutputReports;
-
 	private final List<TallyMap<Character>> ligationMismatchDetailsByIndex;
 	private final List<TallyMap<Character>> extensionMismatchDetailsByIndex;
 
@@ -76,8 +74,6 @@ public class ReportManager {
 	public ReportManager(String softwareName, String softwareVersion, File outputDirectory, String outputFilePrefix, int extensionUidLength, int ligationUidLength, SAMFileHeader samFileHeader,
 			boolean shouldOutputReports) {
 
-		this.shouldOutputReports = shouldOutputReports;
-
 		ligationMismatchDetailsByIndex = new ArrayList<TallyMap<Character>>();
 		extensionMismatchDetailsByIndex = new ArrayList<TallyMap<Character>>();
 		numberOfLigationErrors = new ArrayList<Integer>();
@@ -88,6 +84,24 @@ public class ReportManager {
 		numberOfExtensionDeletions = new ArrayList<Integer>();
 		numberOfLigationGains = new ArrayList<Integer>();
 		numberOfExtensionGains = new ArrayList<Integer>();
+
+		// the summary file is produced regardless of shouldOutputReports
+		File detailsReportFile = new File(outputDirectory, outputFilePrefix + PROBE_DETAILS_REPORT_NAME);
+		try {
+			FileUtil.createNewFile(detailsReportFile);
+			detailsReport = new ProbeDetailsReport(detailsReportFile);
+		} catch (IOException e) {
+			throw new IllegalStateException(e);
+		}
+
+		File summaryReportFile = null;
+		summaryReportFile = new File(outputDirectory, outputFilePrefix + SUMMARY_REPORT_NAME);
+		try {
+			FileUtil.createNewFile(summaryReportFile);
+			summaryReport = new SummaryReport(softwareName, softwareVersion, summaryReportFile, extensionUidLength, ligationUidLength);
+		} catch (IOException e) {
+			throw new IllegalStateException(e);
+		}
 
 		if (shouldOutputReports) {
 			File ambiguousMappingFile = new File(outputDirectory, outputFilePrefix + DUPLICATE_MAPPINGS_REPORT_NAME);
@@ -205,28 +219,8 @@ public class ReportManager {
 				throw new IllegalStateException(e);
 			}
 
-			File detailsReportFile = new File(outputDirectory, outputFilePrefix + PROBE_DETAILS_REPORT_NAME);
-			try {
-				FileUtil.createNewFile(detailsReportFile);
-				detailsReport = new ProbeDetailsReport(detailsReportFile);
-			} catch (IOException e) {
-				throw new IllegalStateException(e);
-			}
-
-			File summaryReportFile = null;
-
-			summaryReportFile = new File(outputDirectory, outputFilePrefix + SUMMARY_REPORT_NAME);
-			try {
-				FileUtil.createNewFile(summaryReportFile);
-				summaryReport = new SummaryReport(softwareName, softwareVersion, summaryReportFile, extensionUidLength, ligationUidLength);
-			} catch (IOException e) {
-				throw new IllegalStateException(e);
-			}
 		}
-	}
 
-	public boolean isReporting() {
-		return shouldOutputReports;
 	}
 
 	private void writeToPrimerAccuracyFile(String primerType, List<TallyMap<Character>> mismatchDetailsByIndex) {

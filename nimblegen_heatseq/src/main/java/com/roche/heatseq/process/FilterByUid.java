@@ -44,6 +44,7 @@ import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.StatisticsUtil;
+import com.roche.sequencing.bioinformatics.common.utils.TabDelimitedFileWriter;
 
 /**
  * Filter a set of reads to find the best read per UID
@@ -219,7 +220,10 @@ class FilterByUid {
 			standardDeviationOfReadPairsPerUid = StatisticsUtil.standardDeviation(sizeByUid);
 		}
 
-		if (reportManager.isReporting()) {
+		TabDelimitedFileWriter uniqueProbeTalliesWriter = reportManager.getUniqueProbeTalliesWriter();
+		TabDelimitedFileWriter probeCoverageWriter = reportManager.getProbeCoverageWriter();
+
+		if (uniqueProbeTalliesWriter != null || probeCoverageWriter != null) {
 			String[] line = new String[uidToDataMap.size() + 1];
 			line[0] = probe.getProbeId();
 			int columnIndex = 1;
@@ -242,11 +246,14 @@ class FilterByUid {
 				line[columnIndex] = uidNameAndCount.getUidName() + ":" + uidNameAndCount.getCount();
 				columnIndex++;
 			}
-			reportManager.getUniqueProbeTalliesWriter().writeLine((Object[]) line);
+			if (uniqueProbeTalliesWriter != null) {
+				uniqueProbeTalliesWriter.writeLine((Object[]) line);
+			}
 
-			reportManager.getProbeCoverageWriter().writeLine(
-					(Object[]) new String[] { probe.getSequenceName(), "" + probe.getStart(), "" + probe.getStop(), "" + probe.getProbeId(), "" + totalUids, probe.getProbeStrand().getSymbol(),
-							"" + probe.getCaptureTargetStart(), "" + probe.getCaptureTargetStop(), "", "", "", "" });
+			if (probeCoverageWriter != null) {
+				probeCoverageWriter.writeLine((Object[]) new String[] { probe.getSequenceName(), "" + probe.getStart(), "" + probe.getStop(), "" + probe.getProbeId(), "" + totalUids,
+						probe.getProbeStrand().getSymbol(), "" + probe.getCaptureTargetStart(), "" + probe.getCaptureTargetStop(), "", "", "", "" });
+			}
 		}
 
 		long probeProcessingStopInMs = System.currentTimeMillis();

@@ -30,8 +30,9 @@ public class CommandLineOption {
 	private final String description;
 	private final boolean isRequired;
 	private final boolean isFlag;
+	private final boolean isHidden;
 
-	public CommandLineOption(String optionName, String longFormOption, Character shortFormOption, String description, boolean isRequired, boolean isFlag) {
+	public CommandLineOption(String optionName, String longFormOption, Character shortFormOption, String description, boolean isRequired, boolean isFlag, boolean isHidden) {
 		super();
 		this.optionName = optionName;
 		this.longFormOption = longFormOption;
@@ -39,6 +40,14 @@ public class CommandLineOption {
 		this.description = description;
 		this.isRequired = isRequired;
 		this.isFlag = isFlag;
+		this.isHidden = isHidden;
+		if (isHidden && isRequired) {
+			throw new IllegalStateException("Attempting to create a CommandLineOption that is hidden and required.  This is not allowed.");
+		}
+	}
+
+	public CommandLineOption(String optionName, String longFormOption, Character shortFormOption, String description, boolean isRequired, boolean isFlag) {
+		this(optionName, longFormOption, shortFormOption, description, isRequired, isFlag, false);
 	}
 
 	/**
@@ -179,6 +188,10 @@ public class CommandLineOption {
 	public String toString() {
 		return "CommandLineOption [optionName=" + optionName + ", longFormOption=" + longFormOption + ", shortFormOption=" + shortFormOption + ", description=" + description + ", isRequired="
 				+ isRequired + ", isFlag=" + isFlag + "]";
+	}
+
+	public boolean isHidden() {
+		return isHidden;
 	}
 
 }

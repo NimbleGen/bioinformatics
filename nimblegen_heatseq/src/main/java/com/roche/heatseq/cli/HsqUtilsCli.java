@@ -18,7 +18,7 @@ public class HsqUtilsCli {
 	private static String applicationVersionFromManifest = "unversioned--currently running in eclipse";
 
 	private final static String TRIM_COMMAND_NAME = "trim";
-	private final static String DEDUPLICATION_COMMAND_NAME = "dedup";
+	public final static String DEDUPLICATION_COMMAND_NAME = "dedup";
 
 	public final static String FILE_LOGGER_NAME = "root";
 
