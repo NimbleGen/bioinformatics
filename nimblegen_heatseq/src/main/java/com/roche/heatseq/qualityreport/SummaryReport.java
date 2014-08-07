@@ -2,21 +2,19 @@ package com.roche.heatseq.qualityreport;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.text.DecimalFormat;
 
-import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
-import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
+import com.roche.sequencing.bioinformatics.common.utils.TabDelimitedFileWriter;
 
 public class SummaryReport {
 
-	private final PrintWriter detailsReportWriter;
+	private final TabDelimitedFileWriter detailsReportWriter;
 
 	private final int extensionUidLength;
 	private final int ligationUidLength;
 
-	private long processingTimeInMs;
+	private final String sampleName;
 
 	private int totalReads = 0;
 	private int totalFullyMappedOffTargetReads = 0;
@@ -40,21 +38,19 @@ public class SummaryReport {
 
 	private double averageNumberOfReadPairsPerProbeUid;
 
-	private final String softwareName;
-	private final String softwareVersion;
-
-	SummaryReport(String softwareName, String softwareVersion, File summaryReportFile, int extensionUidLength, int ligationUidLength) throws IOException {
+	SummaryReport(String softwareName, String softwareVersion, String sampleName, File summaryReportFile, int extensionUidLength, int ligationUidLength) throws IOException {
 		this.extensionUidLength = extensionUidLength;
 		this.ligationUidLength = ligationUidLength;
-		this.softwareName = softwareName;
-		this.softwareVersion = softwareVersion;
-		FileUtil.createNewFile(summaryReportFile);
-		detailsReportWriter = new PrintWriter(summaryReportFile);
-		detailsReportWriter.flush();
-	}
+		this.sampleName = sampleName;
 
-	public void setProcessingTimeInMs(long processingTimeInMs) {
-		this.processingTimeInMs = processingTimeInMs;
+		String preHeader = "#software_name=" + softwareName + " software_version=" + softwareVersion;
+
+		FileUtil.createNewFile(summaryReportFile);
+		String[] header = new String[] { "sample_prefix", "input_read_pairs", "pairs_with_both_reads_mapped", "pairs_with_both_reads_unmapped", "pairs_with_only_one_read_mapped",
+				"pairs_with_on-target_reads", "duplicate_read_pairs_removed", "pairs_assigned_to_multiple_probes", "probes", "probes_with_no_mapped_read_pairs", "unique_read_pairs",
+				"theoretical_unique_uids_of_length_" + (extensionUidLength + ligationUidLength), "distinct_uids_found", "pct_distinct_uids_of_theoretical", "average_uids_per_probe",
+				"average_uids_per_probes_with_reads", "max_uids_per_probe", "average_read_pairs_per_uid" };
+		detailsReportWriter = new TabDelimitedFileWriter(summaryReportFile, preHeader, header);
 	}
 
 	public void setDuplicateReadPairsRemoved(int duplicateReadPairsRemoved) {
@@ -121,37 +117,22 @@ public class SummaryReport {
 		long theoreticalUniqueUids = Math.round(Math.pow(4, extensionUidLength + ligationUidLength));
 		double uidRatio = (double) distinctUidsFound / (double) theoreticalUniqueUids;
 		DecimalFormat formatter = new DecimalFormat("0.0000");
-		int onTargetReadPairs = (totalFullyMappedOnTargetReads / 2);
-		double onTargetDuplicateRate = (double) duplicateReadPairsRemoved / (double) (onTargetReadPairs);
-		int probeSpecificReads = (duplicateReadPairsRemoved + totalReadPairsAfterReduction) * 2;
-		double probeSpecificToTotalReadsRatio = (double) probeSpecificReads / (double) (totalReads);
+		// double percentMappedReadsOnTarget = (double) totalFullyMappedOnTargetReads / (double) (totalFullyMappedOffTargetReads + totalFullyMappedOnTargetReads);
 
-		double percentMappedReadsOnTarget = (double) totalFullyMappedOnTargetReads / (double) (totalFullyMappedOffTargetReads + totalFullyMappedOnTargetReads);
-
-		detailsReportWriter.println(softwareName + "_version" + StringUtil.TAB + softwareVersion);
-		detailsReportWriter.println("processing_time(HH:MM:SS)" + StringUtil.TAB + DateUtil.convertMillisecondsToHHMMSS(processingTimeInMs));
-		detailsReportWriter.println("total_input_reads" + StringUtil.TAB + (totalReads));
-		detailsReportWriter.println("input_fully_unmapped_reads" + StringUtil.TAB + totalFullyUnmappedReads);
-		detailsReportWriter.println("input_fully_mapped_reads" + StringUtil.TAB + (totalFullyMappedOffTargetReads + totalFullyMappedOnTargetReads));
-		detailsReportWriter.println("input_partially_mapped_reads" + StringUtil.TAB + totalPartiallyMappedReads);
-		detailsReportWriter.println("on_target_reads" + StringUtil.TAB + totalFullyMappedOnTargetReads);
-		detailsReportWriter.println("off_target_fully_mapped_reads" + StringUtil.TAB + totalFullyMappedOffTargetReads);
-		detailsReportWriter.println("percent_fully_mapped_reads_on_target" + StringUtil.TAB + formatter.format(percentMappedReadsOnTarget));
-		detailsReportWriter.println("duplicate_read_pairs_removed" + StringUtil.TAB + duplicateReadPairsRemoved);
-		detailsReportWriter.println("read_pairs_assigned_to_multiple_probes" + StringUtil.TAB + readPairsAssignedToMultipleProbes);
-		detailsReportWriter.println("probes_with_no_mapped_read_pairs" + StringUtil.TAB + probesWithNoMappedReadPairs);
-		detailsReportWriter.println("total_probes" + StringUtil.TAB + totalProbes);
-		detailsReportWriter.println("total_read_pairs_after_reduction" + StringUtil.TAB + totalReadPairsAfterReduction);
-		detailsReportWriter.println("distinct_uids_found" + StringUtil.TAB + distinctUidsFound);
-		detailsReportWriter.println("possible_unique_uids_of_length_" + (extensionUidLength + ligationUidLength) + StringUtil.TAB + theoreticalUniqueUids);
-		detailsReportWriter.println("uid_ratio" + StringUtil.TAB + formatter.format(uidRatio));
-		detailsReportWriter.println("average_uids_per_probe" + StringUtil.TAB + formatter.format(averageUidsPerProbe));
-		detailsReportWriter.println("average_uids_per_probes_with_reads" + StringUtil.TAB + formatter.format(averageUidsPerProbeWithReads));
-		detailsReportWriter.println("max_uids_per_probe" + StringUtil.TAB + maxUidsPerProbe);
-		detailsReportWriter.println("average_read_pairs_per_probe_uid" + StringUtil.TAB + formatter.format(averageNumberOfReadPairsPerProbeUid));
-		detailsReportWriter.println("on-target_duplicate_rate" + StringUtil.TAB + formatter.format(onTargetDuplicateRate));
-		detailsReportWriter.println("probe-specific_reads" + StringUtil.TAB + probeSpecificReads);
-		detailsReportWriter.println("probe-specific_to_total_reads_ratio" + StringUtil.TAB + formatter.format(probeSpecificToTotalReadsRatio));
+		String inputReadPairs = "" + (totalReads / 2);
+		String pairsWithBothReadsMapped = "" + ((totalFullyMappedOffTargetReads + totalFullyMappedOnTargetReads) / 2);
+		String pairsWithOnlyOneReadMapped = "" + totalPartiallyMappedReads / 2;
+		String pairsWithBothReadsUnmapped = "" + totalFullyUnmappedReads / 2;
+		String pairsWithOnTargetReads = "" + totalFullyMappedOnTargetReads / 2;
+		String pairsAssignedToMultipleProbes = "" + readPairsAssignedToMultipleProbes;
+		String uniqueReadpairs = "" + totalReadPairsAfterReduction;
+		String theoreticalUniqueUidsOfLength = "" + theoreticalUniqueUids;
+		String percentDistinctUidsOfTheoretical = "" + formatter.format(uidRatio * 100);
+		String averageUidsPerProbesWithReads = "" + formatter.format(averageUidsPerProbeWithReads);
+		String averageReadPairsPerUid = "" + formatter.format(averageNumberOfReadPairsPerProbeUid);
+		detailsReportWriter.writeLine(sampleName, inputReadPairs, pairsWithBothReadsMapped, pairsWithBothReadsUnmapped, pairsWithOnlyOneReadMapped, pairsWithOnTargetReads, duplicateReadPairsRemoved,
+				pairsAssignedToMultipleProbes, totalProbes, probesWithNoMappedReadPairs, uniqueReadpairs, theoreticalUniqueUidsOfLength, distinctUidsFound, percentDistinctUidsOfTheoretical,
+				formatter.format(averageUidsPerProbe), averageUidsPerProbesWithReads, maxUidsPerProbe, averageReadPairsPerUid);
 		detailsReportWriter.close();
 	}
 }

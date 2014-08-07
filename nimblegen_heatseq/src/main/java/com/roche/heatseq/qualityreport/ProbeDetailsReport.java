@@ -36,10 +36,9 @@ public class ProbeDetailsReport {
 		if (detailsReportFile != null) {
 			FileUtil.createNewFile(detailsReportFile);
 			detailsReportWriter = new PrintWriter(detailsReportFile);
-			detailsReportWriter.println("probe_id" + StringUtil.TAB + "total_uids" + StringUtil.TAB + "average_number_of_read_pairs_per_uid" + StringUtil.TAB
-					+ "standard_deviation_of_read_pairs_per_uid" + StringUtil.TAB + "min_read_pairs_per_uid" + StringUtil.TAB + "max_read_pairs_per_uid" + StringUtil.TAB + "uid_with_max_read_pairs"
-					+ StringUtil.TAB + "total_duplicate_read_pairs_removed" + StringUtil.TAB + "total_read_pairs_after_duplicate_removal" + StringUtil.TAB + "unique_reads_with_extension_errors"
-					+ StringUtil.TAB + "on_target_duplicate_rate" + StringUtil.TAB + "total_time_to_process_in_ms");
+			detailsReportWriter.println("probe_id" + StringUtil.TAB + "total_read_pairs" + StringUtil.TAB + "total_read_pairs_after_duplicate_removal" + StringUtil.TAB
+					+ "total_duplicate_read_pairs_removed" + StringUtil.TAB + "pct_duplicate_rate" + StringUtil.TAB + "average_number_of_read_pairs_per_uid" + StringUtil.TAB
+					+ "max_read_pairs_per_uid" + StringUtil.TAB + "uid_with_max_read_pairs" + StringUtil.TAB + "unique_reads_with_extension_errors");
 			detailsReportWriter.flush();
 		} else {
 			detailsReportWriter = null;
@@ -50,6 +49,8 @@ public class ProbeDetailsReport {
 		duplicateReadPairsRemoved += probeProcessingStats.getTotalDuplicateReadPairsRemoved();
 		if (probeProcessingStats.getTotalUids() == 0) {
 			probesWithNoMappedReadPairs++;
+		} else {
+			totalNonZeroProbes++;
 		}
 		totalReadPairsAfterReduction += probeProcessingStats.getTotalReadPairsRemainingAfterReduction();
 		maxNumberOfUidsPerProbe = Math.max(maxNumberOfUidsPerProbe, probeProcessingStats.getTotalUids());
@@ -63,7 +64,6 @@ public class ProbeDetailsReport {
 		}
 
 		totalProbes++;
-		totalNonZeroProbes++;
 	}
 
 	public int getDuplicateReadPairsRemoved() {

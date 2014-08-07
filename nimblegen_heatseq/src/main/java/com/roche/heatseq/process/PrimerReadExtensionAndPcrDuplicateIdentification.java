@@ -126,9 +126,9 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		}
 
 		// Set up the reports files
-		ReportManager reportManager = new ReportManager(applicationSettings.getProgramName(), applicationSettings.getProgramVersion(), applicationSettings.getOutputDirectory(),
-				applicationSettings.getOutputFilePrefix(), applicationSettings.getExtensionUidLength(), applicationSettings.getLigationUidLength(), samHeader,
-				applicationSettings.isShouldOutputReports());
+		ReportManager reportManager = new ReportManager(applicationSettings.getProgramName(), applicationSettings.getProgramVersion(), applicationSettings.getOutputFilePrefix(),
+				applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix(), applicationSettings.getExtensionUidLength(), applicationSettings.getLigationUidLength(),
+				samHeader, applicationSettings.isShouldOutputReports());
 
 		// Actually do the work
 		filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings, probeInfo, reportManager);

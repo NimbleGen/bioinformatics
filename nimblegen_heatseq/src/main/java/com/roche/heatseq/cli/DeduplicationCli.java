@@ -473,8 +473,8 @@ public class DeduplicationCli {
 			samReader.close();
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
-					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputReports, commandLineSignature, applicationName, applicationVersion,
-					numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, extensionUidLength, ligationUidLength, markDuplicates, keepDuplicates, mergePairs,
+					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputReports, commandLineSignature, applicationName, applicationVersion, numProcessors,
+					allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, extensionUidLength, ligationUidLength, markDuplicates, keepDuplicates, mergePairs,
 					useStrictReadToProbeMatching);
 
 			PrimerReadExtensionAndPcrDuplicateIdentification.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
@@ -499,15 +499,15 @@ public class DeduplicationCli {
 		group.addOption(OUTPUT_FILE_PREFIX_OPTION);
 		group.addOption(TMP_DIR_OPTION);
 		group.addOption(NUM_PROCESSORS_OPTION);
-		group.addOption(MATCH_SCORE_OPTION);
-		group.addOption(MISMATCH_PENALTY_OPTION);
-		group.addOption(GAP_OPEN_PENALTY_OPTION);
-		group.addOption(GAP_EXTEND_PENALTY_OPTION);
-		group.addOption(LENIENT_VALIDATION_STRINGENCY_OPTION);
+		// group.addOption(MATCH_SCORE_OPTION);
+		// group.addOption(MISMATCH_PENALTY_OPTION);
+		// group.addOption(GAP_OPEN_PENALTY_OPTION);
+		// group.addOption(GAP_EXTEND_PENALTY_OPTION);
+		// group.addOption(LENIENT_VALIDATION_STRINGENCY_OPTION);
 		group.addOption(MARK_DUPLICATES_OPTION);
 		group.addOption(KEEP_DUPLICATES_OPTION);
-		group.addOption(MERGE_PAIRS_OPTION);
-		group.addOption(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
+		// group.addOption(MERGE_PAIRS_OPTION);
+		// group.addOption(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
 		group.addOption(INTERNAL_REPORTS_OPTION);
 		return group;
 	}

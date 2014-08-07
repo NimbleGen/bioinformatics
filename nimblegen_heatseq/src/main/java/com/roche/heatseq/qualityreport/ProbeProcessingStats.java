@@ -19,7 +19,6 @@ package com.roche.heatseq.qualityreport;
 import java.text.DecimalFormat;
 
 import com.roche.heatseq.objects.Probe;
-import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 /**
@@ -31,13 +30,10 @@ public class ProbeProcessingStats {
 	private final Probe probe;
 	private final int totalUids;
 	private final double averageNumberOfReadPairsPerUid;
-	private final double standardDeviationOfReadPairsPerUid;
 	private final int totalDuplicateReadPairsRemoved;
 	private final int totalReadPairsRemainingAfterReduction;
-	private final int minNumberOfReadPairsPerUid;
 	private final int maxNumberOfReadPairsPerUid;
 	private final String uidOfEntryWithMaxReadPairs;
-	private final int totalTimeToProcessInMs;
 	private final double onTargetDuplicateRate;
 	private final String uidComposition;
 	private final String uidCompositionByPosition;
@@ -62,20 +58,17 @@ public class ProbeProcessingStats {
 	 * @param uidOfEntryWithMaxReadPairs
 	 * @param totalTimeToProcessInMs
 	 */
-	public ProbeProcessingStats(Probe probe, int totalUids, double averageNumberOfReadPairsPerUid, double standardDeviationOfReadPairsPerUid, int totalDuplicateReadPairsRemoved,
-			int totalReadPairsRemainingAfterReduction, int minNumberOfReadPairsPerUid, int maxNumberOfReadPairsPerUid, String uidOfEntryWithMaxReadPairs, int totalTimeToProcessInMs,
-			String uidComposition, String uidCompositionByPosition, String weightedUidComposition, String weightedUidCompositionByPosition) {
+	public ProbeProcessingStats(Probe probe, int totalUids, double averageNumberOfReadPairsPerUid, int totalDuplicateReadPairsRemoved, int totalReadPairsRemainingAfterReduction,
+			int maxNumberOfReadPairsPerUid, String uidOfEntryWithMaxReadPairs, String uidComposition, String uidCompositionByPosition, String weightedUidComposition,
+			String weightedUidCompositionByPosition) {
 		super();
 		this.probe = probe;
 		this.totalUids = totalUids;
 		this.averageNumberOfReadPairsPerUid = averageNumberOfReadPairsPerUid;
-		this.standardDeviationOfReadPairsPerUid = standardDeviationOfReadPairsPerUid;
 		this.totalDuplicateReadPairsRemoved = totalDuplicateReadPairsRemoved;
 		this.totalReadPairsRemainingAfterReduction = totalReadPairsRemainingAfterReduction;
-		this.minNumberOfReadPairsPerUid = minNumberOfReadPairsPerUid;
 		this.maxNumberOfReadPairsPerUid = maxNumberOfReadPairsPerUid;
 		this.uidOfEntryWithMaxReadPairs = uidOfEntryWithMaxReadPairs;
-		this.totalTimeToProcessInMs = totalTimeToProcessInMs;
 		this.uidComposition = uidComposition;
 		this.uidCompositionByPosition = uidCompositionByPosition;
 		double totalOnTargetReads = (double) (totalDuplicateReadPairsRemoved + totalReadPairsRemainingAfterReduction);
@@ -96,10 +89,6 @@ public class ProbeProcessingStats {
 
 	public double getAverageNumberOfReadPairsPerUid() {
 		return averageNumberOfReadPairsPerUid;
-	}
-
-	public double getStandardDeviationOfReadPairsPerUid() {
-		return standardDeviationOfReadPairsPerUid;
 	}
 
 	public int getTotalDuplicateReadPairsRemoved() {
@@ -127,11 +116,13 @@ public class ProbeProcessingStats {
 	String toReportString() {
 		DecimalFormat formatter = new DecimalFormat("0.00");
 		StringBuilder stringBuilder = new StringBuilder();
-		stringBuilder.append(probe.getProbeId() + StringUtil.TAB);
-		stringBuilder.append(totalUids + StringUtil.TAB + averageNumberOfReadPairsPerUid + StringUtil.TAB + standardDeviationOfReadPairsPerUid + StringUtil.TAB + minNumberOfReadPairsPerUid
-				+ StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase() + StringUtil.TAB + totalDuplicateReadPairsRemoved + StringUtil.TAB
-				+ totalReadPairsRemainingAfterReduction + StringUtil.TAB + countOfUniqueReadsUnableToExtend + StringUtil.TAB + formatter.format(onTargetDuplicateRate) + StringUtil.TAB
-				+ DateUtil.convertMillisecondsToHHMMSS(totalTimeToProcessInMs));
+
+		int totalReadPairs = totalDuplicateReadPairsRemoved + totalUids;
+
+		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + totalReadPairs + StringUtil.TAB + totalReadPairsRemainingAfterReduction + StringUtil.TAB + totalDuplicateReadPairsRemoved
+				+ StringUtil.TAB + formatter.format(onTargetDuplicateRate * 100) + StringUtil.TAB);
+		stringBuilder.append(formatter.format(averageNumberOfReadPairsPerUid) + StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase()
+				+ StringUtil.TAB + countOfUniqueReadsUnableToExtend);
 
 		stringBuilder.append(StringUtil.NEWLINE);
 
