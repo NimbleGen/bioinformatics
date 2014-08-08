@@ -318,6 +318,8 @@ public class DeduplicationCli {
 			File validSamOrBamInputFile = null;
 			boolean isSamFormat = false;
 
+			boolean newSortedBamFileCreated = false;
+
 			try (SAMFileReader samReader = new SAMFileReader(samOrBamFile)) {
 				isSamFormat = !samReader.isBinary();
 
@@ -385,6 +387,8 @@ public class DeduplicationCli {
 							BamFileUtil.sortOnCoordinates(samOrBamFile, sortedBamFile);
 							long sortStop = System.currentTimeMillis();
 							CliStatusConsole.logStatus("Done creating a sorted BAM file in " + DateUtil.convertMillisecondsToHHMMSS(sortStop - sortStart) + ".");
+
+							newSortedBamFileCreated = true;
 						}
 
 					} else {
@@ -397,20 +401,22 @@ public class DeduplicationCli {
 
 			if (sortedBamFile != null) {
 				try (SAMFileReader samReader = new SAMFileReader(sortedBamFile)) {
-					// Look for the index in the same location as the file but with a .bai extension instead of a .bam extension
-					File tempBamIndexfile = new File(FileUtil.getFileNameWithoutExtension(bamFileString) + ".bai");
-					if (tempBamIndexfile.exists()) {
-						bamIndexFile = tempBamIndexfile;
-						CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
-					}
-
-					// Try looking for a .bai file in the same location as the bam file
-					if (bamIndexFile == null) {
-						// Try looking for a .bam.bai file in the same location as the bam file
-						tempBamIndexfile = new File(bamFileString + ".bai");
+					if (!newSortedBamFileCreated) {
+						// Look for the index in the same location as the file but with a .bai extension instead of a .bam extension
+						File tempBamIndexfile = new File(FileUtil.getFileNameWithoutExtension(bamFileString) + ".bai");
 						if (tempBamIndexfile.exists()) {
 							bamIndexFile = tempBamIndexfile;
 							CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
+						}
+
+						// Try looking for a .bai file in the same location as the bam file
+						if (bamIndexFile == null) {
+							// Try looking for a .bam.bai file in the same location as the bam file
+							tempBamIndexfile = new File(bamFileString + ".bai");
+							if (tempBamIndexfile.exists()) {
+								bamIndexFile = tempBamIndexfile;
+								CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
+							}
 						}
 					}
 

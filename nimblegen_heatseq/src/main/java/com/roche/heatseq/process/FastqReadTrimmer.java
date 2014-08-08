@@ -46,6 +46,17 @@ public class FastqReadTrimmer {
 				+ StringUtil.NEWLINE);
 	}
 
+	public static void main(String[] args) throws IOException {
+		File probeInfoFile = new File("C:/kurts_space/projects/mult_probe_assignment/small/mult_probe_info.txt");
+		ProbesBySequenceName probes = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
+
+		ProbeInfoStats probeInfoStats = collectStatsFromProbeInformation(probes);
+		System.out.println(probeInfoStats.maxExtensionPrimerLength);
+		System.out.println(probeInfoStats.minExtensionPrimerLength);
+		System.out.println(probeInfoStats.maxLigationPrimerLength);
+		System.out.println(probeInfoStats.minLigationPrimerLength);
+	}
+
 	static ProbeInfoStats collectStatsFromProbeInformation(ProbesBySequenceName probes) throws IOException {
 
 		int maxExtensionPrimerLength = 0;

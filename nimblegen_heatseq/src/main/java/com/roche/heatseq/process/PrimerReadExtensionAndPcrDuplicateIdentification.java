@@ -435,7 +435,10 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 				Set<Probe> assignedProbeIds = entry.getValue();
 				if (assignedProbeIds.size() > 1) {
 					for (Probe probe : assignedProbeIds) {
-						reportManager.getReadsMappedToMultipleProbesWriter().writeLine(readName, probe.getProbeId());
+						TabDelimitedFileWriter readsMappedToMultipleProbesWriter = reportManager.getReadsMappedToMultipleProbesWriter();
+						if (readsMappedToMultipleProbesWriter != null) {
+							readsMappedToMultipleProbesWriter.writeLine(readName, probe.getProbeId());
+						}
 					}
 				}
 			}
