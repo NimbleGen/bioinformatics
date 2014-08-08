@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import net.sf.picard.io.IoUtil;
 import net.sf.picard.sam.ValidateSamFile;
@@ -35,6 +36,7 @@ import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMSequenceDictionary;
 import net.sf.samtools.SAMSequenceRecord;
 
+import com.roche.heatseq.objects.IlluminaFastQHeader;
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
@@ -106,7 +108,7 @@ public class BamFileUtil {
 	}
 
 	public static void convertSamToBam(File inputSamFile, File outputBamFile) {
-		picardSortAndCompress(inputSamFile, outputBamFile, SortOrder.coordinate);
+		picardSortAndCompress(inputSamFile, outputBamFile, SortOrder.coordinate, null);
 	}
 
 	/**
@@ -117,7 +119,7 @@ public class BamFileUtil {
 	 * @return output
 	 */
 	public static File sortOnReadName(File input, File output) {
-		return picardSortAndCompress(input, output, SortOrder.queryname);
+		return picardSortAndCompress(input, output, SortOrder.queryname, null);
 	}
 
 	/**
@@ -128,7 +130,18 @@ public class BamFileUtil {
 	 * @return output
 	 */
 	public static File sortOnCoordinates(File input, File output) {
-		return picardSortAndCompress(input, output, SortOrder.coordinate);
+		return picardSortAndCompress(input, output, SortOrder.coordinate, null);
+	}
+
+	/**
+	 * Sort the provided input file by coordinates and place the result in output
+	 * 
+	 * @param input
+	 * @param output
+	 * @return output
+	 */
+	public static File sortOnCoordinatesAndExcludeReads(File input, File output, Set<String> readNamesToExclude) {
+		return picardSortAndCompress(input, output, SortOrder.coordinate, readNamesToExclude);
 	}
 
 	/**
@@ -139,7 +152,7 @@ public class BamFileUtil {
 	 * @param sortOrder
 	 * @return
 	 */
-	private static File picardSortAndCompress(File input, File output, SortOrder sortOrder) {
+	private static File picardSortAndCompress(File input, File output, SortOrder sortOrder, Set<String> readNamesToExclude) {
 		IoUtil.assertFileIsReadable(input);
 		IoUtil.assertFileIsWritable(output);
 
@@ -151,7 +164,11 @@ public class BamFileUtil {
 		final SAMFileWriter writer = new SAMFileWriterFactory().makeBAMWriter(header, false, output, 9);
 
 		for (final SAMRecord record : reader) {
-			writer.addAlignment(record);
+			String readName = IlluminaFastQHeader.getBaseHeader(record.getReadName());
+			boolean shouldInclude = readNamesToExclude == null || !readNamesToExclude.contains(readName);
+			if (shouldInclude) {
+				writer.addAlignment(record);
+			}
 		}
 		writer.close();
 		reader.close();

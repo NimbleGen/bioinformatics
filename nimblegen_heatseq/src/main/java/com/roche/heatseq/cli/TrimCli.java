@@ -22,7 +22,7 @@ public class TrimCli {
 
 	public static void trim(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion) {
 		long applicationStart = System.currentTimeMillis();
-		CliStatusConsole.logStatus("Trimming has started at " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "." + StringUtil.NEWLINE);
+		CliStatusConsole.logStatus("Trimming has started at " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "(YYYY/MM/DD HH:MM:SS)." + StringUtil.NEWLINE);
 
 		String outputDirectoryString = parsedCommandLine.getOptionsValue(DeduplicationCli.OUTPUT_DIR_OPTION);
 
@@ -102,8 +102,9 @@ public class TrimCli {
 
 			long applicationStop = System.currentTimeMillis();
 			CliStatusConsole.logStatus(StringUtil.NEWLINE + "Trimming has completed succesfully.");
-			CliStatusConsole.logStatus("Start Time: " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "  Stop Time: " + DateUtil.convertTimeInMillisecondsToDate(applicationStop)
-					+ "  Total Time  (hh:mm:ss): " + DateUtil.convertMillisecondsToHHMMSS(applicationStop - applicationStart) + StringUtil.NEWLINE);
+			CliStatusConsole.logStatus("Start Time: " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "(YYYY/MM/DD HH:MM:SS)  Stop Time: "
+					+ DateUtil.convertTimeInMillisecondsToDate(applicationStop) + "(YYYY/MM/DD HH:MM:SS)  Total Time: " + DateUtil.convertMillisecondsToHHMMSS(applicationStop - applicationStart)
+					+ "(HH:MM:SS)" + StringUtil.NEWLINE);
 
 			String genomeNameFromProbeInfoFile = ProbeFileUtil.extractGenomeNameInLowerCase(probeFile);
 			if (genomeNameFromProbeInfoFile != null) {

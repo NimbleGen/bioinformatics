@@ -390,13 +390,6 @@ public class ReportManager {
 		summaryReport.setMaxUidsPerProbe(detailsReport.getMaxNumberOfUidsPerProbe());
 		summaryReport.setAverageNumberOfReadPairsPerProbeUid(detailsReport.getAverageNumberOfReadPairsPerProbeUid());
 
-		int readPairsAssignedToMultipleProbes = 0;
-		for (Set<Probe> probes : readNamesToDistinctProbeAssignmentCount.values()) {
-			if (probes.size() > 1) {
-				readPairsAssignedToMultipleProbes++;
-			}
-		}
-		summaryReport.setReadPairsAssignedToMultipleProbes(readPairsAssignedToMultipleProbes);
 		summaryReport.setDistinctUidsFound(distinctUids.size());
 		summaryReport.setTotalProbes(totalProbes);
 

@@ -28,8 +28,6 @@ public class SummaryReport {
 	private int probesWithNoMappedReadPairs;
 	private int totalReadPairsAfterReduction;
 
-	private int readPairsAssignedToMultipleProbes;
-
 	private int distinctUidsFound;
 
 	private double averageUidsPerProbeWithReads;
@@ -47,19 +45,14 @@ public class SummaryReport {
 
 		FileUtil.createNewFile(summaryReportFile);
 		String[] header = new String[] { "sample_prefix", "input_read_pairs", "pairs_with_both_reads_mapped", "pairs_with_both_reads_unmapped", "pairs_with_only_one_read_mapped",
-				"pairs_with_on-target_reads", "pct_pairs_with_on-target_reads", "pairs_with_off-target_reads", "pct_pairs_with_off-target_reads", "duplicate_read_pairs_removed",
-				"pairs_assigned_to_multiple_probes", "probes", "probes_with_no_mapped_read_pairs", "unique_read_pairs",
-				"theoretical_unique_uids_of_length_" + (extensionUidLength + ligationUidLength), "distinct_uids_found", "pct_distinct_uids_of_theoretical", "average_uids_per_probe",
-				"average_uids_per_probes_with_reads", "max_uids_per_probe", "average_read_pairs_per_uid" };
+				"pairs_with_on-target_reads", "pct_pairs_with_on-target_reads", "pairs_with_off-target_reads", "pct_pairs_with_off-target_reads", "duplicate_read_pairs_removed", "probes",
+				"probes_with_no_mapped_read_pairs", "unique_read_pairs", "theoretical_unique_uids_of_length_" + (extensionUidLength + ligationUidLength), "distinct_uids_found",
+				"pct_distinct_uids_of_theoretical", "average_uids_per_probe", "average_uids_per_probes_with_reads", "max_uids_per_probe", "average_read_pairs_per_uid" };
 		detailsReportWriter = new TabDelimitedFileWriter(summaryReportFile, preHeader, header);
 	}
 
 	public void setDuplicateReadPairsRemoved(int duplicateReadPairsRemoved) {
 		this.duplicateReadPairsRemoved = duplicateReadPairsRemoved;
-	}
-
-	public void setReadPairsAssignedToMultipleProbes(int readPairsAssignedToMultipleProbes) {
-		this.readPairsAssignedToMultipleProbes = readPairsAssignedToMultipleProbes;
 	}
 
 	public void setProbesWithNoMappedReadPairs(int probesWithNoMappedReadPairs) {
@@ -130,16 +123,15 @@ public class SummaryReport {
 		int numberOfPairsWithOffTargetReads = totalFullyMappedOffTargetReads / 2;
 		String pairsWithOffTargetReads = "" + numberOfPairsWithOffTargetReads;
 		String percentPairsWithOffTargetReads = formatter.format(((double) numberOfPairsWithOffTargetReads / (double) numberOfPairsWithBothReadsMapped) * 100);
-		String pairsAssignedToMultipleProbes = "" + readPairsAssignedToMultipleProbes;
 		String uniqueReadpairs = "" + totalReadPairsAfterReduction;
 		String theoreticalUniqueUidsOfLength = "" + theoreticalUniqueUids;
 		String percentDistinctUidsOfTheoretical = "" + formatter.format(uidRatio * 100);
 		String averageUidsPerProbesWithReads = "" + formatter.format(averageUidsPerProbeWithReads);
 		String averageReadPairsPerUid = "" + formatter.format(averageNumberOfReadPairsPerProbeUid);
 		detailsReportWriter.writeLine(sampleName, inputReadPairs, pairsWithBothReadsMapped, pairsWithBothReadsUnmapped, pairsWithOnlyOneReadMapped, pairsWithOnTargetReads,
-				percentPairsWithOnTargetReads, pairsWithOffTargetReads, percentPairsWithOffTargetReads, duplicateReadPairsRemoved, pairsAssignedToMultipleProbes, totalProbes,
-				probesWithNoMappedReadPairs, uniqueReadpairs, theoreticalUniqueUidsOfLength, distinctUidsFound, percentDistinctUidsOfTheoretical, formatter.format(averageUidsPerProbe),
-				averageUidsPerProbesWithReads, maxUidsPerProbe, averageReadPairsPerUid);
+				percentPairsWithOnTargetReads, pairsWithOffTargetReads, percentPairsWithOffTargetReads, duplicateReadPairsRemoved, totalProbes, probesWithNoMappedReadPairs, uniqueReadpairs,
+				theoreticalUniqueUidsOfLength, distinctUidsFound, percentDistinctUidsOfTheoretical, formatter.format(averageUidsPerProbe), averageUidsPerProbesWithReads, maxUidsPerProbe,
+				averageReadPairsPerUid);
 		detailsReportWriter.close();
 	}
 }
