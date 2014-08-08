@@ -62,6 +62,7 @@ import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGloba
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
+import com.roche.sequencing.bioinformatics.common.utils.AlphaNumericStringComparator;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
@@ -353,9 +354,10 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 			samWriter.close();
 
 			Set<String> readNamesOfReadsAssignedToMultipleProbesToExclude = new HashSet<String>();
-			for (Entry<String, Set<Probe>> entry : readNamesToDistinctProbeAssignment.entrySet()) {
-				String readName = entry.getKey();
-				Set<Probe> assignedProbeIds = entry.getValue();
+			List<String> readNames = new ArrayList<String>(readNamesToDistinctProbeAssignment.keySet());
+			Collections.sort(readNames, new AlphaNumericStringComparator());
+			for (String readName : readNames) {
+				Set<Probe> assignedProbeIds = readNamesToDistinctProbeAssignment.get(readName);
 				if (assignedProbeIds.size() > 1) {
 					for (Probe probe : assignedProbeIds) {
 						TabDelimitedFileWriter readsMappedToMultipleProbesWriter = reportManager.getReadsMappedToMultipleProbesWriter();
