@@ -524,15 +524,10 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 				List<IReadPair> reducedReads = probeReductionResults.getReadPairs();
 				List<IReadPair> readsToWrite = ExtendReadsToPrimer.extendReadsToPrimers(probe, reducedReads, alignmentScorer);
 
-				int countOfUniqueReadsUnableToExtend = 0;
 				for (IReadPair readPair : readsToWrite) {
-					if (!readPair.isReadOneExtended() || !readPair.isReadTwoExtended()) {
-						countOfUniqueReadsUnableToExtend++;
-					}
 					reportManager.addExtensionPrimerMismatchDetails(readPair.getReadOnePrimerMismatchDetails());
 					reportManager.addLigationPrimerMismatchDetails(readPair.getReadTwoPrimerMismatchDetails());
 				}
-				probeReductionResults.getProbeProcessingStats().setExtensionErrors(countOfUniqueReadsUnableToExtend);
 
 				ProbeDetailsReport detailsReport = reportManager.getDetailsReport();
 				if (detailsReport != null) {
