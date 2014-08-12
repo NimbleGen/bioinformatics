@@ -40,10 +40,6 @@ public class ProbeProcessingStats {
 	private final String weightedUidComposition;
 	private final String weightedUidCompositionByPosition;
 
-	private int countOfUniqueReadsUnableToExtend;
-
-	// private int countOfDuplicateReadsUnableToExtend;
-
 	/**
 	 * Constructor
 	 * 
@@ -79,8 +75,6 @@ public class ProbeProcessingStats {
 		}
 		this.weightedUidComposition = weightedUidComposition;
 		this.weightedUidCompositionByPosition = weightedUidCompositionByPosition;
-		this.countOfUniqueReadsUnableToExtend = 0;
-		// this.countOfDuplicateReadsUnableToExtend = 0;
 	}
 
 	public int getTotalUids() {
@@ -97,10 +91,6 @@ public class ProbeProcessingStats {
 
 	public int getTotalReadPairsRemainingAfterReduction() {
 		return totalReadPairsRemainingAfterReduction;
-	}
-
-	public int getTotalUniqueReadsUnableToExtend() {
-		return countOfUniqueReadsUnableToExtend;
 	}
 
 	public Probe getProbe() {
@@ -121,15 +111,10 @@ public class ProbeProcessingStats {
 
 		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + totalReadPairs + StringUtil.TAB + totalReadPairsRemainingAfterReduction + StringUtil.TAB + totalDuplicateReadPairsRemoved
 				+ StringUtil.TAB + formatter.format(onTargetDuplicateRate * 100) + StringUtil.TAB);
-		stringBuilder.append(formatter.format(averageNumberOfReadPairsPerUid) + StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase()
-				+ StringUtil.TAB + countOfUniqueReadsUnableToExtend);
+		stringBuilder.append(formatter.format(averageNumberOfReadPairsPerUid) + StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase());
 
 		stringBuilder.append(StringUtil.NEWLINE);
 
 		return stringBuilder.toString();
-	}
-
-	public void setExtensionErrors(int countOfUniqueReadsUnableToExtend) {
-		this.countOfUniqueReadsUnableToExtend = countOfUniqueReadsUnableToExtend;
 	}
 }
