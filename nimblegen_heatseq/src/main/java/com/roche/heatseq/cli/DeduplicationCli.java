@@ -103,7 +103,7 @@ public class DeduplicationCli {
 	static void identifyDuplicates(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion) {
 
 		long applicationStart = System.currentTimeMillis();
-		CliStatusConsole.logStatus("Deduplication has started at " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "." + StringUtil.NEWLINE);
+		CliStatusConsole.logStatus("Deduplication has started at " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "(YYYY/MM/DD HH:MM:SS)." + StringUtil.NEWLINE);
 
 		String outputDirectoryString = parsedCommandLine.getOptionsValue(OUTPUT_DIR_OPTION);
 		File outputDirectory = null;
@@ -318,6 +318,8 @@ public class DeduplicationCli {
 			File validSamOrBamInputFile = null;
 			boolean isSamFormat = false;
 
+			boolean newSortedBamFileCreated = false;
+
 			try (SAMFileReader samReader = new SAMFileReader(samOrBamFile)) {
 				isSamFormat = !samReader.isBinary();
 
@@ -384,7 +386,9 @@ public class DeduplicationCli {
 							long sortStart = System.currentTimeMillis();
 							BamFileUtil.sortOnCoordinates(samOrBamFile, sortedBamFile);
 							long sortStop = System.currentTimeMillis();
-							CliStatusConsole.logStatus("Done creating a sorted BAM file in " + DateUtil.convertMillisecondsToHHMMSS(sortStop - sortStart) + ".");
+							CliStatusConsole.logStatus("Done creating a sorted BAM file in " + DateUtil.convertMillisecondsToHHMMSS(sortStop - sortStart) + "(HH:MM:SS).");
+
+							newSortedBamFileCreated = true;
 						}
 
 					} else {
@@ -397,20 +401,22 @@ public class DeduplicationCli {
 
 			if (sortedBamFile != null) {
 				try (SAMFileReader samReader = new SAMFileReader(sortedBamFile)) {
-					// Look for the index in the same location as the file but with a .bai extension instead of a .bam extension
-					File tempBamIndexfile = new File(FileUtil.getFileNameWithoutExtension(bamFileString) + ".bai");
-					if (tempBamIndexfile.exists()) {
-						bamIndexFile = tempBamIndexfile;
-						CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
-					}
-
-					// Try looking for a .bai file in the same location as the bam file
-					if (bamIndexFile == null) {
-						// Try looking for a .bam.bai file in the same location as the bam file
-						tempBamIndexfile = new File(bamFileString + ".bai");
+					if (!newSortedBamFileCreated) {
+						// Look for the index in the same location as the file but with a .bai extension instead of a .bam extension
+						File tempBamIndexfile = new File(FileUtil.getFileNameWithoutExtension(bamFileString) + ".bai");
 						if (tempBamIndexfile.exists()) {
 							bamIndexFile = tempBamIndexfile;
 							CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
+						}
+
+						// Try looking for a .bai file in the same location as the bam file
+						if (bamIndexFile == null) {
+							// Try looking for a .bam.bai file in the same location as the bam file
+							tempBamIndexfile = new File(bamFileString + ".bai");
+							if (tempBamIndexfile.exists()) {
+								bamIndexFile = tempBamIndexfile;
+								CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
+							}
 						}
 					}
 
@@ -418,12 +424,12 @@ public class DeduplicationCli {
 					if ((bamIndexFile == null) || !bamIndexFile.exists()) {
 						// a bam index file was not provided so create one in the default location
 						bamIndexFile = File.createTempFile("bam_index_", ".bai", tempOutputDirectory);
-						CliStatusConsole.logStatus("A BAM Index File was not found in the default location so creating bam index file at:" + bamIndexFile);
+						CliStatusConsole.logStatus("A BAM Index File was not found in the default location so creating bam index file at [" + bamIndexFile.getAbsolutePath() + "].");
 						long indexStart = System.currentTimeMillis();
 						try {
 							BamFileUtil.createIndex(samReader, bamIndexFile);
 							long indexStop = System.currentTimeMillis();
-							CliStatusConsole.logStatus("Done creating the BAM Index File in " + DateUtil.convertMillisecondsToHHMMSS(indexStop - indexStart) + ".");
+							CliStatusConsole.logStatus("Done creating the BAM Index File in " + DateUtil.convertMillisecondsToHHMMSS(indexStop - indexStart) + "(HH:MM:SS).");
 						} catch (Exception e) {
 							throw new IllegalStateException("Could create bam index file at [" + bamIndexFile.getAbsolutePath() + "].", e);
 						}
@@ -440,8 +446,9 @@ public class DeduplicationCli {
 
 			long applicationStop = System.currentTimeMillis();
 			CliStatusConsole.logStatus("Deduplication has completed succesfully.");
-			CliStatusConsole.logStatus("Start Time: " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "  Stop Time: " + DateUtil.convertTimeInMillisecondsToDate(applicationStop)
-					+ "  Total Time (hh:mm:ss): " + DateUtil.convertMillisecondsToHHMMSS(applicationStop - applicationStart) + StringUtil.NEWLINE);
+			CliStatusConsole.logStatus("Start Time: " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "(YYYY/MM/DD HH:MM:SS)  Stop Time: "
+					+ DateUtil.convertTimeInMillisecondsToDate(applicationStop) + "(YYYY/MM/DD HH:MM:SS)  Total Time: " + DateUtil.convertMillisecondsToHHMMSS(applicationStop - applicationStart)
+					+ "(HH:MM:SS)" + StringUtil.NEWLINE);
 
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
@@ -473,8 +480,8 @@ public class DeduplicationCli {
 			samReader.close();
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
-					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputReports, commandLineSignature, applicationName, applicationVersion,
-					numProcessors, allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, extensionUidLength, ligationUidLength, markDuplicates, keepDuplicates, mergePairs,
+					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputReports, commandLineSignature, applicationName, applicationVersion, numProcessors,
+					allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, extensionUidLength, ligationUidLength, markDuplicates, keepDuplicates, mergePairs,
 					useStrictReadToProbeMatching);
 
 			PrimerReadExtensionAndPcrDuplicateIdentification.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
@@ -499,15 +506,15 @@ public class DeduplicationCli {
 		group.addOption(OUTPUT_FILE_PREFIX_OPTION);
 		group.addOption(TMP_DIR_OPTION);
 		group.addOption(NUM_PROCESSORS_OPTION);
-		group.addOption(MATCH_SCORE_OPTION);
-		group.addOption(MISMATCH_PENALTY_OPTION);
-		group.addOption(GAP_OPEN_PENALTY_OPTION);
-		group.addOption(GAP_EXTEND_PENALTY_OPTION);
-		group.addOption(LENIENT_VALIDATION_STRINGENCY_OPTION);
+		// group.addOption(MATCH_SCORE_OPTION);
+		// group.addOption(MISMATCH_PENALTY_OPTION);
+		// group.addOption(GAP_OPEN_PENALTY_OPTION);
+		// group.addOption(GAP_EXTEND_PENALTY_OPTION);
+		// group.addOption(LENIENT_VALIDATION_STRINGENCY_OPTION);
 		group.addOption(MARK_DUPLICATES_OPTION);
 		group.addOption(KEEP_DUPLICATES_OPTION);
-		group.addOption(MERGE_PAIRS_OPTION);
-		group.addOption(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
+		// group.addOption(MERGE_PAIRS_OPTION);
+		// group.addOption(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
 		group.addOption(INTERNAL_REPORTS_OPTION);
 		return group;
 	}

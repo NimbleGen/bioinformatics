@@ -43,7 +43,6 @@ import com.roche.heatseq.utils.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
-import com.roche.sequencing.bioinformatics.common.utils.StatisticsUtil;
 import com.roche.sequencing.bioinformatics.common.utils.TabDelimitedFileWriter;
 
 /**
@@ -74,8 +73,6 @@ class FilterByUid {
 			int expectedExtensionUidLength, int expectedLigationUidLength, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids, boolean markDuplicates,
 			boolean keepDuplicates, boolean useStrictReadToProbeMatching) {
 		List<IReadPair> readPairs = new ArrayList<IReadPair>();
-
-		long probeProcessingStartInMs = System.currentTimeMillis();
 
 		// Process the data into a list
 		List<IReadPair> datas = new ArrayList<IReadPair>();
@@ -215,11 +212,6 @@ class FilterByUid {
 			averageNumberOfReadPairsPerUid = totalReadPairs / ((double) totalUids);
 		}
 
-		double standardDeviationOfReadPairsPerUid = Double.NaN;
-		if (sizeByUid.length > 1) {
-			standardDeviationOfReadPairsPerUid = StatisticsUtil.standardDeviation(sizeByUid);
-		}
-
 		TabDelimitedFileWriter uniqueProbeTalliesWriter = reportManager.getUniqueProbeTalliesWriter();
 		TabDelimitedFileWriter probeCoverageWriter = reportManager.getProbeCoverageWriter();
 
@@ -256,18 +248,14 @@ class FilterByUid {
 			}
 		}
 
-		long probeProcessingStopInMs = System.currentTimeMillis();
-		int totalTimeToProcessInMs = (int) (probeProcessingStopInMs - probeProcessingStartInMs);
-
 		String uidComposition = NucleotideCompositionUtil.getNucleotideComposition(uniqueUidsByProbe);
 		String uidCompositionByPosition = NucleotideCompositionUtil.getNucleotideCompositionByPosition(uniqueUidsByProbe);
 
 		String weightedUidComposition = NucleotideCompositionUtil.getNucleotideComposition(weightedUidsByProbe);
 		String weightedUidCompositionByPosition = NucleotideCompositionUtil.getNucleotideCompositionByPosition(weightedUidsByProbe);
 
-		ProbeProcessingStats probeProcessingStats = new ProbeProcessingStats(probe, totalUids, averageNumberOfReadPairsPerUid, standardDeviationOfReadPairsPerUid, totalDuplicateReadPairsRemoved,
-				totalReadPairsRemainingAfterReduction, minNumberOfReadPairsPerUid, maxNumberOfReadPairsPerUid, uidOfEntryWithMaxNumberOfReadPairs, totalTimeToProcessInMs, uidComposition,
-				uidCompositionByPosition, weightedUidComposition, weightedUidCompositionByPosition);
+		ProbeProcessingStats probeProcessingStats = new ProbeProcessingStats(probe, totalUids, averageNumberOfReadPairsPerUid, totalDuplicateReadPairsRemoved, totalReadPairsRemainingAfterReduction,
+				maxNumberOfReadPairsPerUid, uidOfEntryWithMaxNumberOfReadPairs, uidComposition, uidCompositionByPosition, weightedUidComposition, weightedUidCompositionByPosition);
 
 		return new UidReductionResultsForAProbe(probeProcessingStats, readPairs);
 	}

@@ -71,8 +71,8 @@ public class ReportManager {
 	private final List<Integer> numberOfLigationGains;
 	private final List<Integer> numberOfExtensionGains;
 
-	public ReportManager(String softwareName, String softwareVersion, File outputDirectory, String outputFilePrefix, int extensionUidLength, int ligationUidLength, SAMFileHeader samFileHeader,
-			boolean shouldOutputReports) {
+	public ReportManager(String softwareName, String softwareVersion, String sampleName, File outputDirectory, String outputFilePrefix, int extensionUidLength, int ligationUidLength,
+			SAMFileHeader samFileHeader, boolean shouldOutputReports) {
 
 		ligationMismatchDetailsByIndex = new ArrayList<TallyMap<Character>>();
 		extensionMismatchDetailsByIndex = new ArrayList<TallyMap<Character>>();
@@ -98,7 +98,7 @@ public class ReportManager {
 		summaryReportFile = new File(outputDirectory, outputFilePrefix + SUMMARY_REPORT_NAME);
 		try {
 			FileUtil.createNewFile(summaryReportFile);
-			summaryReport = new SummaryReport(softwareName, softwareVersion, summaryReportFile, extensionUidLength, ligationUidLength);
+			summaryReport = new SummaryReport(softwareName, softwareVersion, sampleName, summaryReportFile, extensionUidLength, ligationUidLength);
 		} catch (IOException e) {
 			throw new IllegalStateException(e);
 		}
@@ -381,7 +381,6 @@ public class ReportManager {
 
 	public void completeSummaryReport(Map<String, Set<Probe>> readNamesToDistinctProbeAssignmentCount, Set<ISequence> distinctUids, List<ISequence> nonDistinctUids, long processingTimeInMs,
 			int totalProbes, int totalReads, int totalFullyMappedOffTargetReads, int totalPartiallyMappedReads, int totalFullyUnmappedReads, int totalFullyMappedOnTargetReads) {
-		summaryReport.setProcessingTimeInMs(processingTimeInMs);
 		summaryReport.setDuplicateReadPairsRemoved(detailsReport.getDuplicateReadPairsRemoved());
 		summaryReport.setProbesWithNoMappedReadPairs(detailsReport.getProbesWithNoMappedReadPairs());
 		summaryReport.setTotalReadPairsAfterReduction(detailsReport.getTotalReadPairsAfterReduction());
@@ -391,13 +390,6 @@ public class ReportManager {
 		summaryReport.setMaxUidsPerProbe(detailsReport.getMaxNumberOfUidsPerProbe());
 		summaryReport.setAverageNumberOfReadPairsPerProbeUid(detailsReport.getAverageNumberOfReadPairsPerProbeUid());
 
-		int readPairsAssignedToMultipleProbes = 0;
-		for (Set<Probe> probes : readNamesToDistinctProbeAssignmentCount.values()) {
-			if (probes.size() > 1) {
-				readPairsAssignedToMultipleProbes++;
-			}
-		}
-		summaryReport.setReadPairsAssignedToMultipleProbes(readPairsAssignedToMultipleProbes);
 		summaryReport.setDistinctUidsFound(distinctUids.size());
 		summaryReport.setTotalProbes(totalProbes);
 
