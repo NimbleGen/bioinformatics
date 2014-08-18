@@ -4,9 +4,9 @@
 
 	<parent>
 		<groupId>com.roche.sequencing</groupId>
-		<artifactId>superpom</artifactId>
+		<artifactId>git_superpom</artifactId>
 		<version>1.0</version>
-		<relativePath>../../superpom/pom.xml</relativePath>
+		<relativePath>../../git_superpom/pom.xml</relativePath>
 	</parent>
 
 	<artifactId>hsqutils</artifactId>
