@@ -74,6 +74,22 @@ public final class ArraysUtil {
 		return min;
 	}
 
+	/**
+	 * @param values
+	 * @return the min of all provided values
+	 */
+	public static double min(double... values) {
+		double min = Integer.MAX_VALUE;
+
+		for (double value : values) {
+			if (value < min) {
+				min = value;
+			}
+		}
+
+		return min;
+	}
+
 	public static double[] convertToDoubleArray(int[] values) {
 		double[] doubleArray = new double[values.length];
 		for (int i = 0; i < values.length; i++) {

@@ -209,7 +209,6 @@ public class SAMRecordUtil {
 			variableLengthUid = completeReadWithUid.substring(0, uidEndIndex);
 		}
 
-		int uidLength = variableLengthUid.length();
 		int numberOfInsertions = 0;
 		int numberOfDeletions = 0;
 		int numberOfSubstitutions = 0;
@@ -234,19 +233,7 @@ public class SAMRecordUtil {
 
 		int editDistanceCutoff = (primerSequence.size() / 4);
 
-		if (editDistance > 0 && editDistance < editDistanceCutoff) {
-			if (reportManager.getPrimerAlignmentWriter() != null) {
-				int cutoffIndex = editDistanceCutoff + primerSequence.size() + uidLength;
-				ISequence referenceSequence = alignment.getAlignmentPair().getReferenceAlignment().subSequence(0, cutoffIndex);
-				ISequence querySequence = alignment.getAlignmentPair().getQueryAlignment().subSequence(0, cutoffIndex);
-				String probeName = probe.getSequenceName();
-				String probeCaptureStart = "" + probe.getCaptureTargetStart();
-				String probeCaptureStop = "" + probe.getCaptureTargetStop();
-				String probeStrand = "" + probe.getProbeStrand();
-				reportManager.getPrimerAlignmentWriter().writeLine(uidLength, numberOfSubstitutions, numberOfInsertions, numberOfDeletions, editDistance, referenceSequence, querySequence, probeName,
-						probeCaptureStart, probeCaptureStop, probeStrand);
-			}
-		} else if (editDistance >= editDistanceCutoff) {
+		if (editDistance >= editDistanceCutoff) {
 			variableLengthUid = null;
 		}
 
@@ -356,5 +343,14 @@ public class SAMRecordUtil {
 	public static void setDuplicateGroup(SAMRecord record, String probeId, String uid) {
 		int duplicateGroupId = SAMRecordUtil.getDuplicateGroupId(probeId, uid);
 		record.setAttribute(SAMRecordUtil.DUPLICATE_GROUP_ATTRIBUTE_TAG, duplicateGroupId);
+	}
+
+	public static String getProbeId(SAMRecord record) {
+		String probeId = null;
+		Object probeIdAsObject = record.getAttribute(PROBE_ID_SAMRECORD_ATTRIBUTE_TAG);
+		if (probeIdAsObject != null) {
+			probeId = probeIdAsObject.toString();
+		}
+		return probeId;
 	}
 }

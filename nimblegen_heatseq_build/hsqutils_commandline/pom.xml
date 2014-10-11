@@ -13,7 +13,7 @@
 	<packaging>pom</packaging>
 	<name>HSQ Utils</name>
 	<description>Command line tool for Heatseq Utilities</description>
-	<version>v1</version>
+	<version>v3</version>
 	
 	<modules>
 		<module>../../bioinformatics_common</module>

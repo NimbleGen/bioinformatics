@@ -7,11 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.sf.picard.fastq.FastqWriter;
-import net.sf.picard.fastq.FastqWriterFactory;
 import net.sf.samtools.SAMFileHeader;
-import net.sf.samtools.SAMFileWriter;
-import net.sf.samtools.SAMFileWriterFactory;
 
 import com.roche.heatseq.cli.HsqUtilsCli;
 import com.roche.heatseq.objects.Probe;
@@ -29,35 +25,21 @@ public class ReportManager {
 	public final static String PROBE_DETAILS_REPORT_NAME = "probe_details.txt";
 	public final static String SUMMARY_REPORT_NAME = HsqUtilsCli.APPLICATION_NAME + "_" + HsqUtilsCli.DEDUPLICATION_COMMAND_NAME + "_summary.txt";
 	private final static String UID_COMPOSITION_REPORT_NAME = "uid_composition_by_probe.txt";
-	private final static String UNABLE_TO_ALIGN_PRIMER_REPORT_NAME = "unable_to_align_primer_for_variable_length_uid.txt";
-	public final static String UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME = "unable_to_map_one.fastq";
-	public final static String UNABLE_TO_MAP_FASTQ_TWO_REPORT_NAME = "unable_to_map_two.fastq";
-	private final static String PRIMER_ALIGNMENT_REPORT_NAME = "extension_primer_alignment.txt";
 	private final static String UNIQUE_PROBE_TALLIES_REPORT_NAME = "unique_probe_tallies.txt";
 	private final static String READS_MAPPED_TO_MULTIPLE_PROBES_REPORT_NAME = "reads_mapped_to_multiple_probes.txt";
 	private final static String PROBE_COVERAGE_REPORT_NAME = "probe_coverage.bed";
 	private final static String MAPPED_OFF_TARGET_READS_REPORT_NAME = "mapped_off_target_reads.bam";
 	private final static String UNMAPPED_READS_REPORT_NAME = "unmapped_read_pairs.bam";
 	private final static String PARTIALLY_MAPPED_READS_REPORT_NAME = "partially_mapped_read_pairs.bam";
-	private final static String PRIMER_ACCURACY_REPORT_NAME = "primer_accuracy.txt";
 
 	private TabDelimitedFileWriter ambiguousMappingWriter;
-	private TabDelimitedFileWriter unableToAlignPrimerWriter;
-	private TabDelimitedFileWriter primerAlignmentWriter;
 	private TabDelimitedFileWriter uniqueProbeTalliesWriter;
 	private TabDelimitedFileWriter probeCoverageWriter;
 	private TabDelimitedFileWriter uidCompositionByProbeWriter;
 	private TabDelimitedFileWriter readsMappedToMultipleProbesWriter;
-	private TabDelimitedFileWriter primerAccuracyWriter;
 
-	private SAMFileWriter mappedOffTargetReadsWriter;
-	private SAMFileWriter unmappedReadsWriter;
-	private SAMFileWriter partiallyMappedReadsWriter;
 	private ProbeDetailsReport detailsReport;
 	private SummaryReport summaryReport;
-
-	private FastqWriter fastqOneUnableToMapWriter;
-	private FastqWriter fastqTwoUnableToMapWriter;
 
 	private final List<TallyMap<Character>> ligationMismatchDetailsByIndex;
 	private final List<TallyMap<Character>> extensionMismatchDetailsByIndex;
@@ -71,8 +53,7 @@ public class ReportManager {
 	private final List<Integer> numberOfLigationGains;
 	private final List<Integer> numberOfExtensionGains;
 
-	public ReportManager(String softwareName, String softwareVersion, String sampleName, File outputDirectory, String outputFilePrefix, int extensionUidLength, int ligationUidLength,
-			SAMFileHeader samFileHeader, boolean shouldOutputReports) {
+	public ReportManager(String softwareName, String softwareVersion, String sampleName, File outputDirectory, String outputFilePrefix, SAMFileHeader samFileHeader, boolean shouldOutputReports) {
 
 		ligationMismatchDetailsByIndex = new ArrayList<TallyMap<Character>>();
 		extensionMismatchDetailsByIndex = new ArrayList<TallyMap<Character>>();
@@ -98,7 +79,7 @@ public class ReportManager {
 		summaryReportFile = new File(outputDirectory, outputFilePrefix + SUMMARY_REPORT_NAME);
 		try {
 			FileUtil.createNewFile(summaryReportFile);
-			summaryReport = new SummaryReport(softwareName, softwareVersion, sampleName, summaryReportFile, extensionUidLength, ligationUidLength);
+			summaryReport = new SummaryReport(softwareName, softwareVersion, sampleName, summaryReportFile);
 		} catch (IOException e) {
 			throw new IllegalStateException(e);
 		}
@@ -109,42 +90,6 @@ public class ReportManager {
 				FileUtil.createNewFile(ambiguousMappingFile);
 				ambiguousMappingWriter = new TabDelimitedFileWriter(ambiguousMappingFile, new String[] { "read_name", "read_string", "sequence_name", "extension_primer_start",
 						"extension_primer_stop", "capture_target_start", "capture_target_stop", "ligation_primer_start", "ligation_primer_stop", "probe_strand" });
-			} catch (IOException e) {
-				throw new IllegalStateException(e);
-			}
-
-			File unableToAlignPrimerFile = new File(outputDirectory, outputFilePrefix + UNABLE_TO_ALIGN_PRIMER_REPORT_NAME);
-			try {
-				FileUtil.createNewFile(unableToAlignPrimerFile);
-				unableToAlignPrimerWriter = new TabDelimitedFileWriter(unableToAlignPrimerFile, new String[] { "sequence_name", "probe_start", "probe_stop", "extension_primer_sequence",
-						"ligation_primer_sequence", "read_name", "read_one_string", "read_two_string", "extension_failed", "ligation_failed" });
-			} catch (IOException e) {
-				throw new IllegalStateException(e);
-			}
-
-			final FastqWriterFactory factory = new FastqWriterFactory();
-
-			File unableToMapFastqOneFile = new File(outputDirectory, outputFilePrefix + UNABLE_TO_MAP_FASTQ_ONE_REPORT_NAME);
-			try {
-				FileUtil.createNewFile(unableToMapFastqOneFile);
-				fastqOneUnableToMapWriter = factory.newWriter(unableToMapFastqOneFile);
-			} catch (IOException e) {
-				throw new IllegalStateException(e);
-			}
-
-			File unableToMapFastqTwoFile = new File(outputDirectory, outputFilePrefix + UNABLE_TO_MAP_FASTQ_TWO_REPORT_NAME);
-			try {
-				FileUtil.createNewFile(unableToMapFastqTwoFile);
-				fastqTwoUnableToMapWriter = factory.newWriter(unableToMapFastqTwoFile);
-			} catch (IOException e) {
-				throw new IllegalStateException(e);
-			}
-
-			File primerAlignmentFile = new File(outputDirectory, outputFilePrefix + PRIMER_ALIGNMENT_REPORT_NAME);
-			try {
-				FileUtil.createNewFile(primerAlignmentFile);
-				primerAlignmentWriter = new TabDelimitedFileWriter(primerAlignmentFile, new String[] { "uid_length", "substituions", "insertions", "deletions", "edit_distance", "read",
-						"extension_primer", "probe_sequence_name", "capture_target_start", "capture_target_stop", "probe_strand" });
 			} catch (IOException e) {
 				throw new IllegalStateException(e);
 			}
@@ -183,101 +128,13 @@ public class ReportManager {
 			} catch (IOException e) {
 				throw new IllegalStateException(e);
 			}
-
-			File primerAccuracyFile = new File(outputDirectory, outputFilePrefix + PRIMER_ACCURACY_REPORT_NAME);
-			try {
-				FileUtil.createNewFile(primerAccuracyFile);
-				primerAccuracyWriter = new TabDelimitedFileWriter(primerAccuracyFile, new String[] { "PRIMER_TYPE", "INDEX", "MATCHES", "MISMATCHES", "INSERTIONS", "DELETIONS", "TOTAL", "MATCH_PROB",
-						"MISMATCH_PROB", "INSERTION_PROB", "DELETION_PROB" });
-			} catch (IOException e) {
-				throw new IllegalStateException(e);
-			}
-
-			SAMFileWriterFactory samFactory = new SAMFileWriterFactory();
-
-			File mappedOffTargetFile = new File(outputDirectory, outputFilePrefix + MAPPED_OFF_TARGET_READS_REPORT_NAME);
-			try {
-				FileUtil.createNewFile(mappedOffTargetFile);
-				mappedOffTargetReadsWriter = samFactory.makeBAMWriter(samFileHeader, true, mappedOffTargetFile);
-			} catch (IOException e) {
-				throw new IllegalStateException(e);
-			}
-
-			File unMappedFile = new File(outputDirectory, outputFilePrefix + UNMAPPED_READS_REPORT_NAME);
-			try {
-				FileUtil.createNewFile(unMappedFile);
-				unmappedReadsWriter = samFactory.makeBAMWriter(samFileHeader, true, unMappedFile);
-			} catch (IOException e) {
-				throw new IllegalStateException(e);
-			}
-
-			File partiallyMappedFile = new File(outputDirectory, outputFilePrefix + PARTIALLY_MAPPED_READS_REPORT_NAME);
-			try {
-				FileUtil.createNewFile(partiallyMappedFile);
-				partiallyMappedReadsWriter = samFactory.makeBAMWriter(samFileHeader, true, partiallyMappedFile);
-			} catch (IOException e) {
-				throw new IllegalStateException(e);
-			}
-
 		}
-
-	}
-
-	private void writeToPrimerAccuracyFile(String primerType, List<TallyMap<Character>> mismatchDetailsByIndex) {
-		for (int index = 0; index < mismatchDetailsByIndex.size(); index++) {
-			TallyMap<Character> tally = mismatchDetailsByIndex.get(index);
-			int matches = tally.getCount(CigarStringUtil.CIGAR_SEQUENCE_MATCH);
-			int mismatches = tally.getCount(CigarStringUtil.CIGAR_SEQUENCE_MISMATCH);
-			int insertions = tally.getCount(CigarStringUtil.CIGAR_INSERTION_TO_REFERENCE);
-			int deletions = tally.getCount(CigarStringUtil.CIGAR_DELETION_FROM_REFERENCE);
-			int total = tally.getSumOfAllBins();
-			double matchProb = (double) matches / (double) total;
-			double mismatchProb = (double) mismatches / (double) total;
-			double insertionProb = (double) insertions / (double) total;
-			double deletionProb = (double) deletions / (double) total;
-			primerAccuracyWriter.writeLine(primerType, index, matches, mismatches, insertions, deletions, total, matchProb, mismatchProb, insertionProb, deletionProb);
-		}
-	}
-
-	private void writePrimerAccuracyFile() {
-		writeToPrimerAccuracyFile("extension", extensionMismatchDetailsByIndex);
-		writeToPrimerAccuracyFile("ligation", ligationMismatchDetailsByIndex);
-
-		primerAccuracyWriter.writeLine("extension errors:");
-		primerAccuracyWriter.writeLine((Object[]) numberOfExtensionErrors.toArray(new Integer[0]));
-		primerAccuracyWriter.writeLine("extension insertions:");
-		primerAccuracyWriter.writeLine((Object[]) numberOfExtensionInsertions.toArray(new Integer[0]));
-		primerAccuracyWriter.writeLine("extension deletions:");
-		primerAccuracyWriter.writeLine((Object[]) numberOfExtensionDeletions.toArray(new Integer[0]));
-		primerAccuracyWriter.writeLine("extension gains");
-		primerAccuracyWriter.writeLine((Object[]) numberOfExtensionGains.toArray(new Integer[0]));
-		primerAccuracyWriter.writeLine("ligation errors:");
-		primerAccuracyWriter.writeLine((Object[]) numberOfLigationErrors.toArray(new Integer[0]));
-		primerAccuracyWriter.writeLine("ligation insertions:");
-		primerAccuracyWriter.writeLine((Object[]) numberOfLigationInsertions.toArray(new Integer[0]));
-		primerAccuracyWriter.writeLine("ligation deletions:");
-		primerAccuracyWriter.writeLine((Object[]) numberOfLigationDeletions.toArray(new Integer[0]));
-		primerAccuracyWriter.writeLine("ligation gains:");
-		primerAccuracyWriter.writeLine((Object[]) numberOfLigationGains.toArray(new Integer[0]));
 
 	}
 
 	public void close() {
 		if (ambiguousMappingWriter != null) {
 			ambiguousMappingWriter.close();
-		}
-
-		if (unableToAlignPrimerWriter != null) {
-			unableToAlignPrimerWriter.close();
-		}
-		if (primerAlignmentWriter != null) {
-			primerAlignmentWriter.close();
-		}
-		if (fastqOneUnableToMapWriter != null) {
-			fastqOneUnableToMapWriter.close();
-		}
-		if (fastqTwoUnableToMapWriter != null) {
-			fastqTwoUnableToMapWriter.close();
 		}
 
 		if (probeCoverageWriter != null) {
@@ -303,24 +160,6 @@ public class ReportManager {
 		if (uniqueProbeTalliesWriter != null) {
 			uniqueProbeTalliesWriter.close();
 		}
-
-		if (mappedOffTargetReadsWriter != null) {
-			mappedOffTargetReadsWriter.close();
-		}
-
-		if (unmappedReadsWriter != null) {
-			unmappedReadsWriter.close();
-		}
-
-		if (partiallyMappedReadsWriter != null) {
-			partiallyMappedReadsWriter.close();
-		}
-
-		if (primerAccuracyWriter != null) {
-			writePrimerAccuracyFile();
-			primerAccuracyWriter.close();
-		}
-
 	}
 
 	public ProbeDetailsReport getDetailsReport() {
@@ -347,43 +186,21 @@ public class ReportManager {
 		return summaryReport;
 	}
 
-	public TabDelimitedFileWriter getUnableToAlignPrimerWriter() {
-		return unableToAlignPrimerWriter;
-	}
-
 	public TabDelimitedFileWriter getAmbiguousMappingWriter() {
 		return ambiguousMappingWriter;
 	}
 
-	public FastqWriter getFastqOneUnableToMapWriter() {
-		return fastqOneUnableToMapWriter;
-	}
-
-	public FastqWriter getFastqTwoUnableToMapWriter() {
-		return fastqTwoUnableToMapWriter;
-	}
-
-	public TabDelimitedFileWriter getPrimerAlignmentWriter() {
-		return primerAlignmentWriter;
-	}
-
-	public SAMFileWriter getMappedOffTargetReadsWriter() {
-		return mappedOffTargetReadsWriter;
-	}
-
-	public SAMFileWriter getUnMappedReadPairsWriter() {
-		return unmappedReadsWriter;
-	}
-
-	public SAMFileWriter getPartiallyMappedReadPairsWriter() {
-		return partiallyMappedReadsWriter;
-	}
-
 	public void completeSummaryReport(Map<String, Set<Probe>> readNamesToDistinctProbeAssignmentCount, Set<ISequence> distinctUids, List<ISequence> nonDistinctUids, long processingTimeInMs,
-			int totalProbes, int totalReads, int totalFullyMappedOffTargetReads, int totalPartiallyMappedReads, int totalFullyUnmappedReads, int totalFullyMappedOnTargetReads) {
-		summaryReport.setDuplicateReadPairsRemoved(detailsReport.getDuplicateReadPairsRemoved());
+			int totalProbes, int totalReads, int totalFullyMappedOffTargetReads, int totalPartiallyMappedReads, int totalFullyUnmappedReads, int totalFullyMappedOnTargetReads,
+			int readsAssignedToMultipleProbes, int uniqueOnTargetReads, int duplicateOnTargetReads, int unableToExtendReads) {
+
+		summaryReport.setDuplicateReadPairsRemoved(duplicateOnTargetReads / 2);
+		summaryReport.setTotalReadPairsAfterReduction(uniqueOnTargetReads / 2);
+
 		summaryReport.setProbesWithNoMappedReadPairs(detailsReport.getProbesWithNoMappedReadPairs());
-		summaryReport.setTotalReadPairsAfterReduction(detailsReport.getTotalReadPairsAfterReduction());
+
+		summaryReport.setReadsAssignedToMultipleProbes(readsAssignedToMultipleProbes);
+		summaryReport.setUnableToExtendReads(unableToExtendReads);
 
 		summaryReport.setAverageUidsPerProbe(detailsReport.getAverageNumberOfUidsPerProbe());
 		summaryReport.setAverageUidsPerProbeWithReads(detailsReport.getAverageNumberOfUidsPerProbeWithAssignedReads());

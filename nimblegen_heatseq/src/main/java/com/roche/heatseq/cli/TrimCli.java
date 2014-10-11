@@ -97,8 +97,7 @@ public class TrimCli {
 		logger.info("command line signature: " + commandLineSignature);
 
 		try {
-			FastqReadTrimmer.trimReads(fastQ1File, fastQ2File, probeFile, DeduplicationCli.DEFAULT_EXTENSION_UID_LENGTH, DeduplicationCli.DEFAULT_LIGATION_UID_LENGTH, outputFastQ1File,
-					outputFastQ2File);
+			FastqReadTrimmer.trimReads(fastQ1File, fastQ2File, probeFile, outputFastQ1File, outputFastQ2File);
 
 			long applicationStop = System.currentTimeMillis();
 			CliStatusConsole.logStatus(StringUtil.NEWLINE + "Trimming has completed succesfully.");
@@ -106,7 +105,7 @@ public class TrimCli {
 					+ DateUtil.convertTimeInMillisecondsToDate(applicationStop) + "(YYYY/MM/DD HH:MM:SS)  Total Time: " + DateUtil.convertMillisecondsToHHMMSS(applicationStop - applicationStart)
 					+ "(HH:MM:SS)" + StringUtil.NEWLINE);
 
-			String genomeNameFromProbeInfoFile = ProbeFileUtil.extractGenomeNameInLowerCase(probeFile);
+			String genomeNameFromProbeInfoFile = ProbeFileUtil.extractProbeHeaderInformation(probeFile).getGenomeName();
 			if (genomeNameFromProbeInfoFile != null) {
 				CliStatusConsole.logStatus("Please make sure to use genome build [" + genomeNameFromProbeInfoFile
 						+ "] when mapping these reads to ensure the mappings correspond with the correct locations defined in the probe information file.");

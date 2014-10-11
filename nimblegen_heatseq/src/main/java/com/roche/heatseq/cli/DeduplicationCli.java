@@ -39,6 +39,7 @@ import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentificatio
 import com.roche.heatseq.qualityreport.LoggingUtil;
 import com.roche.heatseq.utils.BamFileUtil;
 import com.roche.heatseq.utils.ProbeFileUtil;
+import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.SimpleAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
@@ -191,24 +192,26 @@ public class DeduplicationCli {
 			numProcessors = MAX_NUMBER_OF_PROCESSORS;
 		}
 
-		Integer extensionUidLength;
+		ProbeHeaderInformation probeHeaderInformation = null;
 		try {
-			extensionUidLength = ProbeFileUtil.extractExtensionUidLength(probeFile);
-			if (extensionUidLength == null) {
-				extensionUidLength = DEFAULT_EXTENSION_UID_LENGTH;
-			}
+			probeHeaderInformation = ProbeFileUtil.extractProbeHeaderInformation(probeFile);
 		} catch (FileNotFoundException e1) {
 			throw new IllegalStateException(e1);
 		}
 
-		Integer ligationUidLength;
-		try {
-			ligationUidLength = ProbeFileUtil.extractLigationUidLength(probeFile);
-			if (ligationUidLength == null) {
-				ligationUidLength = DEFAULT_LIGATION_UID_LENGTH;
+		int extensionUidLength = DEFAULT_EXTENSION_UID_LENGTH;
+		int ligationUidLength = DEFAULT_LIGATION_UID_LENGTH;
+		String genomeNameFromProbeInfoFile = null;
+
+		if (probeHeaderInformation != null) {
+			genomeNameFromProbeInfoFile = probeHeaderInformation.getGenomeName();
+			if (probeHeaderInformation.getExtensionUidLength() != null) {
+				extensionUidLength = probeHeaderInformation.getExtensionUidLength();
 			}
-		} catch (FileNotFoundException e1) {
-			throw new IllegalStateException(e1);
+			if (probeHeaderInformation.getLigationUidLength() != null) {
+				ligationUidLength = probeHeaderInformation.getLigationUidLength();
+			}
+
 		}
 
 		String outputBamFileName = parsedCommandLine.getOptionsValue(OUTPUT_BAM_FILE_NAME_OPTION);
@@ -330,7 +333,6 @@ public class DeduplicationCli {
 					SAMFileHeader header = samReader.getFileHeader();
 
 					try {
-						String genomeNameFromProbeInfoFile = ProbeFileUtil.extractGenomeNameInLowerCase(probeFile);
 						if (genomeNameFromProbeInfoFile != null) {
 							header = samReader.getFileHeader();
 							Map<String, Integer> containerSizesByNameFromBam = BamFileUtil.getContainerSizesFromHeader(header);

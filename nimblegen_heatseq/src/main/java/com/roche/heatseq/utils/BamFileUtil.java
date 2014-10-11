@@ -164,8 +164,12 @@ public class BamFileUtil {
 		final SAMFileWriter writer = new SAMFileWriterFactory().makeBAMWriter(header, false, output, 9);
 
 		for (final SAMRecord record : reader) {
-			String readName = IlluminaFastQHeader.getBaseHeader(record.getReadName());
-			boolean shouldInclude = readNamesToExclude == null || !readNamesToExclude.contains(readName);
+			boolean shouldInclude = true;
+			if (readNamesToExclude != null) {
+				String readName = IlluminaFastQHeader.getBaseHeader(record.getReadName());
+				shouldInclude = !readNamesToExclude.contains(readName);
+			}
+
 			if (shouldInclude) {
 				writer.addAlignment(record);
 			}

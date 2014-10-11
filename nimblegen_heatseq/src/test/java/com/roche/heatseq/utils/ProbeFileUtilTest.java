@@ -28,21 +28,21 @@ public class ProbeFileUtilTest {
 	@Test(groups = { "unit" })
 	public void extractExtensionUidTest() throws FileNotFoundException, URISyntaxException {
 		File probeInfoFile = new File(ProbeFileUtilTest.class.getResource("probe_info_with_header.txt").toURI());
-		Integer extensionUidLength = ProbeFileUtil.extractExtensionUidLength(probeInfoFile);
+		Integer extensionUidLength = ProbeFileUtil.extractProbeHeaderInformation(probeInfoFile).getExtensionUidLength();
 		Assert.assertEquals((int) extensionUidLength, 10);
 	}
 
 	@Test(groups = { "unit" })
 	public void extractLigationUidTest() throws FileNotFoundException, URISyntaxException {
 		File probeInfoFile = new File(ProbeFileUtilTest.class.getResource("probe_info_with_header.txt").toURI());
-		Integer ligationUidLength = ProbeFileUtil.extractLigationUidLength(probeInfoFile);
+		Integer ligationUidLength = ProbeFileUtil.extractProbeHeaderInformation(probeInfoFile).getLigationUidLength();
 		Assert.assertEquals((int) ligationUidLength, 0);
 	}
 
 	@Test(groups = { "unit" })
 	public void extractGenomeTest() throws FileNotFoundException, URISyntaxException {
 		File probeInfoFile = new File(ProbeFileUtilTest.class.getResource("probe_info_with_header.txt").toURI());
-		String genome = ProbeFileUtil.extractGenomeNameInLowerCase(probeInfoFile);
+		String genome = ProbeFileUtil.extractProbeHeaderInformation(probeInfoFile).getGenomeName();
 		Assert.assertEquals(genome, "hg19");
 	}
 

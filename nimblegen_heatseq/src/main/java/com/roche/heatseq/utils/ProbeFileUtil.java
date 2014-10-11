@@ -47,6 +47,8 @@ public final class ProbeFileUtil {
 
 	private final static String EXTENSION_UID_NAME_IN_PROBE_INFO_HEADER = "extension_uid";
 	private final static String LIGATION_UID_NAME_IN_PROBE_INFO_HEADER = "ligation_uid";
+	private final static String ADDITIONAL_EXTENSION_IN_PROBE_INFO_HEADER = "additional_extension";
+	private final static String ADDITIONAL_LIGATION_IN_PROBE_INFO_HEADER = "additional_ligation";
 	private final static String GENOME_NAME_IN_PROBE_INFO_HEADER = "genome";
 
 	private ProbeFileUtil() {
@@ -197,7 +199,44 @@ public final class ProbeFileUtil {
 
 	}
 
-	public static Integer extractLigationUidLength(File probeFile) throws FileNotFoundException {
+	public static class ProbeHeaderInformation {
+		private final Integer ligationUidLength;
+		private final Integer extensionUidLength;
+		private final Integer additionalLigationTrimLength;
+		private final Integer additionalExtensionTrimLength;
+		private final String genomeName;
+
+		public ProbeHeaderInformation(Integer ligationUidLength, Integer extensionUidLength, Integer additionalLigationTrimLength, Integer additionalExtensionTrimLength, String genomeName) {
+			super();
+			this.ligationUidLength = ligationUidLength;
+			this.extensionUidLength = extensionUidLength;
+			this.additionalLigationTrimLength = additionalLigationTrimLength;
+			this.additionalExtensionTrimLength = additionalExtensionTrimLength;
+			this.genomeName = genomeName;
+		}
+
+		public Integer getLigationUidLength() {
+			return ligationUidLength;
+		}
+
+		public Integer getExtensionUidLength() {
+			return extensionUidLength;
+		}
+
+		public Integer getAdditionalLigationTrimLength() {
+			return additionalLigationTrimLength;
+		}
+
+		public Integer getAdditionalExtensionTrimLength() {
+			return additionalExtensionTrimLength;
+		}
+
+		public String getGenomeName() {
+			return genomeName;
+		}
+	}
+
+	public static ProbeHeaderInformation extractProbeHeaderInformation(File probeFile) throws FileNotFoundException {
 		Integer ligationUidLength = null;
 		Map<String, String> nameValuePairs = parseHeaderNameValuePairs(probeFile);
 		String ligationUidLengthAsString = nameValuePairs.get(LIGATION_UID_NAME_IN_PROBE_INFO_HEADER);
@@ -208,12 +247,8 @@ public final class ProbeFileUtil {
 				logger.warn("Unable to parse extension uid length from probe information header[" + ligationUidLengthAsString + "] as integer.");
 			}
 		}
-		return ligationUidLength;
-	}
 
-	public static Integer extractExtensionUidLength(File probeFile) throws FileNotFoundException {
 		Integer extensionUidLength = null;
-		Map<String, String> nameValuePairs = parseHeaderNameValuePairs(probeFile);
 		String extensionUidLengthAsString = nameValuePairs.get(EXTENSION_UID_NAME_IN_PROBE_INFO_HEADER);
 		if (extensionUidLengthAsString != null) {
 			try {
@@ -222,16 +257,33 @@ public final class ProbeFileUtil {
 				logger.warn("Unable to parse extension uid length from probe information header[" + extensionUidLengthAsString + "] as integer.");
 			}
 		}
-		return extensionUidLength;
-	}
 
-	public static String extractGenomeNameInLowerCase(File probeFile) throws FileNotFoundException {
-		Map<String, String> nameValuePairs = parseHeaderNameValuePairs(probeFile);
+		Integer additionalLigationLength = null;
+		String additionalLigationLengthAsString = nameValuePairs.get(ADDITIONAL_LIGATION_IN_PROBE_INFO_HEADER);
+		if (additionalLigationLengthAsString != null) {
+			try {
+				additionalLigationLength = Integer.parseInt(additionalLigationLengthAsString);
+			} catch (NumberFormatException e) {
+				logger.warn("Unable to parse extension uid length from probe information header[" + additionalLigationLengthAsString + "] as integer.");
+			}
+		}
+
+		Integer additionalExtensionLength = null;
+		String additionalExtensionLengthAsString = nameValuePairs.get(ADDITIONAL_EXTENSION_IN_PROBE_INFO_HEADER);
+		if (additionalExtensionLengthAsString != null) {
+			try {
+				additionalExtensionLength = Integer.parseInt(additionalExtensionLengthAsString);
+			} catch (NumberFormatException e) {
+				logger.warn("Unable to parse extension uid length from probe information header[" + additionalExtensionLengthAsString + "] as integer.");
+			}
+		}
+
 		String genomeName = nameValuePairs.get(GENOME_NAME_IN_PROBE_INFO_HEADER);
 		if (genomeName != null) {
 			genomeName = genomeName.toLowerCase();
 		}
-		return genomeName;
+
+		return new ProbeHeaderInformation(ligationUidLength, extensionUidLength, additionalLigationLength, additionalExtensionLength, genomeName);
 	}
 
 }
