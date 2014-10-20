@@ -1,6 +1,7 @@
 package com.roche.sequencing.bioinformatics.common.utils;
 
 import java.text.NumberFormat;
+import java.util.Locale;
 
 public class NumberFormatterUtil {
 
@@ -64,5 +65,9 @@ public class NumberFormatterUtil {
 	 */
 	public static String formatDouble(Double someDouble, int fractionCount) {
 		return formatDouble(someDouble, fractionCount, true);
+	}
+
+	public static String addCommas(int value) {
+		return NumberFormat.getNumberInstance(Locale.US).format(value);
 	}
 }

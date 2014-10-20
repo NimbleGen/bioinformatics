@@ -1,4 +1,4 @@
-package com.roche.heatseq.qualityreport;
+package com.roche.sequencing.bioinformatics.common.utils;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,8 +11,6 @@ import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.FileAppender;
-
-import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 
 public class LoggingUtil {
 

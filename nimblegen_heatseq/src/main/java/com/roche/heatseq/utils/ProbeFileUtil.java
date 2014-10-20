@@ -21,7 +21,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +35,6 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.DelimitedFileParserUtil;
-import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public final class ProbeFileUtil {
@@ -182,23 +180,6 @@ public final class ProbeFileUtil {
 		probeWriter.close();
 	}
 
-	public static Map<String, String> parseHeaderNameValuePairs(File probeFile) throws FileNotFoundException {
-		Map<String, String> nameValuePairsMap = new HashMap<String, String>();
-		String firstLine = FileUtil.readFirstLineAsString(probeFile);
-		if (firstLine.startsWith("#")) {
-			String firstLineWithPound = firstLine.substring(1, firstLine.length());
-			String[] nameValuePairs = firstLineWithPound.split(" ");
-			for (String nameValuePair : nameValuePairs) {
-				String[] splitNameValuePair = nameValuePair.split("=");
-				if (splitNameValuePair.length == 2) {
-					nameValuePairsMap.put(splitNameValuePair[0].toLowerCase(), splitNameValuePair[1].toLowerCase());
-				}
-			}
-		}
-		return nameValuePairsMap;
-
-	}
-
 	public static class ProbeHeaderInformation {
 		private final Integer ligationUidLength;
 		private final Integer extensionUidLength;
@@ -238,7 +219,7 @@ public final class ProbeFileUtil {
 
 	public static ProbeHeaderInformation extractProbeHeaderInformation(File probeFile) throws FileNotFoundException {
 		Integer ligationUidLength = null;
-		Map<String, String> nameValuePairs = parseHeaderNameValuePairs(probeFile);
+		Map<String, String> nameValuePairs = DelimitedFileParserUtil.parseCommentLinesNameValuePairs(probeFile);
 		String ligationUidLengthAsString = nameValuePairs.get(LIGATION_UID_NAME_IN_PROBE_INFO_HEADER);
 		if (ligationUidLengthAsString != null) {
 			try {

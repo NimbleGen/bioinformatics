@@ -2,13 +2,13 @@ package com.roche.heatseq.cli;
 
 import java.io.File;
 
-import com.roche.heatseq.qualityreport.FunGeneralErrors;
-import com.roche.heatseq.qualityreport.LoggingUtil;
 import com.roche.sequencing.bioinformatics.common.commandline.Command;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineParser;
 import com.roche.sequencing.bioinformatics.common.commandline.Commands;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
+import com.roche.sequencing.bioinformatics.common.utils.FunGeneralErrors;
+import com.roche.sequencing.bioinformatics.common.utils.LoggingUtil;
 import com.roche.sequencing.bioinformatics.common.utils.ManifestUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
