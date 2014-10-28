@@ -22,6 +22,9 @@ public class InputStreamFactory {
 	public InputStreamFactory(Class<?> relativeResourceClass, String resourceName) {
 		super();
 		this.file = null;
+		if (resourceName == null) {
+			throw new IllegalStateException("A null value was passed in as a resource name.");
+		}
 		this.resourceName = resourceName;
 		this.relativeResourceClass = relativeResourceClass;
 	}

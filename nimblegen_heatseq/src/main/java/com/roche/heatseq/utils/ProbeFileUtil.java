@@ -48,6 +48,7 @@ public final class ProbeFileUtil {
 	private final static String ADDITIONAL_EXTENSION_IN_PROBE_INFO_HEADER = "additional_extension";
 	private final static String ADDITIONAL_LIGATION_IN_PROBE_INFO_HEADER = "additional_ligation";
 	private final static String GENOME_NAME_IN_PROBE_INFO_HEADER = "genome";
+	private final static String DO_NOT_PERFORM_THREE_PRIME_TRIMMING_IN_PROBE_INFO_HEADER = "do_not_perform_three_prime_trimming";
 
 	private ProbeFileUtil() {
 		throw new AssertionError();
@@ -185,14 +186,17 @@ public final class ProbeFileUtil {
 		private final Integer extensionUidLength;
 		private final Integer additionalLigationTrimLength;
 		private final Integer additionalExtensionTrimLength;
+		private final Boolean performThreePrimeTrimming;
 		private final String genomeName;
 
-		public ProbeHeaderInformation(Integer ligationUidLength, Integer extensionUidLength, Integer additionalLigationTrimLength, Integer additionalExtensionTrimLength, String genomeName) {
+		public ProbeHeaderInformation(Integer ligationUidLength, Integer extensionUidLength, Integer additionalLigationTrimLength, Integer additionalExtensionTrimLength, String genomeName,
+				Boolean performThreePrimeTrimming) {
 			super();
 			this.ligationUidLength = ligationUidLength;
 			this.extensionUidLength = extensionUidLength;
 			this.additionalLigationTrimLength = additionalLigationTrimLength;
 			this.additionalExtensionTrimLength = additionalExtensionTrimLength;
+			this.performThreePrimeTrimming = performThreePrimeTrimming;
 			this.genomeName = genomeName;
 		}
 
@@ -214,6 +218,10 @@ public final class ProbeFileUtil {
 
 		public String getGenomeName() {
 			return genomeName;
+		}
+
+		public Boolean getPerformThreePrimeTrimming() {
+			return performThreePrimeTrimming;
 		}
 	}
 
@@ -259,12 +267,13 @@ public final class ProbeFileUtil {
 			}
 		}
 
+		Boolean performThreePrimeTrimming = !nameValuePairs.containsKey(DO_NOT_PERFORM_THREE_PRIME_TRIMMING_IN_PROBE_INFO_HEADER);
+
 		String genomeName = nameValuePairs.get(GENOME_NAME_IN_PROBE_INFO_HEADER);
 		if (genomeName != null) {
 			genomeName = genomeName.toLowerCase();
 		}
 
-		return new ProbeHeaderInformation(ligationUidLength, extensionUidLength, additionalLigationLength, additionalExtensionLength, genomeName);
+		return new ProbeHeaderInformation(ligationUidLength, extensionUidLength, additionalLigationLength, additionalExtensionLength, genomeName, performThreePrimeTrimming);
 	}
-
 }

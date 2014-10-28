@@ -16,6 +16,8 @@
 
 package com.roche.sequencing.bioinformatics.common.utils;
 
+import java.util.List;
+
 /**
  * 
  * Util for working with primitive arrays and the likeness
@@ -94,6 +96,14 @@ public final class ArraysUtil {
 		double[] doubleArray = new double[values.length];
 		for (int i = 0; i < values.length; i++) {
 			doubleArray[i] = values[i];
+		}
+		return doubleArray;
+	}
+
+	public static double[] convertToDoubleArray(List<Double> values) {
+		double[] doubleArray = new double[values.size()];
+		for (int i = 0; i < values.size(); i++) {
+			doubleArray[i] = values.get(i);
 		}
 		return doubleArray;
 	}

@@ -34,7 +34,7 @@ public class FastqReadTrimmerTest {
 	@Test(groups = { "unit" })
 	public void trimOneTest() {
 		FastqRecord record = new FastqRecord("pref", "AAAAAGGGGGTTTTTCCCCC", "qualHeader", "AAAAAGGGGGTTTTTCCCCC");
-		FastqRecord trimmedRecord = FastqReadTrimmer.trim(record, 5, 14);
+		FastqRecord trimmedRecord = FastqReadTrimmer.trim(record, 5, 14, true);
 		Assert.assertEquals(trimmedRecord.getReadString().length(), 10);
 		Assert.assertEquals(trimmedRecord.getBaseQualityString().length(), 10);
 	}

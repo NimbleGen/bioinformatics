@@ -34,12 +34,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * 
  * Utility class to help parse delimited files
  * 
  */
 public final class DelimitedFileParserUtil {
+
+	private static final Logger logger = LoggerFactory.getLogger(DelimitedFileParserUtil.class);
+
 	private static final String CARRIAGE_RETURN = StringUtil.CARRIAGE_RETURN;
 
 	// NOTE: WINDOWS_NEWLINE = CARRIAGE_RETURN + LINE_FEED;
@@ -150,7 +156,7 @@ public final class DelimitedFileParserUtil {
 								boolean matchFound = cellString.trim().toLowerCase().equals(headerName.trim().toLowerCase());
 
 								if (matchFound) {
-									foundHeaderMatches.add(headerName);
+									foundHeaderMatches.add(headerName.trim().toLowerCase());
 
 									break headerNameLoop;
 								}
@@ -177,7 +183,10 @@ public final class DelimitedFileParserUtil {
 			String[] nameValuePairs = firstLineWithoutPound.split(" ");
 			for (String nameValuePair : nameValuePairs) {
 				String[] splitNameValuePair = nameValuePair.split("=");
-				if (splitNameValuePair.length == 2) {
+				if (splitNameValuePair.length == 1) {
+					// flag variable
+					nameValuePairsMap.put(splitNameValuePair[0], null);
+				} else if (splitNameValuePair.length == 2) {
 					nameValuePairsMap.put(splitNameValuePair[0], splitNameValuePair[1]);
 				}
 			}
@@ -331,8 +340,69 @@ public final class DelimitedFileParserUtil {
 	 */
 	public static Map<String, List<String>> getHeaderNameToValuesMapFromDelimitedFile(InputStreamFactory delimitedInputStreamFactory, String[] headerNames, String columnDelimiter,
 			boolean extractAdditionalHeaderNames) throws IOException {
+		DefaultLineParser lineParser = new DefaultLineParser();
+		parseFile(delimitedInputStreamFactory, headerNames, lineParser, columnDelimiter, extractAdditionalHeaderNames);
+		return lineParser.getHeaderNameToValuesMap();
+	}
 
-		Map<String, List<String>> headerNameToValuesMap = new HashMap<String, List<String>>();
+	private static class DefaultLineParser implements IDelimitedLineParser {
+
+		private final Map<String, List<String>> headerNameToValuesMap;
+
+		public DefaultLineParser() {
+			headerNameToValuesMap = new HashMap<String, List<String>>();
+		}
+
+		@Override
+		public void parseDelimitedLine(Map<String, String> headerNameToValueMapFromRow) {
+			for (String headerName : headerNameToValueMapFromRow.keySet()) {
+				String value = headerNameToValueMapFromRow.get(headerName);
+
+				if (value == null) {
+					value = "";
+				}
+
+				List<String> values = headerNameToValuesMap.get(headerName);
+
+				if (values == null) {
+					values = new ArrayList<String>();
+				}
+
+				values.add(value);
+
+				headerNameToValuesMap.put(headerName, values);
+			}
+		}
+
+		public void doneParsing(int linesOfData, String[] headerNames) {
+			// make sure all the header names were found
+			if (linesOfData > 0) {
+				StringBuilder headerNamesNotFound = new StringBuilder();
+				for (String headerName : headerNames) {
+					if (!headerNameToValuesMap.containsKey(headerName)) {
+						headerNamesNotFound.append(headerName + " ");
+					}
+				}
+				if (headerNamesNotFound.length() > 0) {
+					throw new UnableToFindHeaderException("Could not find the following header columns: " + headerNamesNotFound.toString());
+				}
+			}
+		}
+
+		public Map<String, List<String>> getHeaderNameToValuesMap() {
+			return headerNameToValuesMap;
+		}
+	}
+
+	/**
+	 * @param delimitedFile
+	 * @param headerNames
+	 * @param columnDelimiter
+	 * @return a list of row entries for each provided header name
+	 * @throws IOException
+	 */
+	public static void parseFile(InputStreamFactory delimitedInputStreamFactory, String[] headerNames, IDelimitedLineParser lineParser, String columnDelimiter, boolean extractAdditionalHeaderNames)
+			throws IOException {
 
 		Header header = findHeaderLine(headerNames, columnDelimiter, delimitedInputStreamFactory);
 		boolean headerFound = header != null;
@@ -358,23 +428,7 @@ public final class DelimitedFileParserUtil {
 					if (parsedCurrentRow != null) {
 						Map<String, String> headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow);
 
-						for (String headerName : headerNameToValueMapFromRow.keySet()) {
-							String value = headerNameToValueMapFromRow.get(headerName);
-
-							if (value == null) {
-								value = "";
-							}
-
-							List<String> values = headerNameToValuesMap.get(headerName);
-
-							if (values == null) {
-								values = new ArrayList<String>();
-							}
-
-							values.add(value);
-
-							headerNameToValuesMap.put(headerName, values);
-						}
+						lineParser.parseDelimitedLine(headerNameToValueMapFromRow);
 
 					}
 				}
@@ -387,20 +441,7 @@ public final class DelimitedFileParserUtil {
 			throw new UnableToFindHeaderException("Could not find header containing header names[" + headerNamesAsString.toString() + "].");
 		}
 
-		// make sure all the header names were found
-		if (linesOfData > 0) {
-			StringBuilder headerNamesNotFound = new StringBuilder();
-			for (String headerName : headerNames) {
-				if (!headerNameToValuesMap.containsKey(headerName)) {
-					headerNamesNotFound.append(headerName + " ");
-				}
-			}
-			if (headerNamesNotFound.length() > 0) {
-				throw new UnableToFindHeaderException("Could not find the following header columns: " + headerNamesNotFound.toString());
-			}
-		}
-
-		return headerNameToValuesMap;
+		lineParser.doneParsing(linesOfData, headerNames);
 	}
 
 	/**
