@@ -126,4 +126,9 @@ public class CommonMathUtil {
 		return result;
 	}
 
+	public static boolean equals(double first, double second, int fractionalDigitsToCompare) {
+		double buffer = Math.pow(0.1, fractionalDigitsToCompare);
+		boolean equals = (second < (first + buffer)) && second > (first - buffer);
+		return equals;
+	}
 }
