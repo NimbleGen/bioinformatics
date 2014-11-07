@@ -52,7 +52,7 @@ public class JavaVersionChecker {
 		Class<?> clazz;
 		try {
 			clazz = Class.forName(mainClass);
-			Class[] argTypes = new Class[] { String[].class };
+			Class<?>[] argTypes = new Class[] { String[].class };
 			Method method = clazz.getDeclaredMethod("main", argTypes);
 			method.invoke(null, (Object) args);
 		} catch (Exception e) {

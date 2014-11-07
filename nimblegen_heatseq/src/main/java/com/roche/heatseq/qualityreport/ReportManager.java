@@ -28,9 +28,9 @@ public class ReportManager {
 	private final static String UNIQUE_PROBE_TALLIES_REPORT_NAME = "unique_probe_tallies.txt";
 	private final static String READS_MAPPED_TO_MULTIPLE_PROBES_REPORT_NAME = "reads_mapped_to_multiple_probes.txt";
 	private final static String PROBE_COVERAGE_REPORT_NAME = "probe_coverage.bed";
-	private final static String MAPPED_OFF_TARGET_READS_REPORT_NAME = "mapped_off_target_reads.bam";
-	private final static String UNMAPPED_READS_REPORT_NAME = "unmapped_read_pairs.bam";
-	private final static String PARTIALLY_MAPPED_READS_REPORT_NAME = "partially_mapped_read_pairs.bam";
+	// private final static String MAPPED_OFF_TARGET_READS_REPORT_NAME = "mapped_off_target_reads.bam";
+	// private final static String UNMAPPED_READS_REPORT_NAME = "unmapped_read_pairs.bam";
+	// private final static String PARTIALLY_MAPPED_READS_REPORT_NAME = "partially_mapped_read_pairs.bam";
 
 	private TabDelimitedFileWriter ambiguousMappingWriter;
 	private TabDelimitedFileWriter uniqueProbeTalliesWriter;

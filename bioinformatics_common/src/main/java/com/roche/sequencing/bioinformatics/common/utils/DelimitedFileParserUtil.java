@@ -34,9 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * 
  * Utility class to help parse delimited files
@@ -44,7 +41,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class DelimitedFileParserUtil {
 
-	private static final Logger logger = LoggerFactory.getLogger(DelimitedFileParserUtil.class);
+	// private static final Logger logger = LoggerFactory.getLogger(DelimitedFileParserUtil.class);
 
 	private static final String CARRIAGE_RETURN = StringUtil.CARRIAGE_RETURN;
 
@@ -392,6 +389,11 @@ public final class DelimitedFileParserUtil {
 		public Map<String, List<String>> getHeaderNameToValuesMap() {
 			return headerNameToValuesMap;
 		}
+
+		@Override
+		public void threadInterrupted() {
+			headerNameToValuesMap.clear();
+		}
 	}
 
 	/**
@@ -406,6 +408,7 @@ public final class DelimitedFileParserUtil {
 
 		Header header = findHeaderLine(headerNames, columnDelimiter, delimitedInputStreamFactory);
 		boolean headerFound = header != null;
+		boolean wasInterrupted = false;
 		int linesOfData = 0;
 		if (headerFound) {
 			String[] parsedHeaderRow = header.getHeadLine().split(columnDelimiter);
@@ -416,7 +419,7 @@ public final class DelimitedFileParserUtil {
 			try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, header.getCharsetUsed()))) {
 				skipLines(bufferedReader, header.getLinesPriorToHeader() + 1);
 				String currentRow = null;
-				while ((currentRow = bufferedReader.readLine()) != null) {
+				rowLoop: while ((currentRow = bufferedReader.readLine()) != null) {
 					linesOfData++;
 					// remove carriage return if this is a windows based file
 					if (currentRow.endsWith(CARRIAGE_RETURN)) {
@@ -429,7 +432,11 @@ public final class DelimitedFileParserUtil {
 						Map<String, String> headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow);
 
 						lineParser.parseDelimitedLine(headerNameToValueMapFromRow);
+					}
 
+					if (Thread.currentThread().isInterrupted()) {
+						wasInterrupted = true;
+						break rowLoop;
 					}
 				}
 			}
@@ -441,7 +448,11 @@ public final class DelimitedFileParserUtil {
 			throw new UnableToFindHeaderException("Could not find header containing header names[" + headerNamesAsString.toString() + "].");
 		}
 
-		lineParser.doneParsing(linesOfData, headerNames);
+		if (wasInterrupted) {
+			lineParser.threadInterrupted();
+		} else {
+			lineParser.doneParsing(linesOfData, headerNames);
+		}
 	}
 
 	/**

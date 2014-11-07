@@ -8,4 +8,6 @@ public interface IDelimitedLineParser {
 
 	void doneParsing(int linesOfData, String[] headerNames);
 
+	void threadInterrupted();
+
 }
