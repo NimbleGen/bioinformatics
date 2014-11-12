@@ -48,6 +48,8 @@ public final class DelimitedFileParserUtil {
 	// NOTE: WINDOWS_NEWLINE = CARRIAGE_RETURN + LINE_FEED;
 	// NOTE: LINUX_NEWLINE = LINE_FEED;
 
+	private final static int BUFFER_SIZE = 131072;
+
 	private static final Charset[] CHARSETS_TO_TRY = new Charset[] { Charset.forName("UTF-16"), Charset.forName("UTF-8") };
 
 	private DelimitedFileParserUtil() {
@@ -124,7 +126,7 @@ public final class DelimitedFileParserUtil {
 
 		String currentRow = null;
 		int linesRead = 0;
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(delimitedContentInputStreamFactory.createInputStream(), charset))) {
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(delimitedContentInputStreamFactory.createInputStream(), charset), BUFFER_SIZE)) {
 
 			while (!headerFound && ((currentRow = reader.readLine()) != null)) {
 				// add one for the newline
@@ -237,7 +239,7 @@ public final class DelimitedFileParserUtil {
 			String[] parsedCurrentRow = currentRow.split(columnDelimiter);
 
 			if (parsedCurrentRow != null) {
-				headerNameToValueMapFromRow = parseRow(headerNameToColumnMap, parsedCurrentRow);
+				headerNameToValueMapFromRow = parseRow(headerNameToColumnMap, parsedCurrentRow, null);
 			}
 
 			return headerNameToValueMapFromRow;
@@ -415,26 +417,26 @@ public final class DelimitedFileParserUtil {
 
 			Map<Integer, String> columnToHeaderNameMap = getColumnIndexToHeaderNameMapping(headerNames, parsedHeaderRow, extractAdditionalHeaderNames);
 
+			Map<String, String> headerNameToValueMapFromRow = new HashMap<String, String>();
+
 			InputStream inputStream = delimitedInputStreamFactory.createInputStream();
-			try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, header.getCharsetUsed()))) {
+			try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, header.getCharsetUsed()), BUFFER_SIZE)) {
 				skipLines(bufferedReader, header.getLinesPriorToHeader() + 1);
 				String currentRow = null;
 				rowLoop: while ((currentRow = bufferedReader.readLine()) != null) {
 					linesOfData++;
 					// remove carriage return if this is a windows based file
-					if (currentRow.endsWith(CARRIAGE_RETURN)) {
-						currentRow = currentRow.substring(0, currentRow.length() - 1);
-					}
+					currentRow = currentRow.replace(CARRIAGE_RETURN, "");
 
 					String[] parsedCurrentRow = currentRow.split(columnDelimiter);
 
 					if (parsedCurrentRow != null) {
-						Map<String, String> headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow);
+						headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow, headerNameToValueMapFromRow);
 
 						lineParser.parseDelimitedLine(headerNameToValueMapFromRow);
 					}
 
-					if (Thread.currentThread().isInterrupted()) {
+					if (linesOfData % 1000 == 0 && Thread.currentThread().isInterrupted()) {
 						wasInterrupted = true;
 						break rowLoop;
 					}
@@ -488,8 +490,15 @@ public final class DelimitedFileParserUtil {
 		return columnToNameMapping;
 	}
 
-	private static Map<String, String> parseRow(Map<Integer, String> headerInfo, String[] parsedCurrentRow) {
-		Map<String, String> headerNameToValueMap = new HashMap<String, String>();
+	private static Map<String, String> parseRow(Map<Integer, String> headerInfo, String[] parsedCurrentRow, Map<String, String> returnMapToPopulate) {
+		Map<String, String> headerNameToValueMap = null;
+		if (returnMapToPopulate != null) {
+			headerNameToValueMap = returnMapToPopulate;
+			headerNameToValueMap.clear();
+		} else {
+			headerNameToValueMap = new HashMap<String, String>();
+		}
+
 		int columnCount = parsedCurrentRow.length;
 
 		for (int i = 0; i < columnCount; i++) {
@@ -531,6 +540,8 @@ public final class DelimitedFileParserUtil {
 		if (headerFound) {
 			try (BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(reducedFilteredFile))) {
 
+				Map<String, String> headerNameToValueMapFromRow = new HashMap<String, String>();
+
 				try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(delimitedFile), header.getCharsetUsed()))) {
 					boolean pastHeaderLine = false;
 					String currentRow = null;
@@ -545,7 +556,7 @@ public final class DelimitedFileParserUtil {
 							String[] parsedCurrentRow = currentRow.split(columnDelimiter);
 
 							if (parsedCurrentRow != null) {
-								Map<String, String> headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow);
+								headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow, headerNameToValueMapFromRow);
 
 								boolean isValueAcceptable = true;
 								headerLoop: for (String headerName : headerNameToValueMapFromRow.keySet()) {
