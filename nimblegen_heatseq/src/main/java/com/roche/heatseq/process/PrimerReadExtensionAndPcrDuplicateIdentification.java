@@ -246,6 +246,8 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 			ExecutorService executor = Executors.newFixedThreadPool(applicationSettings.getNumProcessors());
 			int totalProbes = 0;
 
+			int totalReadsDeleteMe = 0;
+
 			for (String sequenceName : sequenceNames) {
 
 				if (!referenceSequenceNamesInBam.contains(sequenceName)) {
@@ -275,6 +277,8 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 					if (applicationSettings.isNotTrimmedToWithinTheCaptureTargetSequence()) {
 						samRecordIter = samReader.queryContained(sequenceName, probe.getStart(), probe.getStop());
 					} else {
+						// int start = probe.getCaptureTargetStart();
+						// int stop = probe.getCaptureTargetStop();
 						samRecordIter = samReader.queryContained(sequenceName, probe.getCaptureTargetStart(), probe.getCaptureTargetStop());
 					}
 					while (samRecordIter.hasNext()) {
@@ -334,6 +338,8 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 						}
 					}
 
+					totalReadsDeleteMe += readNameToCompleteRecordsMap.size();
+
 					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, applicationSettings, samWriter, reportManager, readNameToCompleteRecordsMap,
 							applicationSettings.getAlignmentScorer(), distinctUids, uids);
 
@@ -345,7 +351,9 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 					}
 					executor.execute(worker);
 				}
+
 			}
+			System.out.println("total reads:" + totalReadsDeleteMe);
 
 			// Wait until all our threads are done processing.
 			executor.shutdown();

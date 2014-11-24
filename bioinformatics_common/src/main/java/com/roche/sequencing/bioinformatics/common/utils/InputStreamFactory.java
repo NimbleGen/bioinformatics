@@ -50,4 +50,12 @@ public class InputStreamFactory {
 		return "InputStreamFactory [file=" + file + ", resourceName=" + resourceName + ", relativeResourceClass=" + relativeResourceClass + "]";
 	}
 
+	public String getName() {
+		String name = resourceName;
+		if (name == null || name.isEmpty()) {
+			name = file.getAbsolutePath();
+		}
+		return name;
+	}
+
 }

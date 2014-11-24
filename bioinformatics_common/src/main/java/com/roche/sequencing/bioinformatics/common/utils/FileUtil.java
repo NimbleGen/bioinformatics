@@ -227,6 +227,8 @@ public final class FileUtil {
 		String returnRelativePath = null;
 		if (relativePathStringBuilder != null) {
 			returnRelativePath = relativePathStringBuilder.toString();
+		} else {
+			returnRelativePath = "./" + toFile.getAbsolutePath();
 		}
 		return returnRelativePath;
 	}
