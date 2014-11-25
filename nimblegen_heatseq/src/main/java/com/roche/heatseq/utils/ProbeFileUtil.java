@@ -49,6 +49,8 @@ public final class ProbeFileUtil {
 	private final static String ADDITIONAL_LIGATION_IN_PROBE_INFO_HEADER = "additional_ligation";
 	private final static String GENOME_NAME_IN_PROBE_INFO_HEADER = "genome";
 	private final static String DO_NOT_PERFORM_THREE_PRIME_TRIMMING_IN_PROBE_INFO_HEADER = "do_not_perform_three_prime_trimming";
+	private final static String BASES_INSIDE_EXTENSION_PRIMER_WINDOW = "bases_inside_extension_primer_window";
+	private final static String BASES_INSIDE_LIGATION_PRIMER_WINDOW = "bases_inside_ligation_primer_window";
 
 	private ProbeFileUtil() {
 		throw new AssertionError();
@@ -186,16 +188,20 @@ public final class ProbeFileUtil {
 		private final Integer extensionUidLength;
 		private final Integer additionalLigationTrimLength;
 		private final Integer additionalExtensionTrimLength;
+		private final Integer basesInsideExtensionPrimerWindow;
+		private final Integer basesInsideLigationPrimerWindow;
 		private final Boolean performThreePrimeTrimming;
 		private final String genomeName;
 
-		public ProbeHeaderInformation(Integer ligationUidLength, Integer extensionUidLength, Integer additionalLigationTrimLength, Integer additionalExtensionTrimLength, String genomeName,
-				Boolean performThreePrimeTrimming) {
+		public ProbeHeaderInformation(Integer ligationUidLength, Integer extensionUidLength, Integer additionalLigationTrimLength, Integer additionalExtensionTrimLength,
+				Integer basesInsideExtensionPrimerWindow, Integer basesInsideLigationPrimerWindow, Boolean performThreePrimeTrimming, String genomeName) {
 			super();
 			this.ligationUidLength = ligationUidLength;
 			this.extensionUidLength = extensionUidLength;
 			this.additionalLigationTrimLength = additionalLigationTrimLength;
 			this.additionalExtensionTrimLength = additionalExtensionTrimLength;
+			this.basesInsideExtensionPrimerWindow = basesInsideExtensionPrimerWindow;
+			this.basesInsideLigationPrimerWindow = basesInsideLigationPrimerWindow;
 			this.performThreePrimeTrimming = performThreePrimeTrimming;
 			this.genomeName = genomeName;
 		}
@@ -216,13 +222,22 @@ public final class ProbeFileUtil {
 			return additionalExtensionTrimLength;
 		}
 
-		public String getGenomeName() {
-			return genomeName;
+		public Integer getBasesInsideExtensionPrimerWindow() {
+			return basesInsideExtensionPrimerWindow;
+		}
+
+		public Integer getBasesInsideLigationPrimerWindow() {
+			return basesInsideLigationPrimerWindow;
 		}
 
 		public Boolean getPerformThreePrimeTrimming() {
 			return performThreePrimeTrimming;
 		}
+
+		public String getGenomeName() {
+			return genomeName;
+		}
+
 	}
 
 	public static ProbeHeaderInformation extractProbeHeaderInformation(File probeFile) throws FileNotFoundException {
@@ -267,6 +282,26 @@ public final class ProbeFileUtil {
 			}
 		}
 
+		Integer basesInsideExtensionPrimerWindow = null;
+		String basesInsideExtensionPrimerWindowAsString = nameValuePairs.get(BASES_INSIDE_EXTENSION_PRIMER_WINDOW);
+		if (basesInsideExtensionPrimerWindowAsString != null) {
+			try {
+				basesInsideExtensionPrimerWindow = Integer.parseInt(basesInsideExtensionPrimerWindowAsString);
+			} catch (NumberFormatException e) {
+				logger.warn("Unable to parse bases inside extension primer window from probe information header[" + basesInsideExtensionPrimerWindowAsString + "] as integer.");
+			}
+		}
+
+		Integer basesInsideLigationPrimerWindow = null;
+		String basesInsideLigationPrimerWindowAsString = nameValuePairs.get(BASES_INSIDE_LIGATION_PRIMER_WINDOW);
+		if (basesInsideLigationPrimerWindowAsString != null) {
+			try {
+				basesInsideLigationPrimerWindow = Integer.parseInt(basesInsideLigationPrimerWindowAsString);
+			} catch (NumberFormatException e) {
+				logger.warn("Unable to parse bases inside ligation primer window from probe information header[" + basesInsideLigationPrimerWindowAsString + "] as integer.");
+			}
+		}
+
 		Boolean performThreePrimeTrimming = !nameValuePairs.containsKey(DO_NOT_PERFORM_THREE_PRIME_TRIMMING_IN_PROBE_INFO_HEADER);
 
 		String genomeName = nameValuePairs.get(GENOME_NAME_IN_PROBE_INFO_HEADER);
@@ -274,6 +309,7 @@ public final class ProbeFileUtil {
 			genomeName = genomeName.toLowerCase();
 		}
 
-		return new ProbeHeaderInformation(ligationUidLength, extensionUidLength, additionalLigationLength, additionalExtensionLength, genomeName, performThreePrimeTrimming);
+		return new ProbeHeaderInformation(ligationUidLength, extensionUidLength, additionalLigationLength, additionalExtensionLength, basesInsideExtensionPrimerWindow,
+				basesInsideLigationPrimerWindow, performThreePrimeTrimming, genomeName);
 	}
 }

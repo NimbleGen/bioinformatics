@@ -273,14 +273,20 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 					// Try getting the reads for this probe here before passing them to the worker
 					Map<String, SAMRecordPair> readNameToRecordsMap = new HashMap<String, SAMRecordPair>();
 
-					SAMRecordIterator samRecordIter = null;
-					if (applicationSettings.isNotTrimmedToWithinTheCaptureTargetSequence()) {
-						samRecordIter = samReader.queryContained(sequenceName, probe.getStart(), probe.getStop());
-					} else {
-						// int start = probe.getCaptureTargetStart();
-						// int stop = probe.getCaptureTargetStop();
-						samRecordIter = samReader.queryContained(sequenceName, probe.getCaptureTargetStart(), probe.getCaptureTargetStop());
+					int queryStart = probe.getStart();
+					Integer basesInsideExtensionPrimerWindow = applicationSettings.getProbeHeaderInformation().getBasesInsideExtensionPrimerWindow();
+					if (basesInsideExtensionPrimerWindow != null) {
+						queryStart += basesInsideExtensionPrimerWindow;
 					}
+
+					int queryStop = probe.getStop();
+					Integer basesInsideLigationPrimerWindow = applicationSettings.getProbeHeaderInformation().getBasesInsideLigationPrimerWindow();
+					if (basesInsideLigationPrimerWindow != null) {
+						queryStop -= basesInsideLigationPrimerWindow;
+					}
+
+					SAMRecordIterator samRecordIter = samReader.queryContained(sequenceName, queryStart, queryStop);
+
 					while (samRecordIter.hasNext()) {
 						SAMRecord record = samRecordIter.next();
 
