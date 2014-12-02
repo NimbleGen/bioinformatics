@@ -98,6 +98,10 @@ public class RunningStats {
 		return numberOfValues;
 	}
 
+	public double getSumOfValues() {
+		return sumOfValues.doubleValue();
+	}
+
 	@Override
 	public String toString() {
 		return "RunningStats [sumOfValues=" + sumOfValues + ", sumOfSquares=" + sumOfSquares + ", minValue=" + minValue + ", maxValue=" + maxValue + ", numberOfValues=" + numberOfValues + "]";

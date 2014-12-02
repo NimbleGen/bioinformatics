@@ -257,4 +257,134 @@ public class StatisticsUtil {
 
 		return median;
 	}
+
+	private static double[] convertToPdf(double[] values) {
+		double minValue = Double.MAX_VALUE;
+
+		for (int i = 0; i < values.length; i++) {
+			double value = values[i];
+			minValue = Math.min(minValue, value);
+		}
+
+		double sumOfValues = 0;
+		for (int i = 0; i < values.length; i++) {
+			double value = values[i] - minValue;
+			sumOfValues += value;
+		}
+
+		double[] normalizedValues = new double[values.length];
+		for (int i = 0; i < values.length; i++) {
+			double value = values[i];
+			normalizedValues[i] = (value - minValue) / sumOfValues;
+		}
+		return normalizedValues;
+	}
+
+	private static int numberOfPeaks(double[] values) {
+		int numberOfPeaks = 0;
+		if (values.length > 3) {
+			for (int i = 2; i < values.length; i++) {
+				double firstValue = values[i - 2];
+				double secondValue = values[i - 1];
+				double thirdValue = values[i];
+
+				if (secondValue > firstValue && secondValue > thirdValue) {
+					numberOfPeaks++;
+				}
+			}
+		}
+		return numberOfPeaks;
+	}
+
+	public static DiscreteRandomVariableParameters getDiscreteRandomVariableParameters(double[] values) {
+		values = convertToPdf(values);
+
+		double lastSumOfProbabilities = 0;
+		double sumOfProbabilities = 0;
+		double median = -1;
+		double expectedValue = 0;
+		double secondMoment = 0;
+		double thirdMoment = 0;
+
+		for (int i = 0; i < values.length; i++) {
+			double value = values[i];
+			sumOfProbabilities += value;
+			if (sumOfProbabilities >= 0.50 && lastSumOfProbabilities < 0.50) {
+				median = i;
+			}
+			expectedValue += (i * value);
+			secondMoment += (Math.pow(i, 2) * value);
+			thirdMoment += (Math.pow(i, 3) * value);
+			lastSumOfProbabilities = sumOfProbabilities;
+		}
+
+		double variance = secondMoment - (expectedValue * expectedValue);
+		double standardDeviation = Math.sqrt(variance);
+		double skewness = (thirdMoment - 3 * expectedValue * variance - (Math.pow(expectedValue, 3))) / Math.pow(standardDeviation, 3);
+
+		int numberOfPeaks = numberOfPeaks(values);
+
+		return new DiscreteRandomVariableParameters(expectedValue, standardDeviation, skewness, numberOfPeaks, median, values.length);
+	}
+
+	public static class DiscreteRandomVariableParameters {
+		private final double mean;
+		private final double standardDeviation;
+		private final double skewness;
+		private final double numberOfPeaks;
+		private final double median;
+		private final double length;
+		private final double meanRatio;
+		private final double medianRatio;
+
+		public DiscreteRandomVariableParameters(double mean, double standardDeviation, double skewness, double numberOfPeaks, double median, double length) {
+			super();
+			this.mean = mean;
+			this.standardDeviation = standardDeviation;
+			this.skewness = skewness;
+			this.numberOfPeaks = numberOfPeaks;
+			this.median = median;
+			this.length = length;
+			this.meanRatio = mean / length;
+			this.medianRatio = median / length;
+		}
+
+		public double getMean() {
+			return mean;
+		}
+
+		public double getStandardDeviation() {
+			return standardDeviation;
+		}
+
+		public double getSkewness() {
+			return skewness;
+		}
+
+		public double getNumberOfPeaks() {
+			return numberOfPeaks;
+		}
+
+		public double getMedian() {
+			return median;
+		}
+
+		public double getLength() {
+			return length;
+		}
+
+		public double getMeanRatio() {
+			return meanRatio;
+		}
+
+		public double getMedianRatio() {
+			return medianRatio;
+		}
+
+		@Override
+		public String toString() {
+			return "DiscreteRandomVariableParameters [mean=" + mean + ", standardDeviation=" + standardDeviation + ", skewness=" + skewness + ", numberOfPeaks=" + numberOfPeaks + ", median=" + median
+					+ ", length=" + length + ", meanRatio=" + meanRatio + ", medianRatio=" + medianRatio + "]";
+		}
+	}
 }
