@@ -14,6 +14,7 @@ public class JavaVersionChecker {
 
 	private final static String SECONDARY_MAIN_CLASS_MANIFEST_TAG = "Second-Main-Class";
 	private final static String REQUIRED_JAVA_VERSION_MANIFEST_TAG = "Required-Java-Version";
+	private final static String REQUIRED_JAVA_BIT_TAG = "Required-Bit_JVM";
 	private final static String DISPLAY_JAVA_VERSION_WARNING_IN_DIALOG_MANIFEST_TAG = "Display-Java-Version-Warning-In-Dialog";
 
 	public static void main(String[] args) {
@@ -22,6 +23,12 @@ public class JavaVersionChecker {
 		double requiredMajorMinorJavaVersion = 1.6;
 		if (requiredMajorMinorVersionOfJavaAsString != null) {
 			requiredMajorMinorJavaVersion = Double.valueOf(requiredMajorMinorVersionOfJavaAsString);
+		}
+
+		String requiredJavaBitAsString = getManifestValue(REQUIRED_JAVA_BIT_TAG);
+		int requiredJavaBit = 32;
+		if (requiredJavaBitAsString != null) {
+			requiredJavaBit = Integer.valueOf(requiredJavaBitAsString);
 		}
 
 		String mainClass = getManifestValue(SECONDARY_MAIN_CLASS_MANIFEST_TAG);
@@ -42,6 +49,18 @@ public class JavaVersionChecker {
 
 		if (actualJavaVersionAsDouble < requiredMajorMinorJavaVersion) {
 			String warning = "This application requires Java Version " + requiredMajorMinorJavaVersion + " or newer.  Please execute the application with an appropriate version of Java.";
+			if (displayWarningWithDialog) {
+				JOptionPane.showMessageDialog(null, warning, "Incorrect Version of Java", JOptionPane.WARNING_MESSAGE);
+			}
+			System.err.println(warning);
+			System.exit(1);
+		}
+
+		String JVMBitAsString = System.getProperty("sun.arch.data.model");
+		int actualJavaBitAsInteger = Integer.valueOf(JVMBitAsString);
+		if (actualJavaBitAsInteger < requiredJavaBit) {
+			String warning = "This application requires a " + requiredJavaBit + " bit JVM or higher.  You are currently running a " + actualJavaBitAsInteger
+					+ " bit JVM.  Please execute the application with an appropriate version of Java.";
 			if (displayWarningWithDialog) {
 				JOptionPane.showMessageDialog(null, warning, "Incorrect Version of Java", JOptionPane.WARNING_MESSAGE);
 			}
