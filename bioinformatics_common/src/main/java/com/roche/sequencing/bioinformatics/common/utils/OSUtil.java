@@ -1,6 +1,14 @@
 package com.roche.sequencing.bioinformatics.common.utils;
 
+import java.awt.Window;
+import java.lang.reflect.Method;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class OSUtil {
+
+	private static Logger logger = LoggerFactory.getLogger(OSUtil.class);
 
 	private OSUtil() {
 		throw new AssertionError();
@@ -16,6 +24,29 @@ public class OSUtil {
 
 	public static boolean isLinux() {
 		return getOsName().startsWith("Linux");
+	}
+
+	public static boolean isMacOsX() {
+		return getOsName().startsWith("Mac OS X");
+	}
+
+	/**
+	 * @param window
+	 */
+	public static boolean setOSXFullscreen(Window window, boolean isFullScreen) {
+		boolean success = false;
+		if (window != null && isMacOsX()) {
+			try {
+				Class<?> util = Class.forName("com.apple.eawt.FullScreenUtilities");
+				Class<?> params[] = new Class[] { Window.class, Boolean.TYPE };
+				Method method = util.getMethod("setWindowCanFullScreen", params);
+				method.invoke(util, window, isFullScreen);
+				success = true;
+			} catch (Exception e) {
+				logger.warn(e.getMessage(), e);
+			}
+		}
+		return success;
 	}
 
 	/**
