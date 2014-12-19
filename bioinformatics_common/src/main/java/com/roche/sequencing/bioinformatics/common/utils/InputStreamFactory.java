@@ -14,6 +14,9 @@ public class InputStreamFactory {
 
 	public InputStreamFactory(File file) {
 		super();
+		if (file == null) {
+			throw new IllegalStateException("file cannot be null.");
+		}
 		this.file = file;
 		this.resourceName = null;
 		this.relativeResourceClass = null;
