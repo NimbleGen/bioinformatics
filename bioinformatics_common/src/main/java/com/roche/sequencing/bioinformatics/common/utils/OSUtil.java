@@ -78,8 +78,13 @@ public class OSUtil {
 
 	public static String getOsBits() {
 		String osBits = "32";
-		if (is64Bit()) {
-			osBits = "64";
+		Boolean is64 = is64Bit();
+		if (is64 == null) {
+			osBits = "unknown";
+		} else {
+			if (is64) {
+				osBits = "64";
+			}
 		}
 		return osBits;
 	}

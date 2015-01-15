@@ -500,13 +500,21 @@ public final class DelimitedFileParserUtil {
 		}
 
 		int columnCount = parsedCurrentRow.length;
-
+		Set<Integer> columnsUsed = new HashSet<Integer>();
 		for (int i = 0; i < columnCount; i++) {
 			String value = parsedCurrentRow[i];
 			String headerName = headerInfo.get(i);
+			columnsUsed.add(i);
 
 			if (headerName != null) {
 				headerNameToValueMap.put(headerName, value);
+			}
+		}
+
+		for (int i = 0; i < headerInfo.size(); i++) {
+			if (!columnsUsed.contains(i)) {
+				String headerName = headerInfo.get(i);
+				headerNameToValueMap.put(headerName, null);
 			}
 		}
 
