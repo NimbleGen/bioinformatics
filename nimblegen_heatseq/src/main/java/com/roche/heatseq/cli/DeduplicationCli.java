@@ -337,10 +337,13 @@ public class DeduplicationCli {
 							header = samReader.getFileHeader();
 							Map<String, Integer> containerSizesByNameFromBam = BamFileUtil.getContainerSizesFromHeader(header);
 							String matchingGenomeBasedOnContainerSizes = GenomeIdentifier.getMatchingGenomeName(containerSizesByNameFromBam);
-							if (!genomeNameFromProbeInfoFile.equals(matchingGenomeBasedOnContainerSizes)) {
-
+							if (matchingGenomeBasedOnContainerSizes == null) {
+								String message = "The genome used for mapping is not a recognized genome so the system cannot verify that it matches the provided genome["
+										+ genomeNameFromProbeInfoFile + "] from the probe information file.";
+								logger.info(message);
+								CliStatusConsole.logStatus(message);
+							} else if (!genomeNameFromProbeInfoFile.equals(matchingGenomeBasedOnContainerSizes)) {
 								logger.info("Mismatch Genome Report" + StringUtil.NEWLINE + GenomeIdentifier.createMismatchGenomeReportText(genomeNameFromProbeInfoFile, containerSizesByNameFromBam));
-
 								CliStatusConsole
 										.logStatus(StringUtil.NEWLINE
 												+ "It appears that the incorrect genome was used for mapping.  The names and sizes of the genome sequences used for mapping found in the provided BAM/SAM file ["
