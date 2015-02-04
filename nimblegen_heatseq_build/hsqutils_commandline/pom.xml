@@ -13,21 +13,31 @@
 	<packaging>pom</packaging>
 	<name>HSQ Utils</name>
 	<description>Command line tool for Heatseq Utilities</description>
-	<version>v1</version>
-	
+	<version>v6</version>
+
 	<modules>
 		<module>../../bioinformatics_common</module>
-		<module>../../nimblegen_heatseq</module>		
-	</modules>	
-	
+		<module>../../nimblegen_heatseq</module>
+		<module>../../../bioinformatics/java_version_checker</module>
+	</modules>
+
 	<dependencies>
 		<dependency>
 			<groupId>com.roche.sequencing</groupId>
 			<artifactId>nimblegen_heatseq</artifactId>
-			<version>0.0.1-SNAPSHOT</version>			
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>com.roche.sequencing</groupId>
+			<artifactId>java_version_checker</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
-	
+
+	<properties>
+		<java.version>1.7</java.version>
+	</properties>
+
 	<build>
 		<finalName>${project.artifactId}_${project.version}</finalName>
 		<plugins>
@@ -35,8 +45,8 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
-					<source>1.7</source>
-					<target>1.7</target>
+					<source>${java.version}</source>
+					<target>${java.version}</target>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -49,9 +59,12 @@
 					<appendAssemblyId>false</appendAssemblyId>
 					<archive>
 						<manifestEntries>
-							<Main-Class>com/roche/heatseq/cli/HsqUtilsCli</Main-Class>
+							<Second-Main-Class>com/roche/heatseq/cli/HsqUtilsCli</Second-Main-Class>
 							<Implementation-Build>${maven.build.timestamp}</Implementation-Build>
 							<version>${project.version}</version>
+							<Main-Class>com/roche/bioinformatics/common/java/JavaVersionChecker</Main-Class>
+							<Required-Java-Version>${java.version}</Required-Java-Version>
+							<Display-Java-Version-Warning-In-Dialog>false</Display-Java-Version-Warning-In-Dialog>
 						</manifestEntries>
 					</archive>
 				</configuration>
@@ -66,5 +79,5 @@
 			</plugin>
 		</plugins>
 	</build>
-	
+
 </project>

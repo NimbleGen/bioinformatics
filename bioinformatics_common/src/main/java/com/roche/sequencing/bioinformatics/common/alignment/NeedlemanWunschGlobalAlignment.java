@@ -387,4 +387,12 @@ public class NeedlemanWunschGlobalAlignment {
 		}
 		return index;
 	}
+
+	public double getRatioOfQueryMatchesToQueryLength() {
+		String unsummarizedCigarString = getCigarString().getCigarString(false, true);
+		double matches = StringUtil.countMatches(unsummarizedCigarString, "" + CigarStringUtil.CIGAR_SEQUENCE_MATCH);
+		double queryLength = querySequence.size();
+		double queryMatchesToQueryLength = matches / queryLength;
+		return queryMatchesToQueryLength;
+	}
 }

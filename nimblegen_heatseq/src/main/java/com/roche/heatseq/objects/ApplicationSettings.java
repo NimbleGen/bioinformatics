@@ -18,6 +18,7 @@ package com.roche.heatseq.objects;
 
 import java.io.File;
 
+import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 
 /**
@@ -43,13 +44,13 @@ public class ApplicationSettings {
 	private final int numProcessors;
 	private final boolean allowVariableLengthUids;
 	private final IAlignmentScorer alignmentScorer;
-	private final boolean notTrimmedToWithinTheCaptureTargetSequence;
 	private final int extensionUidLength;
 	private final int ligationUidLength;
 	private final boolean markDuplicates;
 	private final boolean keepDuplicates;
 	private final boolean mergePairs;
 	private final boolean useStrictReadToProbeMatching;
+	private final ProbeHeaderInformation probeHeaderInformation;
 
 	/**
 	 * Default Constructor
@@ -73,7 +74,7 @@ public class ApplicationSettings {
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
 			String originalBamFileName, boolean shouldOutputReports, String commandLineSignature, String programName, String programVersion, int numProcessors, boolean allowVariableLengthUids,
 			IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinTheCaptureTargetSequence, int extensionUidLength, int ligationUidLength, boolean markDuplicates, boolean keepDuplicates,
-			boolean mergePairs, boolean useStrictReadToProbeMatching) {
+			boolean mergePairs, boolean useStrictReadToProbeMatching, ProbeHeaderInformation probeHeaderInformation) {
 		super();
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;
@@ -91,13 +92,13 @@ public class ApplicationSettings {
 		this.numProcessors = numProcessors;
 		this.allowVariableLengthUids = allowVariableLengthUids;
 		this.alignmentScorer = alignmentScorer;
-		this.notTrimmedToWithinTheCaptureTargetSequence = notTrimmedToWithinTheCaptureTargetSequence;
 		this.extensionUidLength = extensionUidLength;
 		this.ligationUidLength = ligationUidLength;
 		this.markDuplicates = markDuplicates;
 		this.keepDuplicates = keepDuplicates;
 		this.mergePairs = mergePairs;
 		this.useStrictReadToProbeMatching = useStrictReadToProbeMatching;
+		this.probeHeaderInformation = probeHeaderInformation;
 	}
 
 	/**
@@ -220,13 +221,6 @@ public class ApplicationSettings {
 	}
 
 	/**
-	 * @return true if the user has indicated that the reads have not been trimmed to be within the capture target sequence
-	 */
-	public boolean isNotTrimmedToWithinTheCaptureTargetSequence() {
-		return notTrimmedToWithinTheCaptureTargetSequence;
-	}
-
-	/**
 	 * @return extension uid length as set by the user
 	 */
 	public int getExtensionUidLength() {
@@ -259,6 +253,10 @@ public class ApplicationSettings {
 	 */
 	public boolean isMergePairs() {
 		return mergePairs;
+	}
+
+	public ProbeHeaderInformation getProbeHeaderInformation() {
+		return probeHeaderInformation;
 	}
 
 }

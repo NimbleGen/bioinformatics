@@ -27,7 +27,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Scanner;
+import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 
@@ -172,6 +175,64 @@ public final class FileUtil {
 		return success;
 	}
 
+	public static String convertToRelativePath(File fromFile, File toFile) {
+		StringBuilder relativePathStringBuilder = null;
+
+		String absolutePath = fromFile.getAbsolutePath();
+		String relativeTo = toFile.getAbsolutePath();
+
+		if (fromFile.isFile()) {
+			absolutePath = fromFile.getParent();
+		}
+
+		absolutePath = absolutePath.replaceAll("\\\\", "/");
+		relativeTo = relativeTo.replaceAll("\\\\", "/");
+
+		if (!absolutePath.equals(relativeTo)) {
+
+			String[] absoluteDirectories = absolutePath.split("/");
+			String[] relativeDirectories = relativeTo.split("/");
+
+			// Get the shortest of the two paths
+			int length = absoluteDirectories.length < relativeDirectories.length ? absoluteDirectories.length : relativeDirectories.length;
+
+			// Use to determine where in the loop we exited
+			int lastCommonRoot = -1;
+			int index;
+
+			// Find common root
+			indexLoop: for (index = 0; index < length; index++) {
+				if (absoluteDirectories[index].equals(relativeDirectories[index])) {
+					lastCommonRoot = index;
+				} else {
+					break indexLoop;
+
+				}
+			}
+			if (lastCommonRoot != -1) {
+				// Build up the relative path
+				relativePathStringBuilder = new StringBuilder();
+				// Add on the ..
+				for (index = lastCommonRoot + 1; index < absoluteDirectories.length; index++) {
+					if (absoluteDirectories[index].length() > 0) {
+						relativePathStringBuilder.append("../");
+					}
+				}
+				for (index = lastCommonRoot + 1; index < relativeDirectories.length - 1; index++) {
+					relativePathStringBuilder.append(relativeDirectories[index] + "/");
+				}
+				relativePathStringBuilder.append(relativeDirectories[relativeDirectories.length - 1]);
+			}
+		}
+		String returnRelativePath = null;
+		if (relativePathStringBuilder != null) {
+			returnRelativePath = relativePathStringBuilder.toString();
+		} else {
+			returnRelativePath = "./" + toFile.getAbsolutePath();
+		}
+		return returnRelativePath;
+	}
+
 	/**
 	 * Create a directory and any parent directories that do not exist.
 	 * 
@@ -233,5 +294,48 @@ public final class FileUtil {
 		try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
 			writer.write(stringToWrite);
 		}
+	}
+
+	/**
+	 * taken from here http://codereview.stackexchange.com/questions/47923/simplifying-a-path -Kurt Heilman
+	 * 
+	 * @param path
+	 * @return
+	 */
+	public static String simplifyPath(String path) {
+		String simplifiedPath = null;
+		Deque<String> pathDeterminer = new ArrayDeque<String>();
+		path = path.replaceAll(Pattern.quote("\\"), "/");
+		path = path.replaceAll(Pattern.quote("\\\\"), "/");
+		String[] pathSplitter = path.split("/");
+		StringBuilder absolutePath = new StringBuilder();
+		for (String term : pathSplitter) {
+			if (term == null || term.length() == 0 || term.equals(".")) {
+				/* ignore these guys */
+			} else if (term.equals("..")) {
+				if (pathDeterminer.size() > 0) {
+					pathDeterminer.removeLast();
+				}
+			} else {
+				pathDeterminer.addLast(term);
+			}
+		}
+		if (pathDeterminer.isEmpty()) {
+			simplifiedPath = "/";
+		} else {
+			while (!pathDeterminer.isEmpty()) {
+				absolutePath.insert(0, pathDeterminer.removeLast());
+				absolutePath.insert(0, "/");
+			}
+			simplifiedPath = absolutePath.toString();
+		}
+		return simplifiedPath;
+	}
+
+	public static void main(String[] args) {
+		File fileA = new File("D://kurts_space/jigar_dirt/2uM_Images/results/210097_bound_635.aln");
+		File fileB = new File("D://kurts_space/jigar_dirt/2uM_Images/210097_bound_635.tif");
+		String relativePath = FileUtil.convertToRelativePath(fileA, fileB);
+		System.out.println(relativePath);
 	}
 }

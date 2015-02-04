@@ -42,8 +42,12 @@ public class RunningStats {
 		}
 	}
 
-	public double getCurrentMean() {
-		return sumOfValues.divide(new BigDecimal(numberOfValues), MATH_CONTEXT).doubleValue();
+	public Double getCurrentMean() {
+		Double currentMean = null;
+		if (numberOfValues > 0) {
+			currentMean = sumOfValues.divide(new BigDecimal(numberOfValues), MATH_CONTEXT).doubleValue();
+		}
+		return currentMean;
 	}
 
 	public double getCurrentPopulationVariance() {
@@ -92,6 +96,10 @@ public class RunningStats {
 
 	public int getCurrentNumberOfValues() {
 		return numberOfValues;
+	}
+
+	public double getSumOfValues() {
+		return sumOfValues.doubleValue();
 	}
 
 	@Override

@@ -36,9 +36,9 @@ import org.slf4j.LoggerFactory;
 import com.roche.heatseq.objects.ApplicationSettings;
 import com.roche.heatseq.process.FastqAndBamFileMerger;
 import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentification;
-import com.roche.heatseq.qualityreport.LoggingUtil;
 import com.roche.heatseq.utils.BamFileUtil;
 import com.roche.heatseq.utils.ProbeFileUtil;
+import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.SimpleAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
@@ -46,6 +46,7 @@ import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptions
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.LoggingUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 import com.roche.sequencing.bioinformatics.genome.GenomeIdentifier;
 
@@ -191,24 +192,26 @@ public class DeduplicationCli {
 			numProcessors = MAX_NUMBER_OF_PROCESSORS;
 		}
 
-		Integer extensionUidLength;
+		ProbeHeaderInformation probeHeaderInformation = null;
 		try {
-			extensionUidLength = ProbeFileUtil.extractExtensionUidLength(probeFile);
-			if (extensionUidLength == null) {
-				extensionUidLength = DEFAULT_EXTENSION_UID_LENGTH;
-			}
+			probeHeaderInformation = ProbeFileUtil.extractProbeHeaderInformation(probeFile);
 		} catch (FileNotFoundException e1) {
 			throw new IllegalStateException(e1);
 		}
 
-		Integer ligationUidLength;
-		try {
-			ligationUidLength = ProbeFileUtil.extractLigationUidLength(probeFile);
-			if (ligationUidLength == null) {
-				ligationUidLength = DEFAULT_LIGATION_UID_LENGTH;
+		int extensionUidLength = DEFAULT_EXTENSION_UID_LENGTH;
+		int ligationUidLength = DEFAULT_LIGATION_UID_LENGTH;
+		String genomeNameFromProbeInfoFile = null;
+
+		if (probeHeaderInformation != null) {
+			genomeNameFromProbeInfoFile = probeHeaderInformation.getGenomeName();
+			if (probeHeaderInformation.getExtensionUidLength() != null) {
+				extensionUidLength = probeHeaderInformation.getExtensionUidLength();
 			}
-		} catch (FileNotFoundException e1) {
-			throw new IllegalStateException(e1);
+			if (probeHeaderInformation.getLigationUidLength() != null) {
+				ligationUidLength = probeHeaderInformation.getLigationUidLength();
+			}
+
 		}
 
 		String outputBamFileName = parsedCommandLine.getOptionsValue(OUTPUT_BAM_FILE_NAME_OPTION);
@@ -330,15 +333,17 @@ public class DeduplicationCli {
 					SAMFileHeader header = samReader.getFileHeader();
 
 					try {
-						String genomeNameFromProbeInfoFile = ProbeFileUtil.extractGenomeNameInLowerCase(probeFile);
 						if (genomeNameFromProbeInfoFile != null) {
 							header = samReader.getFileHeader();
 							Map<String, Integer> containerSizesByNameFromBam = BamFileUtil.getContainerSizesFromHeader(header);
 							String matchingGenomeBasedOnContainerSizes = GenomeIdentifier.getMatchingGenomeName(containerSizesByNameFromBam);
-							if (!genomeNameFromProbeInfoFile.equals(matchingGenomeBasedOnContainerSizes)) {
-
+							if (matchingGenomeBasedOnContainerSizes == null) {
+								String message = "The genome used for mapping is not a recognized genome so the system cannot verify that it matches the provided genome["
+										+ genomeNameFromProbeInfoFile + "] from the probe information file.";
+								logger.info(message);
+								CliStatusConsole.logStatus(message);
+							} else if (!genomeNameFromProbeInfoFile.equals(matchingGenomeBasedOnContainerSizes)) {
 								logger.info("Mismatch Genome Report" + StringUtil.NEWLINE + GenomeIdentifier.createMismatchGenomeReportText(genomeNameFromProbeInfoFile, containerSizesByNameFromBam));
-
 								CliStatusConsole
 										.logStatus(StringUtil.NEWLINE
 												+ "It appears that the incorrect genome was used for mapping.  The names and sizes of the genome sequences used for mapping found in the provided BAM/SAM file ["
@@ -442,7 +447,7 @@ public class DeduplicationCli {
 
 			sortMergeFilterAndExtendReads(applicationName, applicationVersion, probeFile, validSamOrBamInputFile, bamIndexFile, fastQ1File, fastQ2File, outputDirectory, outputBamFileName,
 					outputFilePrefix, tempOutputDirectory, shouldOutputInternalReports, commandLineSignature, numProcessors, extensionUidLength, ligationUidLength, allowVariableLengthUids,
-					alignmentScorer, notTrimmedToWithinCaptureTarget, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching);
+					alignmentScorer, notTrimmedToWithinCaptureTarget, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching, probeHeaderInformation);
 
 			long applicationStop = System.currentTimeMillis();
 			CliStatusConsole.logStatus("Deduplication has completed succesfully.");
@@ -458,7 +463,7 @@ public class DeduplicationCli {
 	public static void sortMergeFilterAndExtendReads(String applicationName, String applicationVersion, File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File,
 			File outputDirectory, String outputBamFileName, String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputReports, String commandLineSignature, int numProcessors,
 			int extensionUidLength, int ligationUidLength, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinCaptureTarget, boolean markDuplicates,
-			boolean keepDuplicates, boolean mergePairs, boolean useStrictReadToProbeMatching) {
+			boolean keepDuplicates, boolean mergePairs, boolean useStrictReadToProbeMatching, ProbeHeaderInformation probeHeaderInformation) {
 		try {
 
 			final File mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", tempOutputDirectory);
@@ -482,7 +487,7 @@ public class DeduplicationCli {
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
 					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputReports, commandLineSignature, applicationName, applicationVersion, numProcessors,
 					allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, extensionUidLength, ligationUidLength, markDuplicates, keepDuplicates, mergePairs,
-					useStrictReadToProbeMatching);
+					useStrictReadToProbeMatching, probeHeaderInformation);
 
 			PrimerReadExtensionAndPcrDuplicateIdentification.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 

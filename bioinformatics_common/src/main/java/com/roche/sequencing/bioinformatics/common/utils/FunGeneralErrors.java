@@ -1,13 +1,10 @@
-package com.roche.heatseq.qualityreport;
+package com.roche.sequencing.bioinformatics.common.utils;
 
 import java.io.InputStream;
 import java.util.Random;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
-import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class FunGeneralErrors {
 

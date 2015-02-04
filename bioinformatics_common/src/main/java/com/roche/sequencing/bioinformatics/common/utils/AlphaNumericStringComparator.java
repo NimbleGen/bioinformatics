@@ -224,7 +224,6 @@ public class AlphaNumericStringComparator implements Comparator<String>, Seriali
 			}
 		}
 
-		// XXX (Jaz) logic is strange. I think we will need to reevaluate in
 		// 1.1. Probably should be something like:
 		// return nonRomanNumeralCount < (names.size() -
 		// NON_ROMAN_NUMERAL_THRESHOLD); Will need to think about when names has

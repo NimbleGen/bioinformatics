@@ -73,10 +73,6 @@ public interface IReadPair {
 
 	boolean isReadTwoExtended();
 
-	String getReadOnePrimerMismatchDetails();
-
-	String getReadTwoPrimerMismatchDetails();
-
 	void setAsBestPairInUidGroup();
 
 	boolean isBestPairDuplicateGroup();

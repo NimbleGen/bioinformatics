@@ -37,12 +37,9 @@ public class ReadPair implements IReadPair {
 	private final String probeId;
 	private final boolean readOneExtended;
 	private final boolean readTwoExtended;
-	private final String readOnePrimerMismatchDetails;
-	private final String readTwoPrimerMismatchDetails;
 	private boolean isBestPairInUidGroup;
 
-	public ReadPair(SAMRecord record, SAMRecord mate, String extensionUid, String ligationUid, ISequence captureTargetSequence, String probeId, boolean readOneExtended, boolean readTwoExtended,
-			String readOnePrimerMismatchDetails, String readTwoPrimerMismatchDetails) {
+	public ReadPair(SAMRecord record, SAMRecord mate, String extensionUid, String ligationUid, ISequence captureTargetSequence, String probeId, boolean readOneExtended, boolean readTwoExtended) {
 		super();
 		this.record = record;
 		this.mate = mate;
@@ -52,8 +49,6 @@ public class ReadPair implements IReadPair {
 		this.probeId = probeId;
 		this.readOneExtended = readOneExtended;
 		this.readTwoExtended = readTwoExtended;
-		this.readOnePrimerMismatchDetails = readOnePrimerMismatchDetails;
-		this.readTwoPrimerMismatchDetails = readTwoPrimerMismatchDetails;
 		this.isBestPairInUidGroup = false;
 	}
 
@@ -172,16 +167,6 @@ public class ReadPair implements IReadPair {
 	@Override
 	public String getProbeId() {
 		return probeId;
-	}
-
-	@Override
-	public String getReadOnePrimerMismatchDetails() {
-		return readOnePrimerMismatchDetails;
-	}
-
-	@Override
-	public String getReadTwoPrimerMismatchDetails() {
-		return readTwoPrimerMismatchDetails;
 	}
 
 	@Override

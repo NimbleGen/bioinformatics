@@ -25,6 +25,7 @@ import net.sf.samtools.SAMRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.roche.heatseq.objects.ExtendReadResults;
 import com.roche.heatseq.objects.IReadPair;
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ReadPair;
@@ -49,6 +50,10 @@ public final class ExtendReadsToPrimer {
 	private static final Logger logger = LoggerFactory.getLogger(ExtendReadsToPrimer.class);
 
 	private static final int PRIMER_ALIGNMENT_BUFFER = 10;
+	// The location of the end of the primer must be at least this many bases from the end of the read
+	private static final int LENGTH_THRESHOLD_FOR_EXTENDED_READ = 10;
+	private static final double LENGTH_NORMALIZED_ALIGNMENT_SCORE_THRESHOLD = 0;
+	private static final double WEIGHTED_ALIGNMENT_SCORE_THRESHOLD = 4.0;
 
 	/**
 	 * We just use static methods from this class
@@ -90,8 +95,6 @@ public final class ExtendReadsToPrimer {
 			String readGroup, ISequence sequenceOne, String sequenceOneQualityString, ISequence sequenceTwo, String sequenceTwoQualityString, int oneMappingQuality, int twoMappingQuality,
 			boolean isBestDuplicate, IAlignmentScorer alignmentScorer) {
 		IReadPair extendedReadPair = null;
-		String readOnePrimerMismatchDetails = null;
-		String readTwoPrimerMismatchDetails = null;
 		boolean readOneExtended = false;
 		boolean readTwoExtended = false;
 
@@ -157,8 +160,7 @@ public final class ExtendReadsToPrimer {
 				SAMRecordUtil.setSAMRecordsAsPair(readOneRecord, readTwoRecord);
 			}
 
-			extendedReadPair = new ReadPair(readOneRecord, readTwoRecord, extensionUid, ligationUid, probe.getCaptureTargetSequence(), probe.getProbeId(), readOneExtended, readTwoExtended,
-					readOnePrimerMismatchDetails, readTwoPrimerMismatchDetails);
+			extendedReadPair = new ReadPair(readOneRecord, readTwoRecord, extensionUid, ligationUid, probe.getCaptureTargetSequence(), probe.getProbeId(), readOneExtended, readTwoExtended);
 
 		} catch (Exception e) {
 			logger.warn(e.getMessage(), e);
@@ -177,8 +179,7 @@ public final class ExtendReadsToPrimer {
 			captureSequence = captureSequence.getReverse();
 		}
 
-		PrimerEndIndexInReadAndMismatchDetails primerEndIndexInReadAndMismatchDetails = getPrimerEndIndexInRead(primerSequence, readSequence, alignmentScorer);
-		Integer primerEndIndexInRead = primerEndIndexInReadAndMismatchDetails.getPrimerEndIndexInRead();
+		Integer primerEndIndexInRead = getPrimerEndIndexInRead(primerSequence, readSequence);
 
 		boolean primerAlignedSuccesfully = (primerEndIndexInRead != null) && (primerEndIndexInRead >= 0) && (primerEndIndexInRead < readSequence.size());
 
@@ -187,7 +188,8 @@ public final class ExtendReadsToPrimer {
 			ISequence readWithoutPrimer = readSequence.subSequence(captureTargetStartIndexInRead, readSequence.size());
 			NeedlemanWunschGlobalAlignment readAlignmentWithReference = new NeedlemanWunschGlobalAlignment(captureSequence, readWithoutPrimer, alignmentScorer);
 
-			boolean readAlignedSuccesfully = readAlignmentWithReference.getLengthNormalizedAlignmentScore() > 0;
+			// TODO need better indication if the readAlignedSuccesfully
+			boolean readAlignedSuccesfully = (readAlignmentWithReference.getLengthNormalizedAlignmentScore() > LENGTH_NORMALIZED_ALIGNMENT_SCORE_THRESHOLD);
 
 			if (readAlignedSuccesfully) {
 
@@ -226,17 +228,21 @@ public final class ExtendReadsToPrimer {
 					}
 				}
 
-				if (isReversed) {
-					cigarString = alignmentWithoutEndingAndBeginningQueryAndReferenceInserts.getReverseCigarString();
-					mismatchDetailsString = alignmentWithoutEndingAndBeginningQueryAndReferenceInserts.getReverseMismatchDetailsString();
+				int readLength = lastNonGapIndexInReferenceWithNonGapInQuery - queryInserts;
 
-					alignmentStartInReference = primerReferencePositionAdjacentToSequence - (lastNonGapIndexInReferenceWithNonGapInQuery + 1) + referenceInserts;
-				} else {
-					int offset = readAlignmentWithReference.getAlignmentPair().getFirstNonInsertQueryMatchInReference();
-					alignmentStartInReference = primerReferencePositionAdjacentToSequence + offset + 1;
+				if (readLength > LENGTH_THRESHOLD_FOR_EXTENDED_READ) {
+					if (isReversed) {
+						cigarString = alignmentWithoutEndingAndBeginningQueryAndReferenceInserts.getReverseCigarString();
+						mismatchDetailsString = alignmentWithoutEndingAndBeginningQueryAndReferenceInserts.getReverseMismatchDetailsString();
+
+						alignmentStartInReference = primerReferencePositionAdjacentToSequence - (lastNonGapIndexInReferenceWithNonGapInQuery + 1) + referenceInserts;
+					} else {
+						int offset = readAlignmentWithReference.getAlignmentPair().getFirstNonInsertQueryMatchInReference();
+						alignmentStartInReference = primerReferencePositionAdjacentToSequence + offset + 1;
+					}
+
+					readExtensionDetails = new ReadExtensionDetails(alignmentStartInReference, captureTargetStartIndexInRead, cigarString, mismatchDetailsString, readLength);
 				}
-				readExtensionDetails = new ReadExtensionDetails(alignmentStartInReference, captureTargetStartIndexInRead, cigarString, mismatchDetailsString,
-						lastNonGapIndexInReferenceWithNonGapInQuery - queryInserts);
 			}
 		}
 
@@ -277,20 +283,7 @@ public final class ExtendReadsToPrimer {
 		return record;
 	}
 
-	static class PrimerEndIndexInReadAndMismatchDetails {
-		private final Integer primerEndIndexInRead;
-
-		public PrimerEndIndexInReadAndMismatchDetails(Integer primerEndIndexInRead) {
-			super();
-			this.primerEndIndexInRead = primerEndIndexInRead;
-		}
-
-		public Integer getPrimerEndIndexInRead() {
-			return primerEndIndexInRead;
-		}
-	}
-
-	static PrimerEndIndexInReadAndMismatchDetails getPrimerEndIndexInRead(ISequence primerSequence, ISequence readSequence, IAlignmentScorer alignmentScorer) {
+	static Integer getPrimerEndIndexInRead(ISequence primerSequence, ISequence readSequence) {
 		// cutoff excess sequence beyond primer
 		readSequence = readSequence.subSequence(0, Math.min(readSequence.size() - 1, primerSequence.size() + PRIMER_ALIGNMENT_BUFFER));
 
@@ -307,30 +300,41 @@ public final class ExtendReadsToPrimer {
 			primerIndex++;
 		}
 
-		double lengthNormalizedAlignmentScore = alignment.getLengthNormalizedAlignmentScore();
 		Integer primerEndIndexInRead = null;
 
-		if (lengthNormalizedAlignmentScore > -10) {
-			// walk backwards until we stop seeing gaps
-			ISequence reverseReadAlignment = readAlignment.getReverse();
-			ISequence reversePrimerAlignment = primerAlignment.getReverse();
-			boolean passedTrailingPrimerGaps = false;
-			int i = 0;
-			primerEndIndexInRead = 0;
-			while (i < reverseReadAlignment.size()) {
-				ICode currentReadCode = reverseReadAlignment.getCodeAt(i);
-				ICode currentPrimerCode = reversePrimerAlignment.getCodeAt(i);
-				if (!passedTrailingPrimerGaps && !currentPrimerCode.matches(IupacNucleotideCode.GAP)) {
-					passedTrailingPrimerGaps = true;
-				}
+		// walk backwards until we stop seeing gaps in the reference (aka read)
+		ISequence reverseReadAlignment = readAlignment.getReverse();
+		ISequence reversePrimerAlignment = primerAlignment.getReverse();
+		boolean passedTrailingPrimerGaps = false;
+		int i = 0;
+		primerEndIndexInRead = 0;
 
-				// start counting all based in read when the initial primer gaps have been passed
-				if (passedTrailingPrimerGaps && !currentReadCode.matches(IupacNucleotideCode.GAP)) {
-					primerEndIndexInRead++;
-				}
+		double weightedAlignmentScore = 0;
+		int firstNonGapIndex = -1;
 
-				i++;
+		while (i < reverseReadAlignment.size()) {
+			ICode currentReadCode = reverseReadAlignment.getCodeAt(i);
+			ICode currentPrimerCode = reversePrimerAlignment.getCodeAt(i);
+			if (!passedTrailingPrimerGaps && !currentPrimerCode.matches(IupacNucleotideCode.GAP)) {
+				passedTrailingPrimerGaps = true;
+				firstNonGapIndex = i;
 			}
+
+			// start counting all bases in read when the initial primer gaps have been passed
+			if (passedTrailingPrimerGaps && !currentReadCode.matches(IupacNucleotideCode.GAP)) {
+				primerEndIndexInRead++;
+				if (currentReadCode.matches(currentPrimerCode)) {
+					double distanceFromFirstNonGap = i - firstNonGapIndex;
+					double weightedScore = Math.pow(0.95, distanceFromFirstNonGap);
+					weightedAlignmentScore += weightedScore;
+				}
+			}
+
+			i++;
+		}
+
+		if (weightedAlignmentScore < WEIGHTED_ALIGNMENT_SCORE_THRESHOLD) {
+			primerEndIndexInRead = null;
 		}
 
 		if (primerEndIndexInRead != null) {
@@ -338,11 +342,12 @@ public final class ExtendReadsToPrimer {
 			primerEndIndexInRead -= 1;
 		}
 
-		return new PrimerEndIndexInReadAndMismatchDetails(primerEndIndexInRead);
+		return primerEndIndexInRead;
 	}
 
-	static List<IReadPair> extendReadsToPrimers(Probe probe, List<IReadPair> readPairs, IAlignmentScorer alignmentScorer) {
+	static ExtendReadResults extendReadsToPrimers(Probe probe, List<IReadPair> readPairs, IAlignmentScorer alignmentScorer) {
 		List<IReadPair> extendedReadPairs = new ArrayList<IReadPair>();
+		List<IReadPair> unableToExtendReadPairs = new ArrayList<IReadPair>();
 
 		for (IReadPair readPair : readPairs) {
 			IReadPair extendedReadPair = ExtendReadsToPrimer.extendReadPair(probe, readPair, alignmentScorer);
@@ -350,16 +355,11 @@ public final class ExtendReadsToPrimer {
 			if (extendedReadPair.isReadOneExtended() && extendedReadPair.isReadTwoExtended()) {
 				extendedReadPairs.add(extendedReadPair);
 			} else {
-				SAMRecordUtil.setExtensionErrorAttribute(readPair.getRecord(), !readPair.isReadOneExtended(), !readPair.isReadTwoExtended());
-				SAMRecordUtil.setExtensionErrorAttribute(readPair.getMateRecord(), !readPair.isReadOneExtended(), !readPair.isReadTwoExtended());
-				extendedReadPairs.add(readPair);
-				logger.info("Unable to extend read[" + readPair.getReadName() + "]:" + "PROBE " + probe.getProbeId() + "  Probe Extension Sequence[" + probe.getExtensionPrimerSequence()
-						+ "]  Probe Ligation Sequence[" + probe.getLigationPrimerSequence() + "] fastqOne Sequence[" + readPair.getSequenceOne() + "] fastqTwo Sequence[" + readPair.getSequenceTwo()
-						+ "]");
+				unableToExtendReadPairs.add(readPair);
 			}
 		}
 
-		return extendedReadPairs;
+		return new ExtendReadResults(extendedReadPairs, unableToExtendReadPairs);
 	}
 
 	/**

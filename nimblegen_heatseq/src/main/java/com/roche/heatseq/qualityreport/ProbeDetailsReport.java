@@ -14,6 +14,7 @@ public class ProbeDetailsReport {
 	private int duplicateReadPairsRemoved;
 	private int probesWithNoMappedReadPairs;
 	private int totalReadPairsAfterReduction;
+	private int totalReadPairsWithUnableToAlignPrimer;
 
 	private int maxNumberOfUidsPerProbe;
 	private int sumOfProbeDistinctUids;
@@ -25,6 +26,7 @@ public class ProbeDetailsReport {
 		duplicateReadPairsRemoved = 0;
 		probesWithNoMappedReadPairs = 0;
 		totalReadPairsAfterReduction = 0;
+		totalReadPairsWithUnableToAlignPrimer = 0;
 
 		maxNumberOfUidsPerProbe = 0;
 		sumOfProbeDistinctUids = 0;
@@ -38,7 +40,7 @@ public class ProbeDetailsReport {
 			detailsReportWriter = new PrintWriter(detailsReportFile);
 			detailsReportWriter.println("probe_id" + StringUtil.TAB + "total_read_pairs" + StringUtil.TAB + "total_read_pairs_after_duplicate_removal" + StringUtil.TAB
 					+ "total_duplicate_read_pairs_removed" + StringUtil.TAB + "pct_duplicate_rate" + StringUtil.TAB + "average_number_of_read_pairs_per_uid" + StringUtil.TAB
-					+ "max_read_pairs_per_uid" + StringUtil.TAB + "uid_with_max_read_pairs");
+					+ "max_read_pairs_per_uid" + StringUtil.TAB + "uid_with_max_read_pairs" + StringUtil.TAB + "reads_pairs_with_unalignable_primers");
 			detailsReportWriter.flush();
 		} else {
 			detailsReportWriter = null;
@@ -58,8 +60,10 @@ public class ProbeDetailsReport {
 
 		sumOfAverageNumberOfReadPairsPerProbeUid += probeProcessingStats.getAverageNumberOfReadPairsPerUid();
 
+		totalReadPairsWithUnableToAlignPrimer += probeProcessingStats.getNumberOfReadPairsUnableToExtendPrimer();
+
 		if (detailsReportWriter != null) {
-			detailsReportWriter.print(probeProcessingStats.toReportString());
+			detailsReportWriter.print(probeProcessingStats.toReportString() + StringUtil.NEWLINE);
 			detailsReportWriter.flush();
 		}
 
@@ -80,6 +84,10 @@ public class ProbeDetailsReport {
 
 	public int getMaxNumberOfUidsPerProbe() {
 		return maxNumberOfUidsPerProbe;
+	}
+
+	public int getTotalReadPairsWithUnableToAlignPrimer() {
+		return totalReadPairsWithUnableToAlignPrimer;
 	}
 
 	public double getAverageNumberOfReadPairsPerProbeUid() {
