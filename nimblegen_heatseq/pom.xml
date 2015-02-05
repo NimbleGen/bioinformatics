@@ -9,6 +9,7 @@
 		<relativePath>../git_superpom/pom.xml</relativePath>
 	</parent>
 
+	<name>nimblegen_heatseq</name>
 	<artifactId>nimblegen_heatseq</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
