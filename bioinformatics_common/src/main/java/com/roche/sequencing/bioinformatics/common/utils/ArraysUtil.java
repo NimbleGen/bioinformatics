@@ -92,6 +92,16 @@ public final class ArraysUtil {
 		return min;
 	}
 
+	public static double[][] convertToDoubleArray(int[][] values) {
+		double[][] doubleArray = new double[values.length][values[0].length];
+		for (int i = 0; i < values.length; i++) {
+			for (int j = 0; j < values[0].length; j++) {
+				doubleArray[i][j] = values[i][j];
+			}
+		}
+		return doubleArray;
+	}
+
 	public static double[] convertToDoubleArray(int[] values) {
 		double[] doubleArray = new double[values.length];
 		for (int i = 0; i < values.length; i++) {
@@ -108,10 +118,10 @@ public final class ArraysUtil {
 		return doubleArray;
 	}
 
-	public static double[] convertToDoubleArray(List<Double> values) {
+	public static double[] convertToDoubleArray(List<? extends Number> values) {
 		double[] doubleArray = new double[values.size()];
 		for (int i = 0; i < values.size(); i++) {
-			doubleArray[i] = values.get(i);
+			doubleArray[i] = values.get(i).doubleValue();
 		}
 		return doubleArray;
 	}
