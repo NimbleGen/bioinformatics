@@ -258,6 +258,15 @@ public class StatisticsUtil {
 		return median;
 	}
 
+	public static double getInterQuartileRange(double[] values) {
+		double range = Double.NaN;
+		if (values.length >= 4) {
+			double[] quantiles = quantile(4, values);
+			range = quantiles[2] = quantiles[0];
+		}
+		return range;
+	}
+
 	private static double[] convertToPdf(double[] values) {
 		double minValue = Double.MAX_VALUE;
 
