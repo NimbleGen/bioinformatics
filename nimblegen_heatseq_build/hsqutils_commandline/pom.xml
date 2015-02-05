@@ -18,7 +18,7 @@
 	<modules>
 		<module>../../bioinformatics_common</module>
 		<module>../../nimblegen_heatseq</module>
-		<module>../../../bioinformatics/java_version_checker</module>
+		<module>../../java_version_checker</module>
 	</modules>
 
 	<dependencies>
