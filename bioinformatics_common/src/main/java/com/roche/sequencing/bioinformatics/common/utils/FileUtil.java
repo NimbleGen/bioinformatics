@@ -334,8 +334,21 @@ public final class FileUtil {
 
 	public static void main(String[] args) {
 		File fileA = new File("D://kurts_space/jigar_dirt/2uM_Images/results/210097_bound_635.aln");
-		File fileB = new File("D://kurts_space/jigar_dirt/2uM_Images/210097_bound_635.tif");
-		String relativePath = FileUtil.convertToRelativePath(fileA, fileB);
-		System.out.println(relativePath);
+		File fileB = new File("D://kurts_space/jigar_dirt/");
+		File fileC = new File("C://kurts_space/jigar_dirt/");
+		// String relativePath = FileUtil.convertToRelativePath(fileA, fileB);
+		System.out.println(isDirectoryParentOfFile(fileB, fileA));
+		System.out.println(isDirectoryParentOfFile(fileC, fileA));
 	}
+
+	public static boolean isDirectoryParentOfFile(File directory, File file) {
+		boolean directoryIsParent = false;
+		File ancestorOfFile = file.getParentFile();
+		while (ancestorOfFile != null && !directoryIsParent) {
+			directoryIsParent = ancestorOfFile.equals(directory);
+			ancestorOfFile = ancestorOfFile.getParentFile();
+		}
+		return directoryIsParent;
+	}
+
 }
