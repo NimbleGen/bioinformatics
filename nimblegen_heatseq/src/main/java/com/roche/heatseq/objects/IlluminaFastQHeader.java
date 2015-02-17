@@ -63,6 +63,18 @@ public class IlluminaFastQHeader {
 		this.yCoordinate = yCoordinate;
 	}
 
+	IlluminaFastQHeader(String uniqueInstrumentName, int flowcellLane, int tileNumberInFlowcellLane, int xCoordinate, int yCoordinate, short pairNumber) {
+		super();
+		this.uniqueInstrumentName = uniqueInstrumentName;
+		this.flowcellLane = flowcellLane;
+		this.tileNumberInFlowcellLane = tileNumberInFlowcellLane;
+		this.xCoordinate = xCoordinate;
+		this.yCoordinate = yCoordinate;
+		this.pairNumber = pairNumber;
+		this.runId = 0;
+		this.flowcellId = "UNIDENTIFIED_FLOWCELL";
+	}
+
 	public String getBaseHeader() {
 		return uniqueInstrumentName + ":" + runId + ":" + flowcellId + ":" + flowcellLane + ":" + tileNumberInFlowcellLane + ":" + xCoordinate + ":" + yCoordinate;
 	}
@@ -258,6 +270,16 @@ public class IlluminaFastQHeader {
 			} else {
 				header = new IlluminaFastQHeader(uniqueInstrumentName, runId, flowcellId, flowcellLane, tileNumberInFlowcellLane, xCoordinate, yCoordinate);
 			}
+		} else if (readHeaderSplitByColon.length == 5) {
+			String uniqueInstrumentName = readHeaderSplitByColon[0];
+			int flowcellLane = Integer.valueOf(readHeaderSplitByColon[1]);
+			int tileNumberInFlowcellLane = Integer.valueOf(readHeaderSplitByColon[2]);
+			int xCoordinate = Integer.valueOf(readHeaderSplitByColon[3]);
+			String[] fourthColumnSplitByPound = readHeaderSplitByColon[4].split("#");
+			String[] fourthColumnSplitByForwardSlash = readHeaderSplitByColon[4].split("/");
+			int yCoordinate = Integer.valueOf(fourthColumnSplitByPound[0]);
+			short pairNumber = Short.valueOf(fourthColumnSplitByForwardSlash[1]);
+			header = new IlluminaFastQHeader(uniqueInstrumentName, flowcellLane, tileNumberInFlowcellLane, xCoordinate, yCoordinate, pairNumber);
 		}
 
 		return header;
@@ -288,6 +310,7 @@ public class IlluminaFastQHeader {
 
 		// If everything was formatted
 		if (indexOfSpaceAfterSixthColon != -1) {
+			// this is a
 			baseHeader = readHeader.substring(0, indexOfSpaceAfterSixthColon);
 		} else {
 			throw new IllegalStateException("Could not parse read header[" + readHeader + "].");
@@ -310,6 +333,6 @@ public class IlluminaFastQHeader {
 	}
 
 	public static void main(String[] args) {
-		System.out.println(getBaseHeader("@M01077:35:000000000-A3J96:1:1102:13646:7860"));
+		System.out.println(getBaseHeader("@MS5_15454:1:1110:12527:26507#26/1"));
 	}
 }
