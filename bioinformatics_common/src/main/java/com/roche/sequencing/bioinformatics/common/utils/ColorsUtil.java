@@ -1,8 +1,15 @@
 package com.roche.sequencing.bioinformatics.common.utils;
 
 import java.awt.Color;
+import java.util.Random;
 
 public class ColorsUtil {
+
+	private final static Random random = new Random();
+
+	private ColorsUtil() {
+		throw new AssertionError();
+	}
 
 	public static Color getBrighterColor(Color color, double brightnessRatio) {
 		if (brightnessRatio > 1.0) {
@@ -32,5 +39,22 @@ public class ColorsUtil {
 			newColor = new Color(red, green, blue, color.getAlpha());
 		}
 		return newColor;
+	}
+
+	public static Color getRandomPastelColor() {
+		float hue = random.nextFloat();
+		// Saturation between 0.1 and 0.3
+		float saturation = (random.nextInt(2000) + 1000) / 10000f;
+		float luminance = 0.9f;
+		Color color = Color.getHSBColor(hue, saturation, luminance);
+		return color;
+	}
+
+	public static Color getRandomRainbowColor() {
+		int R = (int) (Math.random() * 256);
+		int G = (int) (Math.random() * 256);
+		int B = (int) (Math.random() * 256);
+		Color color = new Color(R, G, B);
+		return color;
 	}
 }
