@@ -33,6 +33,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
+import net.sf.picard.fastq.FastqRecord;
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMFileWriter;
@@ -47,9 +48,8 @@ import org.slf4j.LoggerFactory;
 import com.roche.heatseq.objects.ApplicationSettings;
 import com.roche.heatseq.objects.ExtendReadResults;
 import com.roche.heatseq.objects.IReadPair;
-import com.roche.heatseq.objects.IlluminaFastQHeader;
+import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.heatseq.objects.ReadNameProbeIdPair;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
@@ -57,6 +57,8 @@ import com.roche.heatseq.qualityreport.ProbeDetailsReport;
 import com.roche.heatseq.qualityreport.ProbeProcessingStats;
 import com.roche.heatseq.qualityreport.ReportManager;
 import com.roche.heatseq.utils.BamFileUtil;
+import com.roche.heatseq.utils.FastqReader;
+import com.roche.heatseq.utils.IlluminaFastQReadNameUtil;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.heatseq.utils.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
@@ -106,6 +108,8 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 	 */
 	public static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings) {
 
+		verifyReadNamesCanBeHandledByDedup(applicationSettings.getFastQ1File(), applicationSettings.getFastQ2File());
+
 		// Initialize the thread semaphore if it hasn't already been initialized
 
 		if (primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore == null) {
@@ -115,14 +119,12 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		long start = System.currentTimeMillis();
 
 		// Parse the input probe file
-		ProbesBySequenceName probeInfo = null;
+		ParsedProbeFile probeInfo = null;
 		try {
 			probeInfo = ProbeFileUtil.parseProbeInfoFile(applicationSettings.getProbeFile());
 		} catch (IOException e) {
-			logger.warn(e.getMessage(), e);
-		}
-		if (probeInfo == null) {
-			throw new IllegalStateException("Unable to parse probe info file[" + applicationSettings.getProbeFile() + "].");
+			// this should be picked up by ProbeInfoValidator
+			throw new AssertionError();
 		}
 
 		SAMFileHeader samHeader = null;
@@ -202,7 +204,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 	 * @param probeUidQualityWriter
 	 *            Writer for reporting quality per UID
 	 */
-	private static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings, ProbesBySequenceName probeInfo, ReportManager reportManager) {
+	private static void filterBamEntriesByUidAndExtendReadsToPrimers(ApplicationSettings applicationSettings, ParsedProbeFile probeInfo, ReportManager reportManager) {
 		long start = System.currentTimeMillis();
 
 		Set<String> sequenceNames = probeInfo.getSequenceNames();
@@ -245,8 +247,6 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 			// Make an executor to handle processing the data for each probe in parallel
 			ExecutorService executor = Executors.newFixedThreadPool(applicationSettings.getNumProcessors());
 			int totalProbes = 0;
-
-			int totalReadsDeleteMe = 0;
 
 			for (String sequenceName : sequenceNames) {
 
@@ -307,7 +307,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 						boolean readOrientationIsSuitableForProbe = (isFastq1 && recordStrandMatchesProbeStrand) || (isFastq2 && !recordStrandMatchesProbeStrand);
 						if (readOrientationIsSuitableForProbe && readLocationIsSuitableForProbe) {
 
-							String uniqueReadName = IlluminaFastQHeader.getUniqueIdForReadHeader(record.getReadName());
+							String uniqueReadName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(record.getReadName());
 							SAMRecordPair pair = readNameToRecordsMap.get(uniqueReadName);
 
 							if (pair == null) {
@@ -344,8 +344,6 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 						}
 					}
 
-					totalReadsDeleteMe += readNameToCompleteRecordsMap.size();
-
 					Runnable worker = new PrimerReadExtensionAndFilteringOfUniquePcrProbesTask(probe, applicationSettings, samWriter, reportManager, readNameToCompleteRecordsMap,
 							applicationSettings.getAlignmentScorer(), distinctUids, uids);
 
@@ -359,7 +357,6 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 				}
 
 			}
-			System.out.println("total reads:" + totalReadsDeleteMe);
 
 			// Wait until all our threads are done processing.
 			executor.shutdown();
@@ -427,7 +424,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 				SAMRecord record = samRecordIter.next();
 				totalReads++;
 
-				String readName = IlluminaFastQHeader.getUniqueIdForReadHeader(record.getReadName());
+				String readName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(record.getReadName());
 
 				Set<Probe> assignedProbeIds = readNamesToDistinctProbeAssignment.get(readName);
 				boolean hasNoProbesAssigned = assignedProbeIds == null;
@@ -894,4 +891,29 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 		return new MergeInformation(mergedSequence, mergedQuality);
 	}
+
+	public static void verifyReadNamesCanBeHandledByDedup(File inputFastqOne, File inputFastqTwo) {
+		int fastqEntryIndex = 0;
+		try (FastqReader fastQOneReader = new FastqReader(inputFastqOne)) {
+			try (FastqReader fastQTwoReader = new FastqReader(inputFastqTwo)) {
+				while (fastQOneReader.hasNext() && fastQTwoReader.hasNext()) {
+
+					FastqRecord oneRecord = fastQOneReader.next();
+					FastqRecord twoRecord = fastQTwoReader.next();
+					String readNameOne = oneRecord.getReadHeader();
+					String readNameTwo = twoRecord.getReadHeader();
+
+					String uniqueReadNameOne = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(readNameOne);
+					String uniqueReadNameTwo = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(readNameTwo);
+					if (!uniqueReadNameOne.equals(uniqueReadNameTwo)) {
+						int lineNumber = (fastqEntryIndex * 4) + 1;
+						throw new IllegalStateException("The read names[" + readNameOne + "][" + readNameTwo + "] found at line[" + lineNumber + "] in fastqOne[" + inputFastqOne.getAbsolutePath()
+								+ "] and fastqTwo[" + inputFastqTwo.getAbsolutePath() + "] respectively are not valid Illumina read names.");
+					}
+					fastqEntryIndex++;
+				}
+			}
+		}
+	}
+
 }

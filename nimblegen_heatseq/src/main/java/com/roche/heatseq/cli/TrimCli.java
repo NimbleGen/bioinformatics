@@ -7,7 +7,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.process.FastqReadTrimmer;
+import com.roche.heatseq.process.FastqValidator;
+import com.roche.heatseq.process.ProbeInfoFileValidator;
 import com.roche.heatseq.utils.ProbeFileUtil;
+import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
@@ -53,26 +56,11 @@ public class TrimCli {
 		}
 
 		File fastQ1File = new File(parsedCommandLine.getOptionsValue(DeduplicationCli.FASTQ_ONE_OPTION));
-
-		if (!fastQ1File.exists()) {
-			throw new IllegalStateException("Unable to find provided FASTQ1 file[" + fastQ1File.getAbsolutePath() + "].");
-		}
-
 		File fastQ2File = new File(parsedCommandLine.getOptionsValue(DeduplicationCli.FASTQ_TWO_OPTION));
-
-		if (!fastQ2File.exists()) {
-			throw new IllegalStateException("Unable to find provided FASTQ2 file[" + fastQ2File.getAbsolutePath() + "].");
-		}
-
-		if (fastQ1File.getAbsolutePath().equals(fastQ2File.getAbsolutePath())) {
-			throw new IllegalStateException("The same file[" + fastQ2File.getAbsolutePath() + "] was provided for FASTQ1 and FASTQ2.");
-		}
+		FastqValidator.validate(fastQ1File, fastQ2File);
 
 		File probeFile = new File(parsedCommandLine.getOptionsValue(DeduplicationCli.PROBE_OPTION));
-
-		if (!probeFile.exists()) {
-			throw new IllegalStateException("Unable to find provided PROBE file[" + probeFile.getAbsolutePath() + "].");
-		}
+		ProbeInfoFileValidator.validate(probeFile);
 
 		String outputFastQ1FileName = new File(outputDirectory, outputFilePrefix + "trimmed_" + FileUtil.getFileNameWithoutExtension(fastQ1File.getName())).getAbsolutePath();
 		if (!outputFastQ1FileName.toLowerCase().endsWith(FASTQ_EXTENSION)) {
@@ -105,7 +93,8 @@ public class TrimCli {
 					+ DateUtil.convertTimeInMillisecondsToDate(applicationStop) + "(YYYY/MM/DD HH:MM:SS)  Total Time: " + DateUtil.convertMillisecondsToHHMMSS(applicationStop - applicationStart)
 					+ "(HH:MM:SS)" + StringUtil.NEWLINE);
 
-			String genomeNameFromProbeInfoFile = ProbeFileUtil.extractProbeHeaderInformation(probeFile).getGenomeName();
+			ProbeHeaderInformation probeHeader = ProbeFileUtil.extractProbeHeaderInformation(probeFile);
+			String genomeNameFromProbeInfoFile = probeHeader.getGenomeName();
 			if (genomeNameFromProbeInfoFile != null) {
 				CliStatusConsole.logStatus("Please make sure to use genome build [" + genomeNameFromProbeInfoFile
 						+ "] when mapping these reads to ensure the mappings correspond with the correct locations defined in the probe information file.");

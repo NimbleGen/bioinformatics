@@ -3,6 +3,7 @@ package com.roche.heatseq.process;
 import java.io.File;
 import java.io.IOException;
 
+import net.sf.picard.PicardException;
 import net.sf.picard.fastq.FastqRecord;
 import net.sf.picard.fastq.FastqWriter;
 import net.sf.picard.fastq.FastqWriterFactory;
@@ -12,9 +13,10 @@ import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.cli.CliStatusConsole;
 import com.roche.heatseq.cli.DeduplicationCli;
+import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.heatseq.utils.FastqReader;
+import com.roche.heatseq.utils.IlluminaFastQReadNameUtil;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
@@ -25,7 +27,7 @@ public class FastqReadTrimmer {
 	private static Logger logger = LoggerFactory.getLogger(FastqReadTrimmer.class);
 
 	public static void trimReads(File inputFastqOneFile, File inputFastqTwoFile, File probeInfoFile, File outputFastqOneFile, File outputFastqTwoFile) throws IOException {
-		ProbesBySequenceName probes = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
+		ParsedProbeFile probes = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
 
 		ProbeInfoStats probeInfoStats = collectStatsFromProbeInformation(probes);
 
@@ -60,17 +62,51 @@ public class FastqReadTrimmer {
 		logger.info("read one--first base to keep:" + readOneTrimFromStart + "  lastBaseToKeep:" + readOneTrimStop);
 		logger.info("read two--first base to keep:" + readTwoTrimFromStart + "  lastBaseToKeep:" + readTwoTrimStop);
 
-		trimReads(inputFastqOneFile, outputFastqOneFile, readOneTrimFromStart, readOneTrimStop, performThreePrimeTrimming);
+		verifyReadNamesCanBeHandledByDedup(inputFastqOneFile, inputFastqTwoFile);
+
+		try {
+			trimReads(inputFastqOneFile, outputFastqOneFile, readOneTrimFromStart, readOneTrimStop, performThreePrimeTrimming);
+		} catch (PicardException e) {
+			throw new IllegalStateException("Unable to parse Fastq File One[" + inputFastqOneFile.getAbsolutePath() + "].  " + e.getMessage());
+		}
 		CliStatusConsole.logStatus("Finished trimming (1 of 2): " + inputFastqOneFile.getAbsolutePath() + ".  The trimmed output has been placed at " + outputFastqOneFile.getAbsolutePath() + "."
 				+ StringUtil.NEWLINE);
-		trimReads(inputFastqTwoFile, outputFastqTwoFile, readTwoTrimFromStart, readTwoTrimStop, performThreePrimeTrimming);
+		try {
+			trimReads(inputFastqTwoFile, outputFastqTwoFile, readTwoTrimFromStart, readTwoTrimStop, performThreePrimeTrimming);
+		} catch (PicardException e) {
+			throw new IllegalStateException("Unable to parse input Fastq File Two[" + inputFastqTwoFile.getAbsolutePath() + "].  " + e.getMessage());
+		}
 		CliStatusConsole.logStatus("Finished trimming (2 of 2):" + inputFastqTwoFile.getAbsolutePath() + ".  The trimmed output has been placed at " + outputFastqTwoFile.getAbsolutePath() + "."
 				+ StringUtil.NEWLINE);
 	}
 
+	private static void verifyReadNamesCanBeHandledByDedup(File inputFastqOne, File inputFastqTwo) {
+		int fastqEntryIndex = 0;
+		try (FastqReader fastQOneReader = new FastqReader(inputFastqOne)) {
+			try (FastqReader fastQTwoReader = new FastqReader(inputFastqTwo)) {
+				while (fastQOneReader.hasNext() && fastQTwoReader.hasNext()) {
+
+					FastqRecord oneRecord = fastQOneReader.next();
+					FastqRecord twoRecord = fastQTwoReader.next();
+					String readNameOne = oneRecord.getReadHeader();
+					String readNameTwo = twoRecord.getReadHeader();
+
+					String uniqueReadNameOne = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(readNameOne);
+					String uniqueReadNameTwo = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(readNameTwo);
+					if (!uniqueReadNameOne.equals(uniqueReadNameTwo)) {
+						int lineNumber = (fastqEntryIndex * 4) + 1;
+						throw new IllegalStateException("The read names[" + readNameOne + "][" + readNameTwo + "] found at line[" + lineNumber + "] in fastqOne[" + inputFastqOne.getAbsolutePath()
+								+ "] and fastqTwo[" + inputFastqTwo.getAbsolutePath() + "] respectively are not valid Illumina read names.");
+					}
+					fastqEntryIndex++;
+				}
+			}
+		}
+	}
+
 	public static void main(String[] args) throws IOException {
 		File probeInfoFile = new File("C:/kurts_space/projects/mult_probe_assignment/small/mult_probe_info.txt");
-		ProbesBySequenceName probes = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
+		ParsedProbeFile probes = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
 
 		ProbeInfoStats probeInfoStats = collectStatsFromProbeInformation(probes);
 		System.out.println(probeInfoStats.maxExtensionPrimerLength);
@@ -79,7 +115,7 @@ public class FastqReadTrimmer {
 		System.out.println(probeInfoStats.minLigationPrimerLength);
 	}
 
-	static ProbeInfoStats collectStatsFromProbeInformation(ProbesBySequenceName probes) throws IOException {
+	static ProbeInfoStats collectStatsFromProbeInformation(ParsedProbeFile probes) throws IOException {
 
 		int maxExtensionPrimerLength = 0;
 		int maxLigationPrimerLength = 0;

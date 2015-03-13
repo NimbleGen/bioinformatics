@@ -36,8 +36,8 @@ public class ParsedCommandLine {
 	private final Set<NameValuePair> unrecognizedShortFormOptions;
 	private final Set<NameValuePair> unrecognizedLongFormOptions;
 
-	private final Set<String> duplicateArguments;
-	private final Set<String> foundArguments;
+	private final Set<CommandLineOption> duplicateOptions;
+	private final Set<CommandLineOption> foundOptionNames;
 
 	private final List<String> nonOptionArguments;
 
@@ -53,8 +53,8 @@ public class ParsedCommandLine {
 		argumentToValueMap = new LinkedHashMap<CommandLineOption, String>();
 		unrecognizedShortFormOptions = new LinkedHashSet<NameValuePair>();
 		unrecognizedLongFormOptions = new LinkedHashSet<NameValuePair>();
-		duplicateArguments = new LinkedHashSet<String>();
-		foundArguments = new LinkedHashSet<String>();
+		duplicateOptions = new LinkedHashSet<CommandLineOption>();
+		foundOptionNames = new LinkedHashSet<CommandLineOption>();
 		nonOptionArguments = new ArrayList<String>();
 		flagOptionWithArguments = new LinkedHashMap<CommandLineOption, String>();
 		nonFlagOptionWithoutArguments = new LinkedHashSet<CommandLineOption>();
@@ -85,11 +85,11 @@ public class ParsedCommandLine {
 		return commands;
 	}
 
-	private void markArgumentAsFound(String argumentName) {
-		if (foundArguments.contains(argumentName)) {
-			duplicateArguments.add(argumentName);
+	private void markOptionAsFound(CommandLineOption option) {
+		if (foundOptionNames.contains(option)) {
+			duplicateOptions.add(option);
 		} else {
-			foundArguments.add(argumentName);
+			foundOptionNames.add(option);
 		}
 	}
 
@@ -98,7 +98,6 @@ public class ParsedCommandLine {
 	}
 
 	void addNonOptionArgument(String nonOptionArgument) {
-		markArgumentAsFound(nonOptionArgument);
 		nonOptionArguments.add(nonOptionArgument);
 	}
 
@@ -126,7 +125,6 @@ public class ParsedCommandLine {
 	}
 
 	void setArgumentValue(String option, String value) {
-		markArgumentAsFound(option);
 		if (CommandLineParser.isLongFormIdentifierArgument(option)) {
 			setLongFormArgumentValue(option, value);
 		} else if (CommandLineParser.isShortFormIdentifierArgument(option)) {
@@ -199,9 +197,8 @@ public class ParsedCommandLine {
 		CommandLineOption option = group.getMatchingCommandLineOptionForShortFormOption(shortFormOption);
 		if (option == null) {
 			unrecognizedShortFormOptions.add(new NameValuePair("" + shortFormOption, value));
-			markArgumentAsFound("" + shortFormOption);
 		} else {
-			markArgumentAsFound(option.getLongFormOption());
+			markOptionAsFound(option);
 			if (option.isFlag() && (value != null) && !value.isEmpty()) {
 				throw new IllegalStateException("Value[" + value + "] was passed in for a flag option[" + option.getOptionName() + "].");
 			}
@@ -214,11 +211,11 @@ public class ParsedCommandLine {
 		longFormOption = longFormOption.replaceFirst(CommandLineParser.LONG_OPTION_INDICATOR, "");
 
 		CommandLineOption option = group.getMatchingCommandLineOptionForLongFormOption(longFormOption);
-		markArgumentAsFound("" + longFormOption);
 
 		if (option == null) {
 			unrecognizedLongFormOptions.add(new NameValuePair(longFormOption, value));
 		} else {
+			markOptionAsFound(option);
 			if (option.isFlag() && (value != null) && !value.isEmpty()) {
 				throw new IllegalStateException("Value[" + value + "] was passed in for a flag option[" + option.getOptionName() + "].");
 			}
@@ -228,7 +225,6 @@ public class ParsedCommandLine {
 	}
 
 	void setArgumentValue(CommandLineOption option, String value) {
-		markArgumentAsFound("" + option.getLongFormOption());
 		argumentToValueMap.put(option, value);
 	}
 
@@ -281,8 +277,8 @@ public class ParsedCommandLine {
 	/**
 	 * @return duplicate arguments
 	 */
-	public Set<String> getDuplicateArguments() {
-		return duplicateArguments;
+	public Set<CommandLineOption> getDuplicateOptions() {
+		return duplicateOptions;
 	}
 
 	@Override

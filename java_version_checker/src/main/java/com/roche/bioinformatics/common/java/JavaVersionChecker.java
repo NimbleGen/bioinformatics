@@ -58,12 +58,22 @@ public class JavaVersionChecker {
 		}
 
 		String versionAsString = System.getProperty("java.specification.version");
-		double actualJavaVersionAsDouble = Double.valueOf(versionAsString);
+		double actualJavaVersionAsDouble = 1.5;
+		try {
+			actualJavaVersionAsDouble = Double.valueOf(versionAsString);
+		} catch (NumberFormatException e) {
+			System.err.println("Could not detect the version of the JVM[" + versionAsString + "] so using 1.5.");
+		}
 
 		boolean javaVersionIsInadequate = (actualJavaVersionAsDouble < requiredMajorMinorJavaVersion);
 
 		String JVMBitAsString = System.getProperty("sun.arch.data.model");
-		int actualJavaBitAsInteger = Integer.valueOf(JVMBitAsString);
+		int actualJavaBitAsInteger = 32;
+		try {
+			actualJavaBitAsInteger = Integer.valueOf(JVMBitAsString);
+		} catch (NumberFormatException e) {
+			System.err.println("Could not detect the bit depth of the JVM[" + JVMBitAsString + "] so using 32.");
+		}
 		boolean javaJvmBitsAreInadequate = (actualJavaBitAsInteger < requiredJavaBit);
 
 		boolean shouldLoadMainClass = !javaVersionIsInadequate && !javaJvmBitsAreInadequate;
@@ -106,7 +116,7 @@ public class JavaVersionChecker {
 				String baseMessage = "";
 
 				if (javaVersionIsInadequate) {
-					baseMessage += "This application requires Java Version " + requiredMajorMinorJavaVersion + " or newer.  ";
+					baseMessage += "This application requires Java Version " + requiredMajorMinorJavaVersion + " or newer and found Java version[" + actualJavaVersionAsDouble + "].  ";
 				}
 
 				if (javaJvmBitsAreInadequate) {

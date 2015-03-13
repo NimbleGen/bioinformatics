@@ -36,9 +36,8 @@ import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMSequenceDictionary;
 import net.sf.samtools.SAMSequenceRecord;
 
-import com.roche.heatseq.objects.IlluminaFastQHeader;
+import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.objects.ProbesBySequenceName;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 
 public class BamFileUtil {
@@ -166,7 +165,7 @@ public class BamFileUtil {
 		for (final SAMRecord record : reader) {
 			boolean shouldInclude = true;
 			if (readNamesToExclude != null) {
-				String readName = IlluminaFastQHeader.getBaseHeader(record.getReadName());
+				String readName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(record.getReadName());
 				shouldInclude = !readNamesToExclude.contains(readName);
 			}
 
@@ -200,7 +199,7 @@ public class BamFileUtil {
 	 * @param programVersion
 	 * @return
 	 */
-	public static SAMFileHeader getHeader(ProbesBySequenceName probeInfo, String commandLineSignature, String programName, String programVersion) {
+	public static SAMFileHeader getHeader(ParsedProbeFile probeInfo, String commandLineSignature, String programName, String programVersion) {
 		return getHeader(false, null, probeInfo, commandLineSignature, programName, programVersion);
 	}
 
@@ -214,7 +213,7 @@ public class BamFileUtil {
 	 * @param programVersion
 	 * @return
 	 */
-	public static SAMFileHeader getHeader(boolean onlyIncludeSequencesFromProbeFile, SAMFileHeader originalHeader, ProbesBySequenceName probeInfo, String commandLineSignature, String programName,
+	public static SAMFileHeader getHeader(boolean onlyIncludeSequencesFromProbeFile, SAMFileHeader originalHeader, ParsedProbeFile probeInfo, String commandLineSignature, String programName,
 			String programVersion) {
 		SAMFileHeader newHeader = new SAMFileHeader();
 

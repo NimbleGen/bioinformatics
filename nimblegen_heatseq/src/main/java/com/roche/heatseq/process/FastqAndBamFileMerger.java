@@ -31,8 +31,8 @@ import net.sf.samtools.SAMRecordIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.roche.heatseq.objects.IlluminaFastQHeader;
 import com.roche.heatseq.utils.FastqReader;
+import com.roche.heatseq.utils.IlluminaFastQReadNameUtil;
 import com.roche.heatseq.utils.SAMRecordUtil;
 
 /**
@@ -117,7 +117,8 @@ public class FastqAndBamFileMerger {
 			while (fastQReader.hasNext()) {
 				FastqRecord fastQRecord = fastQReader.next();
 
-				nameToFastQRecord.put(IlluminaFastQHeader.getBaseHeader(fastQRecord.getReadHeader()), new SimpleFastqRecord(fastQRecord.getReadString(), fastQRecord.getBaseQualityString()));
+				nameToFastQRecord.put(IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(fastQRecord.getReadHeader()),
+						new SimpleFastqRecord(fastQRecord.getReadString(), fastQRecord.getBaseQualityString()));
 
 				if (nameToFastQRecord.size() > maximumHashSize) {
 
@@ -167,7 +168,8 @@ public class FastqAndBamFileMerger {
 			while (fastQReader.hasNext() && recordCount < 1000) {
 				recordCount++;
 				FastqRecord fastQRecord = fastQReader.next();
-				nameToFastQRecord.put(IlluminaFastQHeader.getBaseHeader(fastQRecord.getReadHeader()), new SimpleFastqRecord(fastQRecord.getReadString(), fastQRecord.getBaseQualityString()));
+				nameToFastQRecord.put(IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(fastQRecord.getReadHeader()),
+						new SimpleFastqRecord(fastQRecord.getReadString(), fastQRecord.getBaseQualityString()));
 			}
 		}
 
