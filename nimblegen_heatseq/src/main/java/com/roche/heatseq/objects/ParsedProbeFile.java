@@ -29,10 +29,10 @@ import java.util.Set;
  * A map for organizing probes by sequence name
  * 
  */
-public class ProbesBySequenceName implements Iterable<Probe> {
+public class ParsedProbeFile implements Iterable<Probe> {
 	private final Map<String, List<Probe>> probesBySequence;
 
-	public ProbesBySequenceName() {
+	public ParsedProbeFile() {
 		super();
 		probesBySequence = new LinkedHashMap<String, List<Probe>>();
 	}

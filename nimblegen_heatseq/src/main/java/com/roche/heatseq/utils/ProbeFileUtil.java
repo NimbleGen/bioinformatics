@@ -16,9 +16,11 @@
 
 package com.roche.heatseq.utils;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Iterator;
@@ -29,12 +31,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.objects.ProbesBySequenceName;
+import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.DelimitedFileParserUtil;
+import com.roche.sequencing.bioinformatics.common.utils.Md5CheckSumUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public final class ProbeFileUtil {
@@ -51,6 +54,7 @@ public final class ProbeFileUtil {
 	private final static String DO_NOT_PERFORM_THREE_PRIME_TRIMMING_IN_PROBE_INFO_HEADER = "do_not_perform_three_prime_trimming";
 	private final static String BASES_INSIDE_EXTENSION_PRIMER_WINDOW = "bases_inside_extension_primer_window";
 	private final static String BASES_INSIDE_LIGATION_PRIMER_WINDOW = "bases_inside_ligation_primer_window";
+	private final static String HEADERLESS_MD5SUM = "md5sum_without_header";
 
 	private ProbeFileUtil() {
 		throw new AssertionError();
@@ -63,10 +67,11 @@ public final class ProbeFileUtil {
 	 * @return an object representing all of the information found in a probeInfoFile
 	 * @throws IOException
 	 */
-	public static ProbesBySequenceName parseProbeInfoFile(File probeInfoFile) throws IOException {
+	public static ParsedProbeFile parseProbeInfoFile(File probeInfoFile) throws IOException {
 		long probeParsingStartInMs = System.currentTimeMillis();
+
 		Map<String, List<String>> headerNameToValues = DelimitedFileParserUtil.getHeaderNameToValuesMapFromDelimitedFile(probeInfoFile, PROBE_INFO_HEADER_NAMES, StringUtil.TAB);
-		ProbesBySequenceName probeInfo = new ProbesBySequenceName();
+		ParsedProbeFile probeInfo = new ParsedProbeFile();
 
 		int numberOfEntries = 0;
 		Iterator<List<String>> iter = headerNameToValues.values().iterator();
@@ -114,12 +119,37 @@ public final class ProbeFileUtil {
 		logger.debug("Done parsing probeInfo[" + probeInfoFile.getAbsolutePath() + "]  Total time: " + DateUtil.convertMillisecondsToHHMMSS(probeParsingStopInMs - probeParsingStartInMs));
 
 		return probeInfo;
-
 	}
 
 	public static enum FileOsFlavor {
 		WINDOWS, LINUX, CURRENT_SYSTEM
 	};
+
+	public static String getHeaderlessMd5SumOfFile(File probeInfoFile) {
+		String headerlessMd5Sum = null;
+
+		StringBuilder headerlessText = new StringBuilder();
+
+		try (BufferedReader probeReader = new BufferedReader(new FileReader(probeInfoFile))) {
+
+			String line = null;
+			while ((line = probeReader.readLine()) != null) {
+				if (!line.startsWith("#")) {
+					headerlessText.append(line);
+				}
+			}
+		} catch (FileNotFoundException e) {
+			logger.warn(e.getMessage(), e);
+		} catch (IOException e) {
+			logger.warn(e.getMessage(), e);
+		}
+
+		if (headerlessText.length() > 0) {
+			headerlessMd5Sum = Md5CheckSumUtil.md5sum(headerlessText.toString());
+		}
+
+		return headerlessMd5Sum;
+	}
 
 	/**
 	 * write all the provided probes to the provided outputProbeInfoFile
@@ -192,9 +222,10 @@ public final class ProbeFileUtil {
 		private final Integer basesInsideLigationPrimerWindow;
 		private final Boolean performThreePrimeTrimming;
 		private final String genomeName;
+		private final String headerlessMd5Sum;
 
 		public ProbeHeaderInformation(Integer ligationUidLength, Integer extensionUidLength, Integer additionalLigationTrimLength, Integer additionalExtensionTrimLength,
-				Integer basesInsideExtensionPrimerWindow, Integer basesInsideLigationPrimerWindow, Boolean performThreePrimeTrimming, String genomeName) {
+				Integer basesInsideExtensionPrimerWindow, Integer basesInsideLigationPrimerWindow, Boolean performThreePrimeTrimming, String genomeName, String headerlessMd5Sum) {
 			super();
 			this.ligationUidLength = ligationUidLength;
 			this.extensionUidLength = extensionUidLength;
@@ -204,6 +235,7 @@ public final class ProbeFileUtil {
 			this.basesInsideLigationPrimerWindow = basesInsideLigationPrimerWindow;
 			this.performThreePrimeTrimming = performThreePrimeTrimming;
 			this.genomeName = genomeName;
+			this.headerlessMd5Sum = headerlessMd5Sum;
 		}
 
 		public Integer getLigationUidLength() {
@@ -238,6 +270,9 @@ public final class ProbeFileUtil {
 			return genomeName;
 		}
 
+		public String getHeaderlessMd5Sum() {
+			return headerlessMd5Sum;
+		}
 	}
 
 	public static ProbeHeaderInformation extractProbeHeaderInformation(File probeFile) throws FileNotFoundException {
@@ -309,7 +344,9 @@ public final class ProbeFileUtil {
 			genomeName = genomeName.toLowerCase();
 		}
 
+		String headerlessMd5Sum = nameValuePairs.get(HEADERLESS_MD5SUM);
+
 		return new ProbeHeaderInformation(ligationUidLength, extensionUidLength, additionalLigationLength, additionalExtensionLength, basesInsideExtensionPrimerWindow,
-				basesInsideLigationPrimerWindow, performThreePrimeTrimming, genomeName);
+				basesInsideLigationPrimerWindow, performThreePrimeTrimming, genomeName, headerlessMd5Sum);
 	}
 }

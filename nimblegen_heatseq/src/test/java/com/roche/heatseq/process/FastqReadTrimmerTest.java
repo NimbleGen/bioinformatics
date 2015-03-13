@@ -24,7 +24,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.objects.ProbesBySequenceName;
+import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.process.FastqReadTrimmer.ProbeInfoStats;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
@@ -41,7 +41,7 @@ public class FastqReadTrimmerTest {
 
 	@Test(groups = { "unit" })
 	public void probeInfoStatsTest() throws IOException {
-		ProbesBySequenceName probes = new ProbesBySequenceName();
+		ParsedProbeFile probes = new ParsedProbeFile();
 		probes.addProbe("chr1", new Probe("probe1", "chr1", 1, 10, new IupacNucleotideCodeSequence("ACGTACGTAC"), 21, 30, new IupacNucleotideCodeSequence("ACGTACGTAC"), 11, 20,
 				new IupacNucleotideCodeSequence("ACGTACGTAC"), Strand.FORWARD));
 		probes.addProbe("chr1", new Probe("probe2", "chr1", 1, 9, new IupacNucleotideCodeSequence("ACGTACGTA"), 19, 27, new IupacNucleotideCodeSequence("ACGTACGTA"), 10, 18,

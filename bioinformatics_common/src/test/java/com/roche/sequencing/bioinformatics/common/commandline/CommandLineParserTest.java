@@ -44,7 +44,7 @@ public class CommandLineParserTest {
 		Assert.assertFalse(group.getUsage().isEmpty());
 
 		ParsedCommandLine parsedCommandLine = CommandLineParser.parseCommandLineWithExceptions(new String[] { "--r1", "a", "--r2", "b", "-b", "bam", "--flag" }, group);
-		Assert.assertEquals(parsedCommandLine.getDuplicateArguments().size(), 0);
+		Assert.assertEquals(parsedCommandLine.getDuplicateOptions().size(), 0);
 		Assert.assertEquals(parsedCommandLine.getMissingRequiredOptions().length, 0);
 		Assert.assertEquals(parsedCommandLine.getNonOptionArguments().length, 0);
 		Assert.assertEquals(parsedCommandLine.getUnrecognizedLongFormOption().size(), 0);

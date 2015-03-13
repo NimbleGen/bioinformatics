@@ -110,8 +110,13 @@ public class CommandLineParser {
 
 						if ((nextArgumentIndex < arguments.length)) {
 							nextArgument = arguments[nextArgumentIndex];
-							parsedCommandLine.setArgumentValue(argument, nextArgument);
-							nextArgumentIndex++;
+
+							if (isOptionIdentifierArgument(nextArgument)) {
+								parsedCommandLine.addNonFlagOptionWithoutArguments(option);
+							} else {
+								parsedCommandLine.setArgumentValue(argument, nextArgument);
+								nextArgumentIndex++;
+							}
 						} else {
 							parsedCommandLine.addNonFlagOptionWithoutArguments(option);
 						}
@@ -198,15 +203,15 @@ public class CommandLineParser {
 		}
 
 		String duplicateArgumentsError = "";
-		Set<String> duplicateArguments = parsedCommandLine.getDuplicateArguments();
+		Set<CommandLineOption> duplicateArguments = parsedCommandLine.getDuplicateOptions();
 
 		if (duplicateArguments.size() > 0) {
 			StringBuilder duplicateArgumentsBuilder = new StringBuilder();
 
 			duplicateArgumentsBuilder.append("The following argument(s) were found multiple times:" + StringUtil.NEWLINE);
 
-			for (String argument : duplicateArguments) {
-				duplicateArgumentsBuilder.append(StringUtil.TAB + argument + StringUtil.NEWLINE);
+			for (CommandLineOption option : duplicateArguments) {
+				duplicateArgumentsBuilder.append(StringUtil.TAB + option.getUsage());
 			}
 
 			duplicateArgumentsError = duplicateArgumentsBuilder.toString();

@@ -350,5 +350,4 @@ public final class FileUtil {
 		}
 		return directoryIsParent;
 	}
-
 }

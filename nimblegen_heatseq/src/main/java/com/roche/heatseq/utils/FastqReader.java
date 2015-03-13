@@ -82,7 +82,7 @@ public class FastqReader implements Iterator<FastqRecord>, Iterable<FastqRecord>
 				throw new PicardException(error("Missing sequence header"));
 			}
 			if (!seqHeader.startsWith(FastqConstants.SEQUENCE_HEADER)) {
-				throw new PicardException(error("Sequence header must start with " + FastqConstants.SEQUENCE_HEADER + ": " + seqHeader));
+				throw new PicardException(error("Invalid Fastq file--Fastq Sequence header must start with " + FastqConstants.SEQUENCE_HEADER));
 			}
 
 			// Read sequence line
@@ -157,6 +157,6 @@ public class FastqReader implements Iterator<FastqRecord>, Iterable<FastqRecord>
 	}
 
 	private String error(final String msg) {
-		return msg + " at line " + line + " in " + fileAbsolutePath;
+		return msg + " at line " + line + " in [" + fileAbsolutePath + "].";
 	}
 }

@@ -31,7 +31,7 @@ public class ApplicationSettings {
 	private final File probeFile;
 	private final File bamFile;
 	private final File bamFileIndex;
-	private final File fastQ1WithUidsFile;
+	private final File fastQ1File;
 	private final File fastQ2File;
 	private final File outputDirectory;
 	private final String outputBamFileName;
@@ -58,7 +58,7 @@ public class ApplicationSettings {
 	 * @param probeFile
 	 * @param bamFile
 	 * @param bamFileIndex
-	 * @param fastQ1WithUidsFile
+	 * @param fastQ1File
 	 * @param fastQ2File
 	 * @param outputDirectory
 	 * @param outputFilePrefix
@@ -71,7 +71,7 @@ public class ApplicationSettings {
 	 * @param programVersion
 	 * @param numProcessors
 	 */
-	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1WithUidsFile, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
+	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1File, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
 			String originalBamFileName, boolean shouldOutputReports, String commandLineSignature, String programName, String programVersion, int numProcessors, boolean allowVariableLengthUids,
 			IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinTheCaptureTargetSequence, int extensionUidLength, int ligationUidLength, boolean markDuplicates, boolean keepDuplicates,
 			boolean mergePairs, boolean useStrictReadToProbeMatching, ProbeHeaderInformation probeHeaderInformation) {
@@ -79,7 +79,7 @@ public class ApplicationSettings {
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;
 		this.bamFileIndex = bamFileIndex;
-		this.fastQ1WithUidsFile = fastQ1WithUidsFile;
+		this.fastQ1File = fastQ1File;
 		this.fastQ2File = fastQ2File;
 		this.outputDirectory = outputDirectory;
 		this.outputBamFileName = outputBamFileName;
@@ -123,10 +123,10 @@ public class ApplicationSettings {
 	}
 
 	/**
-	 * @return fastQ1File (contains uids)
+	 * @return fastQ1File
 	 */
-	public File getFastQ1WithUidsFile() {
-		return fastQ1WithUidsFile;
+	public File getFastQ1File() {
+		return fastQ1File;
 	}
 
 	/**

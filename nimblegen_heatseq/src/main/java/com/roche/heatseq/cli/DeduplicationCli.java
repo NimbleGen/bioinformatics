@@ -34,8 +34,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.ApplicationSettings;
+import com.roche.heatseq.process.BamFileValidator;
 import com.roche.heatseq.process.FastqAndBamFileMerger;
+import com.roche.heatseq.process.FastqValidator;
 import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentification;
+import com.roche.heatseq.process.ProbeInfoFileValidator;
 import com.roche.heatseq.utils.BamFileUtil;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
@@ -82,8 +85,8 @@ public class DeduplicationCli {
 			"The penalty for opening a gap when extending alignments to the primers. (Default: " + SimpleAlignmentScorer.DEFAULT_GAP_OPEN_PENALTY + ")", false, false);
 	private final static CommandLineOption GAP_EXTEND_PENALTY_OPTION = new CommandLineOption("Gap Extend Penalty", "gapExtendPenalty", null,
 			"The penalty for extending a gap when extending alignments to the primers. (Default: " + SimpleAlignmentScorer.DEFAULT_GAP_EXTEND_PENALTY + ")", false, false);
-	public final static CommandLineOption LENIENT_VALIDATION_STRINGENCY_OPTION = new CommandLineOption("Lenient Validation Stringency", "lenientValidation", null,
-			"Use a lenient validation stringency for all SAM files read by this program.", false, true);
+	// public final static CommandLineOption LENIENT_VALIDATION_STRINGENCY_OPTION = new CommandLineOption("Lenient Validation Stringency", "lenientValidation", null,
+	// "Use a lenient validation stringency for all SAM files read by this program.", false, true);
 	private final static CommandLineOption MARK_DUPLICATES_OPTION = new CommandLineOption("Mark Duplicates", "markDuplicates", null, "Mark duplicate reads in the bam file instead of removing them.",
 			false, true);
 	private final static CommandLineOption KEEP_DUPLICATES_OPTION = new CommandLineOption("Keep Duplicates", "keepDuplicates", null, "Keep duplicate reads in the bam file instead of removing them. ",
@@ -92,14 +95,16 @@ public class DeduplicationCli {
 	private final static CommandLineOption NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION = new CommandLineOption("Reads Are Not Trimmed To Within Capture Target", "readsNotTrimmedWithinCaptureTarget",
 			null, "The reads have not been trimmed to an area within the capture target.", false, true);
 	private final static CommandLineOption INTERNAL_REPORTS_OPTION = new CommandLineOption("Output interal reports", "internalReports", null, "Output internal reports.", false, true, true);
+	private final static CommandLineOption SAVE_TEMP_OPTION = new CommandLineOption("Save Temp Files", "saveTemp", null, "Save temporary files.", false, true, true);
 
 	// Note: these variables are for debugging purposes
 	// saveTemporaryFiles default is false
-	private final static boolean saveTemporaryFiles = false;
+	private static boolean saveTemporaryFiles = false;
 	// allowVaraibleLengthUids default is false
 	private final static boolean allowVariableLengthUids = false;
 	// useStrictReadToProbeMatching default is false
 	private final static boolean useStrictReadToProbeMatching = false;
+	private final static boolean useLenientValidation = true;
 
 	static void identifyDuplicates(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion) {
 
@@ -160,22 +165,11 @@ public class DeduplicationCli {
 		}
 
 		File fastQ1File = new File(parsedCommandLine.getOptionsValue(FASTQ_ONE_OPTION));
-
-		if (!fastQ1File.exists()) {
-			throw new IllegalStateException("Unable to find provided FASTQ1 file[" + fastQ1File.getAbsolutePath() + "].");
-		}
-
 		File fastQ2File = new File(parsedCommandLine.getOptionsValue(FASTQ_TWO_OPTION));
+		FastqValidator.validate(fastQ1File, fastQ2File);
 
-		if (!fastQ2File.exists()) {
-			throw new IllegalStateException("Unable to find provided FASTQ2 file[" + fastQ2File.getAbsolutePath() + "].");
-		}
-
-		File probeFile = new File(parsedCommandLine.getOptionsValue(PROBE_OPTION));
-
-		if (!probeFile.exists()) {
-			throw new IllegalStateException("Unable to find provided PROBE file[" + probeFile.getAbsolutePath() + "].");
-		}
+		File probeInfoFile = new File(parsedCommandLine.getOptionsValue(PROBE_OPTION));
+		ProbeInfoFileValidator.validate(probeInfoFile);
 
 		int numProcessors = Runtime.getRuntime().availableProcessors();
 		if (parsedCommandLine.isOptionPresent(NUM_PROCESSORS_OPTION)) {
@@ -192,26 +186,24 @@ public class DeduplicationCli {
 			numProcessors = MAX_NUMBER_OF_PROCESSORS;
 		}
 
-		ProbeHeaderInformation probeHeaderInformation = null;
-		try {
-			probeHeaderInformation = ProbeFileUtil.extractProbeHeaderInformation(probeFile);
-		} catch (FileNotFoundException e1) {
-			throw new IllegalStateException(e1);
-		}
-
 		int extensionUidLength = DEFAULT_EXTENSION_UID_LENGTH;
 		int ligationUidLength = DEFAULT_LIGATION_UID_LENGTH;
 		String genomeNameFromProbeInfoFile = null;
-
-		if (probeHeaderInformation != null) {
-			genomeNameFromProbeInfoFile = probeHeaderInformation.getGenomeName();
-			if (probeHeaderInformation.getExtensionUidLength() != null) {
-				extensionUidLength = probeHeaderInformation.getExtensionUidLength();
+		ProbeHeaderInformation probeHeaderInformation = null;
+		try {
+			probeHeaderInformation = ProbeFileUtil.extractProbeHeaderInformation(probeInfoFile);
+			if (probeHeaderInformation != null) {
+				genomeNameFromProbeInfoFile = probeHeaderInformation.getGenomeName();
+				if (probeHeaderInformation.getExtensionUidLength() != null) {
+					extensionUidLength = probeHeaderInformation.getExtensionUidLength();
+				}
+				if (probeHeaderInformation.getLigationUidLength() != null) {
+					ligationUidLength = probeHeaderInformation.getLigationUidLength();
+				}
 			}
-			if (probeHeaderInformation.getLigationUidLength() != null) {
-				ligationUidLength = probeHeaderInformation.getLigationUidLength();
-			}
-
+		} catch (FileNotFoundException e1) {
+			// this should be picked up when the probe info file is originally validated
+			throw new AssertionError();
 		}
 
 		String outputBamFileName = parsedCommandLine.getOptionsValue(OUTPUT_BAM_FILE_NAME_OPTION);
@@ -270,7 +262,7 @@ public class DeduplicationCli {
 			}
 		}
 
-		boolean useLenientValidation = parsedCommandLine.isOptionPresent(LENIENT_VALIDATION_STRINGENCY_OPTION);
+		// boolean useLenientValidation = parsedCommandLine.isOptionPresent(LENIENT_VALIDATION_STRINGENCY_OPTION);
 		if (useLenientValidation) {
 			SAMFileReader.setDefaultValidationStringency(ValidationStringency.LENIENT);
 		}
@@ -278,6 +270,7 @@ public class DeduplicationCli {
 		boolean markDuplicates = parsedCommandLine.isOptionPresent(MARK_DUPLICATES_OPTION);
 		boolean keepDuplicates = parsedCommandLine.isOptionPresent(KEEP_DUPLICATES_OPTION);
 		boolean shouldOutputInternalReports = parsedCommandLine.isOptionPresent(INTERNAL_REPORTS_OPTION);
+		saveTemporaryFiles = parsedCommandLine.isOptionPresent(SAVE_TEMP_OPTION);
 
 		if (markDuplicates && keepDuplicates) {
 			throw new IllegalStateException(MARK_DUPLICATES_OPTION.getLongFormOption() + " and " + KEEP_DUPLICATES_OPTION.getLongFormOption() + " cannot be used in the same run.");
@@ -292,10 +285,7 @@ public class DeduplicationCli {
 		try {
 			String bamFileString = parsedCommandLine.getOptionsValue(INPUT_BAM_OPTION);
 			File samOrBamFile = new File(bamFileString);
-
-			if (!samOrBamFile.exists()) {
-				throw new IllegalStateException("Unable to find provided BAM file[" + samOrBamFile.getAbsolutePath() + "].");
-			}
+			BamFileValidator.validate(samOrBamFile);
 
 			String tempPrefix = HsqUtilsCli.getTempPrefix(applicationName, outputFilePrefix);
 			Path tempOutputDirectoryPath = Files.createTempDirectory(tempDirectory.toPath(), tempPrefix);
@@ -348,13 +338,13 @@ public class DeduplicationCli {
 										.logStatus(StringUtil.NEWLINE
 												+ "It appears that the incorrect genome was used for mapping.  The names and sizes of the genome sequences used for mapping found in the provided BAM/SAM file ["
 												+ samOrBamFile.getAbsolutePath() + "] do not match the sequence sizes expected based on the indicated genome build [" + genomeNameFromProbeInfoFile
-												+ "] by the probe information file [" + probeFile.getAbsolutePath()
+												+ "] by the probe information file [" + probeInfoFile.getAbsolutePath()
 												+ "].  Deduplication will continue but the results should be classified as suspect.  Please review the mismatch genome report in the log file["
 												+ logFile.getAbsolutePath() + "] for details on how the expected genome and provided genome differ." + StringUtil.NEWLINE);
 							}
 						}
 					} catch (FileNotFoundException e1) {
-						throw new IllegalStateException(e1);
+						throw new IllegalStateException("Could not find the provided BAM file[" + samOrBamFile.getAbsolutePath() + "].");
 					}
 
 					boolean isSortIndicatedInHeader = header.getSortOrder().equals(SortOrder.coordinate);
@@ -445,7 +435,35 @@ public class DeduplicationCli {
 				validSamOrBamInputFile = samFile;
 			}
 
-			sortMergeFilterAndExtendReads(applicationName, applicationVersion, probeFile, validSamOrBamInputFile, bamIndexFile, fastQ1File, fastQ2File, outputDirectory, outputBamFileName,
+			try (SAMFileReader samReader = new SAMFileReader(validSamOrBamInputFile)) {
+				SAMRecordIterator samIter = samReader.iterator();
+
+				boolean noEntriesInBam = false;
+				boolean aReadOneFound = false;
+				boolean aReadTwoFound = false;
+
+				if (!samIter.hasNext()) {
+					noEntriesInBam = true;
+				} else {
+					while (!aReadOneFound && !aReadTwoFound) {
+						SAMRecord record = samIter.next();
+						aReadOneFound = record.getFirstOfPairFlag();
+						aReadTwoFound = record.getSecondOfPairFlag();
+					}
+				}
+				samIter.close();
+
+				if (noEntriesInBam) {
+					throw new IllegalStateException("The provided BAM file[" + samOrBamFile.getAbsolutePath() + "] contains no entries.");
+				} else if (!aReadOneFound) {
+					throw new IllegalStateException("The provided BAM file[" + samOrBamFile.getAbsolutePath() + "] contains no read one entries.");
+				} else if (!aReadTwoFound) {
+					throw new IllegalStateException("The provided BAM file[" + samOrBamFile.getAbsolutePath() + "] contains no read two entries.");
+				}
+
+			}
+
+			sortMergeFilterAndExtendReads(applicationName, applicationVersion, probeInfoFile, validSamOrBamInputFile, bamIndexFile, fastQ1File, fastQ2File, outputDirectory, outputBamFileName,
 					outputFilePrefix, tempOutputDirectory, shouldOutputInternalReports, commandLineSignature, numProcessors, extensionUidLength, ligationUidLength, allowVariableLengthUids,
 					alignmentScorer, notTrimmedToWithinCaptureTarget, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching, probeHeaderInformation);
 
@@ -511,6 +529,7 @@ public class DeduplicationCli {
 		group.addOption(OUTPUT_FILE_PREFIX_OPTION);
 		group.addOption(TMP_DIR_OPTION);
 		group.addOption(NUM_PROCESSORS_OPTION);
+		group.addOption(SAVE_TEMP_OPTION);
 		// group.addOption(MATCH_SCORE_OPTION);
 		// group.addOption(MISMATCH_PENALTY_OPTION);
 		// group.addOption(GAP_OPEN_PENALTY_OPTION);

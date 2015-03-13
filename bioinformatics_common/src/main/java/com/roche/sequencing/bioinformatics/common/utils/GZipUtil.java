@@ -14,7 +14,8 @@ public final class GZipUtil {
 	}
 
 	public static boolean isCompressed(File file) throws FileNotFoundException, IOException {
-		byte[] bytes = new byte[10];
+		int numberOfBytes = (int) Math.min(file.length(), 10);
+		byte[] bytes = new byte[numberOfBytes];
 		try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
 			dis.readFully(bytes);
 		}
