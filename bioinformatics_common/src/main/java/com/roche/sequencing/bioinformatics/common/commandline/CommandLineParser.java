@@ -111,14 +111,14 @@ public class CommandLineParser {
 						if ((nextArgumentIndex < arguments.length)) {
 							nextArgument = arguments[nextArgumentIndex];
 
-							if (isOptionIdentifierArgument(nextArgument)) {
-								parsedCommandLine.addNonFlagOptionWithoutArguments(option);
-							} else {
+							if (isValue(nextArgument)) {
 								parsedCommandLine.setArgumentValue(argument, nextArgument);
 								nextArgumentIndex++;
+							} else {
+								parsedCommandLine.addNonFlagOptionWithoutValues(option);
 							}
 						} else {
-							parsedCommandLine.addNonFlagOptionWithoutArguments(option);
+							parsedCommandLine.addNonFlagOptionWithoutValues(option);
 						}
 					}
 				}
@@ -287,6 +287,13 @@ public class CommandLineParser {
 
 	private static boolean isOptionIdentifierArgument(String argument) {
 		return isShortFormIdentifierArgument(argument) || isLongFormIdentifierArgument(argument);
+	}
+
+	private static boolean isValue(String argument) {
+		boolean isNegativeNumber = argument.matches("(-{0,1}(?!0)\\d+)");
+		boolean isShortIdentifier = isShortFormIdentifierArgument(argument) && !isNegativeNumber;
+		boolean isValue = !isLongFormIdentifierArgument(argument) && !isShortIdentifier;
+		return isValue;
 	}
 
 	static boolean isShortFormIdentifierArgument(String argument) {

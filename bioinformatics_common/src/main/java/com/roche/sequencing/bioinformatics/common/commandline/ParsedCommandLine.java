@@ -109,7 +109,7 @@ public class ParsedCommandLine {
 		return new LinkedHashMap<CommandLineOption, String>(flagOptionWithArguments);
 	}
 
-	void addNonFlagOptionWithoutArguments(CommandLineOption nonFlagOption) {
+	void addNonFlagOptionWithoutValues(CommandLineOption nonFlagOption) {
 		nonFlagOptionWithoutArguments.add(nonFlagOption);
 	}
 
