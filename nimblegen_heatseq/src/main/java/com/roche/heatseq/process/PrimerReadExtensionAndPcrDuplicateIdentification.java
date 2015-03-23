@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -50,7 +51,6 @@ import com.roche.heatseq.objects.ExtendReadResults;
 import com.roche.heatseq.objects.IReadPair;
 import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.objects.ReadNameProbeIdPair;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
 import com.roche.heatseq.qualityreport.ProbeDetailsReport;
@@ -63,10 +63,10 @@ import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.heatseq.utils.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
+import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
-import com.roche.sequencing.bioinformatics.common.utils.AlphaNumericStringComparator;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
@@ -90,8 +90,9 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 	private static volatile Semaphore primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore = null;
 	private final static int READ_TO_PROBE_ALIGNMENT_BUFFER = 0;
 
-	final static Map<ReadNameProbeIdPair, Boolean> nonExtendedReadsToDuplicateMap = new ConcurrentHashMap<ReadNameProbeIdPair, Boolean>();
+	final static Set<String> uniqueReads = new ConcurrentSkipListSet<String>();
 	final static Set<String> duplicateReads = new ConcurrentSkipListSet<String>();
+	final static Map<String, ProbeProcessingStats> probeProcessingStatsByProbeId = new ConcurrentHashMap<String, ProbeProcessingStats>();
 
 	/**
 	 * We never create instances of this class, we only expose static methods
@@ -190,6 +191,214 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		return readLocationIsSuitableForProbe;
 	}
 
+	private static Map<String, Probe> getReadToProbeAssignments(ParsedProbeFile probeInfo, ApplicationSettings applicationSettings) {
+		Map<String, Probe> readToProbeAssignments = new HashMap<String, Probe>();
+		Set<String> sequenceNames = probeInfo.getSequenceNames();
+
+		Map<String, RangeMap<Probe>> positveStrandProbesRangesBySequenceName = new HashMap<String, RangeMap<Probe>>();
+		Map<String, RangeMap<Probe>> negativeStrandProbesRangesBySequenceName = new HashMap<String, RangeMap<Probe>>();
+		for (String sequenceName : sequenceNames) {
+			List<Probe> probes = probeInfo.getProbesBySequenceName(sequenceName);
+			RangeMap<Probe> positiveStrandRangeMap = new RangeMap<Probe>();
+			RangeMap<Probe> negativeStrandRangeMap = new RangeMap<Probe>();
+			for (Probe probe : probes) {
+				int queryStart = probe.getStart();
+				Integer basesInsideExtensionPrimerWindow = applicationSettings.getProbeHeaderInformation().getBasesInsideExtensionPrimerWindow();
+				if (basesInsideExtensionPrimerWindow != null) {
+					queryStart += basesInsideExtensionPrimerWindow;
+				}
+
+				int queryStop = probe.getStop();
+				Integer basesInsideLigationPrimerWindow = applicationSettings.getProbeHeaderInformation().getBasesInsideLigationPrimerWindow();
+				if (basesInsideLigationPrimerWindow != null) {
+					queryStop -= basesInsideLigationPrimerWindow;
+				}
+
+				if (probe.getProbeStrand() == Strand.FORWARD) {
+					positiveStrandRangeMap.put(queryStart, queryStop, probe);
+				} else {
+					negativeStrandRangeMap.put(queryStart, queryStop, probe);
+				}
+			}
+			positveStrandProbesRangesBySequenceName.put(sequenceName, positiveStrandRangeMap);
+			negativeStrandProbesRangesBySequenceName.put(sequenceName, negativeStrandRangeMap);
+		}
+		int assignedToMultProbesCount = 0;
+		TallyMap<Probe> probesAssignedToMult = new TallyMap<Probe>();
+		try (SAMFileReader samReader = new SAMFileReader(applicationSettings.getBamFile(), applicationSettings.getBamFileIndex())) {
+			for (String sequenceName : sequenceNames) {
+				Map<String, List<Probe>> containedProbesForFirstFoundReadByReadName = new HashMap<String, List<Probe>>();
+				Map<String, AlignmentStartAndStop> alignmentBoundsForFirstFoundReadByReadName = new HashMap<String, AlignmentStartAndStop>();
+
+				SAMRecordIterator allSamRecordsIter = samReader.query(sequenceName, 0, Integer.MAX_VALUE, false);
+				while (allSamRecordsIter.hasNext()) {
+					SAMRecord record = allSamRecordsIter.next();
+					if (record != null && !record.getReadUnmappedFlag()) {
+						RangeMap<Probe> probeRanges = null;
+
+						// ASSUMPTIONS:
+						// Fastq1/firstOfPair always has same strandedness as probe
+						// Fastq2/secondOfPair always has opposite strandedness as probe
+						boolean isNegativeStrand = record.getReadNegativeStrandFlag();
+						if (record.getSecondOfPairFlag()) {
+							isNegativeStrand = !isNegativeStrand;
+						}
+
+						if (isNegativeStrand) {
+							probeRanges = negativeStrandProbesRangesBySequenceName.get(sequenceName);
+						} else {
+							probeRanges = positveStrandProbesRangesBySequenceName.get(sequenceName);
+						}
+
+						if (probeRanges != null) {
+							String readName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(record.getReadName());
+							List<Probe> containedProbes = probeRanges.getObjectsContainedWithinRangeInclusive(record.getAlignmentStart(), record.getAlignmentEnd());
+
+							List<Probe> containedProbesFromFirstReadInPair = containedProbesForFirstFoundReadByReadName.get(readName);
+							boolean isFirstFoundReadOfPair = containedProbesFromFirstReadInPair == null;
+
+							if (!isFirstFoundReadOfPair) {
+								List<Probe> containedProbesFromSecondReadInPair = containedProbes;
+
+								Set<Probe> containedProbesInBothReads = new HashSet<Probe>();
+								for (Probe probe : containedProbesFromFirstReadInPair) {
+									if (containedProbesFromSecondReadInPair.contains(probe)) {
+										containedProbesInBothReads.add(probe);
+									}
+								}
+
+								Probe assignedProbe = null;
+								if (containedProbesInBothReads.size() == 1) {
+									assignedProbe = containedProbesInBothReads.iterator().next();
+								} else if (containedProbesInBothReads.size() > 1) {
+									List<ProbeAndOutOfBoundNucleotidesPair> containedProbesWithReadsWithinCaptureTarget = new ArrayList<ProbeAndOutOfBoundNucleotidesPair>();
+									for (Probe probe : containedProbesInBothReads) {
+										int probeStart = Math.min(probe.getCaptureTargetStart(), probe.getCaptureTargetStop());
+										int probeStop = Math.max(probe.getCaptureTargetStart(), probe.getCaptureTargetStop());
+
+										int readOneStart = 0;
+										int readOneStop = 0;
+										int readTwoStart = 0;
+										int readTwoStop = 0;
+
+										if (record.getFirstOfPairFlag()) {
+											readOneStart = Math.min(record.getAlignmentStart(), record.getAlignmentEnd());
+											readOneStop = Math.max(record.getAlignmentStart(), record.getAlignmentEnd());
+
+											readTwoStart = alignmentBoundsForFirstFoundReadByReadName.get(readName).getStart();
+											readTwoStop = alignmentBoundsForFirstFoundReadByReadName.get(readName).getStop();
+										} else {
+											readOneStart = alignmentBoundsForFirstFoundReadByReadName.get(readName).getStart();
+											readOneStop = alignmentBoundsForFirstFoundReadByReadName.get(readName).getStop();
+
+											readTwoStart = Math.min(record.getAlignmentStart(), record.getAlignmentEnd());
+											readTwoStop = Math.max(record.getAlignmentStart(), record.getAlignmentEnd());
+										}
+
+										int totalNtsOutsideOfCaptureTarget = 0;
+										if (readOneStart < probeStart) {
+											totalNtsOutsideOfCaptureTarget += (probeStart - readOneStart);
+										}
+										if (readOneStop > probeStop) {
+											totalNtsOutsideOfCaptureTarget += (readOneStop - probeStop);
+										}
+
+										if (readTwoStart < probeStart) {
+											totalNtsOutsideOfCaptureTarget += (probeStart - readTwoStart);
+										}
+										if (readTwoStop > probeStop) {
+											totalNtsOutsideOfCaptureTarget += (readTwoStop - probeStop);
+										}
+
+										containedProbesWithReadsWithinCaptureTarget.add(new ProbeAndOutOfBoundNucleotidesPair(totalNtsOutsideOfCaptureTarget, probe));
+									}
+
+									Collections.sort(containedProbesWithReadsWithinCaptureTarget, new Comparator<ProbeAndOutOfBoundNucleotidesPair>() {
+										@Override
+										public int compare(ProbeAndOutOfBoundNucleotidesPair o1, ProbeAndOutOfBoundNucleotidesPair o2) {
+											return Integer.compare(o1.getNumberOfOutOfBoundNucleotides(), o2.getNumberOfOutOfBoundNucleotides());
+										}
+									});
+
+									int bestOutOfBoundsNt = containedProbesWithReadsWithinCaptureTarget.get(0).getNumberOfOutOfBoundNucleotides();
+									int secondBestOutOfBoundsNt = containedProbesWithReadsWithinCaptureTarget.get(1).getNumberOfOutOfBoundNucleotides();
+									if (bestOutOfBoundsNt < secondBestOutOfBoundsNt) {
+										assignedProbe = containedProbesWithReadsWithinCaptureTarget.get(0).getProbe();
+									} else {
+										probesAssignedToMult.add(containedProbesWithReadsWithinCaptureTarget.get(0).getProbe());
+										probesAssignedToMult.add(containedProbesWithReadsWithinCaptureTarget.get(1).getProbe());
+										assignedToMultProbesCount++;
+										logger.info("Read[" + readName + "] will not be processed because it aligns with multiple probes.");
+									}
+
+								}
+
+								if (assignedProbe != null) {
+									readToProbeAssignments.put(readName, assignedProbe);
+								}
+
+							} else {
+								containedProbesForFirstFoundReadByReadName.put(readName, containedProbes);
+								alignmentBoundsForFirstFoundReadByReadName.put(readName, new AlignmentStartAndStop(record.getAlignmentStart(), record.getAlignmentEnd()));
+							}
+
+						}
+					}
+				}
+
+				allSamRecordsIter.close();
+			}
+		}
+
+		logger.info("Total number of reads assigned to multiple probes:" + assignedToMultProbesCount);
+		logger.info("Probe_Id" + StringUtil.TAB + "Number_Of_Reads_Assigned_To_This_Probe_And_Another_Probe");
+		for (Entry<Probe, Integer> entry : probesAssignedToMult.getTalliesAsMap().entrySet()) {
+			logger.info(entry.getKey().getProbeId() + StringUtil.TAB + entry.getValue());
+		}
+
+		return readToProbeAssignments;
+	}
+
+	private static class AlignmentStartAndStop {
+		private final int start;
+		private final int stop;
+
+		public AlignmentStartAndStop(int start, int stop) {
+			super();
+			this.start = Math.min(start, stop);
+			this.stop = Math.max(start, stop);
+		}
+
+		public int getStart() {
+			return start;
+		}
+
+		public int getStop() {
+			return stop;
+		}
+
+	}
+
+	private static class ProbeAndOutOfBoundNucleotidesPair {
+		private final int numberOfOutOfBoundNucleotides;
+		private final Probe probe;
+
+		public ProbeAndOutOfBoundNucleotidesPair(int numberOfOutOfBoundNucleotides, Probe probe) {
+			super();
+			this.numberOfOutOfBoundNucleotides = numberOfOutOfBoundNucleotides;
+			this.probe = probe;
+		}
+
+		public int getNumberOfOutOfBoundNucleotides() {
+			return numberOfOutOfBoundNucleotides;
+		}
+
+		public Probe getProbe() {
+			return probe;
+		}
+
+	}
+
 	/**
 	 * Get reads for each probe from a merged BAM file, determine which read to use for each UID, extend the reads to the target primers, and output the reduced and extended reads to a new BAM file.
 	 * 
@@ -209,12 +418,11 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 		Set<String> sequenceNames = probeInfo.getSequenceNames();
 
-		Map<String, Set<Probe>> readNamesToDistinctProbeAssignment = new HashMap<String, Set<Probe>>();
 		Set<ISequence> distinctUids = Collections.newSetFromMap(new ConcurrentHashMap<ISequence, Boolean>());
 		List<ISequence> uids = new ArrayList<ISequence>();
 
 		SAMFileWriter samWriter = null;
-
+		Map<String, Probe> readsToProbeAssignments = getReadToProbeAssignments(probeInfo, applicationSettings);
 		try (SAMFileReader samReader = new SAMFileReader(applicationSettings.getBamFile(), applicationSettings.getBamFileIndex())) {
 
 			String outputUnsortedBamFileName = FileUtil.getFileNameWithoutExtension(applicationSettings.getOriginalBamFileName()) + "_UNSORTED_REDUCED."
@@ -290,25 +498,12 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 					while (samRecordIter.hasNext()) {
 						SAMRecord record = samRecordIter.next();
 
-						// ASSUMPTIONS:
-						// Fastq1/firstOfPair always has same strandedness as probe
-						// Fastq2/secondOfPair always has opposite strandedness as probe
-						boolean recordStrandMatchesProbeStrand = (record.getReadNegativeStrandFlag() == (probe.getProbeStrand() == Strand.REVERSE));
-						boolean isFastq1 = record.getFirstOfPairFlag();
-						boolean isFastq2 = record.getSecondOfPairFlag();
+						String readName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(record.getReadName());
 
-						boolean readLocationIsSuitableForProbe = true;
-						// can not make assumptions about the location of the mapping if uids are variable length
-						if (!applicationSettings.isAllowVariableLengthUids() && applicationSettings.isUseStrictReadToProbeMatching()) {
-							readLocationIsSuitableForProbe = readPairAlignsWithProbeCoordinates(probe, record, isFastq1, applicationSettings.getExtensionUidLength(),
-									applicationSettings.getLigationUidLength());
-						}
+						Probe assignedProbe = readsToProbeAssignments.get(readName);
+						if (assignedProbe != null && assignedProbe.equals(probe)) {
 
-						boolean readOrientationIsSuitableForProbe = (isFastq1 && recordStrandMatchesProbeStrand) || (isFastq2 && !recordStrandMatchesProbeStrand);
-						if (readOrientationIsSuitableForProbe && readLocationIsSuitableForProbe) {
-
-							String uniqueReadName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(record.getReadName());
-							SAMRecordPair pair = readNameToRecordsMap.get(uniqueReadName);
+							SAMRecordPair pair = readNameToRecordsMap.get(readName);
 
 							if (pair == null) {
 								pair = new SAMRecordPair();
@@ -323,7 +518,8 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 									throw new AssertionError();
 								}
 
-								readNameToRecordsMap.put(uniqueReadName, pair);
+								readNameToRecordsMap.put(readName, pair);
+
 							}
 						}
 					}
@@ -335,12 +531,6 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 						SAMRecordPair pair = entry.getValue();
 						if (pair.getFirstOfPairRecord() != null && pair.getSecondOfPairRecord() != null) {
 							readNameToCompleteRecordsMap.put(readName, pair);
-							Set<Probe> probesAssignedToRead = readNamesToDistinctProbeAssignment.get(readName);
-							if (probesAssignedToRead == null) {
-								probesAssignedToRead = new HashSet<Probe>();
-							}
-							probesAssignedToRead.add(probe);
-							readNamesToDistinctProbeAssignment.put(readName, probesAssignedToRead);
 						}
 					}
 
@@ -367,40 +557,9 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 			}
 
 			samWriter.close();
-			Set<String> unableToExtendRead = new HashSet<String>();
-			Set<String> readNamesOfReadsAssignedToMultipleProbesToExclude = new HashSet<String>();
-			List<String> readNames = new ArrayList<String>(readNamesToDistinctProbeAssignment.keySet());
-			Collections.sort(readNames, new AlphaNumericStringComparator());
-			for (String readName : readNames) {
-				Set<Probe> assignedProbeIds = readNamesToDistinctProbeAssignment.get(readName);
-				List<ReadNameProbeIdPair> extendedReads = new ArrayList<ReadNameProbeIdPair>();
-
-				for (Probe probe : assignedProbeIds) {
-					ReadNameProbeIdPair readNameAndProbeId = new ReadNameProbeIdPair(readName, probe.getProbeId());
-					boolean readWasExtendedForThisProbeAssignment = !nonExtendedReadsToDuplicateMap.containsKey(readNameAndProbeId);
-
-					if (readWasExtendedForThisProbeAssignment) {
-						extendedReads.add(readNameAndProbeId);
-					}
-				}
-
-				if (extendedReads.size() > 1) {
-					for (ReadNameProbeIdPair readNameAndProbeId : extendedReads) {
-						TabDelimitedFileWriter readsMappedToMultipleProbesWriter = reportManager.getReadsMappedToMultipleProbesWriter();
-						if (readsMappedToMultipleProbesWriter != null) {
-							readsMappedToMultipleProbesWriter.writeLine(readName, readNameAndProbeId.getProbeId());
-							readNamesOfReadsAssignedToMultipleProbesToExclude.add(readName);
-						}
-					}
-				} else if (extendedReads.size() == 0 && assignedProbeIds.size() > 0) {
-					// this read was never extended
-					unableToExtendRead.add(readName);
-				}
-
-			}
 
 			// Sort the output BAM file,
-			BamFileUtil.sortOnCoordinatesAndExcludeReads(outputUnsortedBamFile, outputSortedBamFile, readNamesOfReadsAssignedToMultipleProbesToExclude);
+			BamFileUtil.sortOnCoordinates(outputUnsortedBamFile, outputSortedBamFile);
 			outputUnsortedBamFile.delete();
 
 			// Make index for BAM file
@@ -412,12 +571,10 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 			int totalFullyMappedOffTargetReads = 0;
 			int totalPartiallyMappedReads = 0;
 			int totalFullyUnmappedReads = 0;
-			int totalFullyMappedOnTargetReads = 0;
 
-			int readsAssignedToMultipleProbes = 0;
+			int totalFullyMappedOnTargetReads = 0;
 			int uniqueOnTargetReads = 0;
 			int duplicateOnTargetReads = 0;
-			int unableToExtendReads = 0;
 
 			SAMRecordIterator samRecordIter = samReader.iterator();
 			while (samRecordIter.hasNext()) {
@@ -426,10 +583,6 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 				String readName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(record.getReadName());
 
-				Set<Probe> assignedProbeIds = readNamesToDistinctProbeAssignment.get(readName);
-				boolean hasNoProbesAssigned = assignedProbeIds == null;
-				boolean wasAssignedToMultipleProbes = readNamesOfReadsAssignedToMultipleProbesToExclude.contains(readName);
-
 				boolean readAndMateMapped = !record.getMateUnmappedFlag() && !record.getReadUnmappedFlag();
 				boolean partiallyMapped = (!record.getMateUnmappedFlag() && record.getReadUnmappedFlag()) || (record.getMateUnmappedFlag() && !record.getReadUnmappedFlag());
 				if (partiallyMapped) {
@@ -437,24 +590,17 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 				} else if (!readAndMateMapped) {
 					totalFullyUnmappedReads++;
 				} else if (readAndMateMapped) {
-					if (hasNoProbesAssigned) {
-						totalFullyMappedOffTargetReads++;
-					} else if (wasAssignedToMultipleProbes) {
-						readsAssignedToMultipleProbes++;
-						totalFullyMappedOffTargetReads++;
-					} else {
-						boolean readWasNeverExtended = unableToExtendRead.contains(readName);
-						if (readWasNeverExtended) {
-							unableToExtendReads++;
-							totalFullyMappedOffTargetReads++;
+					boolean isDuplicate = duplicateReads.contains(readName);
+					boolean isReadAssigned = uniqueReads.contains(readName) || isDuplicate;
+					if (isReadAssigned) {
+						totalFullyMappedOnTargetReads++;
+						if (isDuplicate) {
+							duplicateOnTargetReads++;
 						} else {
-							totalFullyMappedOnTargetReads++;
-							if (duplicateReads.contains(readName)) {
-								duplicateOnTargetReads++;
-							} else {
-								uniqueOnTargetReads++;
-							}
+							uniqueOnTargetReads++;
 						}
+					} else {
+						totalFullyMappedOffTargetReads++;
 					}
 				} else {
 					throw new AssertionError("Unable to classify read[" + readName + "].");
@@ -463,9 +609,16 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 			samRecordIter.close();
 
+			ProbeDetailsReport detailsReport = reportManager.getDetailsReport();
+			if (detailsReport != null) {
+				for (ProbeProcessingStats probeProcessingStats : probeProcessingStatsByProbeId.values()) {
+					detailsReport.writeEntry(probeProcessingStats);
+				}
+			}
+
 			long processingTimeInMs = end - start;
-			reportManager.completeSummaryReport(readNamesToDistinctProbeAssignment, distinctUids, uids, processingTimeInMs, totalProbes, totalReads, totalFullyMappedOffTargetReads,
-					totalPartiallyMappedReads, totalFullyUnmappedReads, totalFullyMappedOnTargetReads, readsAssignedToMultipleProbes, uniqueOnTargetReads, duplicateOnTargetReads, unableToExtendReads);
+			reportManager.completeSummaryReport(distinctUids, uids, processingTimeInMs, totalProbes, totalReads, totalFullyMappedOffTargetReads, totalPartiallyMappedReads, totalFullyUnmappedReads,
+					totalFullyMappedOnTargetReads, uniqueOnTargetReads, duplicateOnTargetReads);
 
 			samReader.close();
 			reportManager.close();
@@ -530,38 +683,41 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 						applicationSettings.getExtensionUidLength(), applicationSettings.getLigationUidLength(), alignmentScorer, distinctUids, uids, applicationSettings.isMarkDuplicates(),
 						applicationSettings.isUseStrictReadToProbeMatching());
 
-				List<IReadPair> readsToExtend = probeReductionResults.getUniqueReadPairs();
+				List<IReadPair> uniqueReads = probeReductionResults.getUniqueReadPairs();
 				List<IReadPair> duplicateReads = probeReductionResults.getDuplicateReadPairs();
 
+				List<IReadPair> readsToWrite = new ArrayList<IReadPair>();
+
+				int numberOfReadPairsUnableExtendPrimer = 0;
+
+				ExtendReadResults extendUniqueReadResults = ExtendReadsToPrimer.extendReadsToPrimers(probe, uniqueReads, alignmentScorer);
+				readsToWrite.addAll(extendUniqueReadResults.getExtendedReads());
+				numberOfReadPairsUnableExtendPrimer = extendUniqueReadResults.getUnableToExtendReads().size();
+
+				// need to keep track of these for reporting
+				for (IReadPair readPair : extendUniqueReadResults.getExtendedReads()) {
+					PrimerReadExtensionAndPcrDuplicateIdentification.uniqueReads.add(readPair.getReadName());
+				}
+
 				if (applicationSettings.isKeepDuplicates() || applicationSettings.isMarkDuplicates()) {
-					readsToExtend.addAll(duplicateReads);
-				}
+					ExtendReadResults extendDuplicateReadResults = ExtendReadsToPrimer.extendReadsToPrimers(probe, duplicateReads, alignmentScorer);
+					readsToWrite.addAll(extendDuplicateReadResults.getExtendedReads());
+					numberOfReadPairsUnableExtendPrimer += extendDuplicateReadResults.getUnableToExtendReads().size();
 
-				ExtendReadResults extendReadsResults = ExtendReadsToPrimer.extendReadsToPrimers(probe, readsToExtend, alignmentScorer);
-				List<IReadPair> readsToWrite = extendReadsResults.getExtendedReads();
-				List<IReadPair> unableToExtendReads = extendReadsResults.getUnableToExtendReads();
-
-				// need to keep track of these for reporting
-				for (IReadPair readPair : unableToExtendReads) {
-					PrimerReadExtensionAndPcrDuplicateIdentification.nonExtendedReadsToDuplicateMap.put(new ReadNameProbeIdPair(readPair.getReadName(), readPair.getProbeId()),
-							readPair.isMarkedDuplicate());
-				}
-
-				// need to keep track of these for reporting
-				for (IReadPair readPair : duplicateReads) {
-					PrimerReadExtensionAndPcrDuplicateIdentification.duplicateReads.add(readPair.getReadName());
-				}
-
-				int numberOfReadPairsUnableExtendPrimer = unableToExtendReads.size();
-
-				ProbeDetailsReport detailsReport = reportManager.getDetailsReport();
-				if (detailsReport != null) {
-					synchronized (detailsReport) {
-						ProbeProcessingStats probeProcessingStats = probeReductionResults.getProbeProcessingStats();
-						probeProcessingStats.setNumberOfReadPairsUnableToExtendPrimer(numberOfReadPairsUnableExtendPrimer);
-						detailsReport.writeEntry(probeProcessingStats);
+					// need to keep track of these for reporting
+					for (IReadPair readPair : extendDuplicateReadResults.getExtendedReads()) {
+						PrimerReadExtensionAndPcrDuplicateIdentification.duplicateReads.add(readPair.getReadName());
+					}
+				} else {
+					// need to keep track of these for reporting
+					for (IReadPair readPair : duplicateReads) {
+						PrimerReadExtensionAndPcrDuplicateIdentification.duplicateReads.add(readPair.getReadName());
 					}
 				}
+
+				ProbeProcessingStats probeProcessingStats = probeReductionResults.getProbeProcessingStats();
+				probeProcessingStats.setNumberOfReadPairsUnableToExtendPrimer(numberOfReadPairsUnableExtendPrimer);
+				probeProcessingStatsByProbeId.put(probe.getProbeId(), probeProcessingStats);
 
 				TabDelimitedFileWriter uidCompositionByProbeReport = reportManager.getUidCompisitionByProbeWriter();
 				if (uidCompositionByProbeReport != null) {

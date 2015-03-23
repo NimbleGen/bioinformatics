@@ -16,7 +16,6 @@ import com.roche.heatseq.cli.DeduplicationCli;
 import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.utils.FastqReader;
-import com.roche.heatseq.utils.IlluminaFastQReadNameUtil;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
@@ -62,7 +61,7 @@ public class FastqReadTrimmer {
 		logger.info("read one--first base to keep:" + readOneTrimFromStart + "  lastBaseToKeep:" + readOneTrimStop);
 		logger.info("read two--first base to keep:" + readTwoTrimFromStart + "  lastBaseToKeep:" + readTwoTrimStop);
 
-		verifyReadNamesCanBeHandledByDedup(inputFastqOneFile, inputFastqTwoFile);
+		PrimerReadExtensionAndPcrDuplicateIdentification.verifyReadNamesCanBeHandledByDedup(inputFastqOneFile, inputFastqTwoFile);
 
 		try {
 			trimReads(inputFastqOneFile, outputFastqOneFile, readOneTrimFromStart, readOneTrimStop, performThreePrimeTrimming);
@@ -78,30 +77,6 @@ public class FastqReadTrimmer {
 		}
 		CliStatusConsole.logStatus("Finished trimming (2 of 2):" + inputFastqTwoFile.getAbsolutePath() + ".  The trimmed output has been placed at " + outputFastqTwoFile.getAbsolutePath() + "."
 				+ StringUtil.NEWLINE);
-	}
-
-	private static void verifyReadNamesCanBeHandledByDedup(File inputFastqOne, File inputFastqTwo) {
-		int fastqEntryIndex = 0;
-		try (FastqReader fastQOneReader = new FastqReader(inputFastqOne)) {
-			try (FastqReader fastQTwoReader = new FastqReader(inputFastqTwo)) {
-				while (fastQOneReader.hasNext() && fastQTwoReader.hasNext()) {
-
-					FastqRecord oneRecord = fastQOneReader.next();
-					FastqRecord twoRecord = fastQTwoReader.next();
-					String readNameOne = oneRecord.getReadHeader();
-					String readNameTwo = twoRecord.getReadHeader();
-
-					String uniqueReadNameOne = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(readNameOne);
-					String uniqueReadNameTwo = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(readNameTwo);
-					if (!uniqueReadNameOne.equals(uniqueReadNameTwo)) {
-						int lineNumber = (fastqEntryIndex * 4) + 1;
-						throw new IllegalStateException("The read names[" + readNameOne + "][" + readNameTwo + "] found at line[" + lineNumber + "] in fastqOne[" + inputFastqOne.getAbsolutePath()
-								+ "] and fastqTwo[" + inputFastqTwo.getAbsolutePath() + "] respectively are not valid Illumina read names.");
-					}
-					fastqEntryIndex++;
-				}
-			}
-		}
 	}
 
 	public static void main(String[] args) throws IOException {

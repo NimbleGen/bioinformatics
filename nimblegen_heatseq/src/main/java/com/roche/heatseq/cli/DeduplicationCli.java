@@ -39,6 +39,7 @@ import com.roche.heatseq.process.FastqAndBamFileMerger;
 import com.roche.heatseq.process.FastqValidator;
 import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentification;
 import com.roche.heatseq.process.ProbeInfoFileValidator;
+import com.roche.heatseq.process.UnableToMergeFastqAndBamFilesException;
 import com.roche.heatseq.utils.BamFileUtil;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
@@ -445,10 +446,13 @@ public class DeduplicationCli {
 				if (!samIter.hasNext()) {
 					noEntriesInBam = true;
 				} else {
-					while (!aReadOneFound && !aReadTwoFound) {
+					samLoop: while (samIter.hasNext()) {
 						SAMRecord record = samIter.next();
-						aReadOneFound = record.getFirstOfPairFlag();
-						aReadTwoFound = record.getSecondOfPairFlag();
+						aReadOneFound = aReadOneFound || record.getFirstOfPairFlag();
+						aReadTwoFound = aReadTwoFound || record.getSecondOfPairFlag();
+						if (aReadOneFound && aReadTwoFound) {
+							break samLoop;
+						}
 					}
 				}
 				samIter.close();
@@ -489,7 +493,12 @@ public class DeduplicationCli {
 
 			long totalTimeStart = System.currentTimeMillis();
 
-			FastqAndBamFileMerger.createMergedFastqAndBamFileFromUnsortedFiles(bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, mergedBamFileSortedByCoordinates);
+			try {
+				FastqAndBamFileMerger.createMergedFastqAndBamFileFromUnsortedFiles(bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, mergedBamFileSortedByCoordinates);
+			} catch (UnableToMergeFastqAndBamFilesException e) {
+				throw new IllegalStateException("The provided fastq files,[" + fastQ1WithUidsFile.getAbsolutePath() + "] and [" + fastQ2File.getAbsolutePath()
+						+ "], contain the same reads as the provided BAM file[" + bamFile + "].  Please supply fastq files with untrimmed reads.");
+			}
 			long timeAfterMergeUnsorted = System.currentTimeMillis();
 			logger.debug("done merging bam and fastqfiles ... result[" + mergedBamFileSortedByCoordinates.getAbsolutePath() + "] in " + (timeAfterMergeUnsorted - totalTimeStart) + "ms.");
 

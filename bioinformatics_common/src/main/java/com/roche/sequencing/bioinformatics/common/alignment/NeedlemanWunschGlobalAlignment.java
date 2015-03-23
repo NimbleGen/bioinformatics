@@ -367,6 +367,23 @@ public class NeedlemanWunschGlobalAlignment {
 		return CigarStringUtil.getMismatchDetailsString(getAlignmentPair());
 	}
 
+	public int getNumberOfNucleotidesOutsideOfReference() {
+		int numberOfNucleotidesOutsideOfReference = 0;
+		int i = 0;
+		ISequence referenceAlignment = getAlignmentPair().getReferenceAlignment();
+		while (i < referenceAlignment.size() && referenceAlignment.getCodeAt(i).equals(IupacNucleotideCode.GAP)) {
+			i++;
+		}
+		numberOfNucleotidesOutsideOfReference += i;
+
+		i = referenceAlignment.size() - 1;
+		while (i >= 0 && referenceAlignment.getCodeAt(i).equals(IupacNucleotideCode.GAP)) {
+			i--;
+		}
+		numberOfNucleotidesOutsideOfReference += (referenceAlignment.size() - i - 1);
+		return numberOfNucleotidesOutsideOfReference;
+	}
+
 	/**
 	 * @return the reference index of the first sequence match in this alignment, -1 if no sequence matches exist
 	 */

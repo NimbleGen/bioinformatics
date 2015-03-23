@@ -91,6 +91,11 @@ public class FastqAndBamFileMerger {
 				if (simpleFastqRecord != null) {
 					String readString = simpleFastqRecord.getReadString();
 					String baseQualityString = simpleFastqRecord.getBaseQualityString();
+
+					if (samRecord.getReadString().equals(readString) && samRecord.getBaseQualityString().equals(baseQualityString)) {
+						throw new UnableToMergeFastqAndBamFilesException();
+					}
+
 					SAMRecord modifiedRecord = storeFastqInfoInRecord(samRecord, readString, baseQualityString);
 					samWriter.addAlignment(modifiedRecord);
 				}
