@@ -297,11 +297,11 @@ public class CommandLineParser {
 	}
 
 	static boolean isShortFormIdentifierArgument(String argument) {
-		return argument.startsWith(SHORT_OPTION_INDICATOR);
+		return argument != null && argument.startsWith(SHORT_OPTION_INDICATOR);
 	}
 
 	static boolean isLongFormIdentifierArgument(String argument) {
-		return argument.startsWith(LONG_OPTION_INDICATOR);
+		return argument != null && argument.startsWith(LONG_OPTION_INDICATOR);
 	}
 
 	/**

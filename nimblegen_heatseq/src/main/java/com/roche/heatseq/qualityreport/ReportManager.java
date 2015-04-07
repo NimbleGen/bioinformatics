@@ -4,13 +4,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import net.sf.samtools.SAMFileHeader;
 
 import com.roche.heatseq.cli.HsqUtilsCli;
-import com.roche.heatseq.objects.Probe;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarStringUtil;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
@@ -190,17 +188,14 @@ public class ReportManager {
 		return ambiguousMappingWriter;
 	}
 
-	public void completeSummaryReport(Map<String, Set<Probe>> readNamesToDistinctProbeAssignmentCount, Set<ISequence> distinctUids, List<ISequence> nonDistinctUids, long processingTimeInMs,
-			int totalProbes, int totalReads, int totalFullyMappedOffTargetReads, int totalPartiallyMappedReads, int totalFullyUnmappedReads, int totalFullyMappedOnTargetReads,
-			int readsAssignedToMultipleProbes, int uniqueOnTargetReads, int duplicateOnTargetReads, int unableToExtendReads) {
+	public void completeSummaryReport(Set<ISequence> distinctUids, List<ISequence> nonDistinctUids, long processingTimeInMs, int totalProbes, int totalReadPairs,
+			int totalFullyMappedOffTargetReadPairs, int totalPartiallyMappedReadPairs, int totalFullyUnmappedReadPairs, int totalFullyMappedOnTargetReadPairs, int uniqueOnTargetReadPairs,
+			int duplicateOnTargetReadPairs, int unpairedReads) {
 
-		summaryReport.setDuplicateReadPairsRemoved(duplicateOnTargetReads / 2);
-		summaryReport.setTotalReadPairsAfterReduction(uniqueOnTargetReads / 2);
+		summaryReport.setDuplicateReadPairsRemoved(duplicateOnTargetReadPairs);
+		summaryReport.setTotalReadPairsAfterReduction(uniqueOnTargetReadPairs);
 
 		summaryReport.setProbesWithNoMappedReadPairs(detailsReport.getProbesWithNoMappedReadPairs());
-
-		summaryReport.setReadsAssignedToMultipleProbes(readsAssignedToMultipleProbes);
-		summaryReport.setUnableToExtendReads(unableToExtendReads);
 
 		summaryReport.setAverageUidsPerProbe(detailsReport.getAverageNumberOfUidsPerProbe());
 		summaryReport.setAverageUidsPerProbeWithReads(detailsReport.getAverageNumberOfUidsPerProbeWithAssignedReads());
@@ -210,15 +205,18 @@ public class ReportManager {
 		summaryReport.setDistinctUidsFound(distinctUids.size());
 		summaryReport.setTotalProbes(totalProbes);
 
-		summaryReport.setTotalFullyMappedOffTargetReads(totalFullyMappedOffTargetReads);
+		summaryReport.setTotalFullyMappedOffTargetReadPairs(totalFullyMappedOffTargetReadPairs);
 
-		summaryReport.setTotalPartiallyMappedReads(totalPartiallyMappedReads);
+		summaryReport.setTotalPartiallyMappedReadPairs(totalPartiallyMappedReadPairs);
 
-		summaryReport.setTotalFullyUnmappedReads(totalFullyUnmappedReads);
+		summaryReport.setTotalFullyUnmappedReads(totalFullyUnmappedReadPairs);
 
-		summaryReport.setTotalFullyMappedOnTargetReads(totalFullyMappedOnTargetReads);
+		summaryReport.setTotalFullyMappedOnTargetReadPairs(totalFullyMappedOnTargetReadPairs);
 
-		summaryReport.setTotalReads(totalReads);
+		summaryReport.setUnpairedReads(unpairedReads);
+
+		summaryReport.setTotalReads((totalReadPairs * 2) + unpairedReads);
+		summaryReport.setTotalReadPairs(totalReadPairs);
 	}
 
 	public void addExtensionPrimerMismatchDetails(String extensionPrimerMismatchAlignment) {

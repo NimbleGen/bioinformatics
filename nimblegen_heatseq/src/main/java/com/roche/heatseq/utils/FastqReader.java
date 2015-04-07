@@ -51,18 +51,24 @@ import com.roche.sequencing.bioinformatics.common.utils.GZipUtil;
  * Reads a fastq file.
  */
 public class FastqReader implements Iterator<FastqRecord>, Iterable<FastqRecord>, Closeable {
+	private final static int DEFAULT_BUFFER_SIZE = 4096;
+
 	private final BufferedReader reader;
 	private FastqRecord nextRecord;
 	private final String fileAbsolutePath;
 	private int line = 1;
 
 	public FastqReader(final File gzippedOrUncompressedFastqFile) {
+		this(gzippedOrUncompressedFastqFile, DEFAULT_BUFFER_SIZE);
+	}
+
+	public FastqReader(final File gzippedOrUncompressedFastqFile, int bufferSize) {
 		try {
 			boolean isGzipped = GZipUtil.isCompressed(gzippedOrUncompressedFastqFile);
 			if (isGzipped) {
-				reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(gzippedOrUncompressedFastqFile))));
+				reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(gzippedOrUncompressedFastqFile), bufferSize)), bufferSize);
 			} else {
-				reader = IoUtil.openFileForBufferedReading(gzippedOrUncompressedFastqFile);
+				reader = new BufferedReader(new InputStreamReader(IoUtil.openFileForReading(gzippedOrUncompressedFastqFile)), bufferSize);
 			}
 			this.fileAbsolutePath = gzippedOrUncompressedFastqFile.getAbsolutePath();
 			nextRecord = readNextRecord();

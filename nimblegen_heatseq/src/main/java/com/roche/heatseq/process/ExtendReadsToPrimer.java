@@ -49,7 +49,7 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 public final class ExtendReadsToPrimer {
 	private static final Logger logger = LoggerFactory.getLogger(ExtendReadsToPrimer.class);
 
-	private static final int PRIMER_ALIGNMENT_BUFFER = 10;
+	private static final int PRIMER_ALIGNMENT_BUFFER = 25;
 	// The location of the end of the primer must be at least this many bases from the end of the read
 	private static final int LENGTH_THRESHOLD_FOR_EXTENDED_READ = 10;
 	private static final double LENGTH_NORMALIZED_ALIGNMENT_SCORE_THRESHOLD = 0;
@@ -134,7 +134,6 @@ public final class ExtendReadsToPrimer {
 						readOneExtensionDetails.getMismatchDetailsString(), readOneExtensionDetails.getAlignmentStartInReference(), readOneExtendedSequence.toString(), readOneExtendedBaseQualities,
 						sequenceName, oneMappingQuality, readOneReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId(), isBestDuplicate);
 			}
-
 			ReadExtensionDetails readTwoExtensionDetails = calculateDetailsForReadExtensionToPrimer(ligationPrimer, primerReferencePositionAdjacentToSequence, captureTargetSequence, sequenceTwo,
 					true, readTwoIsOnReverseStrand, alignmentScorer);
 
@@ -343,6 +342,10 @@ public final class ExtendReadsToPrimer {
 		}
 
 		return primerEndIndexInRead;
+	}
+
+	public static void main(String[] args) {
+		getPrimerEndIndexInRead(new IupacNucleotideCodeSequence("CCGGGCTGGACTCCATGA"), new IupacNucleotideCodeSequence("ATGACACGCACGGGCTGGAGCCCGGGCTGGACTCCATGATGTCTTTGAAGACCTCATCAGCAGCTTCCTCATTCTT"));
 	}
 
 	static ExtendReadResults extendReadsToPrimers(Probe probe, List<IReadPair> readPairs, IAlignmentScorer alignmentScorer) {

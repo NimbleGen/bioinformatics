@@ -30,8 +30,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ParsedProbeFile;
+import com.roche.heatseq.objects.Probe;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
@@ -90,27 +90,31 @@ public final class ProbeFileUtil {
 			String probeStrandAsString = headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i);
 			Strand probeStrand = Strand.fromString(probeStrandAsString);
 
-			int extensionPrimerStart = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
-			int extensionPrimerStop = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
+			try {
+				int extensionPrimerStart = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
+				int extensionPrimerStop = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 
-			ISequence extensionPrimerSequence = new IupacNucleotideCodeSequence(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
+				ISequence extensionPrimerSequence = new IupacNucleotideCodeSequence(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 
-			int ligationPrimerStart = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
-			int ligationPrimerStop = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
+				int ligationPrimerStart = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
+				int ligationPrimerStop = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 
-			ISequence ligationPrimerSequence = new IupacNucleotideCodeSequence(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
+				ISequence ligationPrimerSequence = new IupacNucleotideCodeSequence(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 
-			int captureTargetStart = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
-			int captureTargetStop = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
-			ISequence captureTargetSequence = new IupacNucleotideCodeSequence(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
+				int captureTargetStart = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
+				int captureTargetStop = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
+				ISequence captureTargetSequence = new IupacNucleotideCodeSequence(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 
-			// annotation
-			headerIndex++;
+				// annotation
+				headerIndex++;
 
-			Probe probe = new Probe(probeId, sequenceName, extensionPrimerStart, extensionPrimerStop, extensionPrimerSequence, ligationPrimerStart, ligationPrimerStop, ligationPrimerSequence,
-					captureTargetStart, captureTargetStop, captureTargetSequence, probeStrand);
+				Probe probe = new Probe(probeId, sequenceName, extensionPrimerStart, extensionPrimerStop, extensionPrimerSequence, ligationPrimerStart, ligationPrimerStop, ligationPrimerSequence,
+						captureTargetStart, captureTargetStop, captureTargetSequence, probeStrand);
 
-			probeInfo.addProbe(sequenceName, probe);
+				probeInfo.addProbe(sequenceName, probe);
+			} catch (NumberFormatException e) {
+				throw new IllegalStateException("Unable to parse line[" + (i + 3) + "] of the probe info file[" + probeInfoFile.getAbsolutePath() + "].");
+			}
 
 		}
 

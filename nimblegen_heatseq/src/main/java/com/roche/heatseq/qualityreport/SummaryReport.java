@@ -14,19 +14,19 @@ public class SummaryReport {
 	private final String sampleName;
 
 	private int totalReads = 0;
-	private int totalFullyMappedOffTargetReads = 0;
-	private int totalPartiallyMappedReads = 0;
-	private int totalFullyUnmappedReads;
-	private int totalFullyMappedOnTargetReads = 0;
-
-	private int readsAssignedToMultipleProbes;
-	private int unableToExtendReads;
+	private int totalReadPairs = 0;
+	private int totalFullyMappedOffTargetReadPairs = 0;
+	private int totalPartiallyMappedReadPairs = 0;
+	private int totalFullyUnmappedReadPairs;
+	private int totalFullyMappedOnTargetReadPairs = 0;
 
 	private int duplicateReadPairsRemoved;
 
 	private int totalProbes;
 	private int probesWithNoMappedReadPairs;
 	private int totalReadPairsAfterReduction;
+
+	private int unpairedReads;
 
 	private int distinctUidsFound;
 
@@ -45,7 +45,7 @@ public class SummaryReport {
 		String[] header = new String[] { "sample_prefix", "input_read_pairs", "pairs_with_both_reads_mapped", "pairs_with_both_reads_unmapped", "pairs_with_only_one_read_mapped",
 				"pairs_with_on-target_reads", "pct_pairs_with_on-target_reads", "pairs_with_off-target_reads", "pct_pairs_with_off-target_reads", "duplicate_read_pairs_removed", "probes",
 				"probes_with_no_mapped_read_pairs", "unique_read_pairs", "distinct_uids_found", "average_uids_per_probe", "average_uids_per_probes_with_reads", "max_uids_per_probe",
-				"average_read_pairs_per_uid", "read_pairs_with_unalignable_primers", "read_pairs_assigned_to_multiple_probes" };
+				"average_read_pairs_per_uid", "unpaired_reads", "input_reads" };
 		detailsReportWriter = new TabDelimitedFileWriter(summaryReportFile, preHeader, header);
 	}
 
@@ -85,50 +85,49 @@ public class SummaryReport {
 		this.averageNumberOfReadPairsPerProbeUid = averageNumberOfReadPairsPerUid;
 	}
 
-	public void setTotalFullyMappedOffTargetReads(int totalFullyMappedOffTargetReads) {
-		this.totalFullyMappedOffTargetReads = totalFullyMappedOffTargetReads;
+	public void setTotalFullyMappedOffTargetReadPairs(int totalFullyMappedOffTargetReadPairs) {
+		this.totalFullyMappedOffTargetReadPairs = totalFullyMappedOffTargetReadPairs;
 	}
 
-	public void setTotalPartiallyMappedReads(int totalPartiallyMappedReads) {
-		this.totalPartiallyMappedReads = totalPartiallyMappedReads;
+	public void setTotalPartiallyMappedReadPairs(int totalPartiallyMappedReadPairs) {
+		this.totalPartiallyMappedReadPairs = totalPartiallyMappedReadPairs;
 	}
 
-	public void setTotalFullyUnmappedReads(int totalFullyUnmappedReads) {
-		this.totalFullyUnmappedReads = totalFullyUnmappedReads;
+	public void setTotalFullyUnmappedReads(int totalFullyUnmappedReadPairs) {
+		this.totalFullyUnmappedReadPairs = totalFullyUnmappedReadPairs;
 	}
 
-	public void setTotalFullyMappedOnTargetReads(int totalFullyMappedOnTargetReads) {
-		this.totalFullyMappedOnTargetReads = totalFullyMappedOnTargetReads;
+	public void setTotalFullyMappedOnTargetReadPairs(int totalFullyMappedOnTargetReadPairs) {
+		this.totalFullyMappedOnTargetReadPairs = totalFullyMappedOnTargetReadPairs;
 	}
 
 	public void setTotalReads(int totalReads) {
 		this.totalReads = totalReads;
 	}
 
-	public void setReadsAssignedToMultipleProbes(int readsAssignedToMultipleProbes) {
-		this.readsAssignedToMultipleProbes = readsAssignedToMultipleProbes;
+	public void setTotalReadPairs(int totalReadPairs) {
+		this.totalReadPairs = totalReadPairs;
 	}
 
-	public void setUnableToExtendReads(int unableToExtendReads) {
-		this.unableToExtendReads = unableToExtendReads;
+	public void setUnpairedReads(int unpairedReads) {
+		this.unpairedReads = unpairedReads;
 	}
 
 	void close() {
 		DecimalFormat formatter = new DecimalFormat("0.0000");
 
-		String inputReadPairs = "" + (totalReads / 2);
-		int numberOfPairsWithBothReadsMapped = ((totalFullyMappedOffTargetReads + totalFullyMappedOnTargetReads) / 2);
+		String inputReadPairs = "" + (totalReadPairs);
+		String inputReads = "" + totalReads;
+		int numberOfPairsWithBothReadsMapped = (totalFullyMappedOffTargetReadPairs + totalFullyMappedOnTargetReadPairs);
 		String pairsWithBothReadsMapped = "" + numberOfPairsWithBothReadsMapped;
-		String pairsWithOnlyOneReadMapped = "" + totalPartiallyMappedReads / 2;
-		String pairsWithBothReadsUnmapped = "" + totalFullyUnmappedReads / 2;
-		int numberOfPairsWithOnTargetReads = totalFullyMappedOnTargetReads / 2;
+		String pairsWithOnlyOneReadMapped = "" + totalPartiallyMappedReadPairs;
+		String pairsWithBothReadsUnmapped = "" + totalFullyUnmappedReadPairs;
+		int numberOfPairsWithOnTargetReads = totalFullyMappedOnTargetReadPairs;
 
 		String pairsWithOnTargetReads = "" + numberOfPairsWithOnTargetReads;
 
-		int numberOfPairsWithOffTargetReads = totalFullyMappedOffTargetReads / 2;
+		int numberOfPairsWithOffTargetReads = totalFullyMappedOffTargetReadPairs;
 
-		int numberOfPairsAssignedToMultipleProbes = readsAssignedToMultipleProbes / 2;
-		int numberOfPairsUnableToExtendReads = unableToExtendReads / 2;
 		String percentPairsWithOffTargetReads = formatter.format(((double) numberOfPairsWithOffTargetReads / (double) numberOfPairsWithBothReadsMapped) * 100);
 		String percentPairsWithOnTargetReads = formatter.format(((double) numberOfPairsWithOnTargetReads / (double) numberOfPairsWithBothReadsMapped) * 100);
 		String uniqueReadpairs = "" + totalReadPairsAfterReduction;
@@ -136,8 +135,7 @@ public class SummaryReport {
 		String averageReadPairsPerUid = "" + formatter.format(averageNumberOfReadPairsPerProbeUid);
 		detailsReportWriter.writeLine(sampleName, inputReadPairs, pairsWithBothReadsMapped, pairsWithBothReadsUnmapped, pairsWithOnlyOneReadMapped, pairsWithOnTargetReads,
 				percentPairsWithOnTargetReads, numberOfPairsWithOffTargetReads, percentPairsWithOffTargetReads, duplicateReadPairsRemoved, totalProbes, probesWithNoMappedReadPairs, uniqueReadpairs,
-				distinctUidsFound, formatter.format(averageUidsPerProbe), averageUidsPerProbesWithReads, maxUidsPerProbe, averageReadPairsPerUid, numberOfPairsUnableToExtendReads,
-				numberOfPairsAssignedToMultipleProbes);
+				distinctUidsFound, formatter.format(averageUidsPerProbe), averageUidsPerProbesWithReads, maxUidsPerProbe, averageReadPairsPerUid, unpairedReads, inputReads);
 		detailsReportWriter.close();
 	}
 

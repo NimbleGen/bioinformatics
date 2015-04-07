@@ -76,6 +76,7 @@ public class ProbeProcessingStats {
 		}
 		this.weightedUidComposition = weightedUidComposition;
 		this.weightedUidCompositionByPosition = weightedUidCompositionByPosition;
+		this.numberOfReadPairsUnableExtendPrimer = 0;
 	}
 
 	public int getTotalUids() {
@@ -108,22 +109,19 @@ public class ProbeProcessingStats {
 		DecimalFormat formatter = new DecimalFormat("0.00");
 		StringBuilder stringBuilder = new StringBuilder();
 
-		int totalReadPairs = totalDuplicateReadPairsRemoved + totalUids;
+		int readPairsAfterReduction = getTotalReadPairsRemainingAfterReduction();
 
-		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + totalReadPairs + StringUtil.TAB + totalReadPairsRemainingAfterReduction + StringUtil.TAB + totalDuplicateReadPairsRemoved
-				+ StringUtil.TAB + formatter.format(onTargetDuplicateRate * 100) + StringUtil.TAB);
+		int totalReadPairs = readPairsAfterReduction + totalDuplicateReadPairsRemoved;
+
+		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + totalReadPairs + StringUtil.TAB + readPairsAfterReduction + StringUtil.TAB + totalDuplicateReadPairsRemoved + StringUtil.TAB
+				+ formatter.format(onTargetDuplicateRate * 100) + StringUtil.TAB);
 		stringBuilder.append(formatter.format(averageNumberOfReadPairsPerUid) + StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase()
 				+ StringUtil.TAB + numberOfReadPairsUnableExtendPrimer);
 
 		return stringBuilder.toString();
 	}
 
-	public int getNumberOfReadPairsUnableToExtendPrimer() {
-		return numberOfReadPairsUnableExtendPrimer;
-	}
-
 	public void setNumberOfReadPairsUnableToExtendPrimer(int numberOfReadPairsUnableExtendPrimer) {
 		this.numberOfReadPairsUnableExtendPrimer = numberOfReadPairsUnableExtendPrimer;
-
 	}
 }

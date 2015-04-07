@@ -113,11 +113,13 @@ class FilterByUid {
 						uids.add(fullUidSequence);
 					}
 
-					String readOneString = SAMRecordUtil.removeUidFromReadOne(record.getReadString(), extensionUid.length());
-					String readOneBaseQualityString = SAMRecordUtil.removeUidFromReadOne(record.getBaseQualityString(), extensionUid.length());
+					// leave the uid on, this way if its short we won't cut off primer sequence and only uid diversity will be affected
+					String readOneString = record.getReadString();// SAMRecordUtil.removeUidFromReadOne(record.getReadString(), extensionUid.length());
+					String readOneBaseQualityString = record.getBaseQualityString();// SAMRecordUtil.removeUidFromReadOne(record.getBaseQualityString(), extensionUid.length());
 
-					String readTwoString = SAMRecordUtil.removeUidFromReadOne(mate.getReadString(), ligationUid.length());
-					String readTwoBaseQualityString = SAMRecordUtil.removeUidFromReadOne(mate.getBaseQualityString(), ligationUid.length());
+					// leave the uid on, this way if its short we won't cut off primer sequence and only uid diversity will be affected
+					String readTwoString = mate.getReadString();// SAMRecordUtil.removeUidFromReadOne(mate.getReadString(), ligationUid.length());
+					String readTwoBaseQualityString = mate.getBaseQualityString();// SAMRecordUtil.removeUidFromReadOne(mate.getBaseQualityString(), ligationUid.length());
 
 					record.setReadString(readOneString);
 					record.setBaseQualityString(readOneBaseQualityString);
@@ -145,9 +147,7 @@ class FilterByUid {
 			uidToDataMap.put(fullUid, uidData);
 		}
 
-		int totalReadPairsRemainingAfterReduction = 0;
 		int totalReadPairs = 0;
-		int totalDuplicateReadPairsRemoved = 0;
 		int minNumberOfReadPairsPerUid = Integer.MAX_VALUE;
 		int maxNumberOfReadPairsPerUid = 0;
 		String uidOfEntryWithMaxNumberOfReadPairs = "";
@@ -177,8 +177,6 @@ class FilterByUid {
 				uidOfEntryWithMaxNumberOfReadPairs = uid;
 			}
 
-			totalDuplicateReadPairsRemoved += (pairsDataByUid.size() - 1);
-
 			IReadPair bestPair = findBestData(pairsDataByUid);
 			bestPair.setAsBestPairInUidGroup();
 			uniqueReadPairs.add(bestPair);
@@ -192,7 +190,6 @@ class FilterByUid {
 				}
 			}
 
-			totalReadPairsRemainingAfterReduction++;
 			i++;
 		}
 
@@ -249,7 +246,7 @@ class FilterByUid {
 		String weightedUidComposition = NucleotideCompositionUtil.getNucleotideComposition(weightedUidsByProbe);
 		String weightedUidCompositionByPosition = NucleotideCompositionUtil.getNucleotideCompositionByPosition(weightedUidsByProbe);
 
-		ProbeProcessingStats probeProcessingStats = new ProbeProcessingStats(probe, totalUids, averageNumberOfReadPairsPerUid, totalDuplicateReadPairsRemoved, totalReadPairsRemainingAfterReduction,
+		ProbeProcessingStats probeProcessingStats = new ProbeProcessingStats(probe, totalUids, averageNumberOfReadPairsPerUid, duplicateReadPairs.size(), uniqueReadPairs.size(),
 				maxNumberOfReadPairsPerUid, uidOfEntryWithMaxNumberOfReadPairs, uidComposition, uidCompositionByPosition, weightedUidComposition, weightedUidCompositionByPosition);
 
 		return new UidReductionResultsForAProbe(probeProcessingStats, uniqueReadPairs, duplicateReadPairs);
