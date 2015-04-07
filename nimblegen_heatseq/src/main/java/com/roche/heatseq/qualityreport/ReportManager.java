@@ -188,11 +188,12 @@ public class ReportManager {
 		return ambiguousMappingWriter;
 	}
 
-	public void completeSummaryReport(Set<ISequence> distinctUids, List<ISequence> nonDistinctUids, long processingTimeInMs, int totalProbes, int totalReads, int totalFullyMappedOffTargetReads,
-			int totalPartiallyMappedReads, int totalFullyUnmappedReads, int totalFullyMappedOnTargetReads, int uniqueOnTargetReads, int duplicateOnTargetReads) {
+	public void completeSummaryReport(Set<ISequence> distinctUids, List<ISequence> nonDistinctUids, long processingTimeInMs, int totalProbes, int totalReadPairs,
+			int totalFullyMappedOffTargetReadPairs, int totalPartiallyMappedReadPairs, int totalFullyUnmappedReadPairs, int totalFullyMappedOnTargetReadPairs, int uniqueOnTargetReadPairs,
+			int duplicateOnTargetReadPairs, int unpairedReads) {
 
-		summaryReport.setDuplicateReadPairsRemoved(duplicateOnTargetReads / 2);
-		summaryReport.setTotalReadPairsAfterReduction(uniqueOnTargetReads / 2);
+		summaryReport.setDuplicateReadPairsRemoved(duplicateOnTargetReadPairs);
+		summaryReport.setTotalReadPairsAfterReduction(uniqueOnTargetReadPairs);
 
 		summaryReport.setProbesWithNoMappedReadPairs(detailsReport.getProbesWithNoMappedReadPairs());
 
@@ -204,15 +205,18 @@ public class ReportManager {
 		summaryReport.setDistinctUidsFound(distinctUids.size());
 		summaryReport.setTotalProbes(totalProbes);
 
-		summaryReport.setTotalFullyMappedOffTargetReads(totalFullyMappedOffTargetReads);
+		summaryReport.setTotalFullyMappedOffTargetReadPairs(totalFullyMappedOffTargetReadPairs);
 
-		summaryReport.setTotalPartiallyMappedReads(totalPartiallyMappedReads);
+		summaryReport.setTotalPartiallyMappedReadPairs(totalPartiallyMappedReadPairs);
 
-		summaryReport.setTotalFullyUnmappedReads(totalFullyUnmappedReads);
+		summaryReport.setTotalFullyUnmappedReads(totalFullyUnmappedReadPairs);
 
-		summaryReport.setTotalFullyMappedOnTargetReads(totalFullyMappedOnTargetReads);
+		summaryReport.setTotalFullyMappedOnTargetReadPairs(totalFullyMappedOnTargetReadPairs);
 
-		summaryReport.setTotalReads(totalReads);
+		summaryReport.setUnpairedReads(unpairedReads);
+
+		summaryReport.setTotalReads((totalReadPairs * 2) + unpairedReads);
+		summaryReport.setTotalReadPairs(totalReadPairs);
 	}
 
 	public void addExtensionPrimerMismatchDetails(String extensionPrimerMismatchAlignment) {

@@ -73,8 +73,8 @@ public class ApplicationSettings {
 	 */
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1File, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
 			String originalBamFileName, boolean shouldOutputReports, String commandLineSignature, String programName, String programVersion, int numProcessors, boolean allowVariableLengthUids,
-			IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinTheCaptureTargetSequence, int extensionUidLength, int ligationUidLength, boolean markDuplicates, boolean keepDuplicates,
-			boolean mergePairs, boolean useStrictReadToProbeMatching, ProbeHeaderInformation probeHeaderInformation) {
+			IAlignmentScorer alignmentScorer, int extensionUidLength, int ligationUidLength, boolean markDuplicates, boolean keepDuplicates, boolean mergePairs, boolean useStrictReadToProbeMatching,
+			ProbeHeaderInformation probeHeaderInformation) {
 		super();
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;

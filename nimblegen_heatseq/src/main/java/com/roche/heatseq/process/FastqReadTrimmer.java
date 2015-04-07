@@ -26,37 +26,13 @@ public class FastqReadTrimmer {
 	private static Logger logger = LoggerFactory.getLogger(FastqReadTrimmer.class);
 
 	public static void trimReads(File inputFastqOneFile, File inputFastqTwoFile, File probeInfoFile, File outputFastqOneFile, File outputFastqTwoFile) throws IOException {
-		ParsedProbeFile probes = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
+		ProbeTrimmingInformation probeTrimmingInformation = getProbeTrimmingInformation(probeInfoFile);
+		boolean performThreePrimeTrimming = probeTrimmingInformation.isPerformThreePrimeTrimming();
 
-		ProbeInfoStats probeInfoStats = collectStatsFromProbeInformation(probes);
-
-		logger.info(probeInfoStats.toString());
-
-		ProbeHeaderInformation probeHeaderInformation = ProbeFileUtil.extractProbeHeaderInformation(probeInfoFile);
-
-		int extensionUidLength = DeduplicationCli.DEFAULT_EXTENSION_UID_LENGTH;
-		if (probeHeaderInformation.getExtensionUidLength() != null) {
-			extensionUidLength = probeHeaderInformation.getExtensionUidLength();
-		}
-		int ligationUidLength = DeduplicationCli.DEFAULT_LIGATION_UID_LENGTH;
-		if (probeHeaderInformation.getLigationUidLength() != null) {
-			extensionUidLength = probeHeaderInformation.getLigationUidLength();
-		}
-		int additionalExtensionTrimLength = 0;
-		if (probeHeaderInformation.getAdditionalExtensionTrimLength() != null) {
-			extensionUidLength = probeHeaderInformation.getAdditionalExtensionTrimLength();
-		}
-		int additionalLigationTrimLength = 0;
-		if (probeHeaderInformation.getAdditionalLigationTrimLength() != null) {
-			extensionUidLength = probeHeaderInformation.getAdditionalLigationTrimLength();
-		}
-
-		boolean performThreePrimeTrimming = probeHeaderInformation.getPerformThreePrimeTrimming();
-
-		int readOneTrimFromStart = additionalExtensionTrimLength + extensionUidLength + probeInfoStats.getMaxExtensionPrimerLength();
-		int readOneTrimStop = probeInfoStats.getMinCaptureTargetLength() + probeInfoStats.getMinLigationPrimerLength();
-		int readTwoTrimFromStart = additionalLigationTrimLength + ligationUidLength + probeInfoStats.getMaxLigationPrimerLength();
-		int readTwoTrimStop = probeInfoStats.getMinCaptureTargetLength() + probeInfoStats.getMinExtensionPrimerLength();
+		int readOneTrimFromStart = probeTrimmingInformation.getReadOneTrimFromStart();
+		int readOneTrimStop = probeTrimmingInformation.getReadOneTrimStop();
+		int readTwoTrimFromStart = probeTrimmingInformation.getReadTwoTrimFromStart();
+		int readTwoTrimStop = probeTrimmingInformation.getReadTwoTrimStop();
 
 		logger.info("read one--first base to keep:" + readOneTrimFromStart + "  lastBaseToKeep:" + readOneTrimStop);
 		logger.info("read two--first base to keep:" + readTwoTrimFromStart + "  lastBaseToKeep:" + readTwoTrimStop);
@@ -77,6 +53,43 @@ public class FastqReadTrimmer {
 		}
 		CliStatusConsole.logStatus("Finished trimming (2 of 2):" + inputFastqTwoFile.getAbsolutePath() + ".  The trimmed output has been placed at " + outputFastqTwoFile.getAbsolutePath() + "."
 				+ StringUtil.NEWLINE);
+	}
+
+	public static ProbeTrimmingInformation getProbeTrimmingInformation(File probeInfoFile) throws IOException {
+		ParsedProbeFile probes = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
+
+		ProbeInfoStats probeInfoStats = collectStatsFromProbeInformation(probes);
+
+		logger.info(probeInfoStats.toString());
+
+		ProbeHeaderInformation probeHeaderInformation = ProbeFileUtil.extractProbeHeaderInformation(probeInfoFile);
+
+		int extensionUidLength = DeduplicationCli.DEFAULT_EXTENSION_UID_LENGTH;
+		if (probeHeaderInformation.getExtensionUidLength() != null) {
+			extensionUidLength = probeHeaderInformation.getExtensionUidLength();
+		}
+		int ligationUidLength = DeduplicationCli.DEFAULT_LIGATION_UID_LENGTH;
+		if (probeHeaderInformation.getLigationUidLength() != null) {
+			ligationUidLength = probeHeaderInformation.getLigationUidLength();
+		}
+		int additionalExtensionTrimLength = 0;
+		if (probeHeaderInformation.getAdditionalExtensionTrimLength() != null) {
+			additionalExtensionTrimLength = probeHeaderInformation.getAdditionalExtensionTrimLength();
+		}
+		int additionalLigationTrimLength = 0;
+		if (probeHeaderInformation.getAdditionalLigationTrimLength() != null) {
+			additionalLigationTrimLength = probeHeaderInformation.getAdditionalLigationTrimLength();
+		}
+
+		boolean performThreePrimeTrimming = probeHeaderInformation.getPerformThreePrimeTrimming();
+
+		int readOneTrimFromStart = additionalExtensionTrimLength + extensionUidLength + probeInfoStats.getMaxExtensionPrimerLength();
+		int readOneTrimStop = probeInfoStats.getMinCaptureTargetLength() + probeInfoStats.getMinLigationPrimerLength();
+		int readTwoTrimFromStart = additionalLigationTrimLength + ligationUidLength + probeInfoStats.getMaxLigationPrimerLength();
+		int readTwoTrimStop = probeInfoStats.getMinCaptureTargetLength() + probeInfoStats.getMinExtensionPrimerLength();
+
+		return new ProbeTrimmingInformation(performThreePrimeTrimming, readOneTrimFromStart, readOneTrimStop, readTwoTrimFromStart, readTwoTrimStop);
+
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -113,6 +126,43 @@ public class FastqReadTrimmer {
 		}
 
 		return new ProbeInfoStats(maxExtensionPrimerLength, maxLigationPrimerLength, maxCaptureTargetLength, minExtensionPrimerLength, minLigationPrimerLength, minCaptureTargetLength);
+	}
+
+	public static class ProbeTrimmingInformation {
+		private final boolean performThreePrimeTrimming;
+		private final int readOneTrimFromStart;
+		private final int readOneTrimStop;
+		private final int readTwoTrimFromStart;
+		private final int readTwoTrimStop;
+
+		public ProbeTrimmingInformation(boolean performThreePrimeTrimming, int readOneTrimFromStart, int readOneTrimStop, int readTwoTrimFromStart, int readTwoTrimStop) {
+			super();
+			this.performThreePrimeTrimming = performThreePrimeTrimming;
+			this.readOneTrimFromStart = readOneTrimFromStart;
+			this.readOneTrimStop = readOneTrimStop;
+			this.readTwoTrimFromStart = readTwoTrimFromStart;
+			this.readTwoTrimStop = readTwoTrimStop;
+		}
+
+		public boolean isPerformThreePrimeTrimming() {
+			return performThreePrimeTrimming;
+		}
+
+		public int getReadOneTrimFromStart() {
+			return readOneTrimFromStart;
+		}
+
+		public int getReadOneTrimStop() {
+			return readOneTrimStop;
+		}
+
+		public int getReadTwoTrimFromStart() {
+			return readTwoTrimFromStart;
+		}
+
+		public int getReadTwoTrimStop() {
+			return readTwoTrimStop;
+		}
 	}
 
 	static class ProbeInfoStats {
@@ -168,6 +218,25 @@ public class FastqReadTrimmer {
 
 	}
 
+	public static class TrimmedRead {
+		private final String trimmedReadString;
+		private final String trimmedReadQuality;
+
+		public TrimmedRead(String trimmedReadString, String trimmedReadQuality) {
+			super();
+			this.trimmedReadString = trimmedReadString;
+			this.trimmedReadQuality = trimmedReadQuality;
+		}
+
+		public String getTrimmedReadString() {
+			return trimmedReadString;
+		}
+
+		public String getTrimmedReadQuality() {
+			return trimmedReadQuality;
+		}
+	}
+
 	public static void trimReads(File inputFastqFile, File outputFastqFile, int firstBaseToKeep, int lastBaseToKeep, boolean performThreePrimeTrimming) {
 		if (firstBaseToKeep < 0) {
 			throw new IllegalArgumentException("First base to keep[" + firstBaseToKeep + "] must be greater than zero.");
@@ -201,10 +270,18 @@ public class FastqReadTrimmer {
 		}
 	}
 
-	static FastqRecord trim(FastqRecord record, int firstBaseToKeep, int lastBaseToKeep, boolean performThreePrimeTrimming) {
+	public static FastqRecord trim(FastqRecord record, int firstBaseToKeep, int lastBaseToKeep, boolean performThreePrimeTrimming) {
 		String readString = record.getReadString();
 		String readQuality = record.getBaseQualityString();
 
+		TrimmedRead trimmedRead = trim(readString, readQuality, firstBaseToKeep, lastBaseToKeep, performThreePrimeTrimming);
+
+		FastqRecord newRecord = new FastqRecord(record.getReadHeader(), trimmedRead.getTrimmedReadString(), record.getBaseQualityHeader(), trimmedRead.getTrimmedReadQuality());
+		return newRecord;
+
+	}
+
+	public static TrimmedRead trim(String readString, String readQuality, int firstBaseToKeep, int lastBaseToKeep, boolean performThreePrimeTrimming) {
 		if (firstBaseToKeep >= readString.length()) {
 			throw new IllegalArgumentException("Unable to trim " + firstBaseToKeep + " bases from the beginning of a sequence with length[" + readString.length() + "]");
 		}
@@ -217,7 +294,6 @@ public class FastqReadTrimmer {
 		String newReadString = readString.substring(firstBaseToKeep, lastBase + 1);
 		String newReadQuality = readQuality.substring(firstBaseToKeep, lastBase + 1);
 
-		FastqRecord newRecord = new FastqRecord(record.getReadHeader(), newReadString, record.getBaseQualityHeader(), newReadQuality);
-		return newRecord;
+		return new TrimmedRead(newReadString, newReadQuality);
 	}
 }

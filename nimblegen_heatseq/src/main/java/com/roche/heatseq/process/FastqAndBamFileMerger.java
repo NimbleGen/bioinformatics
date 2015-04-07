@@ -17,6 +17,7 @@
 package com.roche.heatseq.process;
 
 import java.io.File;
+import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,6 +32,8 @@ import net.sf.samtools.SAMRecordIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.roche.heatseq.process.FastqReadTrimmer.ProbeTrimmingInformation;
+import com.roche.heatseq.process.FastqReadTrimmer.TrimmedRead;
 import com.roche.heatseq.utils.FastqReader;
 import com.roche.heatseq.utils.IlluminaFastQReadNameUtil;
 import com.roche.heatseq.utils.SAMRecordUtil;
@@ -78,7 +81,9 @@ public class FastqAndBamFileMerger {
 	 * @param processFirstOfPairReads
 	 * @param samWriter
 	 */
-	private static void mergeAndOutputRecords(Map<String, SimpleFastqRecord> nameToFastQRecord, SAMFileReader samReader, boolean processFirstOfPairReads, SAMFileWriter samWriter) {
+	private static int mergeAndOutputRecords(Map<String, SimpleFastqRecord> nameToFastQRecord, SAMFileReader samReader, boolean processFirstOfPairReads, SAMFileWriter samWriter,
+			boolean trimmingSkipped, ProbeTrimmingInformation probeTrimmingInformation) {
+		int numberOfRecordsWritten = 0;
 		SAMRecordIterator samIter = samReader.iterator();
 
 		// Scan through the entire bam, finding matches by name to the fastq data in our hash
@@ -87,22 +92,54 @@ public class FastqAndBamFileMerger {
 
 			// Only process the bam records that match the fastQ file we're working with
 			if ((processFirstOfPairReads && samRecord.getFirstOfPairFlag()) || (!processFirstOfPairReads && samRecord.getSecondOfPairFlag())) {
-				SimpleFastqRecord simpleFastqRecord = nameToFastQRecord.get(samRecord.getReadName());
+				String readNameFromBam = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(samRecord.getReadName());
+				SimpleFastqRecord simpleFastqRecord = nameToFastQRecord.get(readNameFromBam);
 				if (simpleFastqRecord != null) {
 					String readString = simpleFastqRecord.getReadString();
 					String baseQualityString = simpleFastqRecord.getBaseQualityString();
 
-					if (samRecord.getReadString().equals(readString) && samRecord.getBaseQualityString().equals(baseQualityString)) {
+					if (!isTrimAmountCorrect(samRecord, readString, baseQualityString, trimmingSkipped, probeTrimmingInformation)) {
 						throw new UnableToMergeFastqAndBamFilesException();
 					}
 
 					SAMRecord modifiedRecord = storeFastqInfoInRecord(samRecord, readString, baseQualityString);
 					samWriter.addAlignment(modifiedRecord);
+					numberOfRecordsWritten++;
 				}
 			}
 		}
 
 		samIter.close();
+		return numberOfRecordsWritten;
+	}
+
+	private static boolean isTrimAmountCorrect(SAMRecord record, String readStringFromFastq, String baseQualityStringFromFastq, boolean trimmingSkipped,
+			ProbeTrimmingInformation probeTrimmingInformation) {
+		boolean isTrimAmountCorrect = true;
+
+		boolean isAReadOne = record.getFirstOfPairFlag();
+		if (trimmingSkipped) {
+			isTrimAmountCorrect = record.getReadString().equals(readStringFromFastq) && record.getBaseQualityString().equals(baseQualityStringFromFastq);
+		} else {
+			TrimmedRead trimmedRead = null;
+			if (isAReadOne) {
+				trimmedRead = FastqReadTrimmer.trim(readStringFromFastq, baseQualityStringFromFastq, probeTrimmingInformation.getReadOneTrimFromStart(), probeTrimmingInformation.getReadOneTrimStop(),
+						probeTrimmingInformation.isPerformThreePrimeTrimming());
+			} else {
+				trimmedRead = FastqReadTrimmer.trim(readStringFromFastq, baseQualityStringFromFastq, probeTrimmingInformation.getReadTwoTrimFromStart(), probeTrimmingInformation.getReadTwoTrimStop(),
+						probeTrimmingInformation.isPerformThreePrimeTrimming());
+			}
+			int expectedTrimmedSize = trimmedRead.getTrimmedReadString().length();
+			int expectedTrimmedQualitySize = trimmedRead.getTrimmedReadQuality().length();
+			int actualTrimmedSize = record.getReadString().length();
+			int actualTrimmedQualitySize = record.getBaseQualityString().length();
+			isTrimAmountCorrect = (actualTrimmedSize <= expectedTrimmedSize) && (actualTrimmedQualitySize <= expectedTrimmedQualitySize);
+			if (!isTrimAmountCorrect) {
+				logger.info("Readname:" + record.getReadName() + " is not trimmed appropriately.  Expected_Trimmed_Size[" + expectedTrimmedSize + "] Actual_Trimmed_Size[" + actualTrimmedSize
+						+ "].  Expected_Quality_Trimmed_Size[" + expectedTrimmedQualitySize + "] Actual_Quality_Trimmed_Size[" + actualTrimmedQualitySize + "].");
+			}
+		}
+		return isTrimAmountCorrect;
 	}
 
 	/**
@@ -113,9 +150,12 @@ public class FastqAndBamFileMerger {
 	 * @param processFirstOfPairReads
 	 * @param samWriter
 	 */
-	private static void createMergedFastqAndBamFileFromUnsortedFiles(SAMFileReader samReader, File unsortedFastQFile, boolean processFirstOfPairReads, SAMFileWriter samWriter, int maximumHashSize) {
+	private static int createMergedFastqAndBamFileFromUnsortedFiles(SAMFileReader samReader, File unsortedFastQFile, boolean processFirstOfPairReads, SAMFileWriter samWriter, int maximumHashSize,
+			boolean trimmingSkipped, ProbeTrimmingInformation probeTrimmingInformation) {
 
 		int bamFilePassesCount = 0;
+
+		int totalRecordsWritten = 0;
 
 		Map<String, SimpleFastqRecord> nameToFastQRecord = new HashMap<String, SimpleFastqRecord>(maximumHashSize);
 		try (FastqReader fastQReader = new FastqReader(unsortedFastQFile)) {
@@ -127,7 +167,7 @@ public class FastqAndBamFileMerger {
 
 				if (nameToFastQRecord.size() > maximumHashSize) {
 
-					mergeAndOutputRecords(nameToFastQRecord, samReader, processFirstOfPairReads, samWriter);
+					totalRecordsWritten += mergeAndOutputRecords(nameToFastQRecord, samReader, processFirstOfPairReads, samWriter, trimmingSkipped, probeTrimmingInformation);
 					bamFilePassesCount++;
 
 					// Done processing that chunk of the fastq file.
@@ -137,7 +177,7 @@ public class FastqAndBamFileMerger {
 
 			// Process the last chunk of the fastq file
 			if (nameToFastQRecord.size() > 0) {
-				mergeAndOutputRecords(nameToFastQRecord, samReader, processFirstOfPairReads, samWriter);
+				totalRecordsWritten += mergeAndOutputRecords(nameToFastQRecord, samReader, processFirstOfPairReads, samWriter, trimmingSkipped, probeTrimmingInformation);
 				bamFilePassesCount++;
 			}
 
@@ -146,6 +186,7 @@ public class FastqAndBamFileMerger {
 				logger.debug("Joined fastQ and bam file in " + bamFilePassesCount + " passes");
 			}
 		}
+		return totalRecordsWritten;
 	}
 
 	/**
@@ -180,13 +221,16 @@ public class FastqAndBamFileMerger {
 
 		if (recordCount > 0) {
 			long currentFreeMemory = Runtime.getRuntime().freeMemory();
-			double memoryAllocatedPerRecord = (initialFreeMemory - currentFreeMemory) / recordCount;
-
-			// Allow half the initial free memory for this hash table, setting the minimum value to 2000000
+			double memoryDifference = initialFreeMemory - currentFreeMemory;
+			double memoryAllocatedPerRecord = memoryDifference / (double) recordCount;
+			DecimalFormat decimalFormat = new DecimalFormat("#,###.##");
+			logger.debug("Using " + decimalFormat.format(memoryDifference) + " to hold " + recordCount + " fastq entries.");
+			// Allow half the initial free memory for this hash table, setting the minimum value to 2,000,000
 			if (memoryAllocatedPerRecord > 0) {
 				maximumHashSize = Math.max(maximumHashSize, (int) ((initialFreeMemory / 2) / memoryAllocatedPerRecord));
 			}
-			logger.debug("Memory allocated per record[" + memoryAllocatedPerRecord + "] maximumHashSize[" + maximumHashSize + "]");
+
+			logger.debug("Memory allocated per record[" + decimalFormat.format(memoryAllocatedPerRecord) + " bytes] maximumHashSize[" + maximumHashSize + "]");
 		}
 
 		return maximumHashSize;
@@ -205,7 +249,8 @@ public class FastqAndBamFileMerger {
 	 * @param outputBamFile
 	 * @return
 	 */
-	public static File createMergedFastqAndBamFileFromUnsortedFiles(File unsortedBamFile, File unsortedBamFileIndex, File unsortedFastq1File, File unsortedFastq2File, File outputBamFile) {
+	public static File createMergedFastqAndBamFileFromUnsortedFiles(File unsortedBamFile, File unsortedBamFileIndex, File unsortedFastq1File, File unsortedFastq2File, File outputBamFile,
+			boolean trimmingSkipped, ProbeTrimmingInformation probeTrimmingInformation) {
 		// Each new iteration starts at the first record.
 		SAMFileReader samReader = null;
 
@@ -227,7 +272,11 @@ public class FastqAndBamFileMerger {
 			int maximumHashSize = getMaximumHashSizeForMerge(unsortedBamFile, unsortedFastq1File);
 
 			// Process the first of pair reads and the first fastQ file.
-			createMergedFastqAndBamFileFromUnsortedFiles(samReader, unsortedFastq1File, true, samWriter, maximumHashSize);
+			int totalRecordsWrittenInFastq1 = createMergedFastqAndBamFileFromUnsortedFiles(samReader, unsortedFastq1File, true, samWriter, maximumHashSize, trimmingSkipped, probeTrimmingInformation);
+
+			if (totalRecordsWrittenInFastq1 == 0) {
+				throw new IllegalStateException("The read names in the input Fastq one file does not match the reads names in the provided bam/sam file.");
+			}
 
 			// since the samReader.iterator for a samReader initialized using a sam file behaves differently than for a samReader initialized using a bam file (the former starts where the last
 			// iterator ended)
@@ -242,7 +291,10 @@ public class FastqAndBamFileMerger {
 			}
 
 			// Process the second of pair reads and the second fastQ file.
-			createMergedFastqAndBamFileFromUnsortedFiles(samReader, unsortedFastq2File, false, samWriter, maximumHashSize);
+			int totalRecordsWrittenInFastq2 = createMergedFastqAndBamFileFromUnsortedFiles(samReader, unsortedFastq2File, false, samWriter, maximumHashSize, trimmingSkipped, probeTrimmingInformation);
+			if (totalRecordsWrittenInFastq2 == 0) {
+				throw new IllegalStateException("The read names in the input Fastq two file does not match the reads names in the provided bam/sam file.");
+			}
 
 			samWriter.close();
 		} finally {

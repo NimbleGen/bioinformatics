@@ -36,6 +36,8 @@ import org.slf4j.LoggerFactory;
 import com.roche.heatseq.objects.ApplicationSettings;
 import com.roche.heatseq.process.BamFileValidator;
 import com.roche.heatseq.process.FastqAndBamFileMerger;
+import com.roche.heatseq.process.FastqReadTrimmer;
+import com.roche.heatseq.process.FastqReadTrimmer.ProbeTrimmingInformation;
 import com.roche.heatseq.process.FastqValidator;
 import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentification;
 import com.roche.heatseq.process.ProbeInfoFileValidator;
@@ -57,7 +59,7 @@ import com.roche.sequencing.bioinformatics.genome.GenomeIdentifier;
 public class DeduplicationCli {
 	private final static Logger logger = LoggerFactory.getLogger(DeduplicationCli.class);
 
-	private final static int MAX_NUMBER_OF_PROCESSORS = 10;
+	private final static int MAX_NUMBER_OF_PROCESSORS = 20;
 
 	public final static int DEFAULT_EXTENSION_UID_LENGTH = 10;
 	public final static int DEFAULT_LIGATION_UID_LENGTH = 0;
@@ -93,8 +95,8 @@ public class DeduplicationCli {
 	private final static CommandLineOption KEEP_DUPLICATES_OPTION = new CommandLineOption("Keep Duplicates", "keepDuplicates", null, "Keep duplicate reads in the bam file instead of removing them. ",
 			false, true);
 	public final static CommandLineOption MERGE_PAIRS_OPTION = new CommandLineOption("Merge Pairs", "mergePairs", null, "Merge pairs using the highest quality base reads from each read.", false, true);
-	private final static CommandLineOption NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION = new CommandLineOption("Reads Are Not Trimmed To Within Capture Target", "readsNotTrimmedWithinCaptureTarget",
-			null, "The reads have not been trimmed to an area within the capture target.", false, true);
+	private final static CommandLineOption TRIMMING_SKIPPED_OPTION = new CommandLineOption("Reads Were Not Trimmed Prior to Mapping", "readsNotTrimmed", null,
+			"The reads were not trimmed prior to mapping.", false, true);
 	private final static CommandLineOption INTERNAL_REPORTS_OPTION = new CommandLineOption("Output interal reports", "internalReports", null, "Output internal reports.", false, true, true);
 	private final static CommandLineOption SAVE_TEMP_OPTION = new CommandLineOption("Save Temp Files", "saveTemp", null, "Save temporary files.", false, true, true);
 
@@ -279,8 +281,6 @@ public class DeduplicationCli {
 
 		boolean mergePairs = parsedCommandLine.isOptionPresent(MERGE_PAIRS_OPTION);
 
-		boolean notTrimmedToWithinCaptureTarget = parsedCommandLine.isOptionPresent(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
-
 		IAlignmentScorer alignmentScorer = new SimpleAlignmentScorer(matchScore, mismatchPenalty, gapExtendPenalty, gapOpenPenalty, false);
 
 		try {
@@ -359,23 +359,39 @@ public class DeduplicationCli {
 						// verify the file is sorted by comparing lines
 						SAMRecordIterator iter = samReader.iterator();
 						SAMRecord lastRecord = null;
-						while (iter.hasNext() && isSorted) {
+						int entryNumber = 0;
+						recordLoop: while (iter.hasNext() && isSorted) {
 							SAMRecord currentRecord = iter.next();
 							if (lastRecord != null) {
-								isSorted = lastRecord.getReferenceIndex() <= currentRecord.getReferenceIndex() && lastRecord.getAlignmentStart() <= currentRecord.getAlignmentStart();
+								boolean isReferenceSame = lastRecord.getReferenceIndex() == currentRecord.getReferenceIndex();
+								if (isReferenceSame) {
+									boolean isAlignmentPositionSorted = lastRecord.getAlignmentStart() <= currentRecord.getAlignmentStart();
+									isSorted = isAlignmentPositionSorted;
+								} else {
+									boolean bothReadsAreMapped = !currentRecord.getReadUnmappedFlag() && !lastRecord.getReadUnmappedFlag();
+									if (bothReadsAreMapped) {
+										boolean isReferenceIndexSorted = lastRecord.getReferenceIndex() < currentRecord.getReferenceIndex();
+										isSorted = isReferenceIndexSorted;
+									} else {
+										// no need to keep checking since all the reads should be
+										// unmapped after this point
+										break recordLoop;
+									}
+								}
 							}
 							lastRecord = currentRecord;
-
+							entryNumber++;
 						}
 						iter.close();
 						long sortedCheckStop = System.currentTimeMillis();
-						logger.debug("Time to check if sorted:" + (sortedCheckStop - sortedCheckStart));
+						logger.debug("Time to check if sorted:" + DateUtil.convertMillisecondsToHHMMSS(sortedCheckStop - sortedCheckStart));
 
 						if (isSorted) {
 							logger.debug("The input BAM file[" + samOrBamFile.getAbsolutePath() + "] is sorted.");
 							sortedBamFile = samOrBamFile;
 						} else {
 							CliStatusConsole.logStatus("The input BAM file is not sorted.");
+							logger.info("BAM file was unsorted starting at entry[" + entryNumber + "].");
 							sortedBamFile = new File(tempOutputDirectory, "sorted_" + FileUtil.getFileNameWithoutExtension(samOrBamFile.getName()) + ".bam");
 							CliStatusConsole.logStatus("Creating a sorted input BAM file at [" + sortedBamFile.getAbsolutePath() + "].");
 
@@ -467,9 +483,11 @@ public class DeduplicationCli {
 
 			}
 
+			boolean readsNotTrimmed = parsedCommandLine.isOptionPresent(TRIMMING_SKIPPED_OPTION);
+
 			sortMergeFilterAndExtendReads(applicationName, applicationVersion, probeInfoFile, validSamOrBamInputFile, bamIndexFile, fastQ1File, fastQ2File, outputDirectory, outputBamFileName,
 					outputFilePrefix, tempOutputDirectory, shouldOutputInternalReports, commandLineSignature, numProcessors, extensionUidLength, ligationUidLength, allowVariableLengthUids,
-					alignmentScorer, notTrimmedToWithinCaptureTarget, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching, probeHeaderInformation);
+					alignmentScorer, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching, readsNotTrimmed, probeHeaderInformation);
 
 			long applicationStop = System.currentTimeMillis();
 			CliStatusConsole.logStatus("Deduplication has completed succesfully.");
@@ -484,8 +502,8 @@ public class DeduplicationCli {
 
 	public static void sortMergeFilterAndExtendReads(String applicationName, String applicationVersion, File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File,
 			File outputDirectory, String outputBamFileName, String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputReports, String commandLineSignature, int numProcessors,
-			int extensionUidLength, int ligationUidLength, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean notTrimmedToWithinCaptureTarget, boolean markDuplicates,
-			boolean keepDuplicates, boolean mergePairs, boolean useStrictReadToProbeMatching, ProbeHeaderInformation probeHeaderInformation) {
+			int extensionUidLength, int ligationUidLength, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean markDuplicates, boolean keepDuplicates, boolean mergePairs,
+			boolean useStrictReadToProbeMatching, boolean readsNotTrimmed, ProbeHeaderInformation probeHeaderInformation) {
 		try {
 
 			final File mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", tempOutputDirectory);
@@ -493,28 +511,34 @@ public class DeduplicationCli {
 
 			long totalTimeStart = System.currentTimeMillis();
 
+			ProbeTrimmingInformation probeTrimmingInformation = FastqReadTrimmer.getProbeTrimmingInformation(probeFile);
+
 			try {
-				FastqAndBamFileMerger.createMergedFastqAndBamFileFromUnsortedFiles(bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, mergedBamFileSortedByCoordinates);
+				FastqAndBamFileMerger.createMergedFastqAndBamFileFromUnsortedFiles(bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, mergedBamFileSortedByCoordinates, readsNotTrimmed,
+						probeTrimmingInformation);
 			} catch (UnableToMergeFastqAndBamFilesException e) {
-				throw new IllegalStateException("The provided fastq files,[" + fastQ1WithUidsFile.getAbsolutePath() + "] and [" + fastQ2File.getAbsolutePath()
-						+ "], contain the same reads as the provided BAM file[" + bamFile + "].  Please supply fastq files with untrimmed reads.");
+				throw new IllegalStateException("The provided BAM file contains reads that were not trimmed using the " + HsqUtilsCli.APPLICATION_NAME + " " + HsqUtilsCli.TRIM_COMMAND_NAME
+						+ " command or the supplied fastq files are not the files provided to the " + HsqUtilsCli.APPLICATION_NAME + " " + HsqUtilsCli.TRIM_COMMAND_NAME
+						+ " command.  Please verify that fastq and bam files are correct.  If trimming was skipped please provide the --"
+						+ DeduplicationCli.TRIMMING_SKIPPED_OPTION.getLongFormOption() + " option to the " + HsqUtilsCli.DEDUPLICATION_COMMAND_NAME + " command line arguments.  BAM file["
+						+ bamFile.getAbsolutePath() + "] fastq1[" + fastQ1WithUidsFile.getAbsolutePath() + "] fastq2[" + fastQ2File.getAbsolutePath() + "].");
 			}
 			long timeAfterMergeUnsorted = System.currentTimeMillis();
-			logger.debug("done merging bam and fastqfiles ... result[" + mergedBamFileSortedByCoordinates.getAbsolutePath() + "] in " + (timeAfterMergeUnsorted - totalTimeStart) + "ms.");
+			logger.debug("Done merging bam and fastq files ... result[" + mergedBamFileSortedByCoordinates.getAbsolutePath() + "] in "
+					+ DateUtil.convertMillisecondsToHHMMSS(timeAfterMergeUnsorted - totalTimeStart) + ".");
 
 			// Build bam index
 			SAMFileReader samReader = new SAMFileReader(mergedBamFileSortedByCoordinates);
 
 			BamFileUtil.createIndexOnCoordinateSortedBamFile(samReader, indexFileForMergedBamFileSortedByCoordinates);
 			long timeAfterBuildBamIndex = System.currentTimeMillis();
-			logger.debug("done creating index for merged and sorted bam file ... result[" + indexFileForMergedBamFileSortedByCoordinates.getAbsolutePath() + "] in "
+			logger.debug("Done creating index for merged and sorted bam file ... result[" + indexFileForMergedBamFileSortedByCoordinates.getAbsolutePath() + "] in "
 					+ DateUtil.convertMillisecondsToHHMMSS(timeAfterBuildBamIndex - timeAfterMergeUnsorted));
 			samReader.close();
 
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
 					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputReports, commandLineSignature, applicationName, applicationVersion, numProcessors,
-					allowVariableLengthUids, alignmentScorer, notTrimmedToWithinCaptureTarget, extensionUidLength, ligationUidLength, markDuplicates, keepDuplicates, mergePairs,
-					useStrictReadToProbeMatching, probeHeaderInformation);
+					allowVariableLengthUids, alignmentScorer, extensionUidLength, ligationUidLength, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching, probeHeaderInformation);
 
 			PrimerReadExtensionAndPcrDuplicateIdentification.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
@@ -539,6 +563,7 @@ public class DeduplicationCli {
 		group.addOption(TMP_DIR_OPTION);
 		group.addOption(NUM_PROCESSORS_OPTION);
 		group.addOption(SAVE_TEMP_OPTION);
+		group.addOption(TRIMMING_SKIPPED_OPTION);
 		// group.addOption(MATCH_SCORE_OPTION);
 		// group.addOption(MISMATCH_PENALTY_OPTION);
 		// group.addOption(GAP_OPEN_PENALTY_OPTION);

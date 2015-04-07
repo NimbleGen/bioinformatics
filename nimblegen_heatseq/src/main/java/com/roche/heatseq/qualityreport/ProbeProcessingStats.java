@@ -109,10 +109,12 @@ public class ProbeProcessingStats {
 		DecimalFormat formatter = new DecimalFormat("0.00");
 		StringBuilder stringBuilder = new StringBuilder();
 
-		int totalReadPairs = totalDuplicateReadPairsRemoved + totalUids;
+		int readPairsAfterReduction = getTotalReadPairsRemainingAfterReduction();
 
-		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + totalReadPairs + StringUtil.TAB + getTotalReadPairsRemainingAfterReduction() + StringUtil.TAB + totalDuplicateReadPairsRemoved
-				+ StringUtil.TAB + formatter.format(onTargetDuplicateRate * 100) + StringUtil.TAB);
+		int totalReadPairs = readPairsAfterReduction + totalDuplicateReadPairsRemoved;
+
+		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + totalReadPairs + StringUtil.TAB + readPairsAfterReduction + StringUtil.TAB + totalDuplicateReadPairsRemoved + StringUtil.TAB
+				+ formatter.format(onTargetDuplicateRate * 100) + StringUtil.TAB);
 		stringBuilder.append(formatter.format(averageNumberOfReadPairsPerUid) + StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase()
 				+ StringUtil.TAB + numberOfReadPairsUnableExtendPrimer);
 
