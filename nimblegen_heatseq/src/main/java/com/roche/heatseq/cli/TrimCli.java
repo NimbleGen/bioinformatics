@@ -6,6 +6,7 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.process.FastqReadTrimmer;
 import com.roche.heatseq.process.FastqValidator;
 import com.roche.heatseq.process.ProbeInfoFileValidator;
@@ -60,7 +61,7 @@ public class TrimCli {
 		FastqValidator.validate(fastQ1File, fastQ2File);
 
 		File probeFile = new File(parsedCommandLine.getOptionsValue(DeduplicationCli.PROBE_OPTION));
-		ProbeInfoFileValidator.validate(probeFile);
+		ParsedProbeFile probeInfo = ProbeInfoFileValidator.validateAndParseProbeInfoFile(probeFile);
 
 		String outputFastQ1FileName = new File(outputDirectory, outputFilePrefix + "trimmed_" + FileUtil.getFileNameWithoutExtension(fastQ1File.getName())).getAbsolutePath();
 		if (!outputFastQ1FileName.toLowerCase().endsWith(FASTQ_EXTENSION)) {
@@ -85,7 +86,7 @@ public class TrimCli {
 		logger.info("command line signature: " + commandLineSignature);
 
 		try {
-			FastqReadTrimmer.trimReads(fastQ1File, fastQ2File, probeFile, outputFastQ1File, outputFastQ2File);
+			FastqReadTrimmer.trimReads(fastQ1File, fastQ2File, probeInfo, probeFile, outputFastQ1File, outputFastQ2File);
 
 			long applicationStop = System.currentTimeMillis();
 			CliStatusConsole.logStatus(StringUtil.NEWLINE + "Trimming has completed succesfully.");

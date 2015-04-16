@@ -35,13 +35,8 @@ import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.ApplicationSettings;
 import com.roche.heatseq.process.BamFileValidator;
-import com.roche.heatseq.process.FastqAndBamFileMerger;
-import com.roche.heatseq.process.FastqReadTrimmer;
-import com.roche.heatseq.process.FastqReadTrimmer.ProbeTrimmingInformation;
 import com.roche.heatseq.process.FastqValidator;
 import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentification;
-import com.roche.heatseq.process.ProbeInfoFileValidator;
-import com.roche.heatseq.process.UnableToMergeFastqAndBamFilesException;
 import com.roche.heatseq.utils.BamFileUtil;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
@@ -95,7 +90,7 @@ public class DeduplicationCli {
 	private final static CommandLineOption KEEP_DUPLICATES_OPTION = new CommandLineOption("Keep Duplicates", "keepDuplicates", null, "Keep duplicate reads in the bam file instead of removing them. ",
 			false, true);
 	public final static CommandLineOption MERGE_PAIRS_OPTION = new CommandLineOption("Merge Pairs", "mergePairs", null, "Merge pairs using the highest quality base reads from each read.", false, true);
-	private final static CommandLineOption TRIMMING_SKIPPED_OPTION = new CommandLineOption("Reads Were Not Trimmed Prior to Mapping", "readsNotTrimmed", null,
+	public final static CommandLineOption TRIMMING_SKIPPED_OPTION = new CommandLineOption("Reads Were Not Trimmed Prior to Mapping", "readsNotTrimmed", null,
 			"The reads were not trimmed prior to mapping.", false, true);
 	private final static CommandLineOption INTERNAL_REPORTS_OPTION = new CommandLineOption("Output interal reports", "internalReports", null, "Output internal reports.", false, true, true);
 	private final static CommandLineOption SAVE_TEMP_OPTION = new CommandLineOption("Save Temp Files", "saveTemp", null, "Save temporary files.", false, true, true);
@@ -172,7 +167,7 @@ public class DeduplicationCli {
 		FastqValidator.validate(fastQ1File, fastQ2File);
 
 		File probeInfoFile = new File(parsedCommandLine.getOptionsValue(PROBE_OPTION));
-		ProbeInfoFileValidator.validate(probeInfoFile);
+		ProbeFileUtil.parseProbeInfoFileWithValidation(probeInfoFile);
 
 		int numProcessors = Runtime.getRuntime().availableProcessors();
 		if (parsedCommandLine.isOptionPresent(NUM_PROCESSORS_OPTION)) {
@@ -308,7 +303,6 @@ public class DeduplicationCli {
 			// Try to locate or create an index file for the input bam file
 			File bamIndexFile = null;
 			File sortedBamFile = null;
-			File samFile = null;
 			File validSamOrBamInputFile = null;
 			boolean isSamFormat = false;
 
@@ -317,140 +311,130 @@ public class DeduplicationCli {
 			try (SAMFileReader samReader = new SAMFileReader(samOrBamFile)) {
 				isSamFormat = !samReader.isBinary();
 
-				if (isSamFormat) {
-					samFile = samOrBamFile;
-				} else {
+				SAMFileHeader header = samReader.getFileHeader();
 
-					SAMFileHeader header = samReader.getFileHeader();
-
-					try {
-						if (genomeNameFromProbeInfoFile != null) {
-							header = samReader.getFileHeader();
-							Map<String, Integer> containerSizesByNameFromBam = BamFileUtil.getContainerSizesFromHeader(header);
-							String matchingGenomeBasedOnContainerSizes = GenomeIdentifier.getMatchingGenomeName(containerSizesByNameFromBam);
-							if (matchingGenomeBasedOnContainerSizes == null) {
-								String message = "The genome used for mapping is not a recognized genome so the system cannot verify that it matches the provided genome["
-										+ genomeNameFromProbeInfoFile + "] from the probe information file.";
-								logger.info(message);
-								CliStatusConsole.logStatus(message);
-							} else if (!genomeNameFromProbeInfoFile.equals(matchingGenomeBasedOnContainerSizes)) {
-								logger.info("Mismatch Genome Report" + StringUtil.NEWLINE + GenomeIdentifier.createMismatchGenomeReportText(genomeNameFromProbeInfoFile, containerSizesByNameFromBam));
-								CliStatusConsole
-										.logStatus(StringUtil.NEWLINE
-												+ "It appears that the incorrect genome was used for mapping.  The names and sizes of the genome sequences used for mapping found in the provided BAM/SAM file ["
-												+ samOrBamFile.getAbsolutePath() + "] do not match the sequence sizes expected based on the indicated genome build [" + genomeNameFromProbeInfoFile
-												+ "] by the probe information file [" + probeInfoFile.getAbsolutePath()
-												+ "].  Deduplication will continue but the results should be classified as suspect.  Please review the mismatch genome report in the log file["
-												+ logFile.getAbsolutePath() + "] for details on how the expected genome and provided genome differ." + StringUtil.NEWLINE);
-							}
+				try {
+					if (genomeNameFromProbeInfoFile != null) {
+						header = samReader.getFileHeader();
+						Map<String, Integer> containerSizesByNameFromBam = BamFileUtil.getContainerSizesFromHeader(header);
+						String matchingGenomeBasedOnContainerSizes = GenomeIdentifier.getMatchingGenomeName(containerSizesByNameFromBam);
+						if (matchingGenomeBasedOnContainerSizes == null) {
+							String message = "The genome used for mapping is not a recognized genome so the system cannot verify that it matches the provided genome[" + genomeNameFromProbeInfoFile
+									+ "] from the probe information file.";
+							logger.info(message);
+							CliStatusConsole.logStatus(message);
+						} else if (!genomeNameFromProbeInfoFile.equals(matchingGenomeBasedOnContainerSizes)) {
+							logger.info("Mismatch Genome Report" + StringUtil.NEWLINE + GenomeIdentifier.createMismatchGenomeReportText(genomeNameFromProbeInfoFile, containerSizesByNameFromBam));
+							CliStatusConsole.logStatus(StringUtil.NEWLINE
+									+ "It appears that the incorrect genome was used for mapping.  The names and sizes of the genome sequences used for mapping found in the provided BAM/SAM file ["
+									+ samOrBamFile.getAbsolutePath() + "] do not match the sequence sizes expected based on the indicated genome build [" + genomeNameFromProbeInfoFile
+									+ "] by the probe information file [" + probeInfoFile.getAbsolutePath()
+									+ "].  Deduplication will continue but the results should be classified as suspect.  Please review the mismatch genome report in the log file["
+									+ logFile.getAbsolutePath() + "] for details on how the expected genome and provided genome differ." + StringUtil.NEWLINE);
 						}
-					} catch (FileNotFoundException e1) {
-						throw new IllegalStateException("Could not find the provided BAM file[" + samOrBamFile.getAbsolutePath() + "].");
 					}
-
-					boolean isSortIndicatedInHeader = header.getSortOrder().equals(SortOrder.coordinate);
-
-					if (isSortIndicatedInHeader) {
-						logger.debug("The input BAM file[" + samOrBamFile.getAbsolutePath() + "] was deemed sorted based on header information.");
-					}
-					if (!isSortIndicatedInHeader) {
-						boolean isSorted = true;
-						long sortedCheckStart = System.currentTimeMillis();
-						// verify the file is sorted by comparing lines
-						SAMRecordIterator iter = samReader.iterator();
-						SAMRecord lastRecord = null;
-						int entryNumber = 0;
-						recordLoop: while (iter.hasNext() && isSorted) {
-							SAMRecord currentRecord = iter.next();
-							if (lastRecord != null) {
-								boolean isReferenceSame = lastRecord.getReferenceIndex() == currentRecord.getReferenceIndex();
-								if (isReferenceSame) {
-									boolean isAlignmentPositionSorted = lastRecord.getAlignmentStart() <= currentRecord.getAlignmentStart();
-									isSorted = isAlignmentPositionSorted;
-								} else {
-									boolean bothReadsAreMapped = !currentRecord.getReadUnmappedFlag() && !lastRecord.getReadUnmappedFlag();
-									if (bothReadsAreMapped) {
-										boolean isReferenceIndexSorted = lastRecord.getReferenceIndex() < currentRecord.getReferenceIndex();
-										isSorted = isReferenceIndexSorted;
-									} else {
-										// no need to keep checking since all the reads should be
-										// unmapped after this point
-										break recordLoop;
-									}
-								}
-							}
-							lastRecord = currentRecord;
-							entryNumber++;
-						}
-						iter.close();
-						long sortedCheckStop = System.currentTimeMillis();
-						logger.debug("Time to check if sorted:" + DateUtil.convertMillisecondsToHHMMSS(sortedCheckStop - sortedCheckStart));
-
-						if (isSorted) {
-							logger.debug("The input BAM file[" + samOrBamFile.getAbsolutePath() + "] is sorted.");
-							sortedBamFile = samOrBamFile;
-						} else {
-							CliStatusConsole.logStatus("The input BAM file is not sorted.");
-							logger.info("BAM file was unsorted starting at entry[" + entryNumber + "].");
-							sortedBamFile = new File(tempOutputDirectory, "sorted_" + FileUtil.getFileNameWithoutExtension(samOrBamFile.getName()) + ".bam");
-							CliStatusConsole.logStatus("Creating a sorted input BAM file at [" + sortedBamFile.getAbsolutePath() + "].");
-
-							long sortStart = System.currentTimeMillis();
-							BamFileUtil.sortOnCoordinates(samOrBamFile, sortedBamFile);
-							long sortStop = System.currentTimeMillis();
-							CliStatusConsole.logStatus("Done creating a sorted BAM file in " + DateUtil.convertMillisecondsToHHMMSS(sortStop - sortStart) + "(HH:MM:SS).");
-
-							newSortedBamFileCreated = true;
-						}
-
-					} else {
-						CliStatusConsole.logStatus("The BAM header indicates that the BAM file is sorted.");
-						sortedBamFile = samOrBamFile;
-					}
+				} catch (FileNotFoundException e1) {
+					throw new IllegalStateException("Could not find the provided BAM file[" + samOrBamFile.getAbsolutePath() + "].");
 				}
 
+				boolean isSortIndicatedInHeader = header.getSortOrder().equals(SortOrder.coordinate);
+
+				if (isSortIndicatedInHeader) {
+					logger.debug("The input BAM file[" + samOrBamFile.getAbsolutePath() + "] was deemed sorted based on header information.");
+				}
+				if (!isSortIndicatedInHeader) {
+					// sam files need to be sorted and converted to bam files regardless
+					boolean isSorted = !isSamFormat;
+					long sortedCheckStart = System.currentTimeMillis();
+					// verify the file is sorted by comparing lines
+					SAMRecordIterator iter = samReader.iterator();
+					SAMRecord lastRecord = null;
+					int entryNumber = 0;
+					recordLoop: while (iter.hasNext() && isSorted) {
+						SAMRecord currentRecord = iter.next();
+						if (lastRecord != null) {
+							boolean isReferenceSame = lastRecord.getReferenceIndex() == currentRecord.getReferenceIndex();
+							if (isReferenceSame) {
+								boolean isAlignmentPositionSorted = lastRecord.getAlignmentStart() <= currentRecord.getAlignmentStart();
+								isSorted = isAlignmentPositionSorted;
+							} else {
+								boolean bothReadsAreMapped = !currentRecord.getReadUnmappedFlag() && !lastRecord.getReadUnmappedFlag();
+								if (bothReadsAreMapped) {
+									boolean isReferenceIndexSorted = lastRecord.getReferenceIndex() < currentRecord.getReferenceIndex();
+									isSorted = isReferenceIndexSorted;
+								} else {
+									// no need to keep checking since all the reads should be
+									// unmapped after this point
+									break recordLoop;
+								}
+							}
+						}
+						lastRecord = currentRecord;
+						entryNumber++;
+					}
+					iter.close();
+					long sortedCheckStop = System.currentTimeMillis();
+					logger.debug("Time to check if sorted:" + DateUtil.convertMillisecondsToHHMMSS(sortedCheckStop - sortedCheckStart));
+
+					if (isSorted) {
+						logger.debug("The input BAM file[" + samOrBamFile.getAbsolutePath() + "] is sorted.");
+						sortedBamFile = samOrBamFile;
+					} else {
+						CliStatusConsole.logStatus("The input SAM/BAM file is not sorted.");
+						logger.info("SAM/BAM file was unsorted starting at entry[" + entryNumber + "].");
+						sortedBamFile = new File(tempOutputDirectory, "sorted_" + FileUtil.getFileNameWithoutExtension(samOrBamFile.getName()) + ".bam");
+						CliStatusConsole.logStatus("Creating a sorted input BAM file at [" + sortedBamFile.getAbsolutePath() + "].");
+
+						long sortStart = System.currentTimeMillis();
+						BamFileUtil.sortOnCoordinates(samOrBamFile, sortedBamFile);
+						long sortStop = System.currentTimeMillis();
+						CliStatusConsole.logStatus("Done creating a sorted BAM file in " + DateUtil.convertMillisecondsToHHMMSS(sortStop - sortStart) + "(HH:MM:SS).");
+
+						newSortedBamFileCreated = true;
+					}
+
+				} else {
+					CliStatusConsole.logStatus("The BAM header indicates that the BAM file is sorted.");
+					sortedBamFile = samOrBamFile;
+				}
 			}
 
-			if (sortedBamFile != null) {
-				try (SAMFileReader samReader = new SAMFileReader(sortedBamFile)) {
-					if (!newSortedBamFileCreated) {
-						// Look for the index in the same location as the file but with a .bai extension instead of a .bam extension
-						File tempBamIndexfile = new File(FileUtil.getFileNameWithoutExtension(bamFileString) + ".bai");
+			try (SAMFileReader samReader = new SAMFileReader(sortedBamFile)) {
+				if (!newSortedBamFileCreated) {
+					// Look for the index in the same location as the file but with a .bai extension instead of a .bam extension
+					File tempBamIndexfile = new File(FileUtil.getFileNameWithoutExtension(bamFileString) + ".bai");
+					if (tempBamIndexfile.exists()) {
+						bamIndexFile = tempBamIndexfile;
+						CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
+					}
+
+					// Try looking for a .bai file in the same location as the bam file
+					if (bamIndexFile == null) {
+						// Try looking for a .bam.bai file in the same location as the bam file
+						tempBamIndexfile = new File(bamFileString + ".bai");
 						if (tempBamIndexfile.exists()) {
 							bamIndexFile = tempBamIndexfile;
 							CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
 						}
-
-						// Try looking for a .bai file in the same location as the bam file
-						if (bamIndexFile == null) {
-							// Try looking for a .bam.bai file in the same location as the bam file
-							tempBamIndexfile = new File(bamFileString + ".bai");
-							if (tempBamIndexfile.exists()) {
-								bamIndexFile = tempBamIndexfile;
-								CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
-							}
-						}
-					}
-
-					// We couldn't find an index file, create one in our temp directory
-					if ((bamIndexFile == null) || !bamIndexFile.exists()) {
-						// a bam index file was not provided so create one in the default location
-						bamIndexFile = File.createTempFile("bam_index_", ".bai", tempOutputDirectory);
-						CliStatusConsole.logStatus("A BAM Index File was not found in the default location so creating bam index file at [" + bamIndexFile.getAbsolutePath() + "].");
-						long indexStart = System.currentTimeMillis();
-						try {
-							BamFileUtil.createIndex(samReader, bamIndexFile);
-							long indexStop = System.currentTimeMillis();
-							CliStatusConsole.logStatus("Done creating the BAM Index File in " + DateUtil.convertMillisecondsToHHMMSS(indexStop - indexStart) + "(HH:MM:SS).");
-						} catch (Exception e) {
-							throw new IllegalStateException("Could create bam index file at [" + bamIndexFile.getAbsolutePath() + "].", e);
-						}
 					}
 				}
-				validSamOrBamInputFile = sortedBamFile;
-			} else {
-				validSamOrBamInputFile = samFile;
+
+				// We couldn't find an index file, create one in our temp directory
+				if ((bamIndexFile == null) || !bamIndexFile.exists()) {
+					// a bam index file was not provided so create one in the default location
+					bamIndexFile = File.createTempFile("bam_index_", ".bai", tempOutputDirectory);
+					CliStatusConsole.logStatus("A BAM Index File was not found in the default location so creating bam index file at [" + bamIndexFile.getAbsolutePath() + "].");
+					long indexStart = System.currentTimeMillis();
+					try {
+						BamFileUtil.createIndex(samReader, bamIndexFile);
+						long indexStop = System.currentTimeMillis();
+						CliStatusConsole.logStatus("Done creating the BAM Index File in " + DateUtil.convertMillisecondsToHHMMSS(indexStop - indexStart) + "(HH:MM:SS).");
+					} catch (Exception e) {
+						throw new IllegalStateException("Could create bam index file at [" + bamIndexFile.getAbsolutePath() + "].", e);
+					}
+				}
 			}
+			validSamOrBamInputFile = sortedBamFile;
 
 			try (SAMFileReader samReader = new SAMFileReader(validSamOrBamInputFile)) {
 				SAMRecordIterator samIter = samReader.iterator();
@@ -500,47 +484,22 @@ public class DeduplicationCli {
 		}
 	}
 
-	public static void sortMergeFilterAndExtendReads(String applicationName, String applicationVersion, File probeFile, File bamFile, File bamIndexFile, File fastQ1WithUidsFile, File fastQ2File,
+	public static void sortMergeFilterAndExtendReads(String applicationName, String applicationVersion, File probeFile, File bamFile, File bamIndexFile, File fastQ1File, File fastQ2File,
 			File outputDirectory, String outputBamFileName, String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputReports, String commandLineSignature, int numProcessors,
 			int extensionUidLength, int ligationUidLength, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean markDuplicates, boolean keepDuplicates, boolean mergePairs,
 			boolean useStrictReadToProbeMatching, boolean readsNotTrimmed, ProbeHeaderInformation probeHeaderInformation) {
 		try {
 
-			final File mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", tempOutputDirectory);
-			final File indexFileForMergedBamFileSortedByCoordinates = File.createTempFile("index_of_merged_bam_sorted_by_coordinates_", ".bamindex", tempOutputDirectory);
-
 			long totalTimeStart = System.currentTimeMillis();
+			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, bamFile, bamIndexFile, fastQ1File, fastQ2File, outputDirectory, tempOutputDirectory, outputBamFileName,
+					outputFilePrefix, bamFile.getName(), shouldOutputReports, commandLineSignature, applicationName, applicationVersion, numProcessors, allowVariableLengthUids, alignmentScorer,
+					extensionUidLength, ligationUidLength, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching, probeHeaderInformation, readsNotTrimmed);
 
-			ProbeTrimmingInformation probeTrimmingInformation = FastqReadTrimmer.getProbeTrimmingInformation(probeFile);
+			String commonReadNameBeginning = PrimerReadExtensionAndPcrDuplicateIdentification.verifyReadNamesCanBeHandledByDedupAndFindCommonReadNameBeginning(applicationSettings.getFastQ1File(),
+					applicationSettings.getFastQ2File());
 
-			try {
-				FastqAndBamFileMerger.createMergedFastqAndBamFileFromUnsortedFiles(bamFile, bamIndexFile, fastQ1WithUidsFile, fastQ2File, mergedBamFileSortedByCoordinates, readsNotTrimmed,
-						probeTrimmingInformation);
-			} catch (UnableToMergeFastqAndBamFilesException e) {
-				throw new IllegalStateException("The provided BAM file contains reads that were not trimmed using the " + HsqUtilsCli.APPLICATION_NAME + " " + HsqUtilsCli.TRIM_COMMAND_NAME
-						+ " command or the supplied fastq files are not the files provided to the " + HsqUtilsCli.APPLICATION_NAME + " " + HsqUtilsCli.TRIM_COMMAND_NAME
-						+ " command.  Please verify that fastq and bam files are correct.  If trimming was skipped please provide the --"
-						+ DeduplicationCli.TRIMMING_SKIPPED_OPTION.getLongFormOption() + " option to the " + HsqUtilsCli.DEDUPLICATION_COMMAND_NAME + " command line arguments.  BAM file["
-						+ bamFile.getAbsolutePath() + "] fastq1[" + fastQ1WithUidsFile.getAbsolutePath() + "] fastq2[" + fastQ2File.getAbsolutePath() + "].");
-			}
-			long timeAfterMergeUnsorted = System.currentTimeMillis();
-			logger.debug("Done merging bam and fastq files ... result[" + mergedBamFileSortedByCoordinates.getAbsolutePath() + "] in "
-					+ DateUtil.convertMillisecondsToHHMMSS(timeAfterMergeUnsorted - totalTimeStart) + ".");
-
-			// Build bam index
-			SAMFileReader samReader = new SAMFileReader(mergedBamFileSortedByCoordinates);
-
-			BamFileUtil.createIndexOnCoordinateSortedBamFile(samReader, indexFileForMergedBamFileSortedByCoordinates);
-			long timeAfterBuildBamIndex = System.currentTimeMillis();
-			logger.debug("Done creating index for merged and sorted bam file ... result[" + indexFileForMergedBamFileSortedByCoordinates.getAbsolutePath() + "] in "
-					+ DateUtil.convertMillisecondsToHHMMSS(timeAfterBuildBamIndex - timeAfterMergeUnsorted));
-			samReader.close();
-
-			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates, fastQ1WithUidsFile,
-					fastQ2File, outputDirectory, outputBamFileName, outputFilePrefix, bamFile.getName(), shouldOutputReports, commandLineSignature, applicationName, applicationVersion, numProcessors,
-					allowVariableLengthUids, alignmentScorer, extensionUidLength, ligationUidLength, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching, probeHeaderInformation);
-
-			PrimerReadExtensionAndPcrDuplicateIdentification.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
+			PrimerReadExtensionAndPcrDuplicateIdentification extendReadsAndIdentifyDuplicates = new PrimerReadExtensionAndPcrDuplicateIdentification(commonReadNameBeginning);
+			extendReadsAndIdentifyDuplicates.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
 			long totalTimeStop = System.currentTimeMillis();
 			logger.debug("done - Total time: (" + DateUtil.convertMillisecondsToHHMMSS(totalTimeStop - totalTimeStart) + ")");

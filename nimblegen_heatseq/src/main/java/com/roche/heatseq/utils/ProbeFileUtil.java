@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.objects.Probe;
+import com.roche.heatseq.process.ProbeInfoFileValidator;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
@@ -58,6 +59,10 @@ public final class ProbeFileUtil {
 
 	private ProbeFileUtil() {
 		throw new AssertionError();
+	}
+
+	public static ParsedProbeFile parseProbeInfoFileWithValidation(File probeInfoFile) {
+		return ProbeInfoFileValidator.validateAndParseProbeInfoFile(probeInfoFile);
 	}
 
 	/**
