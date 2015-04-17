@@ -24,14 +24,14 @@ public class IlluminaFastqQReadNameUtilTest {
 	@Test(groups = { "unit" })
 	public void oldIlluminaReadNameTest() {
 		String readName = "@MS5_15454:1:1110:12527:26507#26/1";
-		String expectedReadName = "@MS5_15454111101252726507#26/";
+		String expectedReadName = "@MS5_15454:1:1110:12527:26507#26/";
 		Assert.assertEquals(IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(readName), expectedReadName);
 	}
 
 	@Test(groups = { "unit" })
 	public void newIlluminaReadNameTest() {
 		String readName = "@M01077:35:000000000-A3J96:1:1102:13646:7860 1:N:0:1";
-		String expectedReadName = "@M0107735000000000-A3J9611102136467860";
+		String expectedReadName = "@M01077:35:000000000-A3J96:1:1102:13646:7860";
 		Assert.assertEquals(IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(readName), expectedReadName);
 	}
 

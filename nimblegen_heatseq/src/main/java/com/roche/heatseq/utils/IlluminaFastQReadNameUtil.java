@@ -73,8 +73,6 @@ public class IlluminaFastQReadNameUtil {
 
 		String uniqueId = readHeader.substring(0, endIndex);
 
-		uniqueId = uniqueId.replaceAll(":", "");
-
 		return uniqueId;
 	}
 }

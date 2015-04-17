@@ -91,7 +91,7 @@ public class FastqReadTrimmer {
 	}
 
 	public static void main(String[] args) throws IOException {
-		File probeInfoFile = new File("C:/kurts_space/projects/mult_probe_assignment/small/mult_probe_info.txt");
+		File probeInfoFile = new File("D:/kurts_space/heatseq/big2/probe_info.txt");
 		ParsedProbeFile probes = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
 
 		ProbeInfoStats probeInfoStats = collectStatsFromProbeInformation(probes);
