@@ -25,8 +25,8 @@ public class FastqReadTrimmer {
 
 	private static Logger logger = LoggerFactory.getLogger(FastqReadTrimmer.class);
 
-	public static void trimReads(File inputFastqOneFile, File inputFastqTwoFile, File probeInfoFile, File outputFastqOneFile, File outputFastqTwoFile) throws IOException {
-		ProbeTrimmingInformation probeTrimmingInformation = getProbeTrimmingInformation(probeInfoFile);
+	public static void trimReads(File inputFastqOneFile, File inputFastqTwoFile, ParsedProbeFile probeInfo, File probeInfoFile, File outputFastqOneFile, File outputFastqTwoFile) throws IOException {
+		ProbeTrimmingInformation probeTrimmingInformation = getProbeTrimmingInformation(probeInfo, probeInfoFile);
 		boolean performThreePrimeTrimming = probeTrimmingInformation.isPerformThreePrimeTrimming();
 
 		int readOneTrimFromStart = probeTrimmingInformation.getReadOneTrimFromStart();
@@ -37,7 +37,7 @@ public class FastqReadTrimmer {
 		logger.info("read one--first base to keep:" + readOneTrimFromStart + "  lastBaseToKeep:" + readOneTrimStop);
 		logger.info("read two--first base to keep:" + readTwoTrimFromStart + "  lastBaseToKeep:" + readTwoTrimStop);
 
-		PrimerReadExtensionAndPcrDuplicateIdentification.verifyReadNamesCanBeHandledByDedup(inputFastqOneFile, inputFastqTwoFile);
+		PrimerReadExtensionAndPcrDuplicateIdentification.verifyReadNamesCanBeHandledByDedupAndFindCommonReadNameBeginning(inputFastqOneFile, inputFastqTwoFile);
 
 		try {
 			trimReads(inputFastqOneFile, outputFastqOneFile, readOneTrimFromStart, readOneTrimStop, performThreePrimeTrimming);
@@ -55,10 +55,8 @@ public class FastqReadTrimmer {
 				+ StringUtil.NEWLINE);
 	}
 
-	public static ProbeTrimmingInformation getProbeTrimmingInformation(File probeInfoFile) throws IOException {
-		ParsedProbeFile probes = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
-
-		ProbeInfoStats probeInfoStats = collectStatsFromProbeInformation(probes);
+	public static ProbeTrimmingInformation getProbeTrimmingInformation(ParsedProbeFile probeInfo, File probeInfoFile) throws IOException {
+		ProbeInfoStats probeInfoStats = collectStatsFromProbeInformation(probeInfo);
 
 		logger.info(probeInfoStats.toString());
 
@@ -93,7 +91,7 @@ public class FastqReadTrimmer {
 	}
 
 	public static void main(String[] args) throws IOException {
-		File probeInfoFile = new File("C:/kurts_space/projects/mult_probe_assignment/small/mult_probe_info.txt");
+		File probeInfoFile = new File("D:/kurts_space/heatseq/big2/probe_info.txt");
 		ParsedProbeFile probes = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
 
 		ProbeInfoStats probeInfoStats = collectStatsFromProbeInformation(probes);

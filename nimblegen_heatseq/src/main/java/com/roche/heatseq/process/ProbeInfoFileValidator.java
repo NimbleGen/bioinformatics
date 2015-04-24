@@ -17,7 +17,7 @@ public class ProbeInfoFileValidator {
 		throw new AssertionError();
 	}
 
-	public static void validate(File probeInfoFile) {
+	public static ParsedProbeFile validateAndParseProbeInfoFile(File probeInfoFile) {
 		if (!probeInfoFile.exists()) {
 			throw new IllegalStateException("Unable to find provided PROBE file[" + probeInfoFile.getAbsolutePath() + "].");
 		}
@@ -49,14 +49,16 @@ public class ProbeInfoFileValidator {
 			throw new IllegalStateException("Unable to find provided PROBE file[" + probeInfoFile.getAbsolutePath() + "].", e);
 		}
 
+		ParsedProbeFile probeInfo = null;
 		try {
-			ParsedProbeFile probeInfo = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
+			probeInfo = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
 			if (probeInfo.getProbes().size() == 0) {
 				throw new IllegalStateException("The provided PROBE file[" + probeInfoFile.getAbsolutePath() + "] contains no probe entries.");
 			}
 		} catch (IOException e) {
 			throw new IllegalStateException("Unable to parse the provided PROBE file[" + probeInfoFile.getAbsolutePath() + "].", e);
 		}
+		return probeInfo;
 	}
 
 }

@@ -55,6 +55,7 @@ public class FastqReader implements Iterator<FastqRecord>, Iterable<FastqRecord>
 
 	private final BufferedReader reader;
 	private FastqRecord nextRecord;
+	private boolean checkRecords;
 	private final String fileAbsolutePath;
 	private int line = 1;
 
@@ -62,7 +63,15 @@ public class FastqReader implements Iterator<FastqRecord>, Iterable<FastqRecord>
 		this(gzippedOrUncompressedFastqFile, DEFAULT_BUFFER_SIZE);
 	}
 
+	public FastqReader(final File gzippedOrUncompressedFastqFile, boolean checkRecords) {
+		this(gzippedOrUncompressedFastqFile, DEFAULT_BUFFER_SIZE, checkRecords);
+	}
+
 	public FastqReader(final File gzippedOrUncompressedFastqFile, int bufferSize) {
+		this(gzippedOrUncompressedFastqFile, bufferSize, true);
+	}
+
+	public FastqReader(final File gzippedOrUncompressedFastqFile, int bufferSize, boolean checkRecords) {
 		try {
 			boolean isGzipped = GZipUtil.isCompressed(gzippedOrUncompressedFastqFile);
 			if (isGzipped) {
@@ -71,13 +80,37 @@ public class FastqReader implements Iterator<FastqRecord>, Iterable<FastqRecord>
 				reader = new BufferedReader(new InputStreamReader(IoUtil.openFileForReading(gzippedOrUncompressedFastqFile)), bufferSize);
 			}
 			this.fileAbsolutePath = gzippedOrUncompressedFastqFile.getAbsolutePath();
-			nextRecord = readNextRecord();
+			if (checkRecords) {
+				nextRecord = readNextRecordWithChecks();
+			} else {
+				nextRecord = readNextRecord();
+			}
+
 		} catch (IOException ioe) {
 			throw new RuntimeIOException(ioe);
 		}
 	}
 
 	private FastqRecord readNextRecord() {
+		FastqRecord record = null;
+		try {
+			// Read sequence header
+			final String seqHeader = reader.readLine();
+			final String seqLine = reader.readLine();
+			final String qualHeader = reader.readLine();
+			final String qualLine = reader.readLine();
+
+			if (seqHeader != null && qualHeader != null) {
+				record = new FastqRecord(seqHeader.substring(1, seqHeader.length()), seqLine, qualHeader.substring(1, qualHeader.length()), qualLine);
+			}
+			line += 4;
+		} catch (IOException e) {
+			throw new PicardException(String.format("Error reading '%s'", fileAbsolutePath), e);
+		}
+		return record;
+	}
+
+	private FastqRecord readNextRecordWithChecks() {
 		try {
 
 			// Read sequence header
@@ -129,7 +162,11 @@ public class FastqReader implements Iterator<FastqRecord>, Iterable<FastqRecord>
 			throw new NoSuchElementException("next() called when !hasNext()");
 		}
 		final FastqRecord rec = nextRecord;
-		nextRecord = readNextRecord();
+		if (checkRecords) {
+			nextRecord = readNextRecordWithChecks();
+		} else {
+			nextRecord = readNextRecord();
+		}
 		return rec;
 	}
 

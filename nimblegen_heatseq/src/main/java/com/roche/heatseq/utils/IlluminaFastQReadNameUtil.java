@@ -38,6 +38,24 @@ public class IlluminaFastQReadNameUtil {
 	 * @return
 	 */
 	public static String getUniqueIdForReadHeader(String readHeader) {
+		return getUniqueIdForReadHeader(null, readHeader);
+	}
+
+	// Sample Illumina format prior to Casava 1.8
+	// @MS5_15454:1:1110:12527:26507#26/1
+	// Sample Illumina format as of Casava 1.8
+	// @M01077:35:000000000-A3J96:1:1102:13646:7860 1:N:0:1
+	/**
+	 * Parse and return the unique identifier from the fastQ read header
+	 * 
+	 * @param readHeader
+	 * @return
+	 */
+	public static String getUniqueIdForReadHeader(String commonReadNameBeginning, String readHeader) {
+		if (commonReadNameBeginning != null && !commonReadNameBeginning.isEmpty()) {
+			readHeader = readHeader.substring(commonReadNameBeginning.length());
+		}
+
 		int firstSpace = readHeader.indexOf(" ");
 		int firstForwardSlash = readHeader.indexOf("/");
 

@@ -18,7 +18,8 @@ package com.roche.sequencing.bioinformatics.common.mapping;
 
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -122,12 +123,12 @@ public class SimpleMapper<O> {
 	 * @return the set of unique identifiers/keys/sequence addresses that best map to the provided query sequence
 	 */
 	@SuppressWarnings("unchecked")
-	public Set<O> getBestCandidateReferences(ISequence querySequence, int limit) {
+	public List<O> getBestCandidateReferences(ISequence querySequence, int limit) {
 		TallyMap<O> matchTallies = getReferenceTallyMap(querySequence);
 
 		int lastAddedSize = 0;
 
-		Set<O> bestCandidates = new LinkedHashSet<O>();
+		List<O> bestCandidates = new LinkedList<O>();
 		if (matchTallies.getLargestCount() > 0) {
 			entryLoop: for (Entry<O, Integer> entry : matchTallies.getObjectsSortedFromMostTalliesToLeast()) {
 
@@ -140,7 +141,7 @@ public class SimpleMapper<O> {
 
 			}
 		} else {
-			bestCandidates = (Set<O>) Collections.EMPTY_SET;
+			bestCandidates = (List<O>) Collections.EMPTY_LIST;
 		}
 		return bestCandidates;
 	}
@@ -149,7 +150,7 @@ public class SimpleMapper<O> {
 	 * @param querySequence
 	 * @return the set of unique identifiers/keys/sequence addresses that best map to the provided query sequence
 	 */
-	public Set<O> getBestCandidateReferences(ISequence querySequence) {
+	public List<O> getBestCandidateReferences(ISequence querySequence) {
 		return getBestCandidateReferences(querySequence, DEFAULT_BEST_CANDIDATE_LIMIT);
 	}
 

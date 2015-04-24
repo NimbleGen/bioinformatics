@@ -18,7 +18,7 @@ package com.roche.sequencing.bioinformatics.common.mapping;
 
 import static org.testng.Assert.assertEquals;
 
-import java.util.Set;
+import java.util.List;
 
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -42,7 +42,7 @@ public class SimpleMapperTest {
 		simpleMapper.addReferenceSequence(new NucleotideCodeSequence("CGATCGATT"), refThree);
 
 		String querySequence = "ATACGA";
-		Set<String> candidates = simpleMapper.getBestCandidateReferences(new NucleotideCodeSequence(querySequence));
+		List<String> candidates = simpleMapper.getBestCandidateReferences(new NucleotideCodeSequence(querySequence));
 		assertEquals(candidates.size(), 0);
 	}
 
@@ -57,7 +57,7 @@ public class SimpleMapperTest {
 		simpleMapper.addReferenceSequence(new NucleotideCodeSequence("CGATCGATT"), refThree);
 
 		String querySequence = "TGAAGGGAGGATGGGC";
-		Set<String> candidates = simpleMapper.getBestCandidateReferences(new NucleotideCodeSequence(querySequence));
+		List<String> candidates = simpleMapper.getBestCandidateReferences(new NucleotideCodeSequence(querySequence));
 		assertEquals(candidates.size(), 1);
 	}
 

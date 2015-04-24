@@ -27,6 +27,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
+
 /**
  * 
  * Simple class that keeps track of counts/tallies of objects
@@ -114,5 +116,13 @@ public class TallyMap<O> {
 		for (Entry<O, Integer> entry : tallyMap.objectCount.entrySet()) {
 			addMultiple(entry.getKey(), entry.getValue());
 		}
+	}
+
+	public String getHistogramAsString() {
+		StringBuilder histogram = new StringBuilder();
+		for (Entry<O, Integer> entry : getObjectsSortedFromMostTalliesToLeast()) {
+			histogram.append(entry.getKey() + " : " + entry.getValue() + StringUtil.NEWLINE);
+		}
+		return histogram.toString();
 	}
 }

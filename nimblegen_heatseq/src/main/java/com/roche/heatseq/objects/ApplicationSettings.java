@@ -34,6 +34,7 @@ public class ApplicationSettings {
 	private final File fastQ1File;
 	private final File fastQ2File;
 	private final File outputDirectory;
+	private final File tempDirectory;
 	private final String outputBamFileName;
 	private final String outputFilePrefix;
 	private final String originalBamFileName;
@@ -51,6 +52,7 @@ public class ApplicationSettings {
 	private final boolean mergePairs;
 	private final boolean useStrictReadToProbeMatching;
 	private final ProbeHeaderInformation probeHeaderInformation;
+	private final boolean readsNotTrimmed;
 
 	/**
 	 * Default Constructor
@@ -71,10 +73,10 @@ public class ApplicationSettings {
 	 * @param programVersion
 	 * @param numProcessors
 	 */
-	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1File, File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix,
-			String originalBamFileName, boolean shouldOutputReports, String commandLineSignature, String programName, String programVersion, int numProcessors, boolean allowVariableLengthUids,
-			IAlignmentScorer alignmentScorer, int extensionUidLength, int ligationUidLength, boolean markDuplicates, boolean keepDuplicates, boolean mergePairs, boolean useStrictReadToProbeMatching,
-			ProbeHeaderInformation probeHeaderInformation) {
+	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1File, File fastQ2File, File outputDirectory, File tempDirectory, String outputBamFileName,
+			String outputFilePrefix, String originalBamFileName, boolean shouldOutputReports, String commandLineSignature, String programName, String programVersion, int numProcessors,
+			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, int extensionUidLength, int ligationUidLength, boolean markDuplicates, boolean keepDuplicates, boolean mergePairs,
+			boolean useStrictReadToProbeMatching, ProbeHeaderInformation probeHeaderInformation, boolean readsNotTrimmed) {
 		super();
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;
@@ -82,6 +84,7 @@ public class ApplicationSettings {
 		this.fastQ1File = fastQ1File;
 		this.fastQ2File = fastQ2File;
 		this.outputDirectory = outputDirectory;
+		this.tempDirectory = tempDirectory;
 		this.outputBamFileName = outputBamFileName;
 		this.outputFilePrefix = outputFilePrefix;
 		this.originalBamFileName = originalBamFileName;
@@ -99,6 +102,7 @@ public class ApplicationSettings {
 		this.mergePairs = mergePairs;
 		this.useStrictReadToProbeMatching = useStrictReadToProbeMatching;
 		this.probeHeaderInformation = probeHeaderInformation;
+		this.readsNotTrimmed = readsNotTrimmed;
 	}
 
 	/**
@@ -148,6 +152,13 @@ public class ApplicationSettings {
 	 */
 	public File getOutputDirectory() {
 		return outputDirectory;
+	}
+
+	/**
+	 * @return tempDirectory
+	 */
+	public File getTempDirectory() {
+		return tempDirectory;
 	}
 
 	/**
@@ -257,6 +268,10 @@ public class ApplicationSettings {
 
 	public ProbeHeaderInformation getProbeHeaderInformation() {
 		return probeHeaderInformation;
+	}
+
+	public boolean isReadsNotTrimmed() {
+		return readsNotTrimmed;
 	}
 
 }

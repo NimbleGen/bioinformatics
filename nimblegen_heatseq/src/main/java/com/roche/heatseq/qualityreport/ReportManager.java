@@ -6,8 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import net.sf.samtools.SAMFileHeader;
-
 import com.roche.heatseq.cli.HsqUtilsCli;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarStringUtil;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
@@ -51,7 +49,7 @@ public class ReportManager {
 	private final List<Integer> numberOfLigationGains;
 	private final List<Integer> numberOfExtensionGains;
 
-	public ReportManager(String softwareName, String softwareVersion, String sampleName, File outputDirectory, String outputFilePrefix, SAMFileHeader samFileHeader, boolean shouldOutputReports) {
+	public ReportManager(String softwareName, String softwareVersion, String sampleName, File outputDirectory, String outputFilePrefix, boolean shouldOutputReports) {
 
 		ligationMismatchDetailsByIndex = new ArrayList<TallyMap<Character>>();
 		extensionMismatchDetailsByIndex = new ArrayList<TallyMap<Character>>();

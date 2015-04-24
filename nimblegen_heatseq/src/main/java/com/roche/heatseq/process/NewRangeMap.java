@@ -132,7 +132,7 @@ public class NewRangeMap<O> implements RangeMap<O> {
 	}
 
 	public static void main(String[] args) throws IOException {
-		go2();
+		go();
 	}
 
 	public static void go2() throws IOException {
@@ -179,6 +179,8 @@ public class NewRangeMap<O> implements RangeMap<O> {
 		// rangeMap.put(15, 20, "e");
 		// System.out.println(rangeMap.getObjectsContainedWithinRangeInclusive(15, 20));
 
+		long start = System.currentTimeMillis();
+
 		File bamFile = new File("D://kurts_space/heatseq/big/input.bam");
 		File bamFileIndex = new File("D://kurts_space/heatseq/big/input.bai");
 
@@ -218,6 +220,9 @@ public class NewRangeMap<O> implements RangeMap<O> {
 		for (String name : firstFoundRecordByReadName.keySet()) {
 			System.out.println(name);
 		}
+
+		long end = System.currentTimeMillis();
+		System.out.println("total read time:" + (end - start));
 
 		samIter.close();
 		samReader.close();
