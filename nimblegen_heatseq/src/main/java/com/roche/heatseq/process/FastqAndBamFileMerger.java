@@ -371,7 +371,7 @@ public class FastqAndBamFileMerger {
 
 		private SAMRecord getNextRecordToReturn() {
 			SAMRecord nextRecordToReturn = null;
-			while (samIter.hasNext() && fastq1Iter.hasNext() && fastq2Iter.hasNext() && nextRecordToReturn == null) {
+			while (((samRecord == null && samIter.hasNext()) || (fastqOneRecord == null && fastq1Iter.hasNext() && fastqTwoRecord == null && fastq2Iter.hasNext())) && nextRecordToReturn == null) {
 				if (samRecord == null) {
 					samRecord = samIter.next();
 				}
@@ -387,7 +387,6 @@ public class FastqAndBamFileMerger {
 				String samName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(commonReadNameBeginning, samRecord.getReadName());
 				String fastqOneName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(commonReadNameBeginning, fastqOneRecord.getReadHeader());
 				String fastqTwoName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(commonReadNameBeginning, fastqTwoRecord.getReadHeader());
-
 				// make sure the fastq files have the same read header
 				int fastqComp = fastqOneName.compareTo(fastqTwoName);
 				if (fastqComp < 0) {
