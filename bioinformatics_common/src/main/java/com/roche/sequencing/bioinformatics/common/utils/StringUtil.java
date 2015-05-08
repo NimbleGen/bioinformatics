@@ -24,7 +24,7 @@ public final class StringUtil {
 	public static final String NEWLINE = System.getProperty("line.separator");
 
 	public static final String TAB = "\t";
-	public static final String CARRIAGE_RETURN = "\r";
+	public static final char CARRIAGE_RETURN = '\r';
 	public static final char NEWLINE_SYMBOL = '\n';
 	// NOTE: WINDOWS_NEWLINE = CARRIAGE_RETURN + LINE_FEED;
 	// NOTE: LINUX_NEWLINE = LINE_FEED;

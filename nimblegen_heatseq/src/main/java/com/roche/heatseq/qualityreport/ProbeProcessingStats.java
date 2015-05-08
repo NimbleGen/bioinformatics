@@ -39,7 +39,8 @@ public class ProbeProcessingStats {
 	private final String uidCompositionByPosition;
 	private final String weightedUidComposition;
 	private final String weightedUidCompositionByPosition;
-	private int numberOfReadPairsUnableExtendPrimer;
+	private int numberOfUniqueReadPairsUnableExtendPrimer;
+	private int numberOfDuplicateReadPairsUnabelToExtendPrimer;
 
 	/**
 	 * Constructor
@@ -76,7 +77,8 @@ public class ProbeProcessingStats {
 		}
 		this.weightedUidComposition = weightedUidComposition;
 		this.weightedUidCompositionByPosition = weightedUidCompositionByPosition;
-		this.numberOfReadPairsUnableExtendPrimer = 0;
+		this.numberOfUniqueReadPairsUnableExtendPrimer = 0;
+		this.numberOfDuplicateReadPairsUnabelToExtendPrimer = 0;
 	}
 
 	public int getTotalUids() {
@@ -88,11 +90,11 @@ public class ProbeProcessingStats {
 	}
 
 	public int getTotalDuplicateReadPairsRemoved() {
-		return totalDuplicateReadPairsRemoved;
+		return totalDuplicateReadPairsRemoved - numberOfDuplicateReadPairsUnabelToExtendPrimer;
 	}
 
 	public int getTotalReadPairsRemainingAfterReduction() {
-		return totalReadPairsRemainingAfterReduction - numberOfReadPairsUnableExtendPrimer;
+		return totalReadPairsRemainingAfterReduction - numberOfUniqueReadPairsUnableExtendPrimer;
 	}
 
 	public Probe getProbe() {
@@ -110,18 +112,22 @@ public class ProbeProcessingStats {
 		StringBuilder stringBuilder = new StringBuilder();
 
 		int readPairsAfterReduction = getTotalReadPairsRemainingAfterReduction();
+		int duplicateReadPairs = getTotalDuplicateReadPairsRemoved();
 
 		int totalReadPairs = readPairsAfterReduction + totalDuplicateReadPairsRemoved;
 
-		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + totalReadPairs + StringUtil.TAB + readPairsAfterReduction + StringUtil.TAB + totalDuplicateReadPairsRemoved + StringUtil.TAB
+		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + totalReadPairs + StringUtil.TAB + readPairsAfterReduction + StringUtil.TAB + duplicateReadPairs + StringUtil.TAB
 				+ formatter.format(onTargetDuplicateRate * 100) + StringUtil.TAB);
-		stringBuilder.append(formatter.format(averageNumberOfReadPairsPerUid) + StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase()
-				+ StringUtil.TAB + numberOfReadPairsUnableExtendPrimer);
+		stringBuilder.append(formatter.format(averageNumberOfReadPairsPerUid) + StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase());
 
 		return stringBuilder.toString();
 	}
 
-	public void setNumberOfReadPairsUnableToExtendPrimer(int numberOfReadPairsUnableExtendPrimer) {
-		this.numberOfReadPairsUnableExtendPrimer = numberOfReadPairsUnableExtendPrimer;
+	public void setNumberOfUniqueReadPairsUnableToExtendPrimer(int numberOfUniqueReadPairsUnableExtendPrimer) {
+		this.numberOfUniqueReadPairsUnableExtendPrimer = numberOfUniqueReadPairsUnableExtendPrimer;
+	}
+
+	public void setNumberOfDuplicateReadPairsUnableToExtendPrimer(int numberOfDuplicateReadPairsUnableExtendPrimer) {
+		this.numberOfDuplicateReadPairsUnabelToExtendPrimer = numberOfDuplicateReadPairsUnableExtendPrimer;
 	}
 }

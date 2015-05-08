@@ -309,14 +309,10 @@ public class CommandLineParser {
 	 * @param includeJvmParams
 	 * @return the signature used to call this application
 	 */
-	public static String getCommandLineCallSignature(String applicationName, String[] args, boolean includeJvmParams) {
+	public static String getCommandLineCallSignature(String jarFileName, String[] args, boolean includeJvmParams) {
 		StringBuilder signature = new StringBuilder();
 
-		signature.append(applicationName);
-
-		for (String commandLineArgument : args) {
-			signature.append(" " + commandLineArgument);
-		}
+		signature.append("java");
 
 		if (includeJvmParams) {
 			RuntimeMXBean RuntimemxBean = ManagementFactory.getRuntimeMXBean();
@@ -325,6 +321,13 @@ public class CommandLineParser {
 				signature.append(" " + jvmArgument);
 			}
 		}
+
+		signature.append(" -jar " + jarFileName);
+
+		for (String commandLineArgument : args) {
+			signature.append(" " + commandLineArgument);
+		}
+
 		return signature.toString();
 	}
 

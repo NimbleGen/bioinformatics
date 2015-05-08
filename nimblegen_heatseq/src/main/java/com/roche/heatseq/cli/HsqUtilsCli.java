@@ -15,6 +15,7 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 public class HsqUtilsCli {
 
 	public final static String APPLICATION_NAME = "HSQUtils";
+	public final static String JAR_FILE_NAME = "hsqutils.jar";
 	private static String applicationVersionFromManifest = "unversioned--currently running in eclipse";
 
 	public final static String TRIM_COMMAND_NAME = "trim";
@@ -37,8 +38,10 @@ public class HsqUtilsCli {
 			CliStatusConsole.logError(t);
 			if (logFile != null) {
 				CliStatusConsole.logError("You may find additional details regarding your error in the log file [" + logFile.getAbsolutePath() + "].");
+			} else {
+				t.printStackTrace();
 			}
-			CliStatusConsole.logError("If you are unable to fix this issue and believe the application is in error please contact technical support at http://www.nimblegen.com/arraysupport/.");
+			CliStatusConsole.logError("If you are unable to fix this issue and believe the application is in error please contact technical support at \"http://www.nimblegen.com/contact\".");
 			CliStatusConsole.logError("");
 			CliStatusConsole.logError(underlineFrame);
 			CliStatusConsole.logError("");
@@ -52,7 +55,7 @@ public class HsqUtilsCli {
 			applicationVersionFromManifest = version;
 		}
 
-		String commandLineSignature = CommandLineParser.getCommandLineCallSignature(APPLICATION_NAME, args, true);
+		String commandLineSignature = CommandLineParser.getCommandLineCallSignature(JAR_FILE_NAME, args, true);
 		CliStatusConsole.logStatus("");
 		CliStatusConsole.logStatus("---------------------------------");
 		CliStatusConsole.logStatus("Roche NimbleGen HeatSeq Utilities (version:" + applicationVersionFromManifest + ")");

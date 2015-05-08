@@ -23,6 +23,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -286,7 +287,13 @@ public final class ProbeFileUtil {
 
 	public static ProbeHeaderInformation extractProbeHeaderInformation(File probeFile) throws FileNotFoundException {
 		Integer ligationUidLength = null;
-		Map<String, String> nameValuePairs = DelimitedFileParserUtil.parseCommentLinesNameValuePairs(probeFile);
+		Map<String, String> nameValuePairs = null;
+		try {
+			nameValuePairs = DelimitedFileParserUtil.parseCommentLinesNameValuePairs(probeFile);
+		} catch (IOException e) {
+			logger.warn(e.getMessage(), e);
+			nameValuePairs = new HashMap<String, String>();
+		}
 		String ligationUidLengthAsString = nameValuePairs.get(LIGATION_UID_NAME_IN_PROBE_INFO_HEADER);
 		if (ligationUidLengthAsString != null) {
 			try {

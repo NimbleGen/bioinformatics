@@ -56,44 +56,55 @@ public class GenomeIdentifier {
 		return matchingGenomeName;
 	}
 
+	public static boolean isGenomeNameRecognized(String genomeName) {
+		initializeGenomes();
+		boolean isGenomeNameRecognized = false;
+		if (genomeInitialized) {
+			isGenomeNameRecognized = chromosomeSizesByChromosomeByGenomeName.containsKey(genomeName);
+		}
+		return isGenomeNameRecognized;
+	}
+
 	public static String createMismatchGenomeReportText(String expectedGenome, Map<String, Integer> chromosomeSizesByNameFromBam) throws IOException {
 		initializeGenomes();
 		StringBuilder reportText = new StringBuilder();
 		if (genomeInitialized) {
 
 			Map<String, Integer> expectedChromosomeSizes = chromosomeSizesByChromosomeByGenomeName.get(expectedGenome);
-			String preheader = "#expected genome=" + expectedGenome + "  *-indicates mismatch" + StringUtil.NEWLINE;
-			String header = expectedGenome + "_sequence_name" + StringUtil.TAB + expectedGenome + "_sequence_length" + StringUtil.TAB + "BAM_sequence_name" + StringUtil.TAB + "BAM_sequence_length"
-					+ StringUtil.NEWLINE;
-			reportText.append(preheader);
-			reportText.append(header);
+			if (expectedChromosomeSizes != null) {
+				String preheader = "#expected genome=" + expectedGenome + "  *-indicates mismatch" + StringUtil.NEWLINE;
+				String header = expectedGenome + "_sequence_name" + StringUtil.TAB + expectedGenome + "_sequence_length" + StringUtil.TAB + "BAM_sequence_name" + StringUtil.TAB
+						+ "BAM_sequence_length" + StringUtil.NEWLINE;
+				reportText.append(preheader);
+				reportText.append(header);
 
-			Set<String> matchingNames = new HashSet<String>();
-			for (Entry<String, Integer> entryFromBam : chromosomeSizesByNameFromBam.entrySet()) {
-				String chromosomeNameFromBam = entryFromBam.getKey();
-				Integer sizeFromBam = entryFromBam.getValue();
-				Integer expectedChromosomeSize = expectedChromosomeSizes.get(chromosomeNameFromBam);
-				if (expectedChromosomeSize != null) {
-					matchingNames.add(chromosomeNameFromBam);
-					if (expectedChromosomeSize.equals(sizeFromBam)) {
-						reportText.append(chromosomeNameFromBam + StringUtil.TAB + expectedChromosomeSize + StringUtil.TAB + chromosomeNameFromBam + StringUtil.TAB + sizeFromBam + StringUtil.NEWLINE);
+				Set<String> matchingNames = new HashSet<String>();
+				for (Entry<String, Integer> entryFromBam : chromosomeSizesByNameFromBam.entrySet()) {
+					String chromosomeNameFromBam = entryFromBam.getKey();
+					Integer sizeFromBam = entryFromBam.getValue();
+					Integer expectedChromosomeSize = expectedChromosomeSizes.get(chromosomeNameFromBam);
+					if (expectedChromosomeSize != null) {
+						matchingNames.add(chromosomeNameFromBam);
+						if (expectedChromosomeSize.equals(sizeFromBam)) {
+							reportText.append(chromosomeNameFromBam + StringUtil.TAB + expectedChromosomeSize + StringUtil.TAB + chromosomeNameFromBam + StringUtil.TAB + sizeFromBam
+									+ StringUtil.NEWLINE);
+						} else {
+							reportText.append(chromosomeNameFromBam + StringUtil.TAB + "*" + expectedChromosomeSize + StringUtil.TAB + chromosomeNameFromBam + StringUtil.TAB + "*" + sizeFromBam
+									+ StringUtil.NEWLINE);
+						}
 					} else {
-						reportText.append(chromosomeNameFromBam + StringUtil.TAB + "*" + expectedChromosomeSize + StringUtil.TAB + chromosomeNameFromBam + StringUtil.TAB + "*" + sizeFromBam
-								+ StringUtil.NEWLINE);
+						reportText.append(NO_MATCH_STRING + StringUtil.TAB + NO_MATCH_STRING + StringUtil.TAB + chromosomeNameFromBam + StringUtil.TAB + sizeFromBam + StringUtil.NEWLINE);
 					}
-				} else {
-					reportText.append(NO_MATCH_STRING + StringUtil.TAB + NO_MATCH_STRING + StringUtil.TAB + chromosomeNameFromBam + StringUtil.TAB + sizeFromBam + StringUtil.NEWLINE);
+				}
+
+				for (Entry<String, Integer> expectedEntry : expectedChromosomeSizes.entrySet()) {
+					String expectedChromosomeName = expectedEntry.getKey();
+					if (!matchingNames.contains(expectedChromosomeName)) {
+						Integer expectedSize = expectedEntry.getValue();
+						reportText.append(expectedChromosomeName + StringUtil.TAB + expectedSize + StringUtil.TAB + NO_MATCH_STRING + StringUtil.TAB + NO_MATCH_STRING + StringUtil.NEWLINE);
+					}
 				}
 			}
-
-			for (Entry<String, Integer> expectedEntry : expectedChromosomeSizes.entrySet()) {
-				String expectedChromosomeName = expectedEntry.getKey();
-				if (!matchingNames.contains(expectedChromosomeName)) {
-					Integer expectedSize = expectedEntry.getValue();
-					reportText.append(expectedChromosomeName + StringUtil.TAB + expectedSize + StringUtil.TAB + NO_MATCH_STRING + StringUtil.TAB + NO_MATCH_STRING + StringUtil.NEWLINE);
-				}
-			}
-
 		} else {
 			throw new AssertionError();
 		}

@@ -63,12 +63,11 @@ public class IlluminaFastQReadNameUtil {
 			firstSpace = Integer.MAX_VALUE;
 		}
 
-		int charAfterFirstForwardSlash = Integer.MAX_VALUE;
-		if (firstForwardSlash >= 0) {
-			charAfterFirstForwardSlash = firstForwardSlash + 1;
+		if (firstForwardSlash < 0) {
+			firstForwardSlash = Integer.MAX_VALUE;
 		}
 
-		int endIndex = Math.min(firstSpace, charAfterFirstForwardSlash);
+		int endIndex = Math.min(firstSpace, firstForwardSlash);
 		endIndex = Math.min(endIndex, readHeader.length());
 
 		String uniqueId = readHeader.substring(0, endIndex);

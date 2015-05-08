@@ -21,7 +21,6 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -29,7 +28,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.Scanner;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
@@ -143,12 +141,27 @@ public final class FileUtil {
 	/**
 	 * read the first line of a file as a string
 	 * 
-	 * @throws FileNotFoundException
+	 * @throws IOException
 	 */
-	public static String readFirstLineAsString(File file) throws FileNotFoundException {
+	public static String readFirstLineAsString(File file) throws IOException {
 		String firstLine = null;
-		try (Scanner scanner = new Scanner(file)) {
-			firstLine = scanner.nextLine();
+		StringBuilder firstLineBuilder = new StringBuilder();
+		try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
+			byte[] character = new byte[4096];
+			int readChars = 0;
+			if ((readChars = inputStream.read(character)) != -1) {
+				characterLoop: for (int i = 0; i < readChars; ++i) {
+
+					if (((char) character[i]) == StringUtil.NEWLINE_SYMBOL) {
+						firstLine = firstLineBuilder.toString();
+						break characterLoop;
+					} else {
+						if (((char) character[i]) != StringUtil.CARRIAGE_RETURN) {
+							firstLineBuilder.append((char) character[i]);
+						}
+					}
+				}
+			}
 		}
 		return firstLine;
 	}
@@ -253,7 +266,7 @@ public final class FileUtil {
 			while ((readChars = inputStream.read(character)) != -1) {
 				empty = false;
 				for (int i = 0; i < readChars; ++i) {
-					if (character[i] == StringUtil.NEWLINE_SYMBOL) {
+					if (((char) character[i]) == StringUtil.NEWLINE_SYMBOL) {
 						++count;
 					}
 				}

@@ -20,12 +20,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
@@ -37,13 +39,13 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
  */
 public class TallyMap<O> {
 
-	private Map<O, Integer> objectCount;
+	private Map<O, AtomicInteger> objectCount;
 	private int largestCount;
 	public int sumOfAllBins = 0;
 	private Set<O> objectsWithLargestCount;
 
 	public TallyMap() {
-		this.objectCount = new ConcurrentHashMap<O, Integer>();
+		this.objectCount = new ConcurrentHashMap<O, AtomicInteger>();
 		objectsWithLargestCount = new HashSet<O>();
 	}
 
@@ -64,9 +66,10 @@ public class TallyMap<O> {
 	}
 
 	public int getCount(O object) {
-		Integer currentCount = objectCount.get(object);
-		if (currentCount == null) {
-			currentCount = 0;
+		int currentCount = 0;
+		AtomicInteger atomicCurrentCount = objectCount.get(object);
+		if (atomicCurrentCount != null) {
+			currentCount = atomicCurrentCount.get();
 		}
 		return currentCount;
 	}
@@ -81,8 +84,16 @@ public class TallyMap<O> {
 
 	public void addMultiple(O object, int numberOfAdditions) {
 		sumOfAllBins += numberOfAdditions;
-		Integer currentCount = getCount(object);
-		currentCount += numberOfAdditions;
+		AtomicInteger atomicCurrentCount = objectCount.get(object);
+
+		if (atomicCurrentCount != null) {
+			atomicCurrentCount.addAndGet(numberOfAdditions);
+		} else {
+			atomicCurrentCount = new AtomicInteger(numberOfAdditions);
+			objectCount.put(object, atomicCurrentCount);
+		}
+
+		int currentCount = atomicCurrentCount.get();
 		if (currentCount > largestCount) {
 			largestCount = currentCount;
 			objectsWithLargestCount.clear();
@@ -90,11 +101,15 @@ public class TallyMap<O> {
 		} else if (currentCount == largestCount) {
 			objectsWithLargestCount.add(object);
 		}
-		objectCount.put(object, currentCount);
+
 	}
 
 	public Map<O, Integer> getTalliesAsMap() {
-		return objectCount;
+		Map<O, Integer> talliesAsMap = new HashMap<O, Integer>(objectCount.size());
+		for (Entry<O, AtomicInteger> entry : objectCount.entrySet()) {
+			talliesAsMap.put(entry.getKey(), entry.getValue().get());
+		}
+		return talliesAsMap;
 	}
 
 	public Set<O> getObjects() {
@@ -102,7 +117,7 @@ public class TallyMap<O> {
 	}
 
 	public List<Entry<O, Integer>> getObjectsSortedFromMostTalliesToLeast() {
-		List<Entry<O, Integer>> entries = new ArrayList<Entry<O, Integer>>(objectCount.entrySet());
+		List<Entry<O, Integer>> entries = new ArrayList<Entry<O, Integer>>(getTalliesAsMap().entrySet());
 		Collections.sort(entries, new Comparator<Entry<O, Integer>>() {
 			@Override
 			public int compare(Entry<O, Integer> o1, Entry<O, Integer> o2) {
@@ -113,8 +128,8 @@ public class TallyMap<O> {
 	}
 
 	public void addAll(TallyMap<O> tallyMap) {
-		for (Entry<O, Integer> entry : tallyMap.objectCount.entrySet()) {
-			addMultiple(entry.getKey(), entry.getValue());
+		for (Entry<O, AtomicInteger> entry : tallyMap.objectCount.entrySet()) {
+			addMultiple(entry.getKey(), entry.getValue().get());
 		}
 	}
 

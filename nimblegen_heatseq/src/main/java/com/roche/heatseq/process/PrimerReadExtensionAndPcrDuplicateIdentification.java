@@ -76,6 +76,7 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.AlphaNumericStringComparator;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
+import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 import com.roche.sequencing.bioinformatics.common.utils.TabDelimitedFileWriter;
 
@@ -96,6 +97,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 	private static volatile Semaphore primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore = null;
 	private final static int READ_TO_PROBE_ALIGNMENT_BUFFER = 0;
+	public final static int DEFAULT_MAX_RECORDS_IN_RAM = 500000;
 
 	// final Set<String> uniqueReads;
 	final Set<String> unableToExtendReads;
@@ -137,7 +139,6 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		File indexFileForMergedBamFileSortedByCoordinates;
 		try {
 			mergedBamFileSortedByCoordinates = File.createTempFile("merged_bam_sorted_by_coordinates_", ".bam", applicationSettings.getTempDirectory());
-			indexFileForMergedBamFileSortedByCoordinates = File.createTempFile("index_of_merged_bam_sorted_by_coordinates_", ".bamindex", applicationSettings.getTempDirectory());
 		} catch (IOException e1) {
 			throw new IllegalStateException("Unable to create temp files at [" + applicationSettings.getTempDirectory() + "].");
 		}
@@ -164,13 +165,18 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		logger.debug("Done merging bam and fastq files ... result[" + mergedBamFileSortedByCoordinates.getAbsolutePath() + "] in "
 				+ DateUtil.convertMillisecondsToHHMMSS(timeAfterMergeUnsorted - mergeStart) + ".");
 
-		// Build bam index
-		SAMFileReader samReader = new SAMFileReader(mergedBamFileSortedByCoordinates);
-		BamFileUtil.createIndexOnCoordinateSortedBamFile(samReader, indexFileForMergedBamFileSortedByCoordinates);
-		long timeAfterBuildBamIndex = System.currentTimeMillis();
-		logger.debug("Done creating index for merged and sorted bam file ... result[" + indexFileForMergedBamFileSortedByCoordinates.getAbsolutePath() + "] in "
-				+ DateUtil.convertMillisecondsToHHMMSS(timeAfterBuildBamIndex - timeAfterMergeUnsorted));
-		samReader.close();
+		try (SAMFileReader samReader = new SAMFileReader(mergedBamFileSortedByCoordinates);) {
+			// Build bam index
+			indexFileForMergedBamFileSortedByCoordinates = new File(mergedBamFileSortedByCoordinates.getParent(), mergedBamFileSortedByCoordinates.getName() + ".bai");
+
+			FileUtil.createNewFile(indexFileForMergedBamFileSortedByCoordinates);
+			BamFileUtil.createIndexOnCoordinateSortedBamFile(samReader, indexFileForMergedBamFileSortedByCoordinates);
+			long timeAfterBuildBamIndex = System.currentTimeMillis();
+			logger.debug("Done creating index for merged and sorted bam file ... result[" + indexFileForMergedBamFileSortedByCoordinates.getAbsolutePath() + "] in "
+					+ DateUtil.convertMillisecondsToHHMMSS(timeAfterBuildBamIndex - timeAfterMergeUnsorted));
+		} catch (IOException e) {
+			throw new IllegalStateException("Unable to create temp files at [" + applicationSettings.getTempDirectory() + "].");
+		}
 
 		// Initialize the thread semaphore if it hasn't already been initialized
 
@@ -181,7 +187,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		long start = System.currentTimeMillis();
 
 		// Set up the reports files
-		ReportManager reportManager = new ReportManager(applicationSettings.getProgramName(), applicationSettings.getProgramVersion(), applicationSettings.getOutputFilePrefix(),
+		ReportManager reportManager = new ReportManager(applicationSettings.getProgramName(), applicationSettings.getProgramVersion(), applicationSettings.getSampleName(),
 				applicationSettings.getOutputDirectory(), applicationSettings.getOutputFilePrefix(), applicationSettings.isShouldOutputReports());
 
 		// Actually do the work
@@ -381,6 +387,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 						if (probeRanges != null) {
 							String readName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(commonReadNameBeginning, record.getReadName());
+
 							List<Probe> containedProbes = probeRanges.getObjectsThatContainRangeInclusive(record.getAlignmentStart(), record.getAlignmentEnd());
 
 							List<Probe> containedProbesFromFirstFoundReadInPair = containedProbesForFirstFoundReadByReadName.get(readName);
@@ -556,15 +563,10 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		int totalProbes = 0;
 		try (SAMFileReader mergedSamReader = new SAMFileReader(mergedBamFile, mergedBamFileIndex)) {
 
-			// String outputUnsortedBamFileName = FileUtil.getFileNameWithoutExtension(applicationSettings.getOriginalBamFileName()) + "_UNSORTED_REDUCED."
-			// + FileUtil.getFileExtension(applicationSettings.getBamFile());
-			// File outputUnsortedBamFile = new File(applicationSettings.getOutputDirectory(), outputUnsortedBamFileName);
-
 			String outputSortedBamFileName = applicationSettings.getOutputBamFileName();
 			File outputSortedBamFile = new File(applicationSettings.getOutputDirectory(), outputSortedBamFileName);
 
 			try {
-				// outputUnsortedBamFile.createNewFile();
 				outputSortedBamFile.createNewFile();
 			} catch (IOException e) {
 				throw new IllegalStateException(e.getMessage(), e);
@@ -573,7 +575,8 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 			SAMFileHeader header = BamFileUtil.getHeader(false, mergedSamReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(),
 					applicationSettings.getProgramVersion());
 			header.setSortOrder(SortOrder.coordinate);
-			samWriter = new SAMFileWriterFactory().setTempDirectory(applicationSettings.getTempDirectory()).makeBAMWriter(header, false, outputSortedBamFile, 0);
+			samWriter = new SAMFileWriterFactory().setMaxRecordsInRam(DEFAULT_MAX_RECORDS_IN_RAM).setTempDirectory(applicationSettings.getTempDirectory())
+					.makeBAMWriter(header, false, outputSortedBamFile, 0);
 
 			List<SAMSequenceRecord> referenceSequencesInBam = mergedSamReader.getFileHeader().getSequenceDictionary().getSequences();
 			List<String> referenceSequenceNamesInBam = new ArrayList<String>(referenceSequencesInBam.size());
@@ -751,20 +754,6 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 						totalFullyUnmappedReadPairs++;
 					} else if (readAndMateMapped) {
 						totalFullyMappedReadPairs++;
-						// boolean isDuplicate = duplicateReads.contains(readName);
-						// boolean unableToExtend = unableToExtendReads.contains(readName);
-						// boolean isUnique = uniqueReads.contains(readName);
-						// boolean isReadAssigned = !unableToExtend && (isUnique || isDuplicate);
-						// if (isReadAssigned && !isMateMappedFlagIncorrect) {
-						// totalFullyMappedOnTargetReadPairs++;
-						// if (isDuplicate) {
-						// duplicateOnTargetReadPairs++;
-						// } else {
-						// uniqueOnTargetReadPairs++;
-						// }
-						// } else {
-						// totalFullyMappedOffTargetReadPairs++;
-						// }
 					} else {
 						throw new AssertionError("Unable to classify read[" + readName + "].");
 					}
@@ -917,11 +906,12 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 				List<IReadPair> readsToWrite = new ArrayList<IReadPair>();
 
-				int numberOfReadPairsUnableExtendPrimer = 0;
+				int numberOfUniqueReadPairsUnableExtendPrimer = 0;
+				int numberOfDuplicateReadPairsUnableExtendPrimer = 0;
 
 				ExtendReadResults extendUniqueReadResults = ExtendReadsToPrimer.extendReadsToPrimers(probe, uniqueReads, alignmentScorer);
 				readsToWrite.addAll(extendUniqueReadResults.getExtendedReads());
-				numberOfReadPairsUnableExtendPrimer = extendUniqueReadResults.getUnableToExtendReads().size();
+				numberOfUniqueReadPairsUnableExtendPrimer = extendUniqueReadResults.getUnableToExtendReads().size();
 
 				// need to keep track of these for reporting
 				for (IReadPair readPair : extendUniqueReadResults.getUnableToExtendReads()) {
@@ -929,32 +919,21 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 				}
 
 				// need to keep track of these for reporting
-				// for (IReadPair readPair : extendUniqueReadResults.getExtendedReads()) {
-				// PrimerReadExtensionAndPcrDuplicateIdentification.this.uniqueReads.add(readPair.getReadName());
-				// }
 				PrimerReadExtensionAndPcrDuplicateIdentification.this.numberOfUniqueReadPairs.addAndGet(extendUniqueReadResults.getExtendedReads().size());
 
 				if (applicationSettings.isKeepDuplicates() || applicationSettings.isMarkDuplicates()) {
 					ExtendReadResults extendDuplicateReadResults = ExtendReadsToPrimer.extendReadsToPrimers(probe, duplicateReads, alignmentScorer);
 					readsToWrite.addAll(extendDuplicateReadResults.getExtendedReads());
-					numberOfReadPairsUnableExtendPrimer += extendDuplicateReadResults.getUnableToExtendReads().size();
+					numberOfDuplicateReadPairsUnableExtendPrimer = extendDuplicateReadResults.getUnableToExtendReads().size();
 
-					// need to keep track of these for reporting
-					// for (IReadPair readPair : extendDuplicateReadResults.getExtendedReads()) {
-					// PrimerReadExtensionAndPcrDuplicateIdentification.this.duplicateReads.add(readPair.getReadName());
-					// }
 					PrimerReadExtensionAndPcrDuplicateIdentification.this.numberOfDuplicateReadPairs.addAndGet(extendDuplicateReadResults.getExtendedReads().size());
-
 				} else {
-					// need to keep track of these for reporting
-					// for (IReadPair readPair : duplicateReads) {
-					// PrimerReadExtensionAndPcrDuplicateIdentification.this.duplicateReads.add(readPair.getReadName());
-					// }
 					PrimerReadExtensionAndPcrDuplicateIdentification.this.numberOfDuplicateReadPairs.addAndGet(duplicateReads.size());
 				}
 
 				ProbeProcessingStats probeProcessingStats = probeReductionResults.getProbeProcessingStats();
-				probeProcessingStats.setNumberOfReadPairsUnableToExtendPrimer(numberOfReadPairsUnableExtendPrimer);
+				probeProcessingStats.setNumberOfUniqueReadPairsUnableToExtendPrimer(numberOfUniqueReadPairsUnableExtendPrimer);
+				probeProcessingStats.setNumberOfDuplicateReadPairsUnableToExtendPrimer(numberOfDuplicateReadPairsUnableExtendPrimer);
 				probeProcessingStatsByProbeId.put(probe.getProbeId(), probeProcessingStats);
 
 				TabDelimitedFileWriter uidCompositionByProbeReport = reportManager.getUidCompisitionByProbeWriter();
@@ -1286,9 +1265,29 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		return new MergeInformation(mergedSequence, mergedQuality);
 	}
 
-	public static String verifyReadNamesCanBeHandledByDedupAndFindCommonReadNameBeginning(File inputFastqOne, File inputFastqTwo) {
+	public static class ReadNameDetails {
+		private final String commonReadNameBeginning;
+		private final Set<Character> charactersExcludingCommonBeginning;
+
+		public ReadNameDetails(String commonReadNameBeginning, Set<Character> charactersExcludingCommonBeginning) {
+			super();
+			this.commonReadNameBeginning = commonReadNameBeginning;
+			this.charactersExcludingCommonBeginning = charactersExcludingCommonBeginning;
+		}
+
+		public String getCommonReadNameBeginning() {
+			return commonReadNameBeginning;
+		}
+
+		public Set<Character> getCharacterLibraryExcludingCommonBeginning() {
+			return charactersExcludingCommonBeginning;
+		}
+	}
+
+	public static ReadNameDetails verifyReadNamesCanBeHandledByDedupAndFindCommonReadNameBeginning(File inputFastqOne, File inputFastqTwo) {
 		long start = System.currentTimeMillis();
 		String currentCommonBeginning = null;
+		Set<Character> uniqueCharacters = new HashSet<Character>();
 		int fastqEntryIndex = 0;
 		try (FastqReader fastQOneReader = new FastqReader(inputFastqOne)) {
 			try (FastqReader fastQTwoReader = new FastqReader(inputFastqTwo)) {
@@ -1315,13 +1314,18 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 						currentCommonBeginning = currentCommonBeginning.substring(0, i);
 					}
 
-					String uniqueReadNameOne = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(readNameOne);
-					String uniqueReadNameTwo = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(readNameTwo);
+					String uniqueReadNameOne = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(currentCommonBeginning, readNameOne);
+					String uniqueReadNameTwo = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(currentCommonBeginning, readNameTwo);
 					if (!uniqueReadNameOne.equals(uniqueReadNameTwo)) {
 						int lineNumber = (fastqEntryIndex * 4) + 1;
 						throw new IllegalStateException("The read names[" + readNameOne + "][" + readNameTwo + "] found at line[" + lineNumber + "] in fastqOne[" + inputFastqOne.getAbsolutePath()
 								+ "] and fastqTwo[" + inputFastqTwo.getAbsolutePath() + "] respectively are not valid Illumina read names.");
 					}
+
+					for (int i = 0; i < uniqueReadNameOne.length(); i++) {
+						uniqueCharacters.add(uniqueReadNameOne.charAt(i));
+					}
+
 					fastqEntryIndex++;
 				}
 			}
@@ -1329,6 +1333,6 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		long end = System.currentTimeMillis();
 		logger.info("Verified that the read names can be handled by dedup and found the common beginning for all read names[" + currentCommonBeginning + "] in "
 				+ DateUtil.convertMillisecondsToHHMMSS(end - start) + ".");
-		return currentCommonBeginning;
+		return new ReadNameDetails(currentCommonBeginning, uniqueCharacters);
 	}
 }

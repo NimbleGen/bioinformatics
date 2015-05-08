@@ -20,7 +20,6 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,7 +42,7 @@ public final class DelimitedFileParserUtil {
 
 	// private static final Logger logger = LoggerFactory.getLogger(DelimitedFileParserUtil.class);
 
-	private static final String CARRIAGE_RETURN = StringUtil.CARRIAGE_RETURN;
+	private static final String CARRIAGE_RETURN = "" + StringUtil.CARRIAGE_RETURN;
 
 	// NOTE: WINDOWS_NEWLINE = CARRIAGE_RETURN + LINE_FEED;
 	// NOTE: LINUX_NEWLINE = LINE_FEED;
@@ -174,10 +173,10 @@ public final class DelimitedFileParserUtil {
 		return header;
 	}
 
-	public static Map<String, String> parseCommentLinesNameValuePairs(File delimitedFile) throws FileNotFoundException {
+	public static Map<String, String> parseCommentLinesNameValuePairs(File delimitedFile) throws IOException {
 		Map<String, String> nameValuePairsMap = new HashMap<String, String>();
 		String firstLine = FileUtil.readFirstLineAsString(delimitedFile);
-		if (firstLine.startsWith("#")) {
+		if (firstLine != null && firstLine.startsWith("#")) {
 			String firstLineWithoutPound = firstLine.substring(1, firstLine.length());
 			String[] nameValuePairs = firstLineWithoutPound.split(" ");
 			for (String nameValuePair : nameValuePairs) {
@@ -447,7 +446,7 @@ public final class DelimitedFileParserUtil {
 			for (String headerName : headerNames) {
 				headerNamesAsString.append(headerName + " ");
 			}
-			throw new UnableToFindHeaderException("Could not find header containing header names[" + headerNamesAsString.toString() + "].");
+			throw new UnableToFindHeaderException("Could not find header containing header names[" + headerNamesAsString.toString() + "] in file[" + delimitedInputStreamFactory.getName() + "].");
 		}
 
 		if (wasInterrupted) {
@@ -530,10 +529,13 @@ public final class DelimitedFileParserUtil {
 		return headerWithNameFound;
 	}
 
-	public static void filterFileBasedOnColumnValues(File delimitedFile, File reducedFilteredFile, String columnDelimiter, Map<String, String[]> headerNameToAcceptableValuesMapping)
-			throws IOException {
+	public static void filterFileBasedOnColumnValues(File delimitedFile, File reducedFilteredFile, String columnDelimiter, Map<String, String[]> headerNameToAcceptableValuesMapping,
+			Map<String, String[]> headerNameToExceptionalValuesToIncludeMapping) throws IOException {
 		// create a header file out of all the headerNames in the map
-		String[] headerNames = headerNameToAcceptableValuesMapping.keySet().toArray(new String[0]);
+		Set<String> headerNamesAsSet = new HashSet<String>();
+		headerNamesAsSet.addAll(headerNameToAcceptableValuesMapping.keySet());
+		headerNamesAsSet.addAll(headerNameToExceptionalValuesToIncludeMapping.keySet());
+		String[] headerNames = headerNamesAsSet.toArray(new String[0]);
 
 		Map<Integer, String> columnToHeaderNameMap = null;
 		boolean headerFound = false;
@@ -591,9 +593,35 @@ public final class DelimitedFileParserUtil {
 									if (!isValueAcceptable) {
 										break headerLoop;
 									}
-
 								}
-								if (isValueAcceptable) {
+
+								boolean isValueExceptional = false;
+								headerLoop: for (String headerName : headerNameToValueMapFromRow.keySet()) {
+
+									String[] exceptionalValues = headerNameToExceptionalValuesToIncludeMapping.get(headerName);
+									if (exceptionalValues != null) {
+										String value = headerNameToValueMapFromRow.get(headerName);
+
+										if (value == null) {
+											value = "";
+										}
+
+										if (exceptionalValues != null) {
+											exceptionalLoop: for (String exceptionalValue : exceptionalValues) {
+												isValueExceptional = value.equals(exceptionalValue);
+												if (isValueExceptional) {
+													break exceptionalLoop;
+												}
+											}
+										}
+
+										if (isValueExceptional) {
+											break headerLoop;
+										}
+									}
+								}
+
+								if (isValueAcceptable || isValueExceptional) {
 									bufferedWriter.write(currentRow + StringUtil.NEWLINE);
 								}
 
