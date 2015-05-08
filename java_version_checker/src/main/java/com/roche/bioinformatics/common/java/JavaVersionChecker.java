@@ -79,7 +79,7 @@ public class JavaVersionChecker {
 		boolean shouldLoadMainClass = !javaVersionIsInadequate && !javaJvmBitsAreInadequate;
 		int javaExitNumber = 0;
 
-		boolean launchedSuccesfully = false;
+		boolean launchedsuccessfully = false;
 
 		if (shouldLoadMainClass) {
 			Class<?> clazz;
@@ -88,7 +88,7 @@ public class JavaVersionChecker {
 				Class<?>[] argTypes = new Class[] { String[].class };
 				Method method = clazz.getDeclaredMethod("main", argTypes);
 				method.invoke(null, (Object) args);
-				launchedSuccesfully = true;
+				launchedsuccessfully = true;
 			} catch (Exception e) {
 				throw new IllegalStateException("Could not instantiate the provided main class[" + mainClass + "]." + e.getMessage());
 			}
@@ -101,15 +101,15 @@ public class JavaVersionChecker {
 				// load using this jvm
 				try {
 					launch(new File(lastJvm), args, mainClass);
-					launchedSuccesfully = true;
+					launchedsuccessfully = true;
 				} catch (IOException e) {
 					JOptionPane.showMessageDialog(null, e.getMessage(), "Invalid JVM", JOptionPane.WARNING_MESSAGE);
-					launchedSuccesfully = false;
+					launchedsuccessfully = false;
 				}
 
 			}
 
-			if (!launchedSuccesfully) {
+			if (!launchedsuccessfully) {
 
 				javaExitNumber = 1;
 
@@ -185,7 +185,7 @@ public class JavaVersionChecker {
 									preferences.put(LAST_JVM_PREFERENCE, jvmDirectory.getAbsolutePath());
 									try {
 										launch(jvmDirectory, args, mainClass);
-										launchedSuccesfully = true;
+										launchedsuccessfully = true;
 									} catch (IOException e) {
 										e.printStackTrace();
 									}
@@ -203,7 +203,7 @@ public class JavaVersionChecker {
 			}
 		}
 
-		if (!launchedSuccesfully) {
+		if (!launchedsuccessfully) {
 			System.exit(javaExitNumber);
 		}
 

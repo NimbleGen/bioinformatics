@@ -2,6 +2,7 @@ package com.roche.heatseq.cli;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,8 @@ public class TrimCli {
 
 	private static final Logger logger = LoggerFactory.getLogger(TrimCli.class);
 	private static final String FASTQ_EXTENSION = ".fastq";
+	private static final int BYTES_PER_GIGABYTE = 1000000000;
+	private final static DecimalFormat doubleFormatter = new DecimalFormat("#,###.##");
 
 	public static void trim(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion) {
 		long applicationStart = System.currentTimeMillis();
@@ -56,9 +59,23 @@ public class TrimCli {
 			outputFilePrefix = outputFilePrefix + "_";
 		}
 
+		File logFile = HsqUtilsCli.getLogFile(outputDirectory, outputFilePrefix, applicationName, "trim");
+		try {
+			LoggingUtil.setLogFile(HsqUtilsCli.FILE_LOGGER_NAME, logFile);
+		} catch (IOException e2) {
+			throw new IllegalStateException("Unable to create log file at " + logFile.getAbsolutePath() + ".", e2);
+		}
+
 		File fastQ1File = new File(parsedCommandLine.getOptionsValue(DeduplicationCli.FASTQ_ONE_OPTION));
 		File fastQ2File = new File(parsedCommandLine.getOptionsValue(DeduplicationCli.FASTQ_TWO_OPTION));
 		FastqValidator.validate(fastQ1File, fastQ2File);
+
+		long requiredSpaceInBytes = fastQ1File.length() * 2;
+		long usableSpaceInBytes = outputDirectory.getUsableSpace();
+		if (usableSpaceInBytes <= requiredSpaceInBytes) {
+			throw new IllegalStateException("The amount of storage space required by this applications output is " + doubleFormatter.format(requiredSpaceInBytes / BYTES_PER_GIGABYTE)
+					+ "GB which is greater than the amount of usable space in the output directory[" + doubleFormatter.format(usableSpaceInBytes / BYTES_PER_GIGABYTE) + "GB].");
+		}
 
 		File probeFile = new File(parsedCommandLine.getOptionsValue(DeduplicationCli.PROBE_OPTION));
 		ParsedProbeFile probeInfo = ProbeInfoFileValidator.validateAndParseProbeInfoFile(probeFile);
@@ -75,13 +92,6 @@ public class TrimCli {
 		}
 		File outputFastQ2File = new File(outputFastQ2FileName);
 
-		File logFile = HsqUtilsCli.getLogFile(outputDirectory, outputFilePrefix, applicationName, "trim");
-		try {
-			LoggingUtil.setLogFile(HsqUtilsCli.FILE_LOGGER_NAME, logFile);
-		} catch (IOException e2) {
-			throw new IllegalStateException("Unable to create log file at " + logFile.getAbsolutePath() + ".", e2);
-		}
-
 		logger.info(applicationName + " version:" + applicationVersion);
 		logger.info("command line signature: " + commandLineSignature);
 
@@ -89,7 +99,7 @@ public class TrimCli {
 			FastqReadTrimmer.trimReads(fastQ1File, fastQ2File, probeInfo, probeFile, outputFastQ1File, outputFastQ2File);
 
 			long applicationStop = System.currentTimeMillis();
-			CliStatusConsole.logStatus(StringUtil.NEWLINE + "Trimming has completed succesfully.");
+			CliStatusConsole.logStatus(StringUtil.NEWLINE + "Trimming has completed successfully.");
 			CliStatusConsole.logStatus("Start Time: " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "(YYYY/MM/DD HH:MM:SS)  Stop Time: "
 					+ DateUtil.convertTimeInMillisecondsToDate(applicationStop) + "(YYYY/MM/DD HH:MM:SS)  Total Time: " + DateUtil.convertMillisecondsToHHMMSS(applicationStop - applicationStart)
 					+ "(HH:MM:SS)" + StringUtil.NEWLINE);

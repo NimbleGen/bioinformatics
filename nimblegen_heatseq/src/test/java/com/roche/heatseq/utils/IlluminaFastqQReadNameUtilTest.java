@@ -24,7 +24,7 @@ public class IlluminaFastqQReadNameUtilTest {
 	@Test(groups = { "unit" })
 	public void oldIlluminaReadNameTest() {
 		String readName = "@MS5_15454:1:1110:12527:26507#26/1";
-		String expectedReadName = "@MS5_15454:1:1110:12527:26507#26/";
+		String expectedReadName = "@MS5_15454:1:1110:12527:26507#26";
 		Assert.assertEquals(IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(readName), expectedReadName);
 	}
 

@@ -180,17 +180,17 @@ public final class ExtendReadsToPrimer {
 
 		Integer primerEndIndexInRead = getPrimerEndIndexInRead(primerSequence, readSequence);
 
-		boolean primerAlignedSuccesfully = (primerEndIndexInRead != null) && (primerEndIndexInRead >= 0) && (primerEndIndexInRead < readSequence.size());
+		boolean primerAlignedsuccessfully = (primerEndIndexInRead != null) && (primerEndIndexInRead >= 0) && (primerEndIndexInRead < readSequence.size());
 
-		if (primerAlignedSuccesfully) {
+		if (primerAlignedsuccessfully) {
 			int captureTargetStartIndexInRead = primerEndIndexInRead + 1;
 			ISequence readWithoutPrimer = readSequence.subSequence(captureTargetStartIndexInRead, readSequence.size());
 			NeedlemanWunschGlobalAlignment readAlignmentWithReference = new NeedlemanWunschGlobalAlignment(captureSequence, readWithoutPrimer, alignmentScorer);
 
-			// TODO need better indication if the readAlignedSuccesfully
-			boolean readAlignedSuccesfully = (readAlignmentWithReference.getLengthNormalizedAlignmentScore() > LENGTH_NORMALIZED_ALIGNMENT_SCORE_THRESHOLD);
+			// TODO need better indication if the readAlignedsuccessfully
+			boolean readAlignedsuccessfully = (readAlignmentWithReference.getLengthNormalizedAlignmentScore() > LENGTH_NORMALIZED_ALIGNMENT_SCORE_THRESHOLD);
 
-			if (readAlignedSuccesfully) {
+			if (readAlignedsuccessfully) {
 
 				AlignmentPair alignmentWithoutEndingAndBeginningQueryInserts = readAlignmentWithReference.getAlignmentPair().getAlignmentWithoutEndingAndBeginningQueryInserts();
 				AlignmentPair alignmentWithoutEndingAndBeginningQueryAndReferenceInserts = alignmentWithoutEndingAndBeginningQueryInserts.getAlignmentWithoutEndingAndBeginningReferenceInserts();

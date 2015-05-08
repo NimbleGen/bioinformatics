@@ -53,6 +53,7 @@ public class ApplicationSettings {
 	private final boolean useStrictReadToProbeMatching;
 	private final ProbeHeaderInformation probeHeaderInformation;
 	private final boolean readsNotTrimmed;
+	private final String sampleName;
 
 	/**
 	 * Default Constructor
@@ -76,7 +77,7 @@ public class ApplicationSettings {
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1File, File fastQ2File, File outputDirectory, File tempDirectory, String outputBamFileName,
 			String outputFilePrefix, String originalBamFileName, boolean shouldOutputReports, String commandLineSignature, String programName, String programVersion, int numProcessors,
 			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, int extensionUidLength, int ligationUidLength, boolean markDuplicates, boolean keepDuplicates, boolean mergePairs,
-			boolean useStrictReadToProbeMatching, ProbeHeaderInformation probeHeaderInformation, boolean readsNotTrimmed) {
+			boolean useStrictReadToProbeMatching, ProbeHeaderInformation probeHeaderInformation, boolean readsNotTrimmed, String sampleName) {
 		super();
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;
@@ -103,6 +104,7 @@ public class ApplicationSettings {
 		this.useStrictReadToProbeMatching = useStrictReadToProbeMatching;
 		this.probeHeaderInformation = probeHeaderInformation;
 		this.readsNotTrimmed = readsNotTrimmed;
+		this.sampleName = sampleName;
 	}
 
 	/**
@@ -272,6 +274,10 @@ public class ApplicationSettings {
 
 	public boolean isReadsNotTrimmed() {
 		return readsNotTrimmed;
+	}
+
+	public String getSampleName() {
+		return sampleName;
 	}
 
 }

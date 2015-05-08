@@ -3,7 +3,10 @@ package com.roche.sequencing.bioinformatics.common.utils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
 
 public class InputStreamFactory {
 
@@ -11,6 +14,9 @@ public class InputStreamFactory {
 
 	private final String resourceName;
 	private final Class<?> relativeResourceClass;
+
+	private final FileChannel fileChannel;
+	private final String fileName;
 
 	public InputStreamFactory(File file) {
 		super();
@@ -20,6 +26,9 @@ public class InputStreamFactory {
 		this.file = file;
 		this.resourceName = null;
 		this.relativeResourceClass = null;
+
+		fileChannel = null;
+		fileName = null;
 	}
 
 	public InputStreamFactory(Class<?> relativeResourceClass, String resourceName) {
@@ -30,6 +39,21 @@ public class InputStreamFactory {
 		}
 		this.resourceName = resourceName;
 		this.relativeResourceClass = relativeResourceClass;
+
+		fileChannel = null;
+		fileName = null;
+	}
+
+	public InputStreamFactory(FileChannel fileChannel, String fileName) {
+		super();
+		this.fileChannel = fileChannel;
+		this.fileName = fileName;
+
+		this.file = null;
+
+		this.resourceName = null;
+		this.relativeResourceClass = null;
+
 	}
 
 	public InputStream createInputStream() throws FileNotFoundException {
@@ -38,6 +62,8 @@ public class InputStreamFactory {
 			inputStream = new FileInputStream(file);
 		} else if (resourceName != null && relativeResourceClass != null) {
 			inputStream = relativeResourceClass.getResourceAsStream(resourceName);
+		} else if (this.fileChannel != null) {
+			inputStream = new UncloseableInputStream(fileChannel);
 		} else {
 			throw new AssertionError();
 		}
@@ -56,9 +82,72 @@ public class InputStreamFactory {
 	public String getName() {
 		String name = resourceName;
 		if (name == null || name.isEmpty()) {
-			name = file.getAbsolutePath();
+			if (file != null) {
+				name = file.getAbsolutePath();
+			} else {
+				name = fileName;
+			}
 		}
 		return name;
+	}
+
+	private static class UncloseableInputStream extends InputStream {
+
+		private final InputStream inputStream;
+		private final FileChannel fileChannel;
+
+		public UncloseableInputStream(FileChannel fileChannel) {
+			super();
+			this.inputStream = Channels.newInputStream(fileChannel);
+			this.fileChannel = fileChannel;
+		}
+
+		@Override
+		public int read() throws IOException {
+			// TODO Auto-generated method stub
+			return inputStream.read();
+		}
+
+		@Override
+		public int read(byte[] b) throws IOException {
+			return inputStream.read(b);
+		}
+
+		@Override
+		public int read(byte[] b, int off, int len) throws IOException {
+			return inputStream.read(b, off, len);
+		}
+
+		@Override
+		public long skip(long n) throws IOException {
+			return inputStream.skip(n);
+		}
+
+		@Override
+		public int available() throws IOException {
+			return inputStream.available();
+		}
+
+		@Override
+		public synchronized void mark(int readlimit) {
+			inputStream.mark(readlimit);
+		}
+
+		@Override
+		public synchronized void reset() throws IOException {
+			inputStream.reset();
+		}
+
+		@Override
+		public boolean markSupported() {
+			return inputStream.markSupported();
+		}
+
+		@Override
+		public void close() throws IOException {
+			fileChannel.position(0);
+		}
+
 	}
 
 }

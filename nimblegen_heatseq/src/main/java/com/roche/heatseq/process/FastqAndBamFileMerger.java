@@ -316,7 +316,8 @@ public class FastqAndBamFileMerger {
 		header.setSortOrder(SortOrder.coordinate);
 
 		// Make a sorted, bam file writer with the fastest level of compression
-		SAMFileWriter samWriter = new SAMFileWriterFactory().setTempDirectory(tempDirectory).makeBAMWriter(header, false, outputBamFile, 0);
+		SAMFileWriter samWriter = new SAMFileWriterFactory().setMaxRecordsInRam(PrimerReadExtensionAndPcrDuplicateIdentification.DEFAULT_MAX_RECORDS_IN_RAM).setTempDirectory(tempDirectory)
+				.makeBAMWriter(header, false, outputBamFile, 0);
 
 		MergedSamIterator mergedSamIterator = new MergedSamIterator(samIter, fastq1Iter, fastq2Iter, trimmingSkipped, probeTrimmingInformation, commonReadNameBeginning, readsToProbeAssignments);
 		// CloseableIterator<SAMRecord> sortedMergedSamIter = BamSorter.getSortedBamIterator(mergedSamIterator, header, tempDirectory, SortOrder.coordinate.getComparatorInstance());
@@ -443,7 +444,7 @@ public class FastqAndBamFileMerger {
 
 	private static SAMRecord checkAndStoreFastqInfoInRecord(SAMRecord samRecord, String readSequenceFromFastq, String readBaseQualityFromFastq, boolean trimmingSkipped,
 			ProbeTrimmingInformation probeTrimmingInformation) {
-		if (!isTrimAmountCorrect(samRecord, readSequenceFromFastq, readBaseQualityFromFastq, trimmingSkipped, probeTrimmingInformation)) {
+		if (!trimmingSkipped && !isTrimAmountCorrect(samRecord, readSequenceFromFastq, readBaseQualityFromFastq, trimmingSkipped, probeTrimmingInformation)) {
 			throw new UnableToMergeFastqAndBamFilesException();
 		}
 		return storeFastqInfoInRecord(samRecord, readSequenceFromFastq, readBaseQualityFromFastq);

@@ -60,8 +60,11 @@ public class NewRangeMap<O> implements RangeMap<O> {
 		// binary search
 		while (!searchComplete) {
 			int afterSearchIndex = loIndex + ((hiIndex - loIndex) / 2);
-			if (afterSearchIndex < startingLocationToValue.size()) {
-				int afterSearchLocation = startingLocationToValue.get(afterSearchIndex).getStartLocation();
+			if (afterSearchIndex <= startingLocationToValue.size()) {
+				int afterSearchLocation = Integer.MAX_VALUE;
+				if (afterSearchIndex < startingLocationToValue.size()) {
+					afterSearchLocation = startingLocationToValue.get(afterSearchIndex).getStartLocation();
+				}
 				if (afterSearchLocation >= startLocationToFind) {
 					int beforeSearchLocation = startingLocationToValue.get(afterSearchIndex - 1).getStartLocation();
 					boolean searchLocationFound = beforeSearchLocation < startLocationToFind;
@@ -132,7 +135,7 @@ public class NewRangeMap<O> implements RangeMap<O> {
 	}
 
 	public static void main(String[] args) throws IOException {
-		go();
+		go4();
 	}
 
 	public static void go2() throws IOException {
@@ -168,6 +171,26 @@ public class NewRangeMap<O> implements RangeMap<O> {
 			System.out.println(probe.getProbeId() + "  " + probe.getStart() + "  " + probe.getStop());
 		}
 		// System.out.println(rangeMap.getObjectsThatContainRangeInclusive(84937745, 84937839).size());
+	}
+
+	public static void go3() {
+		NewRangeMap<String> rangeMap = new NewRangeMap<String>();
+		rangeMap.put(2145, 2284, "a");
+		rangeMap.put(6462, 6601, "b");
+		rangeMap.put(8617, 8756, "c");
+		rangeMap.put(8712, 8851, "d");
+		System.out.println(rangeMap.getObjectsThatContainRangeInclusive(8741, 8787));
+
+	}
+
+	public static void go4() {
+		NewRangeMap<String> rangeMap = new NewRangeMap<String>();
+		rangeMap.put(1, 10, "a");
+		rangeMap.put(2, 11, "b");
+		rangeMap.put(3, 12, "c");
+		rangeMap.put(4, 13, "d");
+		System.out.println(rangeMap.getObjectsThatContainRangeInclusive(5, 7));
+
 	}
 
 	public static void go() {
