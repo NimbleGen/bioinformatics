@@ -31,6 +31,8 @@ import java.util.Deque;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 
@@ -38,6 +40,8 @@ import org.apache.commons.io.FileUtils;
  * 
  */
 public final class FileUtil {
+
+	private final static Logger logger = LoggerFactory.getLogger(FileUtil.class);
 
 	public static final int BYTES_PER_KB = 1024;
 	private static final int STRING_BUILDER_INITIAL_SIZE = 1000;
@@ -293,12 +297,26 @@ public final class FileUtil {
 		} catch (IOException e) {
 			// Directories mounted on NFS volumes may have lingering .nfsXXXX files
 			// if no streams are open, it is likely from stale objects
-			System.gc();
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e1) {
+			int totalAttempts = 5;
+			for (int i = 0; i < totalAttempts; i++) {
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e1) {
+				}
+				System.gc();
+				try {
+					FileUtils.deleteDirectory(directory);
+				} catch (IOException e1) {
+					if (i == totalAttempts - 1) {
+						logger.warn("Unable to delete directory[" + directory.getAbsolutePath() + "] on attempt " + (i + 1) + ".  Will attempt deletion on exit.");
+						directory.deleteOnExit();
+					} else {
+						logger.warn("Unable to delete directory[" + directory.getAbsolutePath() + "] on attempt " + (i + 1) + ".  Will attempt deletion " + (totalAttempts - i - 1) + " more times.");
+						continue;
+					}
+				}
+				break;
 			}
-			FileUtils.deleteDirectory(directory);
 		}
 	}
 

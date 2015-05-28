@@ -10,6 +10,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.ConsoleAppender;
 import ch.qos.logback.core.FileAppender;
 
 public class LoggingUtil {
@@ -51,6 +52,25 @@ public class LoggingUtil {
 
 	public static File getLogFile() {
 		return currentLogFile;
+	}
+
+	public static void outputLogsToConsole(String loggerName) {
+		LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+
+		PatternLayoutEncoder encoder = new PatternLayoutEncoder();
+		encoder.setContext(loggerContext);
+		encoder.setPattern("%r %d{HH:mm:ss.SSS} - %msg%n");
+		encoder.setImmediateFlush(true);
+		encoder.start();
+
+		ConsoleAppender<ILoggingEvent> logConsoleAppender = new ConsoleAppender<ILoggingEvent>();
+		logConsoleAppender.setContext(loggerContext);
+		logConsoleAppender.setName("console");
+		logConsoleAppender.setEncoder(encoder);
+		logConsoleAppender.start();
+
+		Logger log = loggerContext.getLogger(loggerName);
+		log.addAppender(logConsoleAppender);
 	}
 
 }

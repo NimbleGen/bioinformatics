@@ -38,6 +38,7 @@ import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.process.FastqReadTrimmer.ProbeTrimmingInformation;
 import com.roche.heatseq.process.FastqReadTrimmer.TrimmedRead;
 import com.roche.heatseq.utils.BamSorter;
+import com.roche.heatseq.utils.BamSorter.CloseableAndIterableIterator;
 import com.roche.heatseq.utils.FastqReader;
 import com.roche.heatseq.utils.FastqSorter;
 import com.roche.heatseq.utils.IlluminaFastQReadNameUtil;
@@ -294,49 +295,49 @@ public class FastqAndBamFileMerger {
 		// Each new iteration starts at the first record.
 
 		long bamSortStart = System.currentTimeMillis();
-		CloseableIterator<SAMRecord> samIter = BamSorter.getSortedBamIterator(unsortedBamFile, tempDirectory, new BamSorter.SamRecordNameComparator());
-		long bamSortStop = System.currentTimeMillis();
-		logger.info("time to sort bam:" + DateUtil.convertMillisecondsToHHMMSS(bamSortStop - bamSortStart));
+		try (CloseableAndIterableIterator<SAMRecord> samIter = BamSorter.getSortedBamIterator(unsortedBamFile, tempDirectory, new BamSorter.SamRecordNameComparator())) {
+			long bamSortStop = System.currentTimeMillis();
+			logger.info("time to sort bam:" + DateUtil.convertMillisecondsToHHMMSS(bamSortStop - bamSortStart));
 
-		long fastqOneSortStart = System.currentTimeMillis();
-		CloseableIterator<FastqRecord> fastq1Iter = FastqSorter.getSortedFastqIterator(unsortedFastq1File, tempDirectory, new FastqSorter.FastqRecordNameComparator());
-		long fastqOneSortStop = System.currentTimeMillis();
-		logger.info("time to sort fastq1:" + DateUtil.convertMillisecondsToHHMMSS(fastqOneSortStop - fastqOneSortStart));
+			long fastqOneSortStart = System.currentTimeMillis();
+			CloseableIterator<FastqRecord> fastq1Iter = FastqSorter.getSortedFastqIterator(unsortedFastq1File, tempDirectory, new FastqSorter.FastqRecordNameComparator());
+			long fastqOneSortStop = System.currentTimeMillis();
+			logger.info("time to sort fastq1:" + DateUtil.convertMillisecondsToHHMMSS(fastqOneSortStop - fastqOneSortStart));
 
-		long fastqTwoSortStart = System.currentTimeMillis();
-		CloseableIterator<FastqRecord> fastq2Iter = FastqSorter.getSortedFastqIterator(unsortedFastq2File, tempDirectory, new FastqSorter.FastqRecordNameComparator());
-		long fastqTwoSortStop = System.currentTimeMillis();
-		logger.info("time to sort fastq2:" + DateUtil.convertMillisecondsToHHMMSS(fastqTwoSortStop - fastqTwoSortStart));
-		long mergeStart = System.currentTimeMillis();
+			long fastqTwoSortStart = System.currentTimeMillis();
+			CloseableIterator<FastqRecord> fastq2Iter = FastqSorter.getSortedFastqIterator(unsortedFastq2File, tempDirectory, new FastqSorter.FastqRecordNameComparator());
+			long fastqTwoSortStop = System.currentTimeMillis();
+			logger.info("time to sort fastq2:" + DateUtil.convertMillisecondsToHHMMSS(fastqTwoSortStop - fastqTwoSortStart));
+			long mergeStart = System.currentTimeMillis();
 
-		SAMFileHeader header = null;
-		try (SAMFileReader samReader = new SAMFileReader(unsortedBamFile)) {
-			header = samReader.getFileHeader();
+			SAMFileHeader header = null;
+			try (SAMFileReader samReader = new SAMFileReader(unsortedBamFile)) {
+				header = samReader.getFileHeader();
+			}
+			header.setSortOrder(SortOrder.coordinate);
+
+			// Make a sorted, bam file writer with the fastest level of compression
+			SAMFileWriter samWriter = new SAMFileWriterFactory().setMaxRecordsInRam(PrimerReadExtensionAndPcrDuplicateIdentification.DEFAULT_MAX_RECORDS_IN_RAM).setTempDirectory(tempDirectory)
+					.makeBAMWriter(header, false, outputBamFile, 0);
+
+			MergedSamIterator mergedSamIterator = new MergedSamIterator(samIter, fastq1Iter, fastq2Iter, trimmingSkipped, probeTrimmingInformation, commonReadNameBeginning, readsToProbeAssignments);
+			// CloseableIterator<SAMRecord> sortedMergedSamIter = BamSorter.getSortedBamIterator(mergedSamIterator, header, tempDirectory, SortOrder.coordinate.getComparatorInstance());
+			while (mergedSamIterator.hasNext()) {
+				samWriter.addAlignment(mergedSamIterator.next());
+			}
+
+			long mergeStop = System.currentTimeMillis();
+
+			logger.info("Done merging[" + outputBamFile.getAbsolutePath() + "]:" + DateUtil.convertMillisecondsToHHMMSS(mergeStop - mergeStart));
+
+			if (mergedSamIterator.getTotalMatches() == 0) {
+				throw new IllegalStateException("The read names in the input Fastq files do not match the reads names in the provided bam/sam file.");
+			}
+
+			fastq1Iter.close();
+			fastq2Iter.close();
+			samWriter.close();
 		}
-		header.setSortOrder(SortOrder.coordinate);
-
-		// Make a sorted, bam file writer with the fastest level of compression
-		SAMFileWriter samWriter = new SAMFileWriterFactory().setMaxRecordsInRam(PrimerReadExtensionAndPcrDuplicateIdentification.DEFAULT_MAX_RECORDS_IN_RAM).setTempDirectory(tempDirectory)
-				.makeBAMWriter(header, false, outputBamFile, 0);
-
-		MergedSamIterator mergedSamIterator = new MergedSamIterator(samIter, fastq1Iter, fastq2Iter, trimmingSkipped, probeTrimmingInformation, commonReadNameBeginning, readsToProbeAssignments);
-		// CloseableIterator<SAMRecord> sortedMergedSamIter = BamSorter.getSortedBamIterator(mergedSamIterator, header, tempDirectory, SortOrder.coordinate.getComparatorInstance());
-		while (mergedSamIterator.hasNext()) {
-			samWriter.addAlignment(mergedSamIterator.next());
-		}
-
-		long mergeStop = System.currentTimeMillis();
-
-		logger.info("Done merging[" + outputBamFile.getAbsolutePath() + "]:" + DateUtil.convertMillisecondsToHHMMSS(mergeStop - mergeStart));
-
-		if (mergedSamIterator.getTotalMatches() == 0) {
-			throw new IllegalStateException("The read names in the input Fastq files do not match the reads names in the provided bam/sam file.");
-		}
-
-		fastq1Iter.close();
-		fastq2Iter.close();
-		samIter.close();
-		samWriter.close();
 
 		return outputBamFile;
 	}
