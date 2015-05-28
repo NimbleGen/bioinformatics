@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.process.FastqReadTrimmer;
 import com.roche.heatseq.process.FastqValidator;
+import com.roche.heatseq.process.InputFilesExistValidator;
 import com.roche.heatseq.process.ProbeInfoFileValidator;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
@@ -68,6 +69,10 @@ public class TrimCli {
 
 		File fastQ1File = new File(parsedCommandLine.getOptionsValue(DeduplicationCli.FASTQ_ONE_OPTION));
 		File fastQ2File = new File(parsedCommandLine.getOptionsValue(DeduplicationCli.FASTQ_TWO_OPTION));
+		File probeFile = new File(parsedCommandLine.getOptionsValue(DeduplicationCli.PROBE_OPTION));
+
+		InputFilesExistValidator.validate(fastQ1File, fastQ2File, probeFile);
+
 		FastqValidator.validate(fastQ1File, fastQ2File);
 
 		long requiredSpaceInBytes = fastQ1File.length() * 2;
@@ -77,7 +82,6 @@ public class TrimCli {
 					+ "GB which is greater than the amount of usable space in the output directory[" + doubleFormatter.format(usableSpaceInBytes / BYTES_PER_GIGABYTE) + "GB].");
 		}
 
-		File probeFile = new File(parsedCommandLine.getOptionsValue(DeduplicationCli.PROBE_OPTION));
 		ParsedProbeFile probeInfo = ProbeInfoFileValidator.validateAndParseProbeInfoFile(probeFile);
 
 		String outputFastQ1FileName = new File(outputDirectory, outputFilePrefix + "trimmed_" + FileUtil.getFileNameWithoutExtension(fastQ1File.getName())).getAbsolutePath();

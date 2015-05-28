@@ -40,6 +40,7 @@ import com.roche.heatseq.objects.ApplicationSettings;
 import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.process.BamFileValidator;
 import com.roche.heatseq.process.FastqValidator;
+import com.roche.heatseq.process.InputFilesExistValidator;
 import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentification;
 import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentification.ReadNameDetails;
 import com.roche.heatseq.utils.BamFileUtil;
@@ -174,9 +175,14 @@ public class DeduplicationCli {
 
 		File fastQ1File = new File(parsedCommandLine.getOptionsValue(FASTQ_ONE_OPTION));
 		File fastQ2File = new File(parsedCommandLine.getOptionsValue(FASTQ_TWO_OPTION));
+		File probeInfoFile = new File(parsedCommandLine.getOptionsValue(PROBE_OPTION));
+		String bamFileString = parsedCommandLine.getOptionsValue(INPUT_BAM_OPTION);
+		File samOrBamFile = new File(bamFileString);
+
+		InputFilesExistValidator.validate(fastQ1File, fastQ2File, probeInfoFile, samOrBamFile);
+
 		FastqValidator.validate(fastQ1File, fastQ2File);
 
-		File probeInfoFile = new File(parsedCommandLine.getOptionsValue(PROBE_OPTION));
 		ParsedProbeFile parsedProbeFile = ProbeFileUtil.parseProbeInfoFileWithValidation(probeInfoFile);
 
 		long requiredTempSpaceInBytes = fastQ1File.length() * 4;
@@ -317,8 +323,6 @@ public class DeduplicationCli {
 		IAlignmentScorer alignmentScorer = new SimpleAlignmentScorer(matchScore, mismatchPenalty, gapExtendPenalty, gapOpenPenalty, false);
 
 		try {
-			String bamFileString = parsedCommandLine.getOptionsValue(INPUT_BAM_OPTION);
-			File samOrBamFile = new File(bamFileString);
 			BamFileValidator.validate(samOrBamFile);
 
 			String tempPrefix = HsqUtilsCli.getTempPrefix(applicationName, outputFilePrefix);
