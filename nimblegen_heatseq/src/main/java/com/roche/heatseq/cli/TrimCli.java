@@ -14,6 +14,7 @@ import com.roche.heatseq.process.InputFilesExistValidator;
 import com.roche.heatseq.process.ProbeInfoFileValidator;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
+import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
@@ -27,6 +28,7 @@ public class TrimCli {
 	private static final String FASTQ_EXTENSION = ".fastq";
 	private static final int BYTES_PER_GIGABYTE = 1000000000;
 	private final static DecimalFormat doubleFormatter = new DecimalFormat("#,###.##");
+	private final static CommandLineOption DO_NOT_TRIM_PRIMERS_OPTION = new CommandLineOption("Do Not Trim Primers", "doNotTrimPrimers", null, "Do not attempt to trim the primers.", false, true);
 
 	public static void trim(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion) {
 		long applicationStart = System.currentTimeMillis();
@@ -71,6 +73,8 @@ public class TrimCli {
 		File fastQ2File = new File(parsedCommandLine.getOptionsValue(DeduplicationCli.FASTQ_TWO_OPTION));
 		File probeFile = new File(parsedCommandLine.getOptionsValue(DeduplicationCli.PROBE_OPTION));
 
+		boolean trimPrimers = !parsedCommandLine.isOptionPresent(TrimCli.DO_NOT_TRIM_PRIMERS_OPTION);
+
 		InputFilesExistValidator.validate(fastQ1File, fastQ2File, probeFile);
 
 		FastqValidator.validate(fastQ1File, fastQ2File);
@@ -100,7 +104,7 @@ public class TrimCli {
 		logger.info("command line signature: " + commandLineSignature);
 
 		try {
-			FastqReadTrimmer.trimReads(fastQ1File, fastQ2File, probeInfo, probeFile, outputFastQ1File, outputFastQ2File);
+			FastqReadTrimmer.trimReads(fastQ1File, fastQ2File, probeInfo, probeFile, outputFastQ1File, outputFastQ2File, trimPrimers);
 
 			long applicationStop = System.currentTimeMillis();
 			CliStatusConsole.logStatus(StringUtil.NEWLINE + "Trimming has completed successfully.");
@@ -129,6 +133,7 @@ public class TrimCli {
 		group.addOption(DeduplicationCli.PROBE_OPTION);
 		group.addOption(DeduplicationCli.OUTPUT_DIR_OPTION);
 		group.addOption(DeduplicationCli.OUTPUT_FILE_PREFIX_OPTION);
+		group.addOption(TrimCli.DO_NOT_TRIM_PRIMERS_OPTION);
 		return group;
 	}
 

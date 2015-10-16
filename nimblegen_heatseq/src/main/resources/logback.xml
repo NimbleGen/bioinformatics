@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <configuration debug="false">
 
-	<root level="ALL">
+	<root level="error">
+		<appender-ref ref="STDOUT" />
 	</root>
 
 	<!-- Note the file logging appender is added programatically (to root) because 

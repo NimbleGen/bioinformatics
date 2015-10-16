@@ -19,7 +19,6 @@ package com.roche.heatseq.process;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -145,7 +144,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 		ProbeTrimmingInformation probeTrimmingInformation;
 		try {
-			probeTrimmingInformation = FastqReadTrimmer.getProbeTrimmingInformation(probeInfo, applicationSettings.getProbeFile());
+			probeTrimmingInformation = FastqReadTrimmer.getProbeTrimmingInformation(probeInfo, applicationSettings.getProbeFile(), !applicationSettings.isReadsNotTrimmed());
 		} catch (IOException e1) {
 			throw new IllegalStateException("Unabel to read probe file[" + applicationSettings.getProbeFile() + "].");
 		}
@@ -357,6 +356,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		}
 
 		private void assignProbeToRead() {
+
 			Map<String, List<Probe>> containedProbesForFirstFoundReadByReadName = new HashMap<String, List<Probe>>();
 			Map<String, AlignmentStartAndStop> alignmentBoundsForFirstFoundReadByReadName = new HashMap<String, AlignmentStartAndStop>();
 			try (SAMFileReader samReader = new SAMFileReader(samFile, samIndexFile)) {
@@ -465,7 +465,10 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 										probesAssignedToMult.add(containedProbesWithReadsWithinCaptureTarget.get(0).getProbe());
 										probesAssignedToMult.add(containedProbesWithReadsWithinCaptureTarget.get(1).getProbe());
 										assignedToMultProbesCount.incrementAndGet();
-										logger.info("Read[" + readName + "] will not be processed because it aligns with multiple probes.");
+										String probeId1 = containedProbesWithReadsWithinCaptureTarget.get(0).getProbe().getProbeId();
+										String probeId2 = containedProbesWithReadsWithinCaptureTarget.get(1).getProbe().getProbeId();
+										logger.info("Read[" + readName + "] will not be processed because it aligns with multiple probes [probe1:" + probeId1 + "  (bases_outside_of_capture_score:"
+												+ bestOutOfBoundsNt + ")  ||  probe2:" + probeId2 + " (bases_outside_of_capture_score:" + secondBestOutOfBoundsNt + ")");
 									}
 
 								}
@@ -491,6 +494,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 				allSamRecordsIter.close();
 			}
+
 		}
 
 	}
@@ -830,17 +834,6 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 			return result;
 		}
-	}
-
-	public static void main(String[] args) {
-		List<String> probeIds = new ArrayList<String>();
-		probeIds.add("chrY:21383904:21383998:+");
-		probeIds.add("chrY:20759859:20759953:-");
-		probeIds.add("chr1:632319:632413:-");
-		probeIds.add("chr1:942967:943065:-");
-		probeIds.add("chr16:88433299:88433397:+");
-		Collections.sort(probeIds, new ProbeIdComparator());
-		System.out.println(Arrays.toString(probeIds.toArray(new String[0])));
 	}
 
 	/**
@@ -1334,5 +1327,18 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		logger.info("Verified that the read names can be handled by dedup and found the common beginning for all read names[" + currentCommonBeginning + "] in "
 				+ DateUtil.convertMillisecondsToHHMMSS(end - start) + ".");
 		return new ReadNameDetails(currentCommonBeginning, uniqueCharacters);
+	}
+
+	public static void main(String[] args) {
+		RangeMap<String> rangeMap = new NewRangeMap<String>();
+		rangeMap.put(27101323, 27101469, "chr1:27101345:27101443:-");
+		rangeMap.put(115252164, 115252300, "chr1:115252192:115252274:-");
+		rangeMap.put(115256484, 115256605, "chr1:115256508:115256577:-");
+		rangeMap.put(115258693, 115258810, "chr1:115258721:115258786:-");
+
+		List<String> values = rangeMap.getObjectsThatContainRangeInclusive(27101323, 27101456);
+		for (String value : values) {
+			System.out.println(value);
+		}
 	}
 }

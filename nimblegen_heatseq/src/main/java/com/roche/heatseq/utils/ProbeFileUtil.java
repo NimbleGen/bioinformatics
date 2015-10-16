@@ -39,6 +39,7 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.DelimitedFileParserUtil;
+import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.Md5CheckSumUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
@@ -111,11 +112,10 @@ public final class ProbeFileUtil {
 				int captureTargetStop = Integer.valueOf(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 				ISequence captureTargetSequence = new IupacNucleotideCodeSequence(headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i));
 
-				// annotation
-				headerIndex++;
+				String annotation = headerNameToValues.get(PROBE_INFO_HEADER_NAMES[headerIndex++]).get(i);
 
 				Probe probe = new Probe(probeId, sequenceName, extensionPrimerStart, extensionPrimerStop, extensionPrimerSequence, ligationPrimerStart, ligationPrimerStop, ligationPrimerSequence,
-						captureTargetStart, captureTargetStop, captureTargetSequence, probeStrand);
+						captureTargetStart, captureTargetStop, captureTargetSequence, probeStrand, annotation);
 
 				probeInfo.addProbe(sequenceName, probe);
 			} catch (NumberFormatException e) {
@@ -364,5 +364,44 @@ public final class ProbeFileUtil {
 
 		return new ProbeHeaderInformation(ligationUidLength, extensionUidLength, additionalLigationLength, additionalExtensionLength, basesInsideExtensionPrimerWindow,
 				basesInsideLigationPrimerWindow, performThreePrimeTrimming, genomeName, headerlessMd5Sum);
+	}
+
+	public static void reverseComplimentProbeFile(File inputProbeInfoFile, File outputProbeInfoFile) {
+		try {
+			FileUtil.createNewFile(outputProbeInfoFile);
+
+			ParsedProbeFile parsedProbeFile = parseProbeInfoFile(inputProbeInfoFile);
+
+			String firstLine = FileUtil.readFirstLineAsString(inputProbeInfoFile);
+
+			try (FileWriter writer = new FileWriter(outputProbeInfoFile)) {
+				if (firstLine.startsWith("#")) {
+					// write out the comment line
+					writer.write(firstLine + StringUtil.NEWLINE);
+				}
+
+				// write out the header
+				for (String columnHeader : PROBE_INFO_HEADER_NAMES) {
+					writer.write(columnHeader);
+					if (columnHeader.equals(PROBE_INFO_HEADER_NAMES[PROBE_INFO_HEADER_NAMES.length - 1])) {
+						writer.write(StringUtil.NEWLINE);
+					} else {
+						writer.write(StringUtil.TAB);
+					}
+				}
+
+				for (Probe probe : parsedProbeFile.getProbes()) {
+					writer.write(probe.getProbeId() + StringUtil.TAB + probe.getSequenceName() + StringUtil.TAB + probe.getProbeStrand() + StringUtil.TAB + probe.getExtensionPrimerStart()
+							+ StringUtil.TAB + probe.getExtensionPrimerStop() + StringUtil.TAB + probe.getExtensionPrimerSequence().getReverseCompliment() + StringUtil.TAB
+							+ probe.getLigationPrimerStart() + StringUtil.TAB + probe.getLigationPrimerStop() + StringUtil.TAB + probe.getLigationPrimerSequence().getReverseCompliment()
+							+ StringUtil.TAB + probe.getCaptureTargetStart() + StringUtil.TAB + probe.getCaptureTargetStop() + StringUtil.TAB + probe.getCaptureTargetSequence().getReverseCompliment()
+							+ StringUtil.TAB + probe.getAnnotation());
+				}
+
+			}
+
+		} catch (IOException e) {
+			throw new IllegalStateException(e.getMessage(), e);
+		}
 	}
 }

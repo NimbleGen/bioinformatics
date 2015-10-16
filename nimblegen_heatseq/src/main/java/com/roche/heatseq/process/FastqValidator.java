@@ -24,20 +24,24 @@ public class FastqValidator {
 	}
 
 	public static void validate(File fastqOne, File fastqTwo) {
-		int fastqOneSize = validateAndGetSize(fastqOne, "FASTQ1");
+		boolean fastqOneIsPresent = fastqOne != null;
+		int fastqOneSize = 0;
+		if (fastqOneIsPresent) {
+			fastqOneSize = validateAndGetSize(fastqOne, "FASTQ1");
+		}
 		int fastqTwoSize = validateAndGetSize(fastqTwo, "FASTQ2");
 
-		if (fastqOne.getAbsolutePath().equals(fastqTwo.getAbsolutePath())) {
+		if (fastqOneIsPresent && fastqOne.getAbsolutePath().equals(fastqTwo.getAbsolutePath())) {
 			throw new IllegalStateException("The same file[" + fastqTwo.getAbsolutePath() + "] was provided for FASTQ1 and FASTQ2.");
 		}
 
-		if (fastqOneSize == 0 && fastqTwoSize == 0) {
+		if (fastqOneIsPresent && fastqOneSize == 0 && fastqTwoSize == 0) {
 			throw new IllegalStateException("The provided FASTQ1[" + fastqOne.getAbsolutePath() + "] and FASTQ2[" + fastqTwo.getAbsolutePath() + "] contain no entries.");
-		} else if (fastqOneSize == 0) {
+		} else if (fastqOneIsPresent && fastqOneSize == 0) {
 			throw new IllegalStateException("The provided FASTQ1[" + fastqOne.getAbsolutePath() + "] contains no entries.");
 		} else if (fastqTwoSize == 0) {
 			throw new IllegalStateException("The provided FASTQ2[" + fastqTwo.getAbsolutePath() + "] contains no entries.");
-		} else if (fastqOneSize != fastqTwoSize) {
+		} else if (fastqOneIsPresent && fastqOneSize != fastqTwoSize) {
 			throw new IllegalStateException("The provided FASTQ1[" + fastqOne.getAbsolutePath() + "] and FASTQ2[" + fastqTwo.getAbsolutePath()
 					+ "] contained a different number of entries, the number of FASTQ1 entries[" + fastqOneSize + "] and the number of FASTQ2 entries[" + fastqTwoSize + "].");
 		}

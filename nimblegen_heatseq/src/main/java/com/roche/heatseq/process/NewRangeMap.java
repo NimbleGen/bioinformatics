@@ -67,7 +67,7 @@ public class NewRangeMap<O> implements RangeMap<O> {
 				}
 				if (afterSearchLocation >= startLocationToFind) {
 					int beforeSearchLocation = startingLocationToValue.get(afterSearchIndex - 1).getStartLocation();
-					boolean searchLocationFound = beforeSearchLocation < startLocationToFind;
+					boolean searchLocationFound = beforeSearchLocation <= startLocationToFind;
 					if (searchLocationFound) {
 						StartLocationToValue<O> currentIndex = startingLocationToValue.get(afterSearchIndex - 1);
 						// TODO this currently assumes that no probe completely overlaps another probe
@@ -86,7 +86,7 @@ public class NewRangeMap<O> implements RangeMap<O> {
 					} else {
 						hiIndex = afterSearchIndex - 1;
 					}
-				} else if (afterSearchLocation < startInclusive) {
+				} else if (afterSearchLocation < startLocationToFind) {
 					loIndex = afterSearchIndex + 1;
 				}
 

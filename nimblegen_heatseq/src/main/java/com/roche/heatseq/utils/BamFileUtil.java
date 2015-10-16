@@ -107,7 +107,11 @@ public class BamFileUtil {
 	}
 
 	public static void convertSamToBam(File inputSamFile, File outputBamFile) {
-		picardSortAndCompress(inputSamFile, outputBamFile, SortOrder.coordinate, null);
+		picardSortAndCompress(true, inputSamFile, outputBamFile, SortOrder.coordinate, null);
+	}
+
+	public static void convertBamToSam(File inputBamFile, File outputSamFile) {
+		picardSortAndCompress(false, inputBamFile, outputSamFile, SortOrder.coordinate, null);
 	}
 
 	/**
@@ -118,7 +122,7 @@ public class BamFileUtil {
 	 * @return output
 	 */
 	public static File sortOnReadName(File input, File output) {
-		return picardSortAndCompress(input, output, SortOrder.queryname, null);
+		return picardSortAndCompress(true, input, output, SortOrder.queryname, null);
 	}
 
 	/**
@@ -129,7 +133,7 @@ public class BamFileUtil {
 	 * @return output
 	 */
 	public static File sortOnCoordinates(File input, File output) {
-		return picardSortAndCompress(input, output, SortOrder.coordinate, null);
+		return picardSortAndCompress(true, input, output, SortOrder.coordinate, null);
 	}
 
 	/**
@@ -140,7 +144,7 @@ public class BamFileUtil {
 	 * @return output
 	 */
 	public static File sortOnCoordinatesAndExcludeReads(File input, File output, Set<String> readNamesToExclude) {
-		return picardSortAndCompress(input, output, SortOrder.coordinate, readNamesToExclude);
+		return picardSortAndCompress(true, input, output, SortOrder.coordinate, readNamesToExclude);
 	}
 
 	/**
@@ -151,7 +155,7 @@ public class BamFileUtil {
 	 * @param sortOrder
 	 * @return
 	 */
-	private static File picardSortAndCompress(File input, File output, SortOrder sortOrder, Set<String> readNamesToExclude) {
+	private static File picardSortAndCompress(boolean outputAsBam, File input, File output, SortOrder sortOrder, Set<String> readNamesToExclude) {
 		IoUtil.assertFileIsReadable(input);
 		IoUtil.assertFileIsWritable(output);
 
@@ -160,7 +164,13 @@ public class BamFileUtil {
 		SAMFileHeader header = reader.getFileHeader();
 		header.setSortOrder(sortOrder);
 
-		final SAMFileWriter writer = new SAMFileWriterFactory().makeBAMWriter(header, false, output, 9);
+		SAMFileWriter writer = null;
+
+		if (outputAsBam) {
+			writer = new SAMFileWriterFactory().makeBAMWriter(header, false, output, 9);
+		} else {
+			writer = new SAMFileWriterFactory().makeSAMWriter(header, false, output);
+		}
 
 		for (final SAMRecord record : reader) {
 			boolean shouldInclude = true;
@@ -280,7 +290,8 @@ public class BamFileUtil {
 		// File inputBamFile = new File("C:\\Users\\heilmank\\Desktop\\junk\\dsHybrid.srt_REDUCED.bam");
 		// File outputErrorFile = new File("C:\\Users\\heilmank\\Desktop\\junk\\validation_errors.txt");
 		// validateSamFile(inputBamFile, outputErrorFile);
-		createIndex(new File("D:/trim/kurt_trimmed.bam"));
+		// createIndex(new File("D:/trim/kurt_trimmed.bam"));
+		convertBamToSam(new File("D:/kurts_space/heatseq/carolina_818/S2_2_sorted.bam"), new File("D:/kurts_space/heatseq/carolina_818/S2_2_sorted.sam"));
 	}
 
 }

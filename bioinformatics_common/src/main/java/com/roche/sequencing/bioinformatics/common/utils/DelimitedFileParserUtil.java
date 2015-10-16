@@ -98,7 +98,7 @@ public final class DelimitedFileParserUtil {
 
 	}
 
-	private static Header findHeaderLine(String[] headerNames, String columnDelimiter, InputStreamFactory delimitedContentInputStreamFactory) throws IOException {
+	private static Header findHeaderLine(String[] headerNames, String columnDelimiter, IInputStreamFactory delimitedContentInputStreamFactory) throws IOException {
 		Header header = null;
 		charsetLoop: for (Charset charset : CHARSETS_TO_TRY) {
 			header = findHeaderLine(headerNames, columnDelimiter, delimitedContentInputStreamFactory, charset);
@@ -118,7 +118,7 @@ public final class DelimitedFileParserUtil {
 	 * @return
 	 * @throws IOException
 	 */
-	private static Header findHeaderLine(String[] headerNames, String columnDelimiter, InputStreamFactory delimitedContentInputStreamFactory, Charset charset) throws IOException {
+	private static Header findHeaderLine(String[] headerNames, String columnDelimiter, IInputStreamFactory delimitedContentInputStreamFactory, Charset charset) throws IOException {
 		// walk down the rows until the header is found
 		boolean headerFound = false;
 		Header header = null;
@@ -126,7 +126,6 @@ public final class DelimitedFileParserUtil {
 		String currentRow = null;
 		int linesRead = 0;
 		try (BufferedReader reader = new BufferedReader(new InputStreamReader(delimitedContentInputStreamFactory.createInputStream(), charset), BUFFER_SIZE)) {
-
 			while (!headerFound && ((currentRow = reader.readLine()) != null)) {
 				// add one for the newline
 				linesRead++;
@@ -178,6 +177,7 @@ public final class DelimitedFileParserUtil {
 		String firstLine = FileUtil.readFirstLineAsString(delimitedFile);
 		if (firstLine != null && firstLine.startsWith("#")) {
 			String firstLineWithoutPound = firstLine.substring(1, firstLine.length());
+			firstLineWithoutPound = firstLineWithoutPound.replaceAll(StringUtil.TAB, " ");
 			String[] nameValuePairs = firstLineWithoutPound.split(" ");
 			for (String nameValuePair : nameValuePairs) {
 				String[] splitNameValuePair = nameValuePair.split("=");
@@ -315,6 +315,7 @@ public final class DelimitedFileParserUtil {
 	 */
 	public static Map<String, List<String>> getHeaderNameToValuesMapFromDelimitedFile(File delimitedFile, String[] headerNames, String columnDelimiter, boolean extractAdditionalHeaderNames)
 			throws UnableToFindHeaderException, IOException {
+
 		return getHeaderNameToValuesMapFromDelimitedFile(new InputStreamFactory(delimitedFile), headerNames, columnDelimiter, extractAdditionalHeaderNames);
 	}
 
@@ -404,7 +405,7 @@ public final class DelimitedFileParserUtil {
 	 * @return a list of row entries for each provided header name
 	 * @throws IOException
 	 */
-	public static void parseFile(InputStreamFactory delimitedInputStreamFactory, String[] headerNames, IDelimitedLineParser lineParser, String columnDelimiter, boolean extractAdditionalHeaderNames)
+	public static void parseFile(IInputStreamFactory delimitedInputStreamFactory, String[] headerNames, IDelimitedLineParser lineParser, String columnDelimiter, boolean extractAdditionalHeaderNames)
 			throws IOException {
 
 		Header header = findHeaderLine(headerNames, columnDelimiter, delimitedInputStreamFactory);

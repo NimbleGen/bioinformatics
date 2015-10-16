@@ -152,7 +152,9 @@ public class SimpleNucleotideCodeSequence implements ISequence, Comparable<Simpl
 		int startingIndex = index * BITS_PER_NUCLEOTIDE;
 
 		BitSet bitsToSet = BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.inverse().get(code);
-
+		if (bitsToSet == null) {
+			throw new IllegalStateException("Could not save iupac code[" + code.name() + "].");
+		}
 		for (int i = 0; i < bitsToSet.length(); i++) {
 			sequenceAsBits.set(startingIndex + i, bitsToSet.get(i));
 		}
