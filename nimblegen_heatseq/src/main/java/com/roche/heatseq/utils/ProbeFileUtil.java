@@ -16,11 +16,9 @@
 
 package com.roche.heatseq.utils;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
@@ -39,6 +37,7 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.DelimitedFileParserUtil;
+import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.Md5CheckSumUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
