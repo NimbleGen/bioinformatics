@@ -137,27 +137,21 @@ public final class ProbeFileUtil {
 
 	public static String getHeaderlessMd5SumOfFile(File probeInfoFile) {
 		String headerlessMd5Sum = null;
+		try {
+			String fileString = FileUtil.readFileAsString(probeInfoFile);
 
-		StringBuilder headerlessText = new StringBuilder();
-
-		try (BufferedReader probeReader = new BufferedReader(new FileReader(probeInfoFile))) {
-
-			String line = null;
-			while ((line = probeReader.readLine()) != null) {
-				if (!line.startsWith("#")) {
-					headerlessText.append(line);
-				}
+			String headerlessText = fileString;
+			if (fileString.startsWith("#")) {
+				int firstLineEndIndex = fileString.indexOf(StringUtil.LINUX_NEWLINE);
+				headerlessText = fileString.substring(firstLineEndIndex + 1, fileString.length());
 			}
-		} catch (FileNotFoundException e) {
-			logger.warn(e.getMessage(), e);
+
+			if (headerlessText.length() > 0) {
+				headerlessMd5Sum = Md5CheckSumUtil.md5sum(headerlessText.toString());
+			}
 		} catch (IOException e) {
 			logger.warn(e.getMessage(), e);
 		}
-
-		if (headerlessText.length() > 0) {
-			headerlessMd5Sum = Md5CheckSumUtil.md5sum(headerlessText.toString());
-		}
-
 		return headerlessMd5Sum;
 	}
 
