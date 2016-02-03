@@ -143,6 +143,7 @@ public class SimpleMapper<O> {
 		} else {
 			bestCandidates = (List<O>) Collections.EMPTY_LIST;
 		}
+
 		return bestCandidates;
 	}
 
@@ -152,6 +153,10 @@ public class SimpleMapper<O> {
 	 */
 	public List<O> getBestCandidateReferences(ISequence querySequence) {
 		return getBestCandidateReferences(querySequence, DEFAULT_BEST_CANDIDATE_LIMIT);
+	}
+
+	public int getOptimalScore(ISequence querySequence) {
+		return querySequence.size() - comparisonSequenceSize;
 	}
 
 	/**
@@ -167,5 +172,4 @@ public class SimpleMapper<O> {
 		}
 		return matchTallies;
 	}
-
 }

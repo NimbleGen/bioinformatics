@@ -72,6 +72,10 @@ class FilterByUid {
 	static UidReductionResultsForAProbe reduceReadsByProbeAndUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, ReportManager reportManager, boolean allowVariableLengthUids,
 			int expectedExtensionUidLength, int expectedLigationUidLength, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids, boolean markDuplicates,
 			boolean useStrictReadToProbeMatching) {
+
+		if (probe.getProbeId().equals("chr1:43803493:43803592:-")) {
+			System.out.println("here");
+		}
 		List<IReadPair> uniqueReadPairs = new ArrayList<IReadPair>();
 		List<IReadPair> duplicateReadPairs = new ArrayList<IReadPair>();
 

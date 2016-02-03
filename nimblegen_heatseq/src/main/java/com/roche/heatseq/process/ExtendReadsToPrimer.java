@@ -187,7 +187,6 @@ public final class ExtendReadsToPrimer {
 			ISequence readWithoutPrimer = readSequence.subSequence(captureTargetStartIndexInRead, readSequence.size());
 			NeedlemanWunschGlobalAlignment readAlignmentWithReference = new NeedlemanWunschGlobalAlignment(captureSequence, readWithoutPrimer, alignmentScorer);
 
-			// TODO need better indication if the readAlignedsuccessfully
 			boolean readAlignedsuccessfully = (readAlignmentWithReference.getLengthNormalizedAlignmentScore() > LENGTH_NORMALIZED_ALIGNMENT_SCORE_THRESHOLD);
 
 			if (readAlignedsuccessfully) {

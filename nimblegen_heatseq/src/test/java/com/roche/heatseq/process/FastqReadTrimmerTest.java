@@ -54,5 +54,4 @@ public class FastqReadTrimmerTest {
 		Assert.assertEquals(stats.getMaxExtensionPrimerLength(), 10);
 		Assert.assertEquals(stats.getMaxCaptureTargetLength(), 10);
 	}
-
 }

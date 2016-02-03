@@ -70,7 +70,7 @@ public class NewRangeMap<O> implements RangeMap<O> {
 					boolean searchLocationFound = beforeSearchLocation <= startLocationToFind;
 					if (searchLocationFound) {
 						StartLocationToValue<O> currentIndex = startingLocationToValue.get(afterSearchIndex - 1);
-						// TODO this currently assumes that no probe completely overlaps another probe
+						// this currently assumes that no probe completely overlaps another probe
 						while (currentIndex != null && currentIndex.getEndLocation() >= stopLocationToFind) {
 							if (currentIndex.getStartLocation() <= startLocationToFind && currentIndex.getEndLocation() >= stopLocationToFind) {
 								objectsWithinRange.add(currentIndex.getValue());
@@ -87,6 +87,66 @@ public class NewRangeMap<O> implements RangeMap<O> {
 						hiIndex = afterSearchIndex - 1;
 					}
 				} else if (afterSearchLocation < startLocationToFind) {
+					loIndex = afterSearchIndex + 1;
+				}
+
+				if (hiIndex < loIndex) {
+					searchComplete = true;
+				}
+			} else {
+				searchComplete = true;
+			}
+		}
+
+		return objectsWithinRange;
+	}
+
+	public List<O> getObjectsThatContainRangeInclusiveOld(int startInclusive, int stopInclusive) {
+		int startLocationToFind = Math.min(startInclusive, stopInclusive);
+		int stopLocationToFind = Math.max(startInclusive, stopInclusive);
+
+		List<O> objectsWithinRange = new ArrayList<O>();
+
+		if (!locationsSorted) {
+			Collections.sort(startingLocationToValue, forwardComparator);
+			locationsSorted = true;
+		}
+
+		int loIndex = 1;
+		int hiIndex = startingLocationToValue.size();
+
+		boolean searchComplete = false;
+
+		// binary search
+		while (!searchComplete) {
+			int afterSearchIndex = loIndex + ((hiIndex - loIndex) / 2);
+			if (afterSearchIndex <= startingLocationToValue.size()) {
+				int afterSearchLocation = Integer.MAX_VALUE;
+				if (afterSearchIndex < startingLocationToValue.size()) {
+					afterSearchLocation = startingLocationToValue.get(afterSearchIndex).getStartLocation();
+				}
+				if (afterSearchLocation >= startLocationToFind) {
+					int beforeSearchLocation = startingLocationToValue.get(afterSearchIndex - 1).getStartLocation();
+					boolean searchLocationFound = beforeSearchLocation < startLocationToFind;
+					if (searchLocationFound) {
+						StartLocationToValue<O> currentIndex = startingLocationToValue.get(afterSearchIndex - 1);
+						// this currently assumes that no probe completely overlaps another probe
+						while (currentIndex != null && currentIndex.getEndLocation() >= stopLocationToFind) {
+							if (currentIndex.getStartLocation() <= startLocationToFind && currentIndex.getEndLocation() >= stopLocationToFind) {
+								objectsWithinRange.add(currentIndex.getValue());
+							}
+							afterSearchIndex--;
+							if (afterSearchIndex > 0) {
+								currentIndex = startingLocationToValue.get(afterSearchIndex - 1);
+							} else {
+								currentIndex = null;
+							}
+						}
+						searchComplete = true;
+					} else {
+						hiIndex = afterSearchIndex - 1;
+					}
+				} else if (afterSearchLocation < startInclusive) {
 					loIndex = afterSearchIndex + 1;
 				}
 

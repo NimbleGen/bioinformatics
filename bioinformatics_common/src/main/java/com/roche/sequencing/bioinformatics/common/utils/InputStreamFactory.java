@@ -104,7 +104,6 @@ public class InputStreamFactory implements IInputStreamFactory {
 
 		@Override
 		public int read() throws IOException {
-			// TODO Auto-generated method stub
 			return inputStream.read();
 		}
 

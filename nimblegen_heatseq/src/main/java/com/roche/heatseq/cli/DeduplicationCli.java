@@ -64,7 +64,7 @@ public class DeduplicationCli {
 
 	private final static String SAM_FILE_EXTENSION = "sam";
 
-	public final static int DEFAULT_EXTENSION_UID_LENGTH = 10;
+	public final static int DEFAULT_EXTENSION_UID_LENGTH = 0;
 	public final static int DEFAULT_LIGATION_UID_LENGTH = 0;
 	public final static String BAM_EXTENSION = ".bam";
 

@@ -261,7 +261,7 @@ public final class FileUtil {
 	}
 
 	public static int countNumberOfLinesInFile(File file) throws IOException {
-		int count = 0;
+		int count = 1;
 		boolean empty = true;
 		InputStream inputStream = new BufferedInputStream(new FileInputStream(file));
 		try {

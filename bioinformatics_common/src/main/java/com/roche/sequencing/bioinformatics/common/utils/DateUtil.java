@@ -39,6 +39,18 @@ public class DateUtil {
 		return convertTimeInMillisecondsToDate(System.currentTimeMillis());
 	}
 
+	public static String getCurrentDateINYYYYMMDDHHMMSS() {
+		DateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
+		Date date = new Date(System.currentTimeMillis());
+		return dateFormat.format(date);
+	}
+
+	public static String getCurrentDateINYYYYMMDDHHMMSSwithColons() {
+		DateFormat dateFormat = new SimpleDateFormat("YYY:MM:DD HH:MM:SS");
+		Date date = new Date(System.currentTimeMillis());
+		return dateFormat.format(date);
+	}
+
 	/**
 	 * 
 	 * @param timeInMilliseconds

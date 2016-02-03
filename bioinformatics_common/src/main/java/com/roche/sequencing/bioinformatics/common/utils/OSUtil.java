@@ -89,4 +89,10 @@ public class OSUtil {
 		return osBits;
 	}
 
+	public static boolean isHeadless() {
+		String headlessProperty = System.getProperty("java.awt.headless");
+		boolean isHeadless = headlessProperty != null;
+		return isHeadless;
+	}
+
 }

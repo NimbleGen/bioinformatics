@@ -28,6 +28,10 @@ public class OldRangeMap<O> implements RangeMap<O> {
 		objects.add(object);
 	}
 
+	public List<O> getObjectsThatContainRangeInclusiveOld(int startInclusive, int stopInclusive) {
+		return getObjectsThatContainRangeInclusive(startInclusive, stopInclusive);
+	}
+
 	public List<O> getObjectsThatContainRangeInclusive(int startInclusive, int stopInclusive) {
 		int start = Math.min(startInclusive, stopInclusive);
 		int stop = Math.max(startInclusive, stopInclusive);

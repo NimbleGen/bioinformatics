@@ -34,7 +34,7 @@ public class FastqUtil {
 	public static void main(String[] args) {
 		// reverseCompliment(new File("U:\\kurts_space\\carolina_818\\S2_2_R2_quality_filtered.fastq"), new File("U:\\kurts_space\\carolina_818\\rcS2_2_R2_quality_filtered.fastq"));
 		// System.out.println("done");
-		ISequence sequence = new NucleotideCodeSequence("CTTCATGAAGACCTCACAGTAAAAATAGGTGATTTTGGTCTAGCTACAGTGAAATCTCGATGGAGTGGGTCCCATC");
+		ISequence sequence = new NucleotideCodeSequence("TTGCACTGTACTCCTCTTGACCTGCTGTGGCACCTTTTACTTCAATTCAGTTAACACACTACCGTCGGAT");
 		System.out.println(sequence.getReverseCompliment());
 	}
 
