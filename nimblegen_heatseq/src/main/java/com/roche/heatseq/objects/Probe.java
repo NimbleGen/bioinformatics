@@ -44,12 +44,14 @@ public class Probe {
 
 	private final Strand probeStrand;
 
+	private final String annotation;
+
 	private final String sequenceName;
 
 	private Integer hashCode;
 
 	public Probe(String probeId, String sequenceName, int extensionPrimerStart, int extensionPrimerStop, ISequence extensionPrimerSequence, int ligationPrimerStart, int ligationPrimerStop,
-			ISequence ligationPrimerSequence, int captureTargetStart, int captureTargetStop, ISequence captureTargetSequence, Strand probeStrand) {
+			ISequence ligationPrimerSequence, int captureTargetStart, int captureTargetStop, ISequence captureTargetSequence, Strand probeStrand, String annotation) {
 		super();
 		this.probeId = probeId;
 		this.sequenceName = sequenceName;
@@ -63,6 +65,7 @@ public class Probe {
 		this.captureTargetStop = captureTargetStop;
 		this.captureTargetSequence = captureTargetSequence;
 		this.probeStrand = probeStrand;
+		this.annotation = annotation;
 	}
 
 	public String getProbeId() {
@@ -211,25 +214,29 @@ public class Probe {
 		return sequenceName;
 	}
 
+	public String getAnnotation() {
+		return annotation;
+	}
+
 	@Override
 	public int hashCode() {
-		if (hashCode == null) {
-			final int prime = 31;
-			int result = 1;
-			result = prime * result + ((captureTargetSequence == null) ? 0 : captureTargetSequence.hashCode());
-			result = prime * result + captureTargetStart;
-			result = prime * result + captureTargetStop;
-			result = prime * result + ((sequenceName == null) ? 0 : sequenceName.hashCode());
-			result = prime * result + ((extensionPrimerSequence == null) ? 0 : extensionPrimerSequence.hashCode());
-			result = prime * result + extensionPrimerStart;
-			result = prime * result + extensionPrimerStop;
-			result = prime * result + ((ligationPrimerSequence == null) ? 0 : ligationPrimerSequence.hashCode());
-			result = prime * result + ligationPrimerStart;
-			result = prime * result + ligationPrimerStop;
-			result = prime * result + ((probeStrand == null) ? 0 : probeStrand.hashCode());
-			hashCode = result;
-		}
-		return hashCode;
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((annotation == null) ? 0 : annotation.hashCode());
+		result = prime * result + ((captureTargetSequence == null) ? 0 : captureTargetSequence.hashCode());
+		result = prime * result + captureTargetStart;
+		result = prime * result + captureTargetStop;
+		result = prime * result + ((extensionPrimerSequence == null) ? 0 : extensionPrimerSequence.hashCode());
+		result = prime * result + extensionPrimerStart;
+		result = prime * result + extensionPrimerStop;
+		result = prime * result + ((hashCode == null) ? 0 : hashCode.hashCode());
+		result = prime * result + ((ligationPrimerSequence == null) ? 0 : ligationPrimerSequence.hashCode());
+		result = prime * result + ligationPrimerStart;
+		result = prime * result + ligationPrimerStop;
+		result = prime * result + ((probeId == null) ? 0 : probeId.hashCode());
+		result = prime * result + ((probeStrand == null) ? 0 : probeStrand.hashCode());
+		result = prime * result + ((sequenceName == null) ? 0 : sequenceName.hashCode());
+		return result;
 	}
 
 	@Override
@@ -241,6 +248,11 @@ public class Probe {
 		if (getClass() != obj.getClass())
 			return false;
 		Probe other = (Probe) obj;
+		if (annotation == null) {
+			if (other.annotation != null)
+				return false;
+		} else if (!annotation.equals(other.annotation))
+			return false;
 		if (captureTargetSequence == null) {
 			if (other.captureTargetSequence != null)
 				return false;
@@ -249,11 +261,6 @@ public class Probe {
 		if (captureTargetStart != other.captureTargetStart)
 			return false;
 		if (captureTargetStop != other.captureTargetStop)
-			return false;
-		if (sequenceName == null) {
-			if (other.sequenceName != null)
-				return false;
-		} else if (!sequenceName.equals(other.sequenceName))
 			return false;
 		if (extensionPrimerSequence == null) {
 			if (other.extensionPrimerSequence != null)
@@ -264,6 +271,11 @@ public class Probe {
 			return false;
 		if (extensionPrimerStop != other.extensionPrimerStop)
 			return false;
+		if (hashCode == null) {
+			if (other.hashCode != null)
+				return false;
+		} else if (!hashCode.equals(other.hashCode))
+			return false;
 		if (ligationPrimerSequence == null) {
 			if (other.ligationPrimerSequence != null)
 				return false;
@@ -273,7 +285,17 @@ public class Probe {
 			return false;
 		if (ligationPrimerStop != other.ligationPrimerStop)
 			return false;
+		if (probeId == null) {
+			if (other.probeId != null)
+				return false;
+		} else if (!probeId.equals(other.probeId))
+			return false;
 		if (probeStrand != other.probeStrand)
+			return false;
+		if (sequenceName == null) {
+			if (other.sequenceName != null)
+				return false;
+		} else if (!sequenceName.equals(other.sequenceName))
 			return false;
 		return true;
 	}
@@ -282,8 +304,8 @@ public class Probe {
 	public String toString() {
 		return "Probe [probeId=" + probeId + ", extensionPrimerStart=" + extensionPrimerStart + ", extensionPrimerStop=" + extensionPrimerStop + ", extensionPrimerSequence=" + extensionPrimerSequence
 				+ ", ligationPrimerStart=" + ligationPrimerStart + ", ligationPrimerStop=" + ligationPrimerStop + ", ligationPrimerSequence=" + ligationPrimerSequence + ", captureTargetStart="
-				+ captureTargetStart + ", captureTargetStop=" + captureTargetStop + ", captureTargetSequence=" + captureTargetSequence + ", probeStrand=" + probeStrand + ", sequenceName="
-				+ sequenceName + "]";
+				+ captureTargetStart + ", captureTargetStop=" + captureTargetStop + ", captureTargetSequence=" + captureTargetSequence + ", probeStrand=" + probeStrand + ", annotation=" + annotation
+				+ ", sequenceName=" + sequenceName + ", hashCode=" + hashCode + "]";
 	}
 
 }

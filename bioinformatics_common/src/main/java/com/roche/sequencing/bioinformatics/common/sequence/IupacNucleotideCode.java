@@ -79,7 +79,7 @@ public enum IupacNucleotideCode implements ICode, Comparable<IupacNucleotideCode
 	 */
 	static IupacNucleotideCode[] getCodesFromString(String codesAsString) {
 		Objects.requireNonNull(codesAsString, "argument[codesAsString] cannot be null");
-
+		codesAsString = codesAsString.toUpperCase();
 		IupacNucleotideCode[] codes = new IupacNucleotideCode[codesAsString.length()];
 
 		for (int i = 0; i < codesAsString.length(); i++) {

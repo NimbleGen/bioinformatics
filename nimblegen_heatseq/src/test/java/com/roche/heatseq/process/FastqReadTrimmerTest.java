@@ -23,8 +23,8 @@ import net.sf.picard.fastq.FastqRecord;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ParsedProbeFile;
+import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.process.FastqReadTrimmer.ProbeInfoStats;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
@@ -43,9 +43,9 @@ public class FastqReadTrimmerTest {
 	public void probeInfoStatsTest() throws IOException {
 		ParsedProbeFile probes = new ParsedProbeFile();
 		probes.addProbe("chr1", new Probe("probe1", "chr1", 1, 10, new IupacNucleotideCodeSequence("ACGTACGTAC"), 21, 30, new IupacNucleotideCodeSequence("ACGTACGTAC"), 11, 20,
-				new IupacNucleotideCodeSequence("ACGTACGTAC"), Strand.FORWARD));
+				new IupacNucleotideCodeSequence("ACGTACGTAC"), Strand.FORWARD, ""));
 		probes.addProbe("chr1", new Probe("probe2", "chr1", 1, 9, new IupacNucleotideCodeSequence("ACGTACGTA"), 19, 27, new IupacNucleotideCodeSequence("ACGTACGTA"), 10, 18,
-				new IupacNucleotideCodeSequence("ACGTACGTA"), Strand.FORWARD));
+				new IupacNucleotideCodeSequence("ACGTACGTA"), Strand.FORWARD, ""));
 		ProbeInfoStats stats = FastqReadTrimmer.collectStatsFromProbeInformation(probes);
 		Assert.assertEquals(stats.getMinLigationPrimerLength(), 9);
 		Assert.assertEquals(stats.getMinExtensionPrimerLength(), 9);
@@ -54,5 +54,4 @@ public class FastqReadTrimmerTest {
 		Assert.assertEquals(stats.getMaxExtensionPrimerLength(), 10);
 		Assert.assertEquals(stats.getMaxCaptureTargetLength(), 10);
 	}
-
 }

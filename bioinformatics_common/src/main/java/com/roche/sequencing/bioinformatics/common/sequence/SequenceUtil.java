@@ -76,7 +76,9 @@ public class SequenceUtil {
 	}
 
 	public static void main(String[] args) {
-		ISequence a = new IupacNucleotideCodeSequence("ACACACAC");
+		ISequence a = new IupacNucleotideCodeSequence(
+				"TCTTTCTGGTTGACCATCAAATATTCCTTCTCTGTTGTCATCAGAAGATAACGCTGATGATGAGGTGGACACACGACCAGCCTCCTTCTGGGAGACATCATAGTGCTAGTACTATGTCAAAGCAACAGTCCACACTTTGTCCAATGGTTTT");
+		System.out.println(a.getReverseCompliment());
 		ISequence b = new IupacNucleotideCodeSequence("AC");
 		Set<StartAndStopIndex> matches = findAllMatches(a, b, 2);
 		for (StartAndStopIndex ss : matches) {

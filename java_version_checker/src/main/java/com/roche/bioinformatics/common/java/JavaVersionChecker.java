@@ -15,6 +15,7 @@
  */
 package com.roche.bioinformatics.common.java;
 
+import java.awt.GraphicsEnvironment;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -138,7 +139,7 @@ public class JavaVersionChecker {
 					baseMessage += "This application requires a " + requiredJavaBit + " bit JVM or higher.  You are currently running a " + actualJavaBitAsInteger + " bit JVM.  ";
 				}
 
-				if (displayWarningWithDialog) {
+				if (displayWarningWithDialog && !isHeadless()) {
 
 					Boolean is64Bit = is64Bit();
 					if (is64Bit != null && !is64Bit && requiredJavaBit == 64) {
@@ -318,6 +319,11 @@ public class JavaVersionChecker {
 
 	public static boolean isLinux() {
 		return getOsName().startsWith("Linux");
+	}
+
+	public static boolean isHeadless() {
+		GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
+		return env.isHeadlessInstance();
 	}
 
 }

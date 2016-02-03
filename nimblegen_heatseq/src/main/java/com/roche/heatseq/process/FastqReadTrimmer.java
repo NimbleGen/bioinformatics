@@ -40,8 +40,9 @@ public class FastqReadTrimmer {
 
 	private static Logger logger = LoggerFactory.getLogger(FastqReadTrimmer.class);
 
-	public static void trimReads(File inputFastqOneFile, File inputFastqTwoFile, ParsedProbeFile probeInfo, File probeInfoFile, File outputFastqOneFile, File outputFastqTwoFile) throws IOException {
-		ProbeTrimmingInformation probeTrimmingInformation = getProbeTrimmingInformation(probeInfo, probeInfoFile);
+	public static void trimReads(File inputFastqOneFile, File inputFastqTwoFile, ParsedProbeFile probeInfo, File probeInfoFile, File outputFastqOneFile, File outputFastqTwoFile, boolean trimPrimers)
+			throws IOException {
+		ProbeTrimmingInformation probeTrimmingInformation = getProbeTrimmingInformation(probeInfo, probeInfoFile, trimPrimers);
 		boolean performThreePrimeTrimming = probeTrimmingInformation.isPerformThreePrimeTrimming();
 
 		int readOneTrimFromStart = probeTrimmingInformation.getReadOneTrimFromStart();
@@ -53,6 +54,10 @@ public class FastqReadTrimmer {
 		logger.info("read two--first base to keep:" + readTwoTrimFromStart + "  lastBaseToKeep:" + readTwoTrimStop);
 
 		PrimerReadExtensionAndPcrDuplicateIdentification.verifyReadNamesCanBeHandledByDedupAndFindCommonReadNameBeginning(inputFastqOneFile, inputFastqTwoFile);
+
+		if (!trimPrimers) {
+			performThreePrimeTrimming = false;
+		}
 
 		try {
 			trimReads(inputFastqOneFile, outputFastqOneFile, readOneTrimFromStart, readOneTrimStop, performThreePrimeTrimming);
@@ -70,7 +75,7 @@ public class FastqReadTrimmer {
 				+ StringUtil.NEWLINE);
 	}
 
-	public static ProbeTrimmingInformation getProbeTrimmingInformation(ParsedProbeFile probeInfo, File probeInfoFile) throws IOException {
+	public static ProbeTrimmingInformation getProbeTrimmingInformation(ParsedProbeFile probeInfo, File probeInfoFile, boolean trimPrimers) throws IOException {
 		ProbeInfoStats probeInfoStats = collectStatsFromProbeInformation(probeInfo);
 
 		logger.info(probeInfoStats.toString());
@@ -96,17 +101,32 @@ public class FastqReadTrimmer {
 
 		boolean performThreePrimeTrimming = probeHeaderInformation.getPerformThreePrimeTrimming();
 
-		int readOneTrimFromStart = additionalExtensionTrimLength + extensionUidLength + probeInfoStats.getMaxExtensionPrimerLength();
-		int readOneTrimStop = probeInfoStats.getMinCaptureTargetLength() + probeInfoStats.getMinLigationPrimerLength();
-		int readTwoTrimFromStart = additionalLigationTrimLength + ligationUidLength + probeInfoStats.getMaxLigationPrimerLength();
-		int readTwoTrimStop = probeInfoStats.getMinCaptureTargetLength() + probeInfoStats.getMinExtensionPrimerLength();
+		int readOneTrimFromStart = additionalExtensionTrimLength + extensionUidLength;
+		if (trimPrimers) {
+			readOneTrimFromStart += probeInfoStats.getMaxExtensionPrimerLength();
+		}
+
+		int readOneTrimStop = probeInfoStats.getMinCaptureTargetLength();
+		if (trimPrimers) {
+			readOneTrimStop += probeInfoStats.getMinLigationPrimerLength();
+		}
+
+		int readTwoTrimFromStart = additionalLigationTrimLength + ligationUidLength;
+		if (trimPrimers) {
+			readTwoTrimFromStart += probeInfoStats.getMaxLigationPrimerLength();
+		}
+
+		int readTwoTrimStop = probeInfoStats.getMinCaptureTargetLength();
+		if (trimPrimers) {
+			readTwoTrimStop += probeInfoStats.getMinExtensionPrimerLength();
+		}
 
 		return new ProbeTrimmingInformation(performThreePrimeTrimming, readOneTrimFromStart, readOneTrimStop, readTwoTrimFromStart, readTwoTrimStop);
 
 	}
 
 	public static void main(String[] args) throws IOException {
-		File probeInfoFile = new File("D:/kurts_space/heatseq/big2/probe_info.txt");
+		File probeInfoFile = new File("D:/kurts_space/heatseq/todd_trim_625/RH4_plus_RSU_probe_info.txt");
 		ParsedProbeFile probes = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
 
 		ProbeInfoStats probeInfoStats = collectStatsFromProbeInformation(probes);

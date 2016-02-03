@@ -62,7 +62,9 @@ public class DeduplicationCli {
 
 	private final static int MAX_NUMBER_OF_PROCESSORS = 20;
 
-	public final static int DEFAULT_EXTENSION_UID_LENGTH = 10;
+	private final static String SAM_FILE_EXTENSION = "sam";
+
+	public final static int DEFAULT_EXTENSION_UID_LENGTH = 0;
 	public final static int DEFAULT_LIGATION_UID_LENGTH = 0;
 	public final static String BAM_EXTENSION = ".bam";
 
@@ -403,11 +405,12 @@ public class DeduplicationCli {
 				}
 
 				boolean isSortIndicatedInHeader = header.getSortOrder().equals(SortOrder.coordinate);
+				boolean isSamFile = FileUtil.getFileExtension(samOrBamFile).equals(SAM_FILE_EXTENSION);
 
 				if (isSortIndicatedInHeader) {
 					logger.debug("The input BAM file[" + samOrBamFile.getAbsolutePath() + "] was deemed sorted based on header information.");
 				}
-				if (!isSortIndicatedInHeader) {
+				if (!isSortIndicatedInHeader || isSamFile) {
 					// sam files need to be sorted and converted to bam files regardless
 					boolean isSorted = !isSamFormat;
 					long sortedCheckStart = System.currentTimeMillis();
@@ -500,6 +503,7 @@ public class DeduplicationCli {
 					}
 				}
 			}
+
 			validSamOrBamInputFile = sortedBamFile;
 
 			try (SAMFileReader samReader = new SAMFileReader(validSamOrBamInputFile)) {

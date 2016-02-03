@@ -187,7 +187,6 @@ public final class ExtendReadsToPrimer {
 			ISequence readWithoutPrimer = readSequence.subSequence(captureTargetStartIndexInRead, readSequence.size());
 			NeedlemanWunschGlobalAlignment readAlignmentWithReference = new NeedlemanWunschGlobalAlignment(captureSequence, readWithoutPrimer, alignmentScorer);
 
-			// TODO need better indication if the readAlignedsuccessfully
 			boolean readAlignedsuccessfully = (readAlignmentWithReference.getLengthNormalizedAlignmentScore() > LENGTH_NORMALIZED_ALIGNMENT_SCORE_THRESHOLD);
 
 			if (readAlignedsuccessfully) {
@@ -282,7 +281,7 @@ public final class ExtendReadsToPrimer {
 		return record;
 	}
 
-	static Integer getPrimerEndIndexInRead(ISequence primerSequence, ISequence readSequence) {
+	public static Integer getPrimerEndIndexInRead(ISequence primerSequence, ISequence readSequence) {
 		// cutoff excess sequence beyond primer
 		readSequence = readSequence.subSequence(0, Math.min(readSequence.size() - 1, primerSequence.size() + PRIMER_ALIGNMENT_BUFFER));
 
@@ -298,7 +297,6 @@ public final class ExtendReadsToPrimer {
 		while (primer.getCodeAt(primerIndex).equals(IupacNucleotideCode.GAP)) {
 			primerIndex++;
 		}
-
 		Integer primerEndIndexInRead = null;
 
 		// walk backwards until we stop seeing gaps in the reference (aka read)

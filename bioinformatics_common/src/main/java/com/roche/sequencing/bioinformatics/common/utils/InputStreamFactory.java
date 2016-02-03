@@ -23,7 +23,7 @@ import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 
-public class InputStreamFactory {
+public class InputStreamFactory implements IInputStreamFactory {
 
 	private final File file;
 
@@ -119,7 +119,6 @@ public class InputStreamFactory {
 
 		@Override
 		public int read() throws IOException {
-			// TODO Auto-generated method stub
 			return inputStream.read();
 		}
 
