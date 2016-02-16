@@ -106,7 +106,7 @@ public class JavaVersionChecker {
 				method.invoke(null, (Object) args);
 				launchedsuccessfully = true;
 			} catch (Exception e) {
-				throw new IllegalStateException("Could not instantiate the provided main class[" + mainClass + "]." + e.getMessage());
+				throw new IllegalStateException("Could not instantiate the provided main class[" + mainClass + "].  " + e.getMessage());
 			}
 		} else {
 

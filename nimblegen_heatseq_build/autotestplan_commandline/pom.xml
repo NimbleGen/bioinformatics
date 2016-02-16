@@ -1,0 +1,82 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.roche.sequencing</groupId>
+		<artifactId>git_superpom</artifactId>
+		<version>1.0</version>
+		<relativePath>../../git_superpom/pom.xml</relativePath>
+	</parent>
+
+	<artifactId>autotestplan</artifactId>
+	<packaging>pom</packaging>
+	<name>Auto Test Plan</name>
+	<description>Command line tool for Automating Test Plans</description>
+	<version>v0_1</version>
+
+	<modules>
+		<module>../../bioinformatics_common</module>
+		<module>../../java_version_checker</module>
+	</modules>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.roche.sequencing</groupId>
+			<artifactId>java_version_checker</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>com.roche.sequencing</groupId>
+			<artifactId>bioinformatics_common</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+	</dependencies>
+
+	<properties>
+		<java.version>1.7</java.version>
+	</properties>
+
+	<build>
+		<finalName>${project.artifactId}_${project.version}</finalName>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>${java.version}</source>
+					<target>${java.version}</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<configuration>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+					<appendAssemblyId>false</appendAssemblyId>
+					<archive>
+						<manifestEntries>
+							<Second-Main-Class>com/roche/bioinformatics/common/verification/AutoTestPlanCli</Second-Main-Class>
+							<Implementation-Build>${maven.build.timestamp}</Implementation-Build>
+							<version>${project.version}</version>
+							<Main-Class>com/roche/bioinformatics/common/java/JavaVersionChecker</Main-Class>
+							<Required-Java-Version>${java.version}</Required-Java-Version>
+							<Display-Java-Version-Warning-In-Dialog>false</Display-Java-Version-Warning-In-Dialog>
+						</manifestEntries>
+					</archive>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

@@ -15,6 +15,11 @@
  */
 package com.roche.sequencing.bioinformatics.common.utils;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
 import org.apache.commons.codec.digest.DigestUtils;
 
 public class Md5CheckSumUtil {
@@ -31,6 +36,10 @@ public class Md5CheckSumUtil {
 	 */
 	public static String md5sum(String string) {
 		return DigestUtils.md5Hex(string);
+	}
+
+	public static String md5sum(File file) throws FileNotFoundException, IOException {
+		return DigestUtils.md5Hex(new FileInputStream(file));
 	}
 
 }

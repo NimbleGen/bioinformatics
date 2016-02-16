@@ -159,6 +159,14 @@ public final class ArraysUtil {
 		return doubleArray;
 	}
 
+	public static int[] convertToIntArray(List<? extends Number> values) {
+		int[] intArray = new int[values.size()];
+		for (int i = 0; i < values.size(); i++) {
+			intArray[i] = values.get(i).intValue();
+		}
+		return intArray;
+	}
+
 	public static double[] convertToDoubleArray(List<? extends Number> values) {
 		double[] doubleArray = new double[values.size()];
 		for (int i = 0; i < values.size(); i++) {

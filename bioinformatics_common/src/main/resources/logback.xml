@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration debug="false">
+
+	<root level="error">		
+	</root>
+
+	<!-- Note the file logging appender is added programatically (to root) because 
+		its location and name are based on passed in parameters (see IdentifyDuplicatesCli.java 
+		and TrimCli.java for implementation) -->
+
+	<!-- Also note that logback was considered for outputting status details 
+		and error details to the console but was ultimately deemed inappropriate 
+		for this task. Logback requires that only one logger can be assigned to a 
+		given classpath node. Additionally only one level scope (DEBUG, INFO, WARNING, 
+		ERROR) for outputting can be defined per logger. The requirement for the 
+		project is that we give a debug scope for the log file, whereas the console 
+		has a info scope. Logback in incapable of assigning two different loggers 
+		to root, one for the DEBUG level scope and one for the INFO level scope. 
+		Furthermore, stack trace dumps should not be in the console output when an 
+		error occurs. The combination of these factors requires that a custom solution 
+		for console output be derived. -->
+
+</configuration>

@@ -21,13 +21,18 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
+import java.util.Scanner;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
@@ -40,8 +45,6 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public final class FileUtil {
-
-	private final static Logger logger = LoggerFactory.getLogger(FileUtil.class);
 
 	public static final int BYTES_PER_KB = 1024;
 	private static final int STRING_BUILDER_INITIAL_SIZE = 1000;
@@ -116,10 +119,56 @@ public final class FileUtil {
 			while ((numRead = reader.read(buf)) != -1) {
 				fileData.append(buf, 0, numRead);
 			}
+		}
+		return fileData.toString();
+	}
 
-			return fileData.toString();
+	/**
+	 * 
+	 * @param file
+	 * @param textToFind
+	 * @return the line number of the first occurence of this text, -1 if no such line exists.
+	 * @throws FileNotFoundException
+	 */
+	public static int findLineNumberOfFirstOccurrenceOfText(File file, String textToFind) throws FileNotFoundException {
+		int lineNumber = -1;
+		int[] lineNumbers = getLineNumbersContainingTextInFile(file, textToFind, 0, 1);
+		if (lineNumbers.length > 0) {
+			lineNumber = lineNumbers[0];
+		}
+		return lineNumber;
+	}
+
+	/**
+	 * 
+	 * @param file
+	 * @param textToFind
+	 * @param startingLineNumber
+	 *            (0-based)
+	 * @param numberOfMatchesToFind
+	 * @return the line numbers of lines that contain the provided text
+	 * @throws FileNotFoundException
+	 */
+	public static int[] getLineNumbersContainingTextInFile(File file, String textToFind, int startingLineNumber, int numberOfMatchesToFind) throws FileNotFoundException {
+		List<Integer> lineNumbers = new ArrayList<Integer>();
+
+		try (Scanner scanner = new Scanner(file)) {
+			int lineNumber = 0;
+			lineLoop: while (scanner.hasNextLine()) {
+				if (lineNumber >= startingLineNumber) {
+					String line = scanner.nextLine();
+					lineNumber++;
+					if (line.contains(textToFind)) {
+						lineNumbers.add(lineNumber);
+					}
+					if (lineNumbers.size() >= numberOfMatchesToFind) {
+						break lineLoop;
+					}
+				}
+			}
 		}
 
+		return ArraysUtil.convertToIntArray(lineNumbers);
 	}
 
 	/**
@@ -307,6 +356,7 @@ public final class FileUtil {
 				try {
 					FileUtils.deleteDirectory(directory);
 				} catch (IOException e1) {
+					Logger logger = LoggerFactory.getLogger(FileUtil.class);
 					if (i == totalAttempts - 1) {
 						logger.warn("Unable to delete directory[" + directory.getAbsolutePath() + "] on attempt " + (i + 1) + ".  Will attempt deletion on exit.");
 						directory.deleteOnExit();
@@ -380,5 +430,95 @@ public final class FileUtil {
 			ancestorOfFile = ancestorOfFile.getParentFile();
 		}
 		return directoryIsParent;
+	}
+
+	/**
+	 * 
+	 * @param fileOne
+	 * @param fileTwo
+	 * @param ignoreEOL
+	 * @return true if the files contents are the same.
+	 * @throws IOException
+	 */
+	public static boolean filesContentsAreEqual(File fileOne, File fileTwo, boolean ignoreEOL) throws IOException {
+		boolean contentsAreEqual = false;
+		if (ignoreEOL) {
+			contentsAreEqual = FileUtils.contentEqualsIgnoreEOL(fileOne, fileTwo, null);
+		} else {
+			contentsAreEqual = FileUtils.contentEquals(fileOne, fileTwo);
+		}
+		return contentsAreEqual;
+	}
+
+	/**
+	 * return the files that match the provided regex in the provided directory (does not examine children directories of said directory).
+	 * 
+	 * @param directory
+	 * @param regex
+	 * @return matching files
+	 */
+	public static List<File> getMatchingFilesInDirectory(File directory, String regex) {
+		return getMatchingFilesInDirectory(directory, regex, true);
+	}
+
+	/**
+	 * return the files that match the provided regex in the provided directory (does not examine children directories of said directory).
+	 * 
+	 * @param directory
+	 * @param regex
+	 * @return matching files
+	 */
+	public static List<File> getMatchingFilesInDirectory(File directory, String regex, boolean isCaseInsensitive) {
+		List<File> matchingFiles = new ArrayList<File>();
+
+		final Pattern pattern = isCaseInsensitive ? Pattern.compile(regex, Pattern.CASE_INSENSITIVE) : Pattern.compile(regex);
+
+		String[] matchingFileNames = directory.list(new FilenameFilter() {
+			@Override
+			public boolean accept(File dir, String name) {
+				boolean accept = pattern.matcher(name).matches();
+				return accept;
+			}
+		});
+
+		if (matchingFileNames != null) {
+			for (String matchingFileName : matchingFileNames) {
+				matchingFiles.add(new File(directory, matchingFileName));
+			}
+		}
+
+		return matchingFiles;
+	}
+
+	/**
+	 * returns the matching file if only one exists matching the regex in the provided directory, null if no such files exist and throws an IllegalArgumentException if more than on of such files
+	 * exist.
+	 * 
+	 * @param directory
+	 * @param regex
+	 * @return matching file
+	 */
+	public static File getMatchingFileInDirectory(File directory, String regex) {
+		return getMatchingFileInDirectory(directory, regex, true);
+	}
+
+	/**
+	 * returns the matching file if only one exists matching the regex in the provided directory, null if no such files exist and throws an IllegalArgumentException if more than on of such files
+	 * exist.
+	 * 
+	 * @param directory
+	 * @param regex
+	 * @return matching file
+	 */
+	public static File getMatchingFileInDirectory(File directory, String regex, boolean isCaseInsensitive) {
+		List<File> matchingFiles = getMatchingFilesInDirectory(directory, regex, isCaseInsensitive);
+
+		File matchingFile = null;
+		if (matchingFiles.size() == 1) {
+			matchingFile = matchingFiles.get(0);
+		} else if (matchingFiles.size() > 1) {
+			throw new IllegalArgumentException("The provided directory[" + directory + "] contains more than one file matching the provided regex[" + regex + "].");
+		}
+		return matchingFile;
 	}
 }
