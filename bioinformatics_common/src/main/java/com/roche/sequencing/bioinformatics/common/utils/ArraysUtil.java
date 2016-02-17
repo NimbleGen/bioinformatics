@@ -227,4 +227,23 @@ public final class ArraysUtil {
 
 		return combinedArray;
 	}
+
+	public static String toString(String[] strings, String delimiter) {
+		StringBuilder returnString = new StringBuilder();
+		for (String string : strings) {
+			returnString.append(string + delimiter);
+		}
+		return returnString.substring(0, returnString.length() - delimiter.length());
+	}
+
+	public static boolean contains(String[] values, String containedValue) {
+		boolean isContained = false;
+		int i = 0;
+		while (!isContained && i < values.length) {
+			isContained = containedValue.equals(values[i]);
+			i++;
+		}
+
+		return isContained;
+	}
 }

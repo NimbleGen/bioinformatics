@@ -21,7 +21,7 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.roche.bioinformatics.common.verification.testplan.TestPlan;
+import com.roche.bioinformatics.common.verification.runs.TestPlan;
 import com.roche.sequencing.bioinformatics.common.commandline.Command;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
@@ -48,9 +48,9 @@ public class AutoTestPlanCli {
 	public final static CommandLineOption TEST_PLAN_DIRECTORY_OPTION = new CommandLineOption("Test Plan Directory", "testPlanDir", null, "Path to the Test Plan Directory", true, false);
 	public final static CommandLineOption TEST_PLAN_EXECUTION_RESULTS_DIRECTORY_OPTION = new CommandLineOption("Test Plan Execution Directory", "runDir", null,
 			"Base directory for placing results file from running the test plan", true, false);
-	public final static CommandLineOption TESTER_NAME_OPTION = new CommandLineOption("Tester's Name", "testerName", null, "The full name of the tester generating the test plan report.", true, false);
 	public final static CommandLineOption APPLICATION_JAR_FILE_OPTION = new CommandLineOption("Application Jar File", "application", null, "The path to the application jar file to be tested.", true,
 			false);
+	public final static CommandLineOption JVM_BIN_PATH_OPTION = new CommandLineOption("JVM Bin Path", "jvm", null, "The path to the jvm bin to use for executing the tests.", false, false);
 	public final static CommandLineOption OUTPUT_FILE_OPTION = new CommandLineOption("Output File", "output", null, "The output file to write the test plan or report.", true, false);
 
 	public final static String FILE_LOGGER_NAME = "root";
@@ -79,6 +79,10 @@ public class AutoTestPlanCli {
 			CliStatusConsole.logError("");
 			System.exit(1);
 		}
+	}
+
+	public static String getApplicationVersion() {
+		return applicationVersionFromManifest;
 	}
 
 	public static void runCommandLineApp(String[] args) {
@@ -187,9 +191,9 @@ public class AutoTestPlanCli {
 		group.addOption(USAGE_OPTION);
 		group.addOption(TEST_PLAN_DIRECTORY_OPTION);
 		group.addOption(TEST_PLAN_EXECUTION_RESULTS_DIRECTORY_OPTION);
-		group.addOption(TESTER_NAME_OPTION);
 		group.addOption(APPLICATION_JAR_FILE_OPTION);
 		group.addOption(OUTPUT_FILE_OPTION);
+		group.addOption(JVM_BIN_PATH_OPTION);
 		return group;
 	}
 
@@ -242,9 +246,16 @@ public class AutoTestPlanCli {
 		logger.info("command line signature: " + commandLineSignature);
 
 		TestPlan testPlan = TestPlan.readFromDirectory(testPlanDirectory);
-		System.out.println(testPlan.getTestPlanTitle());
 		if (generateReport) {
-			String testerName = parsedCommandLine.getOptionsValue(TESTER_NAME_OPTION);
+			File jvmBinFile = null;
+			if (parsedCommandLine.isOptionPresent(JVM_BIN_PATH_OPTION)) {
+				String jvmBinPath = parsedCommandLine.getOptionsValue(JVM_BIN_PATH_OPTION);
+
+				jvmBinFile = new File(jvmBinPath);
+				if (!jvmBinFile.exists()) {
+					throw new IllegalArgumentException("The provided argument for " + JVM_BIN_PATH_OPTION.getLongFormOption() + "[" + jvmBinPath + "] does not exist.");
+				}
+			}
 
 			String appToTestString = parsedCommandLine.getOptionsValue(APPLICATION_JAR_FILE_OPTION);
 			File appToTest = new File(appToTestString);
@@ -255,7 +266,7 @@ public class AutoTestPlanCli {
 
 			File testPlanExecutionDirectory = new File(parsedCommandLine.getOptionsValue(TEST_PLAN_EXECUTION_RESULTS_DIRECTORY_OPTION));
 
-			testPlan.createTestPlanReport(testerName, appToTest, testPlanExecutionDirectory, outputFile);
+			testPlan.createTestPlanReport(appToTest, testPlanExecutionDirectory, outputFile, jvmBinFile);
 		} else {
 			testPlan.createTestPlan(outputFile);
 		}

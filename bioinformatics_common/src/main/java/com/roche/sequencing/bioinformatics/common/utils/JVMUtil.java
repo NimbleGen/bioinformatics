@@ -15,6 +15,14 @@
  */
 package com.roche.sequencing.bioinformatics.common.utils;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class JVMUtil {
 
 	private JVMUtil() {
@@ -37,10 +45,39 @@ public class JVMUtil {
 		return versionAsString;
 	}
 
+	public static Version getJavaVersion(File pathToJvmBinDirectory) {
+		Version version = null;
+		String path = new File(pathToJvmBinDirectory, "java").getAbsolutePath();
+		ProcessBuilder processBuilder = new ProcessBuilder(path, "-version");
+		try {
+			Process process = processBuilder.start();
+			InputStream errorStream = process.getErrorStream();
+			BufferedReader reader = new BufferedReader(new InputStreamReader(errorStream));
+			String line;
+			lineLoop: while ((line = reader.readLine()) != null) {
+				if (line.contains("java version")) {
+					Pattern pattern = Pattern.compile("\"(.*)\"");
+					Matcher matcher = pattern.matcher(line);
+					matcher.find();
+					version = Version.fromString(matcher.group(1));
+					break lineLoop;
+				}
+			}
+		} catch (IOException e) {
+		}
+
+		return version;
+
+	}
+
 	public static double getJavaVersionAsDouble() {
 		String versionAsString = getJavaVersion();
 		double versionAsDouble = Double.valueOf(versionAsString);
 		return versionAsDouble;
+	}
+
+	public static void main(String[] args) {
+		System.out.println(getJavaVersion(new File("C:\\Program Files\\Java\\jre8\\bin")));
 	}
 
 }

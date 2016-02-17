@@ -11,6 +11,7 @@ import java.util.Map.Entry;
 
 import org.yaml.snakeyaml.Yaml;
 
+import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 
 public class TestPlanRun {
@@ -26,8 +27,11 @@ public class TestPlanRun {
 
 	private final static String DESCRIPTION_KEY = "description";
 	private final static String COMMAND_KEY = "command";
+
 	private final static String EXTRA_ARGUMENTS_KEY = "extraArguments";
 	private final static String FILE_NAME_REGEX_TO_INPUT_ARGUMENT_NAMES_KEY = "fileNameRegexToInputArgumentNames";
+
+	private final static String[] VALID_KEYS = new String[] { DESCRIPTION_KEY, COMMAND_KEY, EXTRA_ARGUMENTS_KEY, FILE_NAME_REGEX_TO_INPUT_ARGUMENT_NAMES_KEY };
 
 	private TestPlanRun(File runDirectory, String description, String command, String[] extraArguments, Map<String, String> fileNameRegexToInputArgumentNames, List<TestPlanRunCheck> checks) {
 		super();
@@ -69,22 +73,26 @@ public class TestPlanRun {
 
 		arguments.add(command);
 
-		for (Entry<String, String> entry : fileNameRegexToInputArgumentNames.entrySet()) {
-			String regex = entry.getKey();
-			String argument = entry.getValue();
+		if (fileNameRegexToInputArgumentNames != null) {
+			for (Entry<String, String> entry : fileNameRegexToInputArgumentNames.entrySet()) {
+				String regex = entry.getKey();
+				String argument = entry.getValue();
 
-			File matchingFile = FileUtil.getMatchingFileInDirectory(runDirectory, regex);
+				File matchingFile = FileUtil.getMatchingFileInDirectory(runDirectory, regex);
 
-			if (matchingFile == null) {
-				throw new IllegalStateException("Unable to find a file in directory[" + runDirectory.getAbsolutePath() + "] matching the regex[" + regex + "].");
-			} else {
-				arguments.add(argument);
-				arguments.add(matchingFile.getAbsolutePath());
+				if (matchingFile == null) {
+					throw new IllegalStateException("Unable to find a file in directory[" + runDirectory.getAbsolutePath() + "] matching the regex[" + regex + "].");
+				} else {
+					arguments.add(argument);
+					arguments.add(matchingFile.getAbsolutePath());
+				}
 			}
 		}
 
-		for (String extraArgument : extraArguments) {
-			arguments.add(extraArgument);
+		if (extraArguments != null) {
+			for (String extraArgument : extraArguments) {
+				arguments.add(extraArgument);
+			}
 		}
 		return arguments;
 	}
@@ -116,13 +124,34 @@ public class TestPlanRun {
 			try {
 				Map<String, Object> root = (Map<String, Object>) yaml.load(FileUtil.readFileAsString(inputYaml));
 
+				List<String> unrecognizedKeys = new ArrayList<String>();
+				for (String key : root.keySet()) {
+					if (!ArraysUtil.contains(VALID_KEYS, key)) {
+						unrecognizedKeys.add(key);
+					}
+				}
+
+				if (unrecognizedKeys.size() > 0) {
+					throw new IllegalArgumentException("The following YAML tags were not recognized: [" + ArraysUtil.toString(unrecognizedKeys.toArray(new String[0]), " ") + "] in the run file["
+							+ testPlanRunDirectory.getAbsolutePath() + "].");
+				}
+
 				String description = (String) root.get(DESCRIPTION_KEY);
 				String command = (String) root.get(COMMAND_KEY);
 
-				List<String> extraArgumentsAsList = (List<String>) root.get(EXTRA_ARGUMENTS_KEY);
-				String[] extraArguments = new String[0];
-				if (extraArgumentsAsList != null) {
-					extraArguments = extraArgumentsAsList.toArray(new String[0]);
+				String[] extraArguments = null;
+
+				Object extraArgumentsAsObject = root.get(EXTRA_ARGUMENTS_KEY);
+				if (extraArgumentsAsObject != null) {
+					if (extraArgumentsAsObject instanceof List) {
+						List<String> extraArgumentsAsList = (List<String>) root.get(EXTRA_ARGUMENTS_KEY);
+						extraArguments = new String[0];
+						if (extraArgumentsAsList != null) {
+							extraArguments = extraArgumentsAsList.toArray(new String[0]);
+						}
+					} else {
+						extraArguments = new String[] { (String) extraArgumentsAsObject };
+					}
 				}
 
 				Map<String, String> fileNameRegexToInputArgumentNames = (Map<String, String>) root.get(FILE_NAME_REGEX_TO_INPUT_ARGUMENT_NAMES_KEY);
