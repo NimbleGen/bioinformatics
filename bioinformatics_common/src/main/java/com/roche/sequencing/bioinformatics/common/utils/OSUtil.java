@@ -69,13 +69,13 @@ public class OSUtil {
 	 */
 	public static Boolean is64Bit() {
 		Boolean is64bit = null;
+
 		if (isWindows()) {
-			if (System.getProperty("os.name").contains("Windows")) {
-				is64bit = (System.getenv("ProgramFiles(x86)") != null);
-			} else {
-				is64bit = (System.getProperty("os.arch").indexOf("64") != -1);
-			}
+			is64bit = (System.getenv("ProgramFiles(x86)") != null);
+		} else {
+			is64bit = (System.getProperty("os.arch").indexOf("64") != -1);
 		}
+
 		return is64bit;
 	}
 

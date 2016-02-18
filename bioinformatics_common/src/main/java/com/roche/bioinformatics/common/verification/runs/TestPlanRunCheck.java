@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,7 @@ import java.util.Map.Entry;
 import org.yaml.snakeyaml.Yaml;
 
 import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
+import com.roche.sequencing.bioinformatics.common.utils.CheckSumUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.Md5CheckSumUtil;
 
@@ -117,7 +119,7 @@ public class TestPlanRunCheck {
 				description = "Search for the text[" + textToFind + "] in the error log.";
 				break;
 			case ERROR_LOG_DOES_NOT_CONTAIN_TEXT:
-				description = "Ensure that the error log does not contain the text[" + textToFind + "].";
+				description = "Make sure that the error log does not contain the text[" + textToFind + "].";
 				break;
 			case OUTPUT_FILE_CONTAINS_TEXT:
 				description = "Make sure that the output file matching the regex[" + outputFileRegex + "] contains the text[" + textToFind + "].";
@@ -145,7 +147,7 @@ public class TestPlanRunCheck {
 				description = "Search for the text[" + textToFind + "] in the output log.";
 				break;
 			case OUTPUT_LOG_DOES_NOT_CONTAIN_TEXT:
-				description = "Ensure that the output log does not contain the text[" + textToFind + "].";
+				description = "Make sure that the output log does not contain the text[" + textToFind + "].";
 				break;
 			default:
 				throw new IllegalStateException("The TestPlanRunCheckType[" + checkType + "] is not recognized.");
@@ -474,11 +476,90 @@ public class TestPlanRunCheck {
 		return checks;
 	}
 
-	public static void main(String[] args) {
-		File f = new File("D:\\kurts_space\\autotestplan\\hsqutils_testplan10_results\\20160216103658\\run_2\\expected_results\\");
-		String regex = "trimmed_.*[r]1.*[.]fastq";
-		List<File> files = FileUtil.getMatchingFilesInDirectory(f, regex);
-		System.out.println(files.size());
+	public long checkSum() {
+		final long prime = 31;
+		long result = 1;
+		result = prime * result + ((acceptanceCriteria == null) ? 0 : CheckSumUtil.checkSum(acceptanceCriteria));
+		result = prime * result + ((checkType == null) ? 0 : CheckSumUtil.checkSum(checkType.name()));
+		result = prime * result + ((description == null) ? 0 : CheckSumUtil.checkSum(description));
+		result = prime * result + ((matchingFileRegex == null) ? 0 : CheckSumUtil.checkSum(matchingFileRegex));
+		result = prime * result + ((md5Sum == null) ? 0 : CheckSumUtil.checkSum(md5Sum));
+		result = prime * result + ((outputFileRegex == null) ? 0 : CheckSumUtil.checkSum(outputFileRegex));
+		result = prime * result + ((relativePathToMatchingFile == null) ? 0 : CheckSumUtil.checkSum(relativePathToMatchingFile));
+		result = prime * result + ((relativePathToMatchingFileDirectory == null) ? 0 : CheckSumUtil.checkSum(relativePathToMatchingFileDirectory));
+		result = prime * result + ((requirements == null) ? 0 : CheckSumUtil.checkSum(requirements));
+		result = prime * result + ((textToFind == null) ? 0 : CheckSumUtil.checkSum(textToFind));
+		return result;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((acceptanceCriteria == null) ? 0 : acceptanceCriteria.hashCode());
+		result = prime * result + ((checkType == null) ? 0 : checkType.hashCode());
+		result = prime * result + ((description == null) ? 0 : description.hashCode());
+		result = prime * result + ((matchingFileRegex == null) ? 0 : matchingFileRegex.hashCode());
+		result = prime * result + ((md5Sum == null) ? 0 : md5Sum.hashCode());
+		result = prime * result + ((outputFileRegex == null) ? 0 : outputFileRegex.hashCode());
+		result = prime * result + ((relativePathToMatchingFile == null) ? 0 : relativePathToMatchingFile.hashCode());
+		result = prime * result + ((relativePathToMatchingFileDirectory == null) ? 0 : relativePathToMatchingFileDirectory.hashCode());
+		result = prime * result + Arrays.hashCode(requirements);
+		result = prime * result + Arrays.hashCode(textToFind);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		TestPlanRunCheck other = (TestPlanRunCheck) obj;
+		if (acceptanceCriteria == null) {
+			if (other.acceptanceCriteria != null)
+				return false;
+		} else if (!acceptanceCriteria.equals(other.acceptanceCriteria))
+			return false;
+		if (checkType != other.checkType)
+			return false;
+		if (description == null) {
+			if (other.description != null)
+				return false;
+		} else if (!description.equals(other.description))
+			return false;
+		if (matchingFileRegex == null) {
+			if (other.matchingFileRegex != null)
+				return false;
+		} else if (!matchingFileRegex.equals(other.matchingFileRegex))
+			return false;
+		if (md5Sum == null) {
+			if (other.md5Sum != null)
+				return false;
+		} else if (!md5Sum.equals(other.md5Sum))
+			return false;
+		if (outputFileRegex == null) {
+			if (other.outputFileRegex != null)
+				return false;
+		} else if (!outputFileRegex.equals(other.outputFileRegex))
+			return false;
+		if (relativePathToMatchingFile == null) {
+			if (other.relativePathToMatchingFile != null)
+				return false;
+		} else if (!relativePathToMatchingFile.equals(other.relativePathToMatchingFile))
+			return false;
+		if (relativePathToMatchingFileDirectory == null) {
+			if (other.relativePathToMatchingFileDirectory != null)
+				return false;
+		} else if (!relativePathToMatchingFileDirectory.equals(other.relativePathToMatchingFileDirectory))
+			return false;
+		if (!Arrays.equals(requirements, other.requirements))
+			return false;
+		if (!Arrays.equals(textToFind, other.textToFind))
+			return false;
+		return true;
 	}
 
 }

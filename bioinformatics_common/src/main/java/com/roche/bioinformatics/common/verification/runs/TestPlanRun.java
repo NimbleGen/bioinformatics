@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.Map.Entry;
 import org.yaml.snakeyaml.Yaml;
 
 import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
+import com.roche.sequencing.bioinformatics.common.utils.CheckSumUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 
 public class TestPlanRun {
@@ -20,7 +22,7 @@ public class TestPlanRun {
 	private final String description;
 	private final String command;
 	private final String[] extraArguments;
-	private final Map<String, String> fileNameRegexToInputArgumentNames;
+	private final Map<String, String> inputArgumentNamesToFileNameRegex;
 
 	private final List<TestPlanRunCheck> checks;
 	private final List<String> arguments;
@@ -29,9 +31,9 @@ public class TestPlanRun {
 	private final static String COMMAND_KEY = "command";
 
 	private final static String EXTRA_ARGUMENTS_KEY = "extraArguments";
-	private final static String FILE_NAME_REGEX_TO_INPUT_ARGUMENT_NAMES_KEY = "fileNameRegexToInputArgumentNames";
+	private final static String INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY = "inputArgumentNamesToFileNameRegex";
 
-	private final static String[] VALID_KEYS = new String[] { DESCRIPTION_KEY, COMMAND_KEY, EXTRA_ARGUMENTS_KEY, FILE_NAME_REGEX_TO_INPUT_ARGUMENT_NAMES_KEY };
+	private final static String[] VALID_KEYS = new String[] { DESCRIPTION_KEY, COMMAND_KEY, EXTRA_ARGUMENTS_KEY, INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY };
 
 	private TestPlanRun(File runDirectory, String description, String command, String[] extraArguments, Map<String, String> fileNameRegexToInputArgumentNames, List<TestPlanRunCheck> checks) {
 		super();
@@ -39,7 +41,7 @@ public class TestPlanRun {
 		this.description = description;
 		this.command = command;
 		this.extraArguments = extraArguments;
-		this.fileNameRegexToInputArgumentNames = fileNameRegexToInputArgumentNames;
+		this.inputArgumentNamesToFileNameRegex = fileNameRegexToInputArgumentNames;
 		this.checks = checks;
 		this.arguments = createArguments();
 	}
@@ -56,8 +58,8 @@ public class TestPlanRun {
 		return extraArguments;
 	}
 
-	public Map<String, String> getRegexToInputArgumentNameMap() {
-		return fileNameRegexToInputArgumentNames;
+	public Map<String, String> getInputArgumentNameToRegexMap() {
+		return inputArgumentNamesToFileNameRegex;
 	}
 
 	public List<TestPlanRunCheck> getChecks() {
@@ -73,10 +75,10 @@ public class TestPlanRun {
 
 		arguments.add(command);
 
-		if (fileNameRegexToInputArgumentNames != null) {
-			for (Entry<String, String> entry : fileNameRegexToInputArgumentNames.entrySet()) {
-				String regex = entry.getKey();
-				String argument = entry.getValue();
+		if (inputArgumentNamesToFileNameRegex != null) {
+			for (Entry<String, String> entry : inputArgumentNamesToFileNameRegex.entrySet()) {
+				String argument = entry.getKey();
+				String regex = entry.getValue();
 
 				File matchingFile = FileUtil.getMatchingFileInDirectory(runDirectory, regex);
 
@@ -154,16 +156,89 @@ public class TestPlanRun {
 					}
 				}
 
-				Map<String, String> fileNameRegexToInputArgumentNames = (Map<String, String>) root.get(FILE_NAME_REGEX_TO_INPUT_ARGUMENT_NAMES_KEY);
+				Map<String, String> inputArgumentNamesToFileNameRegex = (Map<String, String>) root.get(INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY);
 
 				List<TestPlanRunCheck> checks = TestPlanRunCheck.readFromDirectory(testPlanRunDirectory);
 
-				run = new TestPlanRun(testPlanRunDirectory, description, command, extraArguments, fileNameRegexToInputArgumentNames, checks);
+				run = new TestPlanRun(testPlanRunDirectory, description, command, extraArguments, inputArgumentNamesToFileNameRegex, checks);
 			} catch (IOException e) {
 				throw new IllegalStateException(e.getMessage(), e);
 			}
 		}
 		return run;
+	}
+
+	public long checkSum() {
+		final int prime = 31;
+		long result = 1;
+		if (checks != null) {
+			for (TestPlanRunCheck check : checks) {
+				result = prime * result + check.checkSum();
+			}
+		}
+		result = prime * result + ((command == null) ? 0 : CheckSumUtil.checkSum(command));
+		result = prime * result + ((description == null) ? 0 : CheckSumUtil.checkSum(description));
+		result = prime * result + ((extraArguments == null) ? 0 : CheckSumUtil.checkSum(extraArguments));
+		result = prime * result + ((inputArgumentNamesToFileNameRegex == null) ? 0 : CheckSumUtil.checkSum(inputArgumentNamesToFileNameRegex));
+		return result;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((arguments == null) ? 0 : arguments.hashCode());
+		result = prime * result + ((checks == null) ? 0 : checks.hashCode());
+		result = prime * result + ((command == null) ? 0 : command.hashCode());
+		result = prime * result + ((description == null) ? 0 : description.hashCode());
+		result = prime * result + Arrays.hashCode(extraArguments);
+		result = prime * result + ((inputArgumentNamesToFileNameRegex == null) ? 0 : inputArgumentNamesToFileNameRegex.hashCode());
+		result = prime * result + ((runDirectory == null) ? 0 : runDirectory.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		TestPlanRun other = (TestPlanRun) obj;
+		if (arguments == null) {
+			if (other.arguments != null)
+				return false;
+		} else if (!arguments.equals(other.arguments))
+			return false;
+		if (checks == null) {
+			if (other.checks != null)
+				return false;
+		} else if (!checks.equals(other.checks))
+			return false;
+		if (command == null) {
+			if (other.command != null)
+				return false;
+		} else if (!command.equals(other.command))
+			return false;
+		if (description == null) {
+			if (other.description != null)
+				return false;
+		} else if (!description.equals(other.description))
+			return false;
+		if (!Arrays.equals(extraArguments, other.extraArguments))
+			return false;
+		if (inputArgumentNamesToFileNameRegex == null) {
+			if (other.inputArgumentNamesToFileNameRegex != null)
+				return false;
+		} else if (!inputArgumentNamesToFileNameRegex.equals(other.inputArgumentNamesToFileNameRegex))
+			return false;
+		if (runDirectory == null) {
+			if (other.runDirectory != null)
+				return false;
+		} else if (!runDirectory.equals(other.runDirectory))
+			return false;
+		return true;
 	}
 
 }

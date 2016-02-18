@@ -3,6 +3,7 @@ package com.roche.bioinformatics.common.verification.runs;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -10,6 +11,7 @@ import java.util.Map.Entry;
 import org.yaml.snakeyaml.Yaml;
 
 import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
+import com.roche.sequencing.bioinformatics.common.utils.CheckSumUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.JVMUtil;
 import com.roche.sequencing.bioinformatics.common.utils.OSUtil;
@@ -33,7 +35,7 @@ public class Precondition {
 
 		switch (preconditionEnum) {
 		case OS:
-			description = "The test plan will be run on one of the following Operating Systems[" + ArraysUtil.toString(values, ", ") + "].";
+			description = "The test plan will be run on one of the following Operating Systems: [" + ArraysUtil.toString(values, ", ") + "].";
 			break;
 		case OS_BIT_DEPTH:
 			description = "The test plan will be run on a [" + ArraysUtil.toString(values, ", ") + "]-bit Operating System.";
@@ -80,7 +82,7 @@ public class Precondition {
 
 			break;
 		case OS_BIT_DEPTH:
-			boolean matchFoundForOsBitDepth = false;
+			Boolean matchFoundForOsBitDepth = false;
 			valueLoop: for (String value : values) {
 				if (value.toLowerCase().equals("64")) {
 					matchFoundForOsBitDepth = OSUtil.is64Bit();
@@ -90,12 +92,12 @@ public class Precondition {
 					throw new IllegalStateException("An unrecognized value[" + value + "] was provided for the key[" + preconditionEnum + "].  Acceptable values for key[" + preconditionEnum
 							+ "] are [32,64]");
 				}
-				if (matchFoundForOsBitDepth) {
+				if (matchFoundForOsBitDepth != null && matchFoundForOsBitDepth) {
 					break valueLoop;
 				}
 			}
 
-			if (!matchFoundForOsBitDepth) {
+			if (matchFoundForOsBitDepth == null || !matchFoundForOsBitDepth) {
 				throw new IllegalStateException("The precondition OS_BIT_DEPTH: [" + ArraysUtil.toString(values, ", ") + "] was not met.  The OS Bit Depth of the current system is ["
 						+ OSUtil.getOsBits() + "].");
 			}
@@ -178,6 +180,30 @@ public class Precondition {
 		}
 
 		return sizeInMb;
+	}
+
+	public long checkSum() {
+		final int prime = 31;
+		long result = 1;
+		result = prime * result + ((preconditionEnum == null) ? 0 : CheckSumUtil.checkSum(preconditionEnum.name()));
+		result = prime * result + CheckSumUtil.checkSum(values);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Precondition other = (Precondition) obj;
+		if (preconditionEnum != other.preconditionEnum)
+			return false;
+		if (!Arrays.equals(values, other.values))
+			return false;
+		return true;
 	}
 
 	@SuppressWarnings("unchecked")

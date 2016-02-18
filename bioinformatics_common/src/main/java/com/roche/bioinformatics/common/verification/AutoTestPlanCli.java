@@ -50,7 +50,8 @@ public class AutoTestPlanCli {
 			"Base directory for placing results file from running the test plan", true, false);
 	public final static CommandLineOption APPLICATION_JAR_FILE_OPTION = new CommandLineOption("Application Jar File", "application", null, "The path to the application jar file to be tested.", true,
 			false);
-	public final static CommandLineOption JVM_BIN_PATH_OPTION = new CommandLineOption("JVM Bin Path", "jvm", null, "The path to the jvm bin to use for executing the tests.", false, false);
+	public final static CommandLineOption JVM_BIN_PATH_OPTION = new CommandLineOption("JVM Bin Path", "jvm", null,
+			"The path to the jvm bin to use for executing the tests.  If not provided, the application will use the default JVM.", false, false);
 	public final static CommandLineOption OUTPUT_FILE_OPTION = new CommandLineOption("Output File", "output", null, "The output file to write the test plan or report.", true, false);
 
 	public final static String FILE_LOGGER_NAME = "root";
@@ -246,6 +247,7 @@ public class AutoTestPlanCli {
 		logger.info("command line signature: " + commandLineSignature);
 
 		TestPlan testPlan = TestPlan.readFromDirectory(testPlanDirectory);
+		CliStatusConsole.logStatus("Test Plan CheckSum:" + testPlan.checkSum());
 		if (generateReport) {
 			File jvmBinFile = null;
 			if (parsedCommandLine.isOptionPresent(JVM_BIN_PATH_OPTION)) {
