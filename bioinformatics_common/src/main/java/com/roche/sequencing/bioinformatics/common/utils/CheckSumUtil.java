@@ -20,9 +20,9 @@ public class CheckSumUtil {
 		return result;
 	}
 
-	public static long checkSum(Map<String, String> stringMap) {
+	public static long checkSum(Map<String, List<String>> stringMap) {
 		long result = 1;
-		for (Entry<String, String> entry : stringMap.entrySet()) {
+		for (Entry<String, List<String>> entry : stringMap.entrySet()) {
 			result = (result * PRIME) + checkSum(entry.getKey());
 			result = (result * PRIME) + checkSum(entry.getValue());
 		}

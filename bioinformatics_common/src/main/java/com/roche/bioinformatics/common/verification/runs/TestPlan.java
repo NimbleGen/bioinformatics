@@ -2,12 +2,14 @@ package com.roche.bioinformatics.common.verification.runs;
 
 import java.awt.Color;
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Scanner;
 
@@ -23,15 +25,18 @@ import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.roche.bioinformatics.common.verification.AutoTestPlanCli;
 import com.roche.bioinformatics.common.verification.CliStatusConsole;
+import com.roche.sequencing.bioinformatics.common.utils.AlphaNumericStringComparator;
 import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.JVMUtil;
+import com.roche.sequencing.bioinformatics.common.utils.LoggingUtil;
 import com.roche.sequencing.bioinformatics.common.utils.Md5CheckSumUtil;
 import com.roche.sequencing.bioinformatics.common.utils.OSUtil;
 import com.roche.sequencing.bioinformatics.common.utils.PdfReportUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 import com.roche.sequencing.bioinformatics.common.utils.Version;
+import com.roche.sequencing.bioinformatics.common.utils.ZipUtil;
 
 public class TestPlan {
 
@@ -41,8 +46,10 @@ public class TestPlan {
 	public final static Font SMALL_BOLD_FONT = new Font(Font.FontFamily.TIMES_ROMAN, 6, Font.BOLD);
 	public final static Font SMALL_HEADER_FONT = new Font(Font.FontFamily.TIMES_ROMAN, 8, Font.BOLD);
 
-	private final static String CONSOLE_OUTPUT_FILE_NAME = "console_output.txt";
-	private final static String CONSOLE_ERRORS_FILE_NAME = "console_errors.txt";
+	public final static String CONSOLE_OUTPUT_FILE_NAME = "console.output";
+	public final static String CONSOLE_ERRORS_FILE_NAME = "console.errors";
+
+	private final static String ZIP_EXTENSION = ".zip";
 
 	private final File testPlanDirectory;
 	private final List<TestPlanRun> runs;
@@ -62,6 +69,12 @@ public class TestPlan {
 		runs.add(run);
 	}
 
+	private void addRuns(List<TestPlanRun> runs) {
+		for (TestPlanRun run : runs) {
+			addRun(run);
+		}
+	}
+
 	private void addPrecondition(Precondition precondition) {
 		if (preconditions.contains(precondition)) {
 			throw new IllegalArgumentException("The Precondition[" + precondition + "] has already been added to the test plan.");
@@ -70,7 +83,7 @@ public class TestPlan {
 	}
 
 	public boolean createTestPlan(File outputTestPlan) {
-		return createTestPlanReport(null, outputTestPlan, null, null, false);
+		return createTestPlanReport(null, outputTestPlan, null, null, false, false);
 	}
 
 	/**
@@ -79,8 +92,8 @@ public class TestPlan {
 	 * @param outputReport
 	 * @return true if test plan ran succesfully with no failures, false otherwise
 	 */
-	public boolean createTestPlanReport(File applicationToTest, File testPlanExecutionDirectory, File outputReport, File optionalJvmBinPath) {
-		return createTestPlanReport(applicationToTest, outputReport, testPlanExecutionDirectory, optionalJvmBinPath, true);
+	public boolean createTestPlanReport(File applicationToTest, File testPlanExecutionDirectory, File outputReport, File optionalJvmBinPath, boolean createZip) {
+		return createTestPlanReport(applicationToTest, outputReport, testPlanExecutionDirectory, optionalJvmBinPath, true, createZip);
 	}
 
 	/**
@@ -89,9 +102,8 @@ public class TestPlan {
 	 * @param outputReport
 	 * @return true if test plan ran successfully with no failures, false otherwise
 	 */
-	private boolean createTestPlanReport(File applicationToTest, File outputReport, File testPlanExecutionDirectory, File optionalJvmBinPath, boolean createReport) {
+	private boolean createTestPlanReport(File applicationToTest, File outputReport, File testPlanExecutionDirectory, File optionalJvmBinPath, boolean createReport, boolean createZip) {
 		String startTime = DateUtil.getCurrentDateINYYYYMMDDHHMMSSwithColons();
-
 		if (createReport && !applicationToTest.exists()) {
 			throw new IllegalArgumentException("The provided applicationToTest[" + applicationToTest.getAbsolutePath() + "] does not exist.");
 		}
@@ -138,6 +150,9 @@ public class TestPlan {
 		PdfPCell grayCell = new PdfPCell();
 		grayCell.setBackgroundColor(new BaseColor(Color.LIGHT_GRAY));
 
+		PdfPCell emptyWhiteCell = new PdfPCell();
+		emptyWhiteCell.setBackgroundColor(new BaseColor(Color.WHITE));
+
 		PdfPCell naCell = new PdfPCell(new Phrase("NA", SMALL_FONT));
 		naCell.setHorizontalAlignment(Element.ALIGN_MIDDLE);
 
@@ -151,10 +166,21 @@ public class TestPlan {
 		}
 
 		int runNumber = 1;
-		for (TestPlanRun run : runs) {
+
+		List<TestPlanRun> sortedRuns = new ArrayList<TestPlanRun>(runs);
+		Collections.sort(sortedRuns, new Comparator<TestPlanRun>() {
+			private AlphaNumericStringComparator windowsComparator = new AlphaNumericStringComparator();
+
+			@Override
+			public int compare(TestPlanRun o1, TestPlanRun o2) {
+				return windowsComparator.compare(o1.getRunDirectory().getName(), o2.getRunDirectory().getName());
+			}
+		});
+
+		for (TestPlanRun run : sortedRuns) {
 			RunResults runResults = null;
 			CliStatusConsole.logStatus("");
-			CliStatusConsole.logStatus("Running step " + runNumber + " : " + run.getDescription());
+			CliStatusConsole.logStatus("Running step " + runNumber + "(" + run.getRunDirectory().getAbsolutePath() + ") : " + run.getDescription());
 			if (createReport) {
 				runResults = executeRun(run, applicationToTest, testPlanExecutionDirectory, runNumber, optionalJvmBinPath);
 			}
@@ -210,8 +236,8 @@ public class TestPlan {
 
 					wasSuccess = wasSuccess && wasCheckSuccess;
 				} else {
-					table.addCell(grayCell);
-					table.addCell(grayCell);
+					table.addCell(emptyWhiteCell);
+					table.addCell(emptyWhiteCell);
 				}
 				checkNumber++;
 				totalChecks++;
@@ -271,9 +297,9 @@ public class TestPlan {
 			executionDetailsParagraph.add(Chunk.NEWLINE);
 			executionDetailsParagraph.add(new Phrase("Test Plan Results Directory: " + testPlanExecutionDirectory.getAbsolutePath(), REGULAR_FONT));
 			executionDetailsParagraph.add(Chunk.NEWLINE);
-			executionDetailsParagraph.add(new Phrase("Start Time: " + startTime, REGULAR_FONT));
+			executionDetailsParagraph.add(new Phrase("Start Time: " + startTime + " (yyyy:MM:dd HH:mm:ss)", REGULAR_FONT));
 			executionDetailsParagraph.add(Chunk.NEWLINE);
-			executionDetailsParagraph.add(new Phrase("Stop Time: " + stopTime, REGULAR_FONT));
+			executionDetailsParagraph.add(new Phrase("Stop Time: " + stopTime + " (yyyy:MM:dd HH:mm:ss)", REGULAR_FONT));
 			executionDetailsParagraph.add(Chunk.NEWLINE);
 			executionDetailsParagraph.add(Chunk.NEWLINE);
 			executionDetailsParagraph.add(new Phrase("Operating System: " + OSUtil.getOsName() + " " + OSUtil.getOsBits() + "-bit", REGULAR_FONT));
@@ -319,6 +345,13 @@ public class TestPlan {
 			creationDetailsParagraph.add(Chunk.NEWLINE);
 			creationDetailsParagraph.add(new Phrase("Test Plan Directory: " + testPlanDirectory.getAbsolutePath(), REGULAR_FONT));
 			creationDetailsParagraph.add(Chunk.NEWLINE);
+			try {
+				String md5Sum = Md5CheckSumUtil.md5sum(applicationToTest);
+				creationDetailsParagraph.add(new Phrase("Jar File Md5Sum: " + md5Sum, REGULAR_FONT));
+				creationDetailsParagraph.add(new Phrase("Jar File Location: " + applicationToTest.getAbsolutePath()));
+				creationDetailsParagraph.add(Chunk.NEWLINE);
+			} catch (IOException e1) {
+			}
 
 			try {
 				pdfDocument.add(creationDetailsParagraph);
@@ -328,10 +361,14 @@ public class TestPlan {
 		}
 
 		pdfDocument.close();
-
+		CliStatusConsole.logStatus("");
 		if (createReport) {
-
-			CliStatusConsole.logStatus(runNumber + " total runs.");
+			int totalRuns = runNumber - 1;
+			if (totalRuns > 1) {
+				CliStatusConsole.logStatus(totalRuns + " total runs.");
+			} else {
+				CliStatusConsole.logStatus("1 total run.");
+			}
 			CliStatusConsole.logStatus(passedChecks + " out of " + totalChecks + " checks passed.");
 
 			if (wasSuccess) {
@@ -339,11 +376,37 @@ public class TestPlan {
 			} else {
 				CliStatusConsole.logStatus("The test plan FAILED.");
 			}
-
+			CliStatusConsole.logStatus("");
 			CliStatusConsole.logStatus("Test Plan Report was written to " + outputReport.getAbsolutePath() + ".");
 		} else {
 			CliStatusConsole.logStatus("Test Plan was written to " + outputReport.getAbsolutePath() + ".");
 		}
+
+		CliStatusConsole.logStatus("");
+
+		if (createZip) {
+			String zipFileName = testPlanExecutionDirectory.getName() + "_" + DateUtil.getCurrentDateINYYYYMMDDHHMMSS() + ZIP_EXTENSION;
+			File outputZipFile = new File(testPlanExecutionDirectory.getParentFile(), zipFileName);
+			CliStatusConsole.logStatus("Creating results Zip file at [" + outputZipFile + "].");
+			List<File> directoriesAndFilesToZip = new ArrayList<File>();
+			directoriesAndFilesToZip.add(testPlanExecutionDirectory);
+			directoriesAndFilesToZip.add(testPlanDirectory);
+			directoriesAndFilesToZip.add(outputReport);
+			directoriesAndFilesToZip.add(applicationToTest);
+			directoriesAndFilesToZip.add(LoggingUtil.getLogFile());
+			ZipUtil.zipDirectoriesAndFiles(outputZipFile, directoriesAndFilesToZip);
+			CliStatusConsole.logStatus("Done creating results Zip file at [" + outputZipFile + "].");
+			CliStatusConsole.logStatus("");
+			CliStatusConsole.logStatus("Deleting results directory at [" + testPlanExecutionDirectory + "].");
+			try {
+				FileUtil.deleteDirectory(testPlanExecutionDirectory);
+				CliStatusConsole.logStatus("Done deleting results directory at [" + testPlanExecutionDirectory + "].");
+			} catch (IOException e) {
+				CliStatusConsole.logStatus("Unable to deleting the results directory at [" + testPlanExecutionDirectory + "].");
+				CliStatusConsole.logError(e);
+			}
+		}
+
 		return wasSuccess;
 	}
 
@@ -410,7 +473,12 @@ public class TestPlan {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
 
-		return new RunResults(consoleOutputString, consoleErrorsString, outputDirectory, run.getRunDirectory());
+		File resultsDirectory = outputDirectory;
+		if (run.getResultsSubDirectory() != null) {
+			resultsDirectory = new File(resultsDirectory, run.getResultsSubDirectory());
+		}
+
+		return new RunResults(consoleOutputString, consoleErrorsString, resultsDirectory, run.getRunDirectory());
 	}
 
 	private static class StreamListener {
@@ -442,22 +510,31 @@ public class TestPlan {
 			testPlan.addPrecondition(precondition);
 		}
 
-		String[] subdirectories = testPlanDirectory.list(new FilenameFilter() {
-			@Override
-			public boolean accept(File current, String name) {
-				return new File(current, name).isDirectory();
-			}
-		});
+		TestPlanRun runSettingsToInherit = TestPlanRun.readFromDirectory(testPlanDirectory, testPlanDirectory);
 
-		for (String subdirectoryName : subdirectories) {
-			File subdirectory = new File(testPlanDirectory, subdirectoryName);
-			TestPlanRun run = TestPlanRun.readFromDirectory(subdirectory);
-			if (run != null) {
-				testPlan.addRun(run);
-			}
+		File[] subdirectories = FileUtil.getSubDirectories(testPlanDirectory);
+
+		for (File subdirectory : subdirectories) {
+			testPlan.addRuns(recursivelyReadRunsFromDirectory(subdirectory, testPlanDirectory, runSettingsToInherit));
 		}
 
 		return testPlan;
+	}
+
+	private static List<TestPlanRun> recursivelyReadRunsFromDirectory(File directory, File testPlanDirectory, TestPlanRun runSettingsToInherit) {
+		List<TestPlanRun> runs = new ArrayList<TestPlanRun>();
+
+		TestPlanRun run = TestPlanRun.readFromDirectory(testPlanDirectory, directory, runSettingsToInherit);
+		if (run != null) {
+			runs.add(run);
+		}
+
+		File[] subdirectories = FileUtil.getSubDirectories(directory);
+
+		for (File subdirectory : subdirectories) {
+			runs.addAll(recursivelyReadRunsFromDirectory(subdirectory, testPlanDirectory, runSettingsToInherit));
+		}
+		return runs;
 	}
 
 	public long checkSum() {
@@ -513,6 +590,14 @@ public class TestPlan {
 		} else if (!testPlanDirectory.equals(other.testPlanDirectory))
 			return false;
 		return true;
+	}
+
+	public static void main(String[] args) {
+		AlphaNumericStringComparator comp = new AlphaNumericStringComparator();
+		String[] strings = new String[] { "run01", "run1", "run2", "run02", "run10", "run11", "run12", "run7" };
+		Arrays.sort(strings, comp);
+		System.out.println(ArraysUtil.toString(strings, ","));
+
 	}
 
 }

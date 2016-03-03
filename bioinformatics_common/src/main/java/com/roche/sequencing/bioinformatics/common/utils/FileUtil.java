@@ -450,6 +450,41 @@ public final class FileUtil {
 		return contentsAreEqual;
 	}
 
+	public static List<File> getAllSubFiles(File directory) {
+		List<File> subFiles = new ArrayList<File>();
+
+		for (File file : directory.listFiles()) {
+			if (file.isDirectory()) {
+				subFiles.addAll(getAllSubFiles(file));
+			} else {
+				subFiles.add(file);
+			}
+		}
+
+		return subFiles;
+
+	}
+
+	/**
+	 * 
+	 * @param directory
+	 * @return the subdirectories of the provided directory.
+	 */
+	public static File[] getSubDirectories(File directory) {
+		if (!directory.isDirectory()) {
+			throw new IllegalStateException("The provided file[" + directory.getAbsolutePath() + "] is not a directory.");
+		}
+
+		File[] subdirectories = directory.listFiles(new FilenameFilter() {
+			@Override
+			public boolean accept(File current, String name) {
+				return new File(current, name).isDirectory();
+			}
+		});
+
+		return subdirectories;
+	}
+
 	/**
 	 * return the files that match the provided regex in the provided directory (does not examine children directories of said directory).
 	 * 

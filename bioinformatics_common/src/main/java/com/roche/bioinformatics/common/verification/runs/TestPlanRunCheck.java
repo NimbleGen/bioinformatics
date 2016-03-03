@@ -31,7 +31,7 @@ public class TestPlanRunCheck {
 	private final static String DESCRIPTION_KEY = "description";
 	private final static String REQUIREMENTS_KEY = "requirements";
 
-	private final TestPlanRunCheckType checkType;
+	private final TestPlanRunCheckTypeEnum checkType;
 	private final String[] textToFind;
 	private final String outputFileRegex;
 	private final String md5Sum;
@@ -42,9 +42,12 @@ public class TestPlanRunCheck {
 	private final String[] requirements;
 	private final String acceptanceCriteria;
 
-	private TestPlanRunCheck(TestPlanRunCheckType checkType, String[] textToFind, String outputFileRegex, String md5Sum, String relativePathToMatchingFile, String relativePathToMatchingFileDirectory,
-			String matchingFileRegex, String description, String[] requirements, String acceptanceCriteria) {
+	private TestPlanRun parentRun;
+
+	private TestPlanRunCheck(TestPlanRun parentRun, TestPlanRunCheckTypeEnum checkType, String[] textToFind, String outputFileRegex, String md5Sum, String relativePathToMatchingFile,
+			String relativePathToMatchingFileDirectory, String matchingFileRegex, String description, String[] requirements, String acceptanceCriteria) {
 		super();
+		this.parentRun = parentRun;
 		this.checkType = checkType;
 		this.textToFind = textToFind;
 		this.outputFileRegex = outputFileRegex;
@@ -57,10 +60,10 @@ public class TestPlanRunCheck {
 		this.requirements = requirements;
 
 		switch (checkType) {
-		case ERROR_LOG_CONTAINS_TEXT:
-		case ERROR_LOG_DOES_NOT_CONTAIN_TEXT:
-		case OUTPUT_LOG_DOES_NOT_CONTAIN_TEXT:
-		case OUTPUT_LOG_CONTAINS_TEXT:
+		case CONSOLE_ERRORS_CONTAINS_TEXT:
+		case CONSOLE_ERRORS_DOES_NOT_CONTAIN_TEXT:
+		case CONSOLE_OUTPUT_DOES_NOT_CONTAIN_TEXT:
+		case CONSOLE_OUTPUT_CONTAINS_TEXT:
 			if (textToFind == null || textToFind.length == 0) {
 				throw new IllegalStateException("The textToFind key/value pair is expected for the check type[" + checkType + "].");
 			} else if (outputFileRegex != null || md5Sum != null || relativePathToMatchingFile != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
@@ -112,42 +115,46 @@ public class TestPlanRunCheck {
 		String description = "";
 
 		if (this.description != null) {
-			description = this.description;
+			description = parentRun.replaceVariables(this.description);
 		} else {
 			switch (checkType) {
-			case ERROR_LOG_CONTAINS_TEXT:
-				description = "Search for the text[" + textToFind + "] in the error log.";
+			case CONSOLE_ERRORS_CONTAINS_TEXT:
+				description = "Search for the text['" + ArraysUtil.toString(textToFind, "', '") + "'] in the console errors.";
 				break;
-			case ERROR_LOG_DOES_NOT_CONTAIN_TEXT:
-				description = "Make sure that the error log does not contain the text[" + textToFind + "].";
+			case CONSOLE_ERRORS_DOES_NOT_CONTAIN_TEXT:
+				description = "Make sure that the console errors does not contain the text['" + ArraysUtil.toString(textToFind, "', '") + "'].";
 				break;
 			case OUTPUT_FILE_CONTAINS_TEXT:
-				description = "Make sure that the output file matching the regex[" + outputFileRegex + "] contains the text[" + textToFind + "].";
+				description = "Make sure that the output file matching the regex[" + parentRun.replaceVariables(outputFileRegex) + "] contains the text['" + ArraysUtil.toString(textToFind, "', '")
+						+ "'].";
 				break;
 			case OUTPUT_FILE_PRESENT:
-				description = "Make sure that the output file matching the regex[" + outputFileRegex + "] is present.";
+				description = "Make sure that the output file matching the regex[" + parentRun.replaceVariables(outputFileRegex) + "] is present.";
 				break;
 			case OUTPUT_FILE_DOES_NOT_CONTAIN_TEXT:
-				description = "Make sure that the output file matching the regex[" + outputFileRegex + "] does not contain the text[" + textToFind + "].";
+				description = "Make sure that the output file matching the regex[" + parentRun.replaceVariables(outputFileRegex) + "] does not contain the text['"
+						+ ArraysUtil.toString(textToFind, "', '") + "'].";
 				break;
 			case OUTPUT_FILE_MATCHES_EXISTING_FILE:
 				if (relativePathToMatchingFileDirectory != null && !relativePathToMatchingFileDirectory.isEmpty()) {
-					description = "Make sure that the output file matching the regular expression[" + outputFileRegex + "] matches the expected result file which matches the regular expression["
-							+ matchingFileRegex + "] and is in the relative directory[" + relativePathToMatchingFileDirectory + "].";
+					description = "Make sure that the output file matching the regular expression[" + parentRun.replaceVariables(outputFileRegex)
+							+ "] matches the expected result file which matches the regular expression[" + parentRun.replaceVariables(matchingFileRegex) + "] and is in the relative directory["
+							+ relativePathToMatchingFileDirectory + "].";
 				} else if (relativePathToMatchingFile != null && !relativePathToMatchingFile.isEmpty()) {
-					description = "Make sure that the output file matching the regular expression[" + outputFileRegex + "] matches the expected result file [" + relativePathToMatchingFile + "].";
+					description = "Make sure that the output file matching the regular expression[" + parentRun.replaceVariables(outputFileRegex) + "] matches the expected result file ["
+							+ relativePathToMatchingFile + "].";
 				} else {
 					throw new AssertionError();
 				}
 				break;
 			case OUTPUT_FILE_MATCHES_MD5SUM:
-				description = "Make sure that the output file matching the regex[" + outputFileRegex + "] has a md5Sum of [" + md5Sum + "].";
+				description = "Make sure that the output file matching the regex[" + parentRun.replaceVariables(outputFileRegex) + "] has a md5Sum of [" + md5Sum + "].";
 				break;
-			case OUTPUT_LOG_CONTAINS_TEXT:
-				description = "Search for the text[" + textToFind + "] in the output log.";
+			case CONSOLE_OUTPUT_CONTAINS_TEXT:
+				description = "Search for the text['" + ArraysUtil.toString(textToFind, "', '") + "'] in the console output.";
 				break;
-			case OUTPUT_LOG_DOES_NOT_CONTAIN_TEXT:
-				description = "Make sure that the output log does not contain the text[" + textToFind + "].";
+			case CONSOLE_OUTPUT_DOES_NOT_CONTAIN_TEXT:
+				description = "Make sure that the console output does not contain the text['" + ArraysUtil.toString(textToFind, "', '") + "'].";
 				break;
 			default:
 				throw new IllegalStateException("The TestPlanRunCheckType[" + checkType + "] is not recognized.");
@@ -164,41 +171,47 @@ public class TestPlanRunCheck {
 	public String getAcceptanceCriteria() {
 		String acceptanceCriteria = this.acceptanceCriteria;
 
-		if (acceptanceCriteria == null || acceptanceCriteria.isEmpty()) {
+		if (acceptanceCriteria != null && !acceptanceCriteria.isEmpty()) {
+			parentRun.replaceVariables(acceptanceCriteria);
+		} else {
 			switch (checkType) {
-			case ERROR_LOG_CONTAINS_TEXT:
-				acceptanceCriteria = "The error log contains the text \"" + ArraysUtil.toString(textToFind, "\", \"") + "\".";
+			case CONSOLE_ERRORS_CONTAINS_TEXT:
+				acceptanceCriteria = "The console errors contains the text \"" + ArraysUtil.toString(textToFind, "\", \"") + "\".";
 				break;
-			case ERROR_LOG_DOES_NOT_CONTAIN_TEXT:
-				acceptanceCriteria = "The error log does not contain the text \"" + ArraysUtil.toString(textToFind, "\", \"") + "\".";
+			case CONSOLE_ERRORS_DOES_NOT_CONTAIN_TEXT:
+				acceptanceCriteria = "The console errors does not contain the text \"" + ArraysUtil.toString(textToFind, "\", \"") + "\".";
 				break;
 			case OUTPUT_FILE_CONTAINS_TEXT:
-				acceptanceCriteria = "The output file matching the regular expression \"" + outputFileRegex + "\" contains the text '" + ArraysUtil.toString(textToFind, "\", \"") + "'.";
+				acceptanceCriteria = "The output file matching the regular expression \"" + parentRun.replaceVariables(outputFileRegex) + "\" contains the text '"
+						+ ArraysUtil.toString(textToFind, "\", \"") + "'.";
 				break;
 			case OUTPUT_FILE_PRESENT:
-				acceptanceCriteria = "The output file matching the regular expression \"" + outputFileRegex + "\" is present.";
+				acceptanceCriteria = "The output file matching the regular expression \"" + parentRun.replaceVariables(outputFileRegex) + "\" is present.";
 				break;
 			case OUTPUT_FILE_DOES_NOT_CONTAIN_TEXT:
-				acceptanceCriteria = "The output file matching the regular expression \"" + outputFileRegex + "\" does not contain the text '" + ArraysUtil.toString(textToFind, "\", \"") + "'.";
+				acceptanceCriteria = "The output file matching the regular expression \"" + parentRun.replaceVariables(outputFileRegex) + "\" does not contain the text '"
+						+ ArraysUtil.toString(textToFind, "\", \"") + "'.";
 				break;
 			case OUTPUT_FILE_MATCHES_EXISTING_FILE:
 				if (relativePathToMatchingFileDirectory != null && !relativePathToMatchingFileDirectory.isEmpty()) {
-					acceptanceCriteria = "The output file matching the regular expression \"" + outputFileRegex + "\" matches the expected result file which matches the regular expression \""
-							+ matchingFileRegex + "\" and is in the relative directory[" + relativePathToMatchingFileDirectory + "].";
+					acceptanceCriteria = "The output file matching the regular expression \"" + parentRun.replaceVariables(outputFileRegex)
+							+ "\" matches the expected result file which matches the regular expression \"" + parentRun.replaceVariables(matchingFileRegex) + "\" and is in the relative directory["
+							+ relativePathToMatchingFileDirectory + "].";
 				} else if (relativePathToMatchingFile != null && !relativePathToMatchingFile.isEmpty()) {
-					acceptanceCriteria = "The output file matching the regular expression \"" + outputFileRegex + "\" matches the expected result file [" + relativePathToMatchingFile + "].";
+					acceptanceCriteria = "The output file matching the regular expression \"" + parentRun.replaceVariables(outputFileRegex) + "\" matches the expected result file ["
+							+ relativePathToMatchingFile + "].";
 				} else {
 					throw new AssertionError();
 				}
 				break;
 			case OUTPUT_FILE_MATCHES_MD5SUM:
-				acceptanceCriteria = "The md5Sum of the output file matching the regular expression[" + outputFileRegex + "] is [" + md5Sum + "].";
+				acceptanceCriteria = "The md5Sum of the output file matching the regular expression[" + parentRun.replaceVariables(outputFileRegex) + "] is [" + md5Sum + "].";
 				break;
-			case OUTPUT_LOG_CONTAINS_TEXT:
-				acceptanceCriteria = "The output log contains the text \"" + ArraysUtil.toString(textToFind, "\", \"") + "\".";
+			case CONSOLE_OUTPUT_CONTAINS_TEXT:
+				acceptanceCriteria = "The console output contains the text \"" + ArraysUtil.toString(textToFind, "\", \"") + "\".";
 				break;
-			case OUTPUT_LOG_DOES_NOT_CONTAIN_TEXT:
-				acceptanceCriteria = "The output log does not contain the text \"" + ArraysUtil.toString(textToFind, "\", \"") + "\".";
+			case CONSOLE_OUTPUT_DOES_NOT_CONTAIN_TEXT:
+				acceptanceCriteria = "The console output does not contain the text \"" + ArraysUtil.toString(textToFind, "\", \"") + "\".";
 				break;
 			default:
 				throw new IllegalStateException("The TestPlanRunCheckType[" + checkType + "] is not recognized.");
@@ -214,7 +227,7 @@ public class TestPlanRunCheck {
 		String resultsDescription = "";
 
 		switch (checkType) {
-		case ERROR_LOG_CONTAINS_TEXT:
+		case CONSOLE_ERRORS_CONTAINS_TEXT:
 			List<String> foundText = new ArrayList<String>();
 			List<String> notFoundText = new ArrayList<String>();
 			for (String text : textToFind) {
@@ -227,12 +240,15 @@ public class TestPlanRunCheck {
 
 			success = foundText.size() == textToFind.length;
 			if (success) {
-				resultsDescription = "The text, \"" + ArraysUtil.toString(foundText.toArray(new String[0]), "\", \"") + "\", was found in the error logs.";
+				resultsDescription = "The text, \"" + ArraysUtil.toString(foundText.toArray(new String[0]), "\", \"") + "\", was found in the console errors.  The console errors have been saved at ["
+						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
 			} else {
-				resultsDescription = "The text, \"" + ArraysUtil.toString(notFoundText.toArray(new String[0]), "\", \"") + "\", was not found in the error logs.";
+				resultsDescription = "The text, \"" + ArraysUtil.toString(notFoundText.toArray(new String[0]), "\", \"")
+						+ "\", was not found in the console errors.  The console errors have been saved at ["
+						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
 			}
 			break;
-		case ERROR_LOG_DOES_NOT_CONTAIN_TEXT:
+		case CONSOLE_ERRORS_DOES_NOT_CONTAIN_TEXT:
 			List<String> foundText2 = new ArrayList<String>();
 			List<String> notFoundText2 = new ArrayList<String>();
 			for (String text : textToFind) {
@@ -245,13 +261,17 @@ public class TestPlanRunCheck {
 
 			success = foundText2.isEmpty();
 			if (success) {
-				resultsDescription = "The text, \"" + ArraysUtil.toString(notFoundText2.toArray(new String[0]), "\", \"") + "\", was not found in the error logs.";
+				resultsDescription = "The text, \"" + ArraysUtil.toString(notFoundText2.toArray(new String[0]), "\", \"")
+						+ "\", was not found in the console errors.  The console errors have been saved at ["
+						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
 			} else {
-				resultsDescription = "The text, \"" + ArraysUtil.toString(foundText2.toArray(new String[0]), "\", \"") + "\", was found in the error logs.";
+				resultsDescription = "The text, \"" + ArraysUtil.toString(foundText2.toArray(new String[0]), "\", \"")
+						+ "\", was found in the console errors.  The console errors have been saved at ["
+						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
 			}
 			break;
 		case OUTPUT_FILE_CONTAINS_TEXT:
-			File outputFileForTextSearch = FileUtil.getMatchingFileInDirectory(runResults.getOutputDirectory(), outputFileRegex);
+			File outputFileForTextSearch = FileUtil.getMatchingFileInDirectory(runResults.getOutputDirectory(), parentRun.replaceVariables(outputFileRegex));
 
 			if (outputFileForTextSearch != null) {
 				try {
@@ -282,21 +302,22 @@ public class TestPlanRunCheck {
 					resultsDescription = "Unable to open the output file[" + outputFileForTextSearch.getAbsolutePath() + "] for finding the following text: \"" + textToFind + "\".  " + e.getMessage();
 				}
 			} else {
-				resultsDescription = "Unable to locate a single file in output directory[" + runResults.getOutputDirectory() + "] matching the regex, \"" + outputFileRegex + "\".";
+				resultsDescription = "Unable to locate a single file in output directory[" + runResults.getOutputDirectory() + "] matching the regex, \"" + parentRun.replaceVariables(outputFileRegex)
+						+ "\".";
 			}
 			break;
 		case OUTPUT_FILE_PRESENT:
-			File presentOutputFile = FileUtil.getMatchingFileInDirectory(runResults.getOutputDirectory(), outputFileRegex);
+			File presentOutputFile = FileUtil.getMatchingFileInDirectory(runResults.getOutputDirectory(), parentRun.replaceVariables(outputFileRegex));
 			success = presentOutputFile != null;
 			if (success) {
 				resultsDescription = "Located the file[" + presentOutputFile.getAbsolutePath() + "] in the output directory[" + runResults.getOutputDirectory() + "] matching the regex, \""
-						+ outputFileRegex + "\".";
+						+ parentRun.replaceVariables(outputFileRegex) + "\".";
 			} else {
 				resultsDescription = "Unable to locate a single file in output directory[" + runResults.getOutputDirectory() + "] matching the regex, \"" + outputFileRegex + "\".";
 			}
 			break;
 		case OUTPUT_FILE_DOES_NOT_CONTAIN_TEXT:
-			File outputFileForNotContainedTextSearch = FileUtil.getMatchingFileInDirectory(runResults.getOutputDirectory(), outputFileRegex);
+			File outputFileForNotContainedTextSearch = FileUtil.getMatchingFileInDirectory(runResults.getOutputDirectory(), parentRun.replaceVariables(outputFileRegex));
 
 			if (outputFileForNotContainedTextSearch != null) {
 				try {
@@ -328,14 +349,15 @@ public class TestPlanRunCheck {
 							+ e.getMessage();
 				}
 			} else {
-				resultsDescription = "Unable to locate a single file in output directory[" + runResults.getOutputDirectory() + "] matching the regex, \"" + outputFileRegex + "\".";
+				resultsDescription = "Unable to locate a single file in output directory[" + runResults.getOutputDirectory() + "] matching the regex, \"" + parentRun.replaceVariables(outputFileRegex)
+						+ "\".";
 			}
 			break;
 		case OUTPUT_FILE_MATCHES_EXISTING_FILE:
-			File outputFile = FileUtil.getMatchingFileInDirectory(runResults.getOutputDirectory(), outputFileRegex);
+			File outputFile = FileUtil.getMatchingFileInDirectory(runResults.getOutputDirectory(), parentRun.replaceVariables(outputFileRegex));
 			File existingFile = null;
 			if (relativePathToMatchingFileDirectory != null && !relativePathToMatchingFileDirectory.isEmpty()) {
-				existingFile = FileUtil.getMatchingFileInDirectory(new File(runResults.getTestDirectory(), relativePathToMatchingFileDirectory), matchingFileRegex);
+				existingFile = FileUtil.getMatchingFileInDirectory(new File(runResults.getTestDirectory(), relativePathToMatchingFileDirectory), parentRun.replaceVariables(matchingFileRegex));
 			} else if (relativePathToMatchingFile != null && !relativePathToMatchingFile.isEmpty()) {
 				existingFile = new File(runResults.getTestDirectory(), relativePathToMatchingFile);
 			} else {
@@ -354,12 +376,13 @@ public class TestPlanRunCheck {
 					resultsDescription = "Unable to compare output file[" + outputFile.getAbsolutePath() + "] with matching file[" + existingFile.getAbsolutePath() + "].  " + e.getMessage();
 				}
 			} else {
-				resultsDescription = "Unable to locate a single file in output directory[" + runResults.getOutputDirectory() + "] matching the regex, \"" + outputFileRegex + "\".";
+				resultsDescription = "Unable to locate a single file in output directory[" + runResults.getOutputDirectory() + "] matching the regex, \"" + parentRun.replaceVariables(outputFileRegex)
+						+ "\".";
 			}
 
 			break;
 		case OUTPUT_FILE_MATCHES_MD5SUM:
-			File matchingOutputFile = FileUtil.getMatchingFileInDirectory(runResults.getOutputDirectory(), outputFileRegex);
+			File matchingOutputFile = FileUtil.getMatchingFileInDirectory(runResults.getOutputDirectory(), parentRun.replaceVariables(outputFileRegex));
 
 			if (matchingOutputFile != null) {
 				try {
@@ -374,11 +397,12 @@ public class TestPlanRunCheck {
 					resultsDescription = "Unable to calculate the md5Sum on file[" + matchingOutputFile.getAbsolutePath() + "].  " + e.getMessage();
 				}
 			} else {
-				resultsDescription = "Unable to locate a single file in output directory[" + runResults.getOutputDirectory() + "] matching the regex[" + outputFileRegex + "].";
+				resultsDescription = "Unable to locate a single file in output directory[" + runResults.getOutputDirectory() + "] matching the regex[" + parentRun.replaceVariables(outputFileRegex)
+						+ "].";
 			}
 
 			break;
-		case OUTPUT_LOG_CONTAINS_TEXT:
+		case CONSOLE_OUTPUT_CONTAINS_TEXT:
 			List<String> foundText3 = new ArrayList<String>();
 			List<String> notFoundText3 = new ArrayList<String>();
 			for (String text : textToFind) {
@@ -391,12 +415,15 @@ public class TestPlanRunCheck {
 
 			success = notFoundText3.isEmpty();
 			if (success) {
-				resultsDescription = "The text, \"" + ArraysUtil.toString(foundText3.toArray(new String[0]), "\", \"") + "\", was found in the output logs.";
+				resultsDescription = "The text, \"" + ArraysUtil.toString(foundText3.toArray(new String[0]), "\", \"") + "\", was found in the console output.  The console output has been saved at ["
+						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
 			} else {
-				resultsDescription = "The text, \"" + ArraysUtil.toString(notFoundText3.toArray(new String[0]), "\", \"") + "\", was NOT found in the output logs.";
+				resultsDescription = "The text, \"" + ArraysUtil.toString(notFoundText3.toArray(new String[0]), "\", \"")
+						+ "\", was NOT found in the console output.  The console output has been saved at ["
+						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
 			}
 			break;
-		case OUTPUT_LOG_DOES_NOT_CONTAIN_TEXT:
+		case CONSOLE_OUTPUT_DOES_NOT_CONTAIN_TEXT:
 			List<String> foundText4 = new ArrayList<String>();
 			List<String> notFoundText4 = new ArrayList<String>();
 			for (String text : textToFind) {
@@ -409,9 +436,12 @@ public class TestPlanRunCheck {
 
 			success = foundText4.isEmpty();
 			if (success) {
-				resultsDescription = "The text, \"" + ArraysUtil.toString(notFoundText4.toArray(new String[0]), "\", \"") + "\", was not found in the output logs.";
+				resultsDescription = "The text, \"" + ArraysUtil.toString(notFoundText4.toArray(new String[0]), "\", \"")
+						+ "\", was not found in the console output.  The console output has been saved at ["
+						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
 			} else {
-				resultsDescription = "The text, \"" + ArraysUtil.toString(foundText4.toArray(new String[0]), "\", \"") + "\", was found in the output logs.";
+				resultsDescription = "The text, \"" + ArraysUtil.toString(foundText4.toArray(new String[0]), "\", \"") + "\", was found in the console output.  The console output has been saved at ["
+						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
 			}
 			break;
 		default:
@@ -421,7 +451,7 @@ public class TestPlanRunCheck {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static List<TestPlanRunCheck> readFromDirectory(File testPlanRunDirectory) {
+	public static List<TestPlanRunCheck> readFromDirectory(TestPlanRun parentRun, File testPlanRunDirectory) {
 		List<TestPlanRunCheck> checks = new ArrayList<TestPlanRunCheck>();
 		Yaml yaml = new Yaml();
 
@@ -438,7 +468,7 @@ public class TestPlanRunCheck {
 			try {
 				Map<String, Object> root = (Map<String, Object>) yaml.load(FileUtil.readFileAsString(inputYaml));
 
-				TestPlanRunCheckType checkType = TestPlanRunCheckType.valueOf((String) root.get(CHECK_TYPE_KEY));
+				TestPlanRunCheckTypeEnum checkType = TestPlanRunCheckTypeEnum.valueOf((String) root.get(CHECK_TYPE_KEY));
 				Object textToFindAsObject = root.get(TEXT_TO_FIND_KEY);
 				String[] textToFind = null;
 				if (textToFindAsObject != null) {
@@ -467,8 +497,8 @@ public class TestPlanRunCheck {
 					requirements = requirementsAsList.toArray(new String[0]);
 				}
 
-				checks.add(new TestPlanRunCheck(checkType, textToFind, outputFileRegex, md5Sum, relativePathToMatchingFile, relativePathToMatchingFileDirectory, matchingFileRegex, description,
-						requirements, acceptanceCriteria));
+				checks.add(new TestPlanRunCheck(parentRun, checkType, textToFind, outputFileRegex, md5Sum, relativePathToMatchingFile, relativePathToMatchingFileDirectory, matchingFileRegex,
+						description, requirements, acceptanceCriteria));
 			} catch (Exception e) {
 				throw new IllegalStateException(e.getMessage() + " File[" + inputYaml.getAbsolutePath() + "].", e);
 			}
@@ -561,5 +591,4 @@ public class TestPlanRunCheck {
 			return false;
 		return true;
 	}
-
 }

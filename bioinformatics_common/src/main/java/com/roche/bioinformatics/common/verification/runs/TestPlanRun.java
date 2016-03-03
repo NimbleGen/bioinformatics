@@ -6,11 +6,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.regex.Pattern;
 
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.scanner.ScannerException;
 
 import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
 import com.roche.sequencing.bioinformatics.common.utils.CheckSumUtil;
@@ -18,48 +21,72 @@ import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 
 public class TestPlanRun {
 
+	private final File testPlanBaseDirectory;
 	private final File runDirectory;
+	private final String resultsSubDirectory;
 	private final String description;
 	private final String command;
 	private final String[] extraArguments;
-	private final Map<String, String> inputArgumentNamesToFileNameRegex;
+	private final Map<String, String> variables;
+	private final Map<String, List<String>> inputArgumentNamesToFileNameRegex;
 
-	private final List<TestPlanRunCheck> checks;
-	private final List<String> arguments;
+	private List<TestPlanRunCheck> checks;
+	private List<String> arguments;
 
 	private final static String DESCRIPTION_KEY = "description";
 	private final static String COMMAND_KEY = "command";
+	private final static String RESULTS_SUBDIRECTORY_KEY = "resultsSubDirectory";
+	private final static String VARIABLES_KEY = "variables";
 
 	private final static String EXTRA_ARGUMENTS_KEY = "extraArguments";
 	private final static String INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY = "inputArgumentNamesToFileNameRegex";
 
-	private final static String[] VALID_KEYS = new String[] { DESCRIPTION_KEY, COMMAND_KEY, EXTRA_ARGUMENTS_KEY, INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY };
+	private final static String[] VALID_KEYS = new String[] { DESCRIPTION_KEY, COMMAND_KEY, EXTRA_ARGUMENTS_KEY, INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY, RESULTS_SUBDIRECTORY_KEY, VARIABLES_KEY };
 
-	private TestPlanRun(File runDirectory, String description, String command, String[] extraArguments, Map<String, String> fileNameRegexToInputArgumentNames, List<TestPlanRunCheck> checks) {
+	private final static String RUN_DIRECTORY_VARIABLE_KEY = "RUN_DIR";
+	private final static String TEST_PLAN_DIRECTORY_VARIABLE_KEY = "TEST_PLAN_DIR";
+	private final static String SYSTEM_TEMP_DIRECTORY_VARIABLE_KEY = "SYSTEM_TEMP_DIR";
+
+	private TestPlanRun(File testPlanBaseDirectory, File runDirectory, String description, String command, String[] extraArguments, Map<String, List<String>> fileNameRegexToInputArgumentNames,
+			String resultsSubDirectory, Map<String, String> variables) {
 		super();
+		this.testPlanBaseDirectory = testPlanBaseDirectory;
 		this.runDirectory = runDirectory;
 		this.description = description;
 		this.command = command;
 		this.extraArguments = extraArguments;
 		this.inputArgumentNamesToFileNameRegex = fileNameRegexToInputArgumentNames;
+		this.resultsSubDirectory = resultsSubDirectory;
+		this.variables = new HashMap<String, String>();
+		populateRunVariables(variables);
+	}
+
+	private void populateRunVariables(Map<String, String> variables) {
+		for (Entry<String, String> entry : System.getenv().entrySet()) {
+			this.variables.put(entry.getKey(), entry.getValue());
+		}
+
+		this.variables.putAll(variables);
+
+		this.variables.put(RUN_DIRECTORY_VARIABLE_KEY, runDirectory.getAbsolutePath());
+		this.variables.put(TEST_PLAN_DIRECTORY_VARIABLE_KEY, testPlanBaseDirectory.getAbsolutePath());
+		this.variables.put(SYSTEM_TEMP_DIRECTORY_VARIABLE_KEY, FileUtil.getSystemSpecificTempDirectory().getAbsolutePath());
+	}
+
+	private void setChecks(List<TestPlanRunCheck> checks) {
 		this.checks = checks;
-		this.arguments = createArguments();
 	}
 
 	public String getDescription() {
-		return description;
+		return replaceVariables(description);
 	}
 
 	public String getCommand() {
-		return command;
+		return replaceVariables(command);
 	}
 
 	public String[] getExtraArguments() {
 		return extraArguments;
-	}
-
-	public Map<String, String> getInputArgumentNameToRegexMap() {
-		return inputArgumentNamesToFileNameRegex;
 	}
 
 	public List<TestPlanRunCheck> getChecks() {
@@ -70,29 +97,63 @@ public class TestPlanRun {
 		return runDirectory;
 	}
 
+	public String getResultsSubDirectory() {
+		return resultsSubDirectory;
+	}
+
+	public Map<String, String> getVariables() {
+		return variables;
+	}
+
+	String replaceVariables(String text) {
+		String replacedText = text;
+
+		for (Entry<String, String> entry : variables.entrySet()) {
+			// The backlash stuff is because replace all treats the backslash as an escape character
+			replacedText = replacedText.replaceAll("(?i)" + Pattern.quote("$" + entry.getKey() + "$"), entry.getValue().replaceAll("\\\\", "\\\\\\\\"));
+		}
+
+		return replacedText;
+	}
+
 	private List<String> createArguments() {
 		List<String> arguments = new ArrayList<String>();
 
 		arguments.add(command);
 
 		if (inputArgumentNamesToFileNameRegex != null) {
-			for (Entry<String, String> entry : inputArgumentNamesToFileNameRegex.entrySet()) {
+			for (Entry<String, List<String>> entry : inputArgumentNamesToFileNameRegex.entrySet()) {
 				String argument = entry.getKey();
-				String regex = entry.getValue();
+				argument = replaceVariables(argument);
+				List<String> regexes = entry.getValue();
 
-				File matchingFile = FileUtil.getMatchingFileInDirectory(runDirectory, regex);
+				File searchDirectory = runDirectory;
 
-				if (matchingFile == null) {
-					throw new IllegalStateException("Unable to find a file in directory[" + runDirectory.getAbsolutePath() + "] matching the regex[" + regex + "].");
-				} else {
-					arguments.add(argument);
-					arguments.add(matchingFile.getAbsolutePath());
+				for (String regex : regexes) {
+					regex = replaceVariables(regex);
+					File matchingFile = FileUtil.getMatchingFileInDirectory(searchDirectory, regex);
+
+					List<String> directoriesSearched = new ArrayList<String>();
+					while (matchingFile == null && !searchDirectory.equals(testPlanBaseDirectory)) {
+						directoriesSearched.add(searchDirectory.getAbsolutePath());
+						searchDirectory = searchDirectory.getParentFile();
+						matchingFile = FileUtil.getMatchingFileInDirectory(searchDirectory, regex);
+					}
+
+					if (matchingFile == null) {
+						throw new IllegalStateException("Unable to find a file in directory(ies)[" + ArraysUtil.toString(directoriesSearched.toArray(new String[0]), ",") + "] matching the regex["
+								+ regex + "].");
+					} else {
+						arguments.add(argument);
+						arguments.add(matchingFile.getAbsolutePath());
+					}
 				}
 			}
 		}
 
 		if (extraArguments != null) {
 			for (String extraArgument : extraArguments) {
+				extraArgument = replaceVariables(extraArgument);
 				arguments.add(extraArgument);
 			}
 		}
@@ -100,11 +161,18 @@ public class TestPlanRun {
 	}
 
 	public List<String> getArguments() {
+		if (this.arguments == null) {
+			this.arguments = createArguments();
+		}
 		return Collections.unmodifiableList(arguments);
 	}
 
+	public static TestPlanRun readFromDirectory(File testPlanBaseDirectory, File testPlanRunDirectory) {
+		return readFromDirectory(testPlanBaseDirectory, testPlanRunDirectory, null);
+	}
+
 	@SuppressWarnings("unchecked")
-	public static TestPlanRun readFromDirectory(File testPlanRunDirectory) {
+	public static TestPlanRun readFromDirectory(File testPlanBaseDirectory, File testPlanRunDirectory, TestPlanRun runSettingsToInherit) {
 		TestPlanRun run = null;
 		Yaml yaml = new Yaml();
 
@@ -139,7 +207,19 @@ public class TestPlanRun {
 				}
 
 				String description = (String) root.get(DESCRIPTION_KEY);
+				if (description == null && runSettingsToInherit != null) {
+					description = runSettingsToInherit.getDescription();
+				}
+
 				String command = (String) root.get(COMMAND_KEY);
+				if (command == null && runSettingsToInherit != null) {
+					command = runSettingsToInherit.getCommand();
+				}
+
+				String resultsSubDirectory = (String) root.get(RESULTS_SUBDIRECTORY_KEY);
+				if (resultsSubDirectory == null && runSettingsToInherit != null) {
+					resultsSubDirectory = runSettingsToInherit.getResultsSubDirectory();
+				}
 
 				String[] extraArguments = null;
 
@@ -156,11 +236,59 @@ public class TestPlanRun {
 					}
 				}
 
-				Map<String, String> inputArgumentNamesToFileNameRegex = (Map<String, String>) root.get(INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY);
+				if (extraArguments == null && runSettingsToInherit != null) {
+					extraArguments = runSettingsToInherit.getExtraArguments();
+				}
 
-				List<TestPlanRunCheck> checks = TestPlanRunCheck.readFromDirectory(testPlanRunDirectory);
+				Map<String, List<String>> inputArgumentNamesToFileNameRegex = new HashMap<String, List<String>>();
+				if (runSettingsToInherit != null) {
+					inputArgumentNamesToFileNameRegex.putAll(runSettingsToInherit.inputArgumentNamesToFileNameRegex);
+				}
 
-				run = new TestPlanRun(testPlanRunDirectory, description, command, extraArguments, inputArgumentNamesToFileNameRegex, checks);
+				Map<?, ?> inputArgumentsMapAsGenericMap = (Map<?, ?>) root.get(INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY);
+
+				if (inputArgumentsMapAsGenericMap != null) {
+					Object firstValue = inputArgumentsMapAsGenericMap.values().iterator().next();
+
+					if (firstValue != null) {
+						if (firstValue instanceof String) {
+							Map<String, String> currentInputArgumentNamesToFileNameRegex = (Map<String, String>) root.get(INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY);
+							if (currentInputArgumentNamesToFileNameRegex != null) {
+								for (Entry<String, String> entry : currentInputArgumentNamesToFileNameRegex.entrySet()) {
+									List<String> regexes = new ArrayList<String>();
+									regexes.add(entry.getValue());
+									inputArgumentNamesToFileNameRegex.put(entry.getKey(), regexes);
+								}
+							}
+						} else if (firstValue instanceof List<?>) {
+							Map<String, String> currentInputArgumentNamesToFileNameRegex = (Map<String, String>) root.get(INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY);
+							if (currentInputArgumentNamesToFileNameRegex != null) {
+								inputArgumentNamesToFileNameRegex.putAll((Map<String, List<String>>) inputArgumentsMapAsGenericMap);
+							}
+						} else {
+							throw new AssertionError();
+						}
+					}
+				}
+
+				Map<String, String> variablesMap = (Map<String, String>) root.get(VARIABLES_KEY);
+				if (variablesMap == null) {
+					variablesMap = new HashMap<String, String>();
+				}
+
+				if (runSettingsToInherit != null) {
+					Map<String, String> inheritedVariables = runSettingsToInherit.getVariables();
+					if (inheritedVariables != null) {
+						variablesMap.putAll(inheritedVariables);
+					}
+				}
+
+				run = new TestPlanRun(testPlanBaseDirectory, testPlanRunDirectory, description, command, extraArguments, inputArgumentNamesToFileNameRegex, resultsSubDirectory, variablesMap);
+				List<TestPlanRunCheck> checks = TestPlanRunCheck.readFromDirectory(run, testPlanRunDirectory);
+				run.setChecks(checks);
+
+			} catch (ScannerException e) {
+				throw new IllegalStateException("Unable to parse yaml file[" + inputYaml.getAbsolutePath() + "].  " + e.getMessage(), e);
 			} catch (IOException e) {
 				throw new IllegalStateException(e.getMessage(), e);
 			}

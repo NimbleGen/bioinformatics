@@ -26,6 +26,9 @@ public class Precondition {
 	private final String[] values;
 
 	public Precondition(PreconditionEnum preconditionEnum, String[] values) {
+		if (preconditionEnum == null) {
+			throw new IllegalArgumentException("The provided variable preconditionEnum is null.");
+		}
 		this.preconditionEnum = preconditionEnum;
 		this.values = values;
 	}
@@ -35,10 +38,18 @@ public class Precondition {
 
 		switch (preconditionEnum) {
 		case OS:
-			description = "The test plan will be run on one of the following Operating Systems: [" + ArraysUtil.toString(values, ", ") + "].";
+			if (values.length > 1) {
+				description = "The test plan will be run on one of the following Operating Systems: [" + ArraysUtil.toString(values, ", ") + "].";
+			} else if (values.length == 1) {
+				description = "The test plan will be run on the " + values[0] + " Operating System.";
+			}
 			break;
 		case OS_BIT_DEPTH:
-			description = "The test plan will be run on a [" + ArraysUtil.toString(values, ", ") + "]-bit Operating System.";
+			if (values.length == 1) {
+				description = "The test plan will be run on a " + values[0] + "-bit Operating System.";
+			} else {
+				description = "The test plan will be run on [" + ArraysUtil.toString(values, "-bit, ") + "] Operating Systems.";
+			}
 			break;
 		case MIN_JAVA_VERSION:
 			description = "The test plan will be run using a Java Virtual Machine of Version[" + values[0] + "] or greater.";

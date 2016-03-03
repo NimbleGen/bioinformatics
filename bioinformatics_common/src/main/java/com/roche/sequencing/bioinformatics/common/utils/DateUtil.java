@@ -46,7 +46,7 @@ public class DateUtil {
 	}
 
 	public static String getCurrentDateINYYYYMMDDHHMMSSwithColons() {
-		DateFormat dateFormat = new SimpleDateFormat("YYY:MM:DD HH:MM:SS");
+		DateFormat dateFormat = new SimpleDateFormat("yyyy:MM:dd HH:mm:ss");
 		Date date = new Date(System.currentTimeMillis());
 		return dateFormat.format(date);
 	}
