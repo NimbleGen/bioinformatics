@@ -13,8 +13,7 @@ import java.util.regex.Pattern;
 
 public class FilePermissionsUtil {
 
-	private static final boolean IS_POSIX_SUPPORTED_SYSTEM = FileSystems.getDefault().supportedFileAttributeViews()
-			.contains("posix");
+	private static final boolean IS_POSIX_SUPPORTED_SYSTEM = FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
 
 	private FilePermissionsUtil() {
 		throw new AssertionError();
@@ -79,8 +78,8 @@ public class FilePermissionsUtil {
 
 		public PosixNumericalFilePermissions(String numericalPosixPermissions) {
 			if (!Pattern.matches(PERMISSIONS_REGEX, numericalPosixPermissions)) {
-				throw new IllegalArgumentException("The provided argument[" + numericalPosixPermissions
-						+ "] for numericalPosixPermissions does not conform to the expected format which consists of 3 numbers valued 1-7.must");
+				throw new IllegalArgumentException(
+						"The provided argument[" + numericalPosixPermissions + "] for numericalPosixPermissions does not conform to the expected format which consists of 3 numbers valued 1-7.must");
 			}
 
 			permissionsAsInt = Integer.parseInt(numericalPosixPermissions);

@@ -54,8 +54,7 @@ public final class FileUtil {
 	}
 
 	/**
-	 * @return a temporary directory specific to the flavor of the Operating
-	 *         System
+	 * @return a temporary directory specific to the flavor of the Operating System
 	 */
 	public static File getSystemSpecificTempDirectory() {
 		String tempDirectory = System.getProperty("java.io.tmpdir");
@@ -64,8 +63,7 @@ public final class FileUtil {
 	}
 
 	/**
-	 * Returns the extension of the file. Returns an empty string if no
-	 * extension is found.
+	 * Returns the extension of the file. Returns an empty string if no extension is found.
 	 * 
 	 * @param file
 	 * @return extension
@@ -75,8 +73,7 @@ public final class FileUtil {
 	}
 
 	/**
-	 * Returns the extension of the file name. Returns an empty string if no
-	 * extension is found.
+	 * Returns the extension of the file name. Returns an empty string if no extension is found.
 	 * 
 	 * @param fileName
 	 * @return extension
@@ -109,8 +106,7 @@ public final class FileUtil {
 	}
 
 	/**
-	 * Simple utility to read the entire contents of a file into a string This
-	 * code was taken from http://snippets.dzone.com/posts/show/1335
+	 * Simple utility to read the entire contents of a file into a string This code was taken from http://snippets.dzone.com/posts/show/1335
 	 * 
 	 */
 	public static String readFileAsString(File file) throws java.io.IOException {
@@ -131,8 +127,7 @@ public final class FileUtil {
 	 * 
 	 * @param file
 	 * @param textToFind
-	 * @return the line number of the first occurence of this text, -1 if no
-	 *         such line exists.
+	 * @return the line number of the first occurence of this text, -1 if no such line exists.
 	 * @throws FileNotFoundException
 	 */
 	public static int findLineNumberOfFirstOccurrenceOfText(File file, String textToFind) throws FileNotFoundException {
@@ -154,8 +149,7 @@ public final class FileUtil {
 	 * @return the line numbers of lines that contain the provided text
 	 * @throws FileNotFoundException
 	 */
-	public static int[] getLineNumbersContainingTextInFile(File file, String textToFind, int startingLineNumber,
-			int numberOfMatchesToFind) throws FileNotFoundException {
+	public static int[] getLineNumbersContainingTextInFile(File file, String textToFind, int startingLineNumber, int numberOfMatchesToFind) throws FileNotFoundException {
 		List<Integer> lineNumbers = new ArrayList<Integer>();
 
 		try (Scanner scanner = new Scanner(file)) {
@@ -178,8 +172,7 @@ public final class FileUtil {
 	}
 
 	/**
-	 * Simple utility to read the entire contents of a file into a string This
-	 * code was taken from http://snippets.dzone.com/posts/show/1335
+	 * Simple utility to read the entire contents of a file into a string This code was taken from http://snippets.dzone.com/posts/show/1335
 	 * 
 	 */
 	public static String readStreamAsString(InputStream stream) throws java.io.IOException {
@@ -227,8 +220,7 @@ public final class FileUtil {
 	}
 
 	/**
-	 * calls Files createNewFile but will also create new subdirectories if
-	 * needed.
+	 * calls Files createNewFile but will also create new subdirectories if needed.
 	 * 
 	 * @param fileForStoring
 	 * @throws IOException
@@ -268,8 +260,7 @@ public final class FileUtil {
 			String[] relativeDirectories = relativeTo.split("/");
 
 			// Get the shortest of the two paths
-			int length = absoluteDirectories.length < relativeDirectories.length ? absoluteDirectories.length
-					: relativeDirectories.length;
+			int length = absoluteDirectories.length < relativeDirectories.length ? absoluteDirectories.length : relativeDirectories.length;
 
 			// Use to determine where in the loop we exited
 			int lastCommonRoot = -1;
@@ -341,9 +332,7 @@ public final class FileUtil {
 	}
 
 	/**
-	 * Recursively delete a directory. If the first attempt fails due to an
-	 * IOException, garbage collect, sleep, and try one more time to get around
-	 * an issue with NFS volumes.
+	 * Recursively delete a directory. If the first attempt fails due to an IOException, garbage collect, sleep, and try one more time to get around an issue with NFS volumes.
 	 * 
 	 * @param directory
 	 *            directory to delete
@@ -370,12 +359,10 @@ public final class FileUtil {
 				} catch (IOException e1) {
 					Logger logger = LoggerFactory.getLogger(FileUtil.class);
 					if (i == totalAttempts - 1) {
-						logger.warn("Unable to delete directory[" + directory.getAbsolutePath() + "] on attempt "
-								+ (i + 1) + ".  Will attempt deletion on exit.");
+						logger.warn("Unable to delete directory[" + directory.getAbsolutePath() + "] on attempt " + (i + 1) + ".  Will attempt deletion on exit.");
 						directory.deleteOnExit();
 					} else {
-						logger.warn("Unable to delete directory[" + directory.getAbsolutePath() + "] on attempt "
-								+ (i + 1) + ".  Will attempt deletion " + (totalAttempts - i - 1) + " more times.");
+						logger.warn("Unable to delete directory[" + directory.getAbsolutePath() + "] on attempt " + (i + 1) + ".  Will attempt deletion " + (totalAttempts - i - 1) + " more times.");
 						continue;
 					}
 				}
@@ -392,9 +379,7 @@ public final class FileUtil {
 	}
 
 	/**
-	 * taken from here
-	 * http://codereview.stackexchange.com/questions/47923/simplifying-a-path
-	 * -Kurt Heilman
+	 * taken from here http://codereview.stackexchange.com/questions/47923/simplifying-a-path -Kurt Heilman
 	 * 
 	 * @param path
 	 * @return
@@ -488,8 +473,7 @@ public final class FileUtil {
 	 */
 	public static File[] getSubDirectories(File directory) {
 		if (!directory.isDirectory()) {
-			throw new IllegalStateException(
-					"The provided file[" + directory.getAbsolutePath() + "] is not a directory.");
+			throw new IllegalStateException("The provided file[" + directory.getAbsolutePath() + "] is not a directory.");
 		}
 
 		File[] subdirectories = directory.listFiles(new FilenameFilter() {
@@ -503,8 +487,7 @@ public final class FileUtil {
 	}
 
 	/**
-	 * return the files that match the provided regex in the provided directory
-	 * (does not examine children directories of said directory).
+	 * return the files that match the provided regex in the provided directory (does not examine children directories of said directory).
 	 * 
 	 * @param directory
 	 * @param regex
@@ -515,8 +498,7 @@ public final class FileUtil {
 	}
 
 	/**
-	 * return the files that match the provided regex in the provided directory
-	 * (does not examine children directories of said directory).
+	 * return the files that match the provided regex in the provided directory (does not examine children directories of said directory).
 	 * 
 	 * @param directory
 	 * @param regex
@@ -525,8 +507,7 @@ public final class FileUtil {
 	public static List<File> getMatchingFilesInDirectory(File directory, String regex, boolean isCaseInsensitive) {
 		List<File> matchingFiles = new ArrayList<File>();
 
-		final Pattern pattern = isCaseInsensitive ? Pattern.compile(regex, Pattern.CASE_INSENSITIVE)
-				: Pattern.compile(regex);
+		final Pattern pattern = isCaseInsensitive ? Pattern.compile(regex, Pattern.CASE_INSENSITIVE) : Pattern.compile(regex);
 
 		String[] matchingFileNames = directory.list(new FilenameFilter() {
 			@Override
@@ -546,9 +527,8 @@ public final class FileUtil {
 	}
 
 	/**
-	 * returns the matching file if only one exists matching the regex in the
-	 * provided directory, null if no such files exist and throws an
-	 * IllegalArgumentException if more than on of such files exist.
+	 * returns the matching file if only one exists matching the regex in the provided directory, null if no such files exist and throws an IllegalArgumentException if more than on of such files
+	 * exist.
 	 * 
 	 * @param directory
 	 * @param regex
@@ -559,9 +539,8 @@ public final class FileUtil {
 	}
 
 	/**
-	 * returns the matching file if only one exists matching the regex in the
-	 * provided directory, null if no such files exist and throws an
-	 * IllegalArgumentException if more than on of such files exist.
+	 * returns the matching file if only one exists matching the regex in the provided directory, null if no such files exist and throws an IllegalArgumentException if more than on of such files
+	 * exist.
 	 * 
 	 * @param directory
 	 * @param regex
@@ -574,14 +553,12 @@ public final class FileUtil {
 		if (matchingFiles.size() == 1) {
 			matchingFile = matchingFiles.get(0);
 		} else if (matchingFiles.size() > 1) {
-			throw new IllegalArgumentException("The provided directory[" + directory
-					+ "] contains more than one file matching the provided regex[" + regex + "].");
+			throw new IllegalArgumentException("The provided directory[" + directory + "] contains more than one file matching the provided regex[" + regex + "].");
 		}
 		return matchingFile;
 	}
 
-	public static File getMatchingDirectoryRelativeToBaseDirectory(File baseDirectory,
-			String[] regularExpressionsForRelativeFolders) {
+	public static File getMatchingDirectoryRelativeToBaseDirectory(File baseDirectory, String[] regularExpressionsForRelativeFolders) {
 		File currentDirectory = baseDirectory;
 		for (String regularExpressionForNextFolder : regularExpressionsForRelativeFolders) {
 			if (regularExpressionForNextFolder.equals(".")) {
@@ -600,12 +577,10 @@ public final class FileUtil {
 				if (matchingFiles.size() == 1) {
 					currentDirectory = matchingFiles.get(0);
 				} else if (matchingFiles.size() == 0) {
-					throw new IllegalStateException("Unable to locate a sub folder matching the regular expression["
-							+ regularExpressionForNextFolder + "] in the directory["
-							+ currentDirectory.getAbsolutePath() + "].");
+					throw new IllegalStateException(
+							"Unable to locate a sub folder matching the regular expression[" + regularExpressionForNextFolder + "] in the directory[" + currentDirectory.getAbsolutePath() + "].");
 				} else {
-					throw new IllegalStateException("The regular expression[" + regularExpressionForNextFolder
-							+ "] matches more than one file (" + matchingFiles.size()
+					throw new IllegalStateException("The regular expression[" + regularExpressionForNextFolder + "] matches more than one file (" + matchingFiles.size()
 							+ " matches found) in the directory[" + currentDirectory.getAbsolutePath() + "].");
 				}
 			}

@@ -64,8 +64,7 @@ public class TestPlan {
 
 	private void addRun(TestPlanRun run) {
 		if (runs.contains(run)) {
-			throw new IllegalArgumentException(
-					"The TestPlanRun[" + run.getDescription() + "] has already been added to the test plan.");
+			throw new IllegalArgumentException("The TestPlanRun[" + run.getDescription() + "] has already been added to the test plan.");
 		}
 		runs.add(run);
 	}
@@ -78,8 +77,7 @@ public class TestPlan {
 
 	private void addPrecondition(Precondition precondition) {
 		if (preconditions.contains(precondition)) {
-			throw new IllegalArgumentException(
-					"The Precondition[" + precondition + "] has already been added to the test plan.");
+			throw new IllegalArgumentException("The Precondition[" + precondition + "] has already been added to the test plan.");
 		}
 		preconditions.add(precondition);
 	}
@@ -92,28 +90,23 @@ public class TestPlan {
 	 * 
 	 * @param testerName
 	 * @param outputReport
-	 * @return true if test plan ran succesfully with no failures, false
-	 *         otherwise
+	 * @return true if test plan ran succesfully with no failures, false otherwise
 	 */
-	public boolean createTestPlanReport(File applicationToTest, File testPlanExecutionDirectory, File outputReport,
-			File optionalJvmBinPath, boolean createZip, String startingFolder) {
-		return createTestPlanReport(applicationToTest, outputReport, testPlanExecutionDirectory, optionalJvmBinPath,
-				true, createZip, startingFolder);
+	public boolean createTestPlanReport(File applicationToTest, File testPlanExecutionDirectory, File outputReport, File optionalJvmBinPath, boolean createZip, String startingFolder) {
+		return createTestPlanReport(applicationToTest, outputReport, testPlanExecutionDirectory, optionalJvmBinPath, true, createZip, startingFolder);
 	}
 
 	/**
 	 * 
 	 * @param testerName
 	 * @param outputReport
-	 * @return true if test plan ran successfully with no failures, false
-	 *         otherwise
+	 * @return true if test plan ran successfully with no failures, false otherwise
 	 */
-	private boolean createTestPlanReport(File applicationToTest, File outputReport, File testPlanExecutionDirectory,
-			File optionalJvmBinPath, boolean createReport, boolean createZip, String startingFolder) {
+	private boolean createTestPlanReport(File applicationToTest, File outputReport, File testPlanExecutionDirectory, File optionalJvmBinPath, boolean createReport, boolean createZip,
+			String startingFolder) {
 		String startTime = DateUtil.getCurrentDateINYYYYMMDDHHMMSSwithColons();
 		if (createReport && !applicationToTest.exists()) {
-			throw new IllegalArgumentException(
-					"The provided applicationToTest[" + applicationToTest.getAbsolutePath() + "] does not exist.");
+			throw new IllegalArgumentException("The provided applicationToTest[" + applicationToTest.getAbsolutePath() + "] does not exist.");
 		}
 
 		Document pdfDocument = PdfReportUtil.createDocument(outputReport, "", "", "", "");
@@ -198,8 +191,7 @@ public class TestPlan {
 		if (startingFolder != null && startingFolderExists) {
 			startingFolderFound = false;
 		} else {
-			throw new IllegalStateException("Could not find startFolder[" + startingFolder + "] in test plan directory["
-					+ testPlanDirectory.getAbsolutePath() + "].");
+			throw new IllegalStateException("Could not find startFolder[" + startingFolder + "] in test plan directory[" + testPlanDirectory.getAbsolutePath() + "].");
 		}
 
 		for (TestPlanRun run : sortedRuns) {
@@ -209,28 +201,22 @@ public class TestPlan {
 
 				RunResults runResults = null;
 				CliStatusConsole.logStatus("");
-				CliStatusConsole.logStatus("Running step " + runNumber + "(" + run.getRunDirectory().getAbsolutePath()
-						+ ") : " + run.getDescription());
+				CliStatusConsole.logStatus("Running step " + runNumber + "(" + run.getRunDirectory().getAbsolutePath() + ") : " + run.getDescription());
 				if (createReport) {
-					runResults = executeRun(run, applicationToTest, testPlanExecutionDirectory, runNumber,
-							optionalJvmBinPath);
+					runResults = executeRun(run, applicationToTest, testPlanExecutionDirectory, runNumber, optionalJvmBinPath);
 				}
 
 				table.addCell(naCell);
 				table.addCell(new PdfPCell(new Phrase("" + runNumber, SMALL_BOLD_FONT)));
-				table.addCell(
-						new PdfPCell(new Phrase(
-								run.getDescription() + StringUtil.NEWLINE + StringUtil.NEWLINE + "java -jar "
-										+ ArraysUtil.toString(run.getArguments().toArray(new String[0]), " "),
-								SMALL_FONT)));
+				table.addCell(new PdfPCell(
+						new Phrase(run.getDescription() + StringUtil.NEWLINE + StringUtil.NEWLINE + "java -jar " + ArraysUtil.toString(run.getArguments().toArray(new String[0]), " "), SMALL_FONT)));
 
 				table.addCell(grayCell);
 				table.addCell(grayCell);
 				table.addCell(grayCell);
 
 				if (run.getChecks().size() == 0) {
-					throw new IllegalStateException("The provided step[" + run.getDescription()
-							+ "] has not checks which make it an invalid test.");
+					throw new IllegalStateException("The provided step[" + run.getDescription() + "] has not checks which make it an invalid test.");
 				}
 
 				int checkNumber = 1;
@@ -295,8 +281,7 @@ public class TestPlan {
 			Paragraph executionDetailsParagraph = new Paragraph();
 			executionDetailsParagraph.add(new Phrase("Test Plan Report Execution Details", REGULAR_BOLD_FONT));
 			executionDetailsParagraph.add(Chunk.NEWLINE);
-			executionDetailsParagraph.add(new Phrase("Report generated by " + AutoTestPlanCli.APPLICATION_NAME + " "
-					+ AutoTestPlanCli.getApplicationVersion(), REGULAR_FONT));
+			executionDetailsParagraph.add(new Phrase("Report generated by " + AutoTestPlanCli.APPLICATION_NAME + " " + AutoTestPlanCli.getApplicationVersion(), REGULAR_FONT));
 			executionDetailsParagraph.add(Chunk.NEWLINE);
 			String userName = System.getProperty("user.name");
 			if (userName != null && !userName.isEmpty()) {
@@ -307,8 +292,7 @@ public class TestPlan {
 			try {
 				InetAddress address = InetAddress.getLocalHost();
 				if (address != null) {
-					executionDetailsParagraph
-							.add(new Phrase("Computer IP Address: " + address.getHostAddress(), REGULAR_FONT));
+					executionDetailsParagraph.add(new Phrase("Computer IP Address: " + address.getHostAddress(), REGULAR_FONT));
 					executionDetailsParagraph.add(Chunk.NEWLINE);
 					String hostName = address.getHostName();
 					if (hostName != null && !hostName.isEmpty()) {
@@ -319,8 +303,7 @@ public class TestPlan {
 			} catch (UnknownHostException ex) {
 			}
 			executionDetailsParagraph.add(Chunk.NEWLINE);
-			executionDetailsParagraph
-					.add(new Phrase("Application to Test: " + applicationToTest.getAbsolutePath(), REGULAR_FONT));
+			executionDetailsParagraph.add(new Phrase("Application to Test: " + applicationToTest.getAbsolutePath(), REGULAR_FONT));
 			executionDetailsParagraph.add(Chunk.NEWLINE);
 
 			try {
@@ -333,21 +316,16 @@ public class TestPlan {
 
 			executionDetailsParagraph.add(new Phrase("Test Plan CheckSum: " + checkSum(), REGULAR_FONT));
 			executionDetailsParagraph.add(Chunk.NEWLINE);
-			executionDetailsParagraph
-					.add(new Phrase("Test Plan Directory: " + testPlanDirectory.getAbsolutePath(), REGULAR_FONT));
+			executionDetailsParagraph.add(new Phrase("Test Plan Directory: " + testPlanDirectory.getAbsolutePath(), REGULAR_FONT));
 			executionDetailsParagraph.add(Chunk.NEWLINE);
-			executionDetailsParagraph.add(new Phrase(
-					"Test Plan Results Directory: " + testPlanExecutionDirectory.getAbsolutePath(), REGULAR_FONT));
+			executionDetailsParagraph.add(new Phrase("Test Plan Results Directory: " + testPlanExecutionDirectory.getAbsolutePath(), REGULAR_FONT));
 			executionDetailsParagraph.add(Chunk.NEWLINE);
-			executionDetailsParagraph
-					.add(new Phrase("Start Time: " + startTime + " (yyyy:MM:dd HH:mm:ss)", REGULAR_FONT));
+			executionDetailsParagraph.add(new Phrase("Start Time: " + startTime + " (yyyy:MM:dd HH:mm:ss)", REGULAR_FONT));
 			executionDetailsParagraph.add(Chunk.NEWLINE);
-			executionDetailsParagraph
-					.add(new Phrase("Stop Time: " + stopTime + " (yyyy:MM:dd HH:mm:ss)", REGULAR_FONT));
+			executionDetailsParagraph.add(new Phrase("Stop Time: " + stopTime + " (yyyy:MM:dd HH:mm:ss)", REGULAR_FONT));
 			executionDetailsParagraph.add(Chunk.NEWLINE);
 			executionDetailsParagraph.add(Chunk.NEWLINE);
-			executionDetailsParagraph.add(new Phrase(
-					"Operating System: " + OSUtil.getOsName() + " " + OSUtil.getOsBits() + "-bit", REGULAR_FONT));
+			executionDetailsParagraph.add(new Phrase("Operating System: " + OSUtil.getOsName() + " " + OSUtil.getOsBits() + "-bit", REGULAR_FONT));
 			executionDetailsParagraph.add(Chunk.NEWLINE);
 			String javaBin = getJavaBinPath(optionalJvmBinPath);
 			executionDetailsParagraph.add(new Phrase("Java Bin Path: " + javaBin, REGULAR_FONT));
@@ -364,8 +342,7 @@ public class TestPlan {
 			Paragraph creationDetailsParagraph = new Paragraph();
 			creationDetailsParagraph.add(new Phrase("Test Plan Creation Details", REGULAR_BOLD_FONT));
 			creationDetailsParagraph.add(Chunk.NEWLINE);
-			creationDetailsParagraph.add(new Phrase("Report generated by " + AutoTestPlanCli.APPLICATION_NAME + " "
-					+ AutoTestPlanCli.getApplicationVersion(), REGULAR_FONT));
+			creationDetailsParagraph.add(new Phrase("Report generated by " + AutoTestPlanCli.APPLICATION_NAME + " " + AutoTestPlanCli.getApplicationVersion(), REGULAR_FONT));
 			creationDetailsParagraph.add(Chunk.NEWLINE);
 			String userName = System.getProperty("user.name");
 			if (userName != null && !userName.isEmpty()) {
@@ -376,8 +353,7 @@ public class TestPlan {
 			try {
 				InetAddress address = InetAddress.getLocalHost();
 				if (address != null) {
-					creationDetailsParagraph
-							.add(new Phrase("Computer IP Address: " + address.getHostAddress(), REGULAR_FONT));
+					creationDetailsParagraph.add(new Phrase("Computer IP Address: " + address.getHostAddress(), REGULAR_FONT));
 					creationDetailsParagraph.add(Chunk.NEWLINE);
 					String hostName = address.getHostName();
 					if (hostName != null && !hostName.isEmpty()) {
@@ -390,8 +366,7 @@ public class TestPlan {
 
 			creationDetailsParagraph.add(new Phrase("Test Plan CheckSum: " + checkSum(), REGULAR_FONT));
 			creationDetailsParagraph.add(Chunk.NEWLINE);
-			creationDetailsParagraph
-					.add(new Phrase("Test Plan Directory: " + testPlanDirectory.getAbsolutePath(), REGULAR_FONT));
+			creationDetailsParagraph.add(new Phrase("Test Plan Directory: " + testPlanDirectory.getAbsolutePath(), REGULAR_FONT));
 			creationDetailsParagraph.add(Chunk.NEWLINE);
 
 			try {
@@ -426,8 +401,7 @@ public class TestPlan {
 		CliStatusConsole.logStatus("");
 
 		if (createZip) {
-			String zipFileName = testPlanExecutionDirectory.getName() + "_" + DateUtil.getCurrentDateINYYYYMMDDHHMMSS()
-					+ ZIP_EXTENSION;
+			String zipFileName = testPlanExecutionDirectory.getName() + "_" + DateUtil.getCurrentDateINYYYYMMDDHHMMSS() + ZIP_EXTENSION;
 			File outputZipFile = new File(testPlanExecutionDirectory.getParentFile(), zipFileName);
 			CliStatusConsole.logStatus("Creating results Zip file at [" + outputZipFile + "].");
 			List<File> directoriesAndFilesToZip = new ArrayList<File>();
@@ -444,8 +418,7 @@ public class TestPlan {
 				FileUtil.deleteDirectory(testPlanExecutionDirectory);
 				CliStatusConsole.logStatus("Done deleting results directory at [" + testPlanExecutionDirectory + "].");
 			} catch (IOException e) {
-				CliStatusConsole
-						.logStatus("Unable to deleting the results directory at [" + testPlanExecutionDirectory + "].");
+				CliStatusConsole.logStatus("Unable to deleting the results directory at [" + testPlanExecutionDirectory + "].");
 				CliStatusConsole.logError(e);
 			}
 		}
@@ -464,8 +437,7 @@ public class TestPlan {
 		return javaBin;
 	}
 
-	private RunResults executeRun(TestPlanRun run, File applicationToTest, File testPlanExecutionDirectory,
-			int stepNumber, File optionalJvmBinPath) {
+	private RunResults executeRun(TestPlanRun run, File applicationToTest, File testPlanExecutionDirectory, int stepNumber, File optionalJvmBinPath) {
 
 		String javaBin = getJavaBinPath(optionalJvmBinPath);
 
@@ -481,16 +453,14 @@ public class TestPlan {
 		File outputDirectory = new File(testPlanExecutionDirectory, "run_" + stepNumber);
 
 		if (outputDirectory.exists()) {
-			throw new IllegalStateException(
-					"The provided Test Plan Execution Directory[" + testPlanExecutionDirectory.getAbsolutePath()
-							+ "] already contains results.  Please provide an empty Test Plan Execution Directory.");
+			throw new IllegalStateException("The provided Test Plan Execution Directory[" + testPlanExecutionDirectory.getAbsolutePath()
+					+ "] already contains results.  Please provide an empty Test Plan Execution Directory.");
 		}
 
 		try {
 			FileUtil.createDirectory(outputDirectory);
 		} catch (IOException e) {
-			throw new IllegalStateException("Unable to create the execution directory for run " + stepNumber + " at ["
-					+ outputDirectory.getAbsolutePath() + "].", e);
+			throw new IllegalStateException("Unable to create the execution directory for run " + stepNumber + " at [" + outputDirectory.getAbsolutePath() + "].", e);
 		}
 		processBuilder.directory(outputDirectory);
 
@@ -509,8 +479,7 @@ public class TestPlan {
 			consoleOutputString = outputStreamListener.getString();
 			consoleErrorsString = errorStreamListener.getString();
 		} catch (IOException | InterruptedException e) {
-			throw new IllegalStateException("Unable to execute the provide jar file["
-					+ applicationToTest.getAbsolutePath() + "].  " + e.getMessage());
+			throw new IllegalStateException("Unable to execute the provide jar file[" + applicationToTest.getAbsolutePath() + "].  " + e.getMessage());
 		}
 
 		try {
@@ -568,8 +537,7 @@ public class TestPlan {
 		return testPlan;
 	}
 
-	private static List<TestPlanRun> recursivelyReadRunsFromDirectory(File directory, File testPlanDirectory,
-			TestPlanRun runSettingsToInherit) {
+	private static List<TestPlanRun> recursivelyReadRunsFromDirectory(File directory, File testPlanDirectory, TestPlanRun runSettingsToInherit) {
 		List<TestPlanRun> runs = new ArrayList<TestPlanRun>();
 
 		TestPlanRun run = TestPlanRun.readFromDirectory(testPlanDirectory, directory, runSettingsToInherit);

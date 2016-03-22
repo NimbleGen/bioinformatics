@@ -16,8 +16,8 @@ public class PosixNumericalFilePermissions {
 
 	public PosixNumericalFilePermissions(String numericalPosixPermissions) {
 		if (!Pattern.matches(PERMISSIONS_REGEX, numericalPosixPermissions)) {
-			throw new IllegalArgumentException("The provided argument[" + numericalPosixPermissions
-					+ "] for numericalPosixPermissions does not conform to the expected format which consists of 3 numbers valued 1-7.must");
+			throw new IllegalArgumentException(
+					"The provided argument[" + numericalPosixPermissions + "] for numericalPosixPermissions does not conform to the expected format which consists of 3 numbers valued 1-7.must");
 		}
 
 		permissionsAsInt = Integer.parseInt(numericalPosixPermissions);

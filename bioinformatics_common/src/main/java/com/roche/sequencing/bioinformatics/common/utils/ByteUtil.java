@@ -11,10 +11,9 @@ public class ByteUtil {
 	private final static int BYTES_IN_AN_INT = 4;
 	private final static int BYTES_IN_A_SHORT = 2;
 
-	private final static long[] UNSIGNED_MAX_VALUES_BY_NUMBER_OF_BYTES_AS_INDEX = new long[] { 0, 255, 65535, 16777215,
-			4294967295L, 1099511627775L, 281474976710655L, 72057594037927935L };
-	private final static long[] SIGNED_MAX_VALUES_BY_NUMBER_OF_BYTES_AS_INDEX = new long[] { 0, 127, 32767, 8388607,
-			2147483647, 549755813887L, 140737488355327L, 36028797018963967L, 9223372036854775807L };
+	private final static long[] UNSIGNED_MAX_VALUES_BY_NUMBER_OF_BYTES_AS_INDEX = new long[] { 0, 255, 65535, 16777215, 4294967295L, 1099511627775L, 281474976710655L, 72057594037927935L };
+	private final static long[] SIGNED_MAX_VALUES_BY_NUMBER_OF_BYTES_AS_INDEX = new long[] { 0, 127, 32767, 8388607, 2147483647, 549755813887L, 140737488355327L, 36028797018963967L,
+			9223372036854775807L };
 
 	private ByteUtil() {
 		throw new AssertionError();
@@ -31,8 +30,7 @@ public class ByteUtil {
 		byte[] result = new byte[BYTES_IN_A_LONG];
 
 		if (longValue < 0 && !isSigned) {
-			throw new IllegalStateException(
-					"Cannot represent the negative value[" + longValue + "] in an unsigned byte array.");
+			throw new IllegalStateException("Cannot represent the negative value[" + longValue + "] in an unsigned byte array.");
 		}
 
 		if (byteOrder == ByteOrder.BIG_ENDIAN) {
@@ -66,13 +64,11 @@ public class ByteUtil {
 		return value;
 	}
 
-	private static Number bytesToNumber(byte[] bytes, ByteOrder byteOrder, boolean isSigned, int bytesInDataType,
-			String dataTypeName) {
+	private static Number bytesToNumber(byte[] bytes, ByteOrder byteOrder, boolean isSigned, int bytesInDataType, String dataTypeName) {
 		long result = 0;
 
 		if (bytes.length != bytesInDataType) {
-			throw new IllegalArgumentException("The provided byte array has a length[" + bytes.length
-					+ "] other than the required length of [" + bytesInDataType + "].");
+			throw new IllegalArgumentException("The provided byte array has a length[" + bytes.length + "] other than the required length of [" + bytesInDataType + "].");
 		}
 
 		if (byteOrder == ByteOrder.BIG_ENDIAN) {
@@ -92,11 +88,10 @@ public class ByteUtil {
 		BigInteger resultAsBigInteger = BigInteger.valueOf(result);
 		BigInteger maxSignedValueForDataType = getMaxPossibleValue(bytesInDataType, true);
 		if (isSigned) {
-			boolean resultIsBiggerThanMaxPossibleSignedValue = resultAsBigInteger
-					.compareTo(maxSignedValueForDataType) > 0;
+			boolean resultIsBiggerThanMaxPossibleSignedValue = resultAsBigInteger.compareTo(maxSignedValueForDataType) > 0;
 			if (resultIsBiggerThanMaxPossibleSignedValue) {
-				throw new IllegalStateException("Unable to return the decoded value of [" + result + "] as a signed "
-						+ dataTypeName + " which has a max value of [" + maxSignedValueForDataType + "].");
+				throw new IllegalStateException(
+						"Unable to return the decoded value of [" + result + "] as a signed " + dataTypeName + " which has a max value of [" + maxSignedValueForDataType + "].");
 			}
 		} else {
 			if (result < 0) {
@@ -104,11 +99,9 @@ public class ByteUtil {
 				// So to find which signed BigInteger value is equivalent to
 				// the unsigned BigInteger value we want we use the following:
 				// SIGNED_VALUE = UNSIGNED_VALUE - 2^NUMBER_OF_BITS
-				BigInteger signedEquivalent = resultAsBigInteger
-						.subtract(BigInteger.valueOf(2).pow(BITS_PER_BYTE * bytesInDataType));
+				BigInteger signedEquivalent = resultAsBigInteger.subtract(BigInteger.valueOf(2).pow(BITS_PER_BYTE * bytesInDataType));
 				throw new IllegalStateException(
-						"Unable to return the decoded value of [" + signedEquivalent + "] as a signed " + dataTypeName
-								+ " which has a max value of [" + maxSignedValueForDataType + "].");
+						"Unable to return the decoded value of [" + signedEquivalent + "] as a signed " + dataTypeName + " which has a max value of [" + maxSignedValueForDataType + "].");
 			}
 		}
 
@@ -116,45 +109,39 @@ public class ByteUtil {
 	}
 
 	/**
-	 * Return a byte[] representation of the short based on the passed in
-	 * parameters.
+	 * Return a byte[] representation of the short based on the passed in parameters.
 	 * 
 	 * @param value
 	 * @param numberOfBytes
 	 * @param byteOrder
 	 * @param isSigned
-	 * @return a byte[] representation of the short based on the passed in
-	 *         parameters.
+	 * @return a byte[] representation of the short based on the passed in parameters.
 	 */
 	public static byte[] convertShortToBytes(short value, int numberOfBytes, ByteOrder byteOrder, boolean isSigned) {
 		return convertLongToBytes((long) value, numberOfBytes, byteOrder, isSigned);
 	}
 
 	/**
-	 * Return a byte[] representation of the int based on the passed in
-	 * parameters.
+	 * Return a byte[] representation of the int based on the passed in parameters.
 	 * 
 	 * @param value
 	 * @param numberOfBytes
 	 * @param byteOrder
 	 * @param isSigned
-	 * @return a byte[] representation of the int based on the passed in
-	 *         parameters.
+	 * @return a byte[] representation of the int based on the passed in parameters.
 	 */
 	public static byte[] convertIntToBytes(int value, int numberOfBytes, ByteOrder byteOrder, boolean isSigned) {
 		return convertLongToBytes((long) value, numberOfBytes, byteOrder, isSigned);
 	}
 
 	/**
-	 * Return a byte[] representation of the long based on the passed in
-	 * parameters.
+	 * Return a byte[] representation of the long based on the passed in parameters.
 	 * 
 	 * @param value
 	 * @param numberOfBytes
 	 * @param byteOrder
 	 * @param isSigned
-	 * @return a byte[] representation of the long based on the passed in
-	 *         parameters.
+	 * @return a byte[] representation of the long based on the passed in parameters.
 	 */
 	public static byte[] convertLongToBytes(long value, int numberOfBytes, ByteOrder byteOrder, boolean isSigned) {
 		byte[] results = null;
@@ -179,31 +166,26 @@ public class ByteUtil {
 
 			BigInteger maxValue = getMaxPossibleValue(numberOfBytes, isSigned);
 
-			throw new NumberOverflowException("The value[" + value + "] cannot be represented as " + signedText
-					+ " value which utilizes [" + numberOfBytes + "] bytes and has a max value of [" + maxValue
-					+ "].  At least [" + results.length + "] bytes are required to store this value.");
+			throw new NumberOverflowException("The value[" + value + "] cannot be represented as " + signedText + " value which utilizes [" + numberOfBytes + "] bytes and has a max value of ["
+					+ maxValue + "].  At least [" + results.length + "] bytes are required to store this value.");
 		}
 
 		return results;
 	}
 
 	/**
-	 * Return a byte[] representation of the BigInteger based on the passed in
-	 * parameters.
+	 * Return a byte[] representation of the BigInteger based on the passed in parameters.
 	 * 
 	 * @param value
 	 * @param numberOfBytes
 	 * @param byteOrder
 	 * @param isSigned
-	 * @return a byte[] representation of the BigInteger based on the passed in
-	 *         parameters.
+	 * @return a byte[] representation of the BigInteger based on the passed in parameters.
 	 */
-	public static byte[] convertBigIntegerToBytes(BigInteger value, int numberOfBytes, ByteOrder byteOrder,
-			boolean isSigned) {
+	public static byte[] convertBigIntegerToBytes(BigInteger value, int numberOfBytes, ByteOrder byteOrder, boolean isSigned) {
 		boolean valueIsLessThanZero = value.compareTo(BigInteger.ZERO) < 0;
 		if (valueIsLessThanZero && !isSigned) {
-			throw new IllegalStateException(
-					"Cannot represent the negative value[" + value + "] in an unsigned byte array.");
+			throw new IllegalStateException("Cannot represent the negative value[" + value + "] in an unsigned byte array.");
 		}
 
 		byte[] convertedBytes = null;
@@ -236,8 +218,7 @@ public class ByteUtil {
 			if (isSigned) {
 				signedText = "signed";
 			}
-			throw new IllegalStateException("The value[" + value + "] cannot be represented as a " + signedText
-					+ " value which utilizes [" + numberOfBytes + "].  At least [" + convertedBytes.length
+			throw new IllegalStateException("The value[" + value + "] cannot be represented as a " + signedText + " value which utilizes [" + numberOfBytes + "].  At least [" + convertedBytes.length
 					+ "] bytes are required to store this value.");
 		}
 
@@ -245,14 +226,12 @@ public class ByteUtil {
 	}
 
 	/**
-	 * Reduces the number of bytes to represent the provided number without
-	 * changing its value.
+	 * Reduces the number of bytes to represent the provided number without changing its value.
 	 * 
 	 * @param originalBytes
 	 * @param byteOrder
 	 * @param isSigned
-	 * @return a byte array which uses the least number of bytes to store the
-	 *         value.
+	 * @return a byte array which uses the least number of bytes to store the value.
 	 */
 	public static byte[] reduceToSmallestByteArray(byte[] originalBytes, ByteOrder byteOrder, boolean isSigned) {
 
@@ -308,8 +287,7 @@ public class ByteUtil {
 	}
 
 	/**
-	 * Increase the number of bytes used to store this number without affecting
-	 * its value.
+	 * Increase the number of bytes used to store this number without affecting its value.
 	 * 
 	 * @param originalBytes
 	 * @param desiredNumberOfBytes
@@ -317,13 +295,10 @@ public class ByteUtil {
 	 * @param isSigned
 	 * @return
 	 */
-	public static byte[] increaseNumberOfBytes(byte[] originalBytes, int desiredNumberOfBytes, ByteOrder byteOrder,
-			boolean isSigned) {
+	public static byte[] increaseNumberOfBytes(byte[] originalBytes, int desiredNumberOfBytes, ByteOrder byteOrder, boolean isSigned) {
 		if (originalBytes.length >= desiredNumberOfBytes) {
-			throw new IllegalArgumentException(
-					"Cannot increase the number of bytes when the size of the original byte array["
-							+ originalBytes.length + "] is greater than or equal to the desired number of bytes["
-							+ desiredNumberOfBytes + "].");
+			throw new IllegalArgumentException("Cannot increase the number of bytes when the size of the original byte array[" + originalBytes.length
+					+ "] is greater than or equal to the desired number of bytes[" + desiredNumberOfBytes + "].");
 		}
 
 		int numberOfBytesToInsert = desiredNumberOfBytes - originalBytes.length;
@@ -377,8 +352,7 @@ public class ByteUtil {
 	}
 
 	/**
-	 * Return the most significant byte in the provided byte array based on
-	 * endianess.
+	 * Return the most significant byte in the provided byte array based on endianess.
 	 * 
 	 * @param bytes
 	 * @param byteOrder
@@ -398,8 +372,7 @@ public class ByteUtil {
 	}
 
 	/**
-	 * Return true is the bit found at the bitIndex position is on (meaning it
-	 * has a value of 1).
+	 * Return true is the bit found at the bitIndex position is on (meaning it has a value of 1).
 	 * 
 	 * @param aByte
 	 * @param bitIndex
@@ -411,23 +384,19 @@ public class ByteUtil {
 	}
 
 	/**
-	 * Return the bit value(0 or 1) for the bit found at the bitIndex position
-	 * in the provided byte.
+	 * Return the bit value(0 or 1) for the bit found at the bitIndex position in the provided byte.
 	 * 
 	 * @param aByte
 	 * @param bitIndex
-	 * @return 0 or 1 based on the bit value at the bitIndex position in the
-	 *         provided byte.
+	 * @return 0 or 1 based on the bit value at the bitIndex position in the provided byte.
 	 */
 	public static int getBitValue(byte aByte, int bitIndex) {
 		if (bitIndex >= BITS_PER_BYTE) {
-			throw new ArrayIndexOutOfBoundsException("The provided bitIndex[" + bitIndex
-					+ "] is larger than the size of a byte[" + BITS_PER_BYTE + "].");
+			throw new ArrayIndexOutOfBoundsException("The provided bitIndex[" + bitIndex + "] is larger than the size of a byte[" + BITS_PER_BYTE + "].");
 		}
 
 		if (bitIndex < 0) {
-			throw new ArrayIndexOutOfBoundsException(
-					"The provided bitIndex[" + bitIndex + "] must be greater than or equal to zero.");
+			throw new ArrayIndexOutOfBoundsException("The provided bitIndex[" + bitIndex + "] must be greater than or equal to zero.");
 		}
 
 		int value = (aByte >> bitIndex) & 1;
@@ -435,8 +404,7 @@ public class ByteUtil {
 	}
 
 	/**
-	 * Sets the bit value of the provided byte at the provided bitIndex (0 <=
-	 * bitIndex <=7) to the provided bitValue(0 or 1).
+	 * Sets the bit value of the provided byte at the provided bitIndex (0 <= bitIndex <=7) to the provided bitValue(0 or 1).
 	 * 
 	 * @param aByte
 	 *            the byte in which the bit should be set
@@ -444,18 +412,15 @@ public class ByteUtil {
 	 *            an index between 0 and 7 (inclusive)
 	 * @param bitValue
 	 *            is a value of either 0 or 1.
-	 * @return the original byte with the bit at the bitIndex position set to
-	 *         bitValue.
+	 * @return the original byte with the bit at the bitIndex position set to bitValue.
 	 */
 	public static int setBitValue(byte aByte, int bitIndex, int bitValue) {
 		if (bitIndex >= BITS_PER_BYTE) {
-			throw new ArrayIndexOutOfBoundsException("The provided bitIndex[" + bitIndex
-					+ "] is larger than the size of a byte[" + BITS_PER_BYTE + "].");
+			throw new ArrayIndexOutOfBoundsException("The provided bitIndex[" + bitIndex + "] is larger than the size of a byte[" + BITS_PER_BYTE + "].");
 		}
 
 		if (bitIndex < 0) {
-			throw new ArrayIndexOutOfBoundsException(
-					"The provided bitIndex[" + bitIndex + "] must be greater than or equal to zero.");
+			throw new ArrayIndexOutOfBoundsException("The provided bitIndex[" + bitIndex + "] must be greater than or equal to zero.");
 		}
 
 		byte newByte = (byte) 0;
@@ -471,11 +436,8 @@ public class ByteUtil {
 	}
 
 	/**
-	 * Converts the provided bytes into a short based on the passed in
-	 * parameters. A NumberOverflowException will be thrown if the isSigned
-	 * parameter is false and the provided bytes cannot fit into a short. In
-	 * cases where this is expected the exception can be caught and the
-	 * convertBytesToInt method can be called subsequently.
+	 * Converts the provided bytes into a short based on the passed in parameters. A NumberOverflowException will be thrown if the isSigned parameter is false and the provided bytes cannot fit into a
+	 * short. In cases where this is expected the exception can be caught and the convertBytesToInt method can be called subsequently.
 	 * 
 	 * @param bytes
 	 * @param byteOrder
@@ -493,8 +455,8 @@ public class ByteUtil {
 		}
 
 		if (bytes.length != BYTES_IN_A_SHORT) {
-			throw new NumberOverflowException("The number of bytes required [" + bytes.length
-					+ "] to sufficiently store the value provided by the passed in arguments is too large to fit in a short datatype.");
+			throw new NumberOverflowException(
+					"The number of bytes required [" + bytes.length + "] to sufficiently store the value provided by the passed in arguments is too large to fit in a short datatype.");
 		}
 
 		short value = bytesToShort(bytes, byteOrder, isSigned);
@@ -502,11 +464,8 @@ public class ByteUtil {
 	}
 
 	/**
-	 * Converts the provided bytes into an int based on the passed in
-	 * parameters. A NumberOverflowException will be thrown if the isSigned
-	 * parameter is false and the provided bytes cannot fit into an int. In
-	 * cases where this is expected the exception can be caught and the
-	 * convertBytesToLong method can be called subsequently.
+	 * Converts the provided bytes into an int based on the passed in parameters. A NumberOverflowException will be thrown if the isSigned parameter is false and the provided bytes cannot fit into an
+	 * int. In cases where this is expected the exception can be caught and the convertBytesToLong method can be called subsequently.
 	 * 
 	 * @param bytes
 	 * @param byteOrder
@@ -524,8 +483,8 @@ public class ByteUtil {
 		}
 
 		if (bytes.length != BYTES_IN_AN_INT) {
-			throw new NumberOverflowException("The number of bytes required [" + bytes.length
-					+ "] to sufficiently store the value provided by the passed in arguments is too large to fit in an int datatype.");
+			throw new NumberOverflowException(
+					"The number of bytes required [" + bytes.length + "] to sufficiently store the value provided by the passed in arguments is too large to fit in an int datatype.");
 		}
 
 		int value = bytesToInt(bytes, byteOrder, isSigned);
@@ -533,11 +492,8 @@ public class ByteUtil {
 	}
 
 	/**
-	 * Converts the provided bytes into a long based on the passed in
-	 * parameters. A NumberOverflowException will be thrown if the isSigned
-	 * parameter is false and the provided bytes cannot fit into a long. In
-	 * cases where this is expected the exception can be caught and the
-	 * convertBytesToBigInteger method can be called subsequently.
+	 * Converts the provided bytes into a long based on the passed in parameters. A NumberOverflowException will be thrown if the isSigned parameter is false and the provided bytes cannot fit into a
+	 * long. In cases where this is expected the exception can be caught and the convertBytesToBigInteger method can be called subsequently.
 	 * 
 	 * @param bytes
 	 * @param byteOrder
@@ -563,8 +519,8 @@ public class ByteUtil {
 				bytes = increaseNumberOfBytes(bytes, BYTES_IN_A_LONG, byteOrder, isSigned);
 			}
 			throw new NumberOverflowException("The number of bytes required [" + BYTES_IN_A_LONG
-					+ "] to sufficiently store the value provided by the passed in arguments is too large to fit in a long datatype is not equal to the number of bytes found ["
-					+ bytes.length + "] .");
+					+ "] to sufficiently store the value provided by the passed in arguments is too large to fit in a long datatype is not equal to the number of bytes found [" + bytes.length
+					+ "] .");
 		}
 
 		long value = bytesToLong(bytes, byteOrder, isSigned);
@@ -602,14 +558,12 @@ public class ByteUtil {
 	}
 
 	/**
-	 * Return the max possible value for a byte array containing the indicated
-	 * number of bytes
+	 * Return the max possible value for a byte array containing the indicated number of bytes
 	 * 
 	 * @param numberOfBytes
 	 * @param isSigned
 	 *            (Are these bytes two's compiment?)
-	 * @return the largest possible value that can be represented with a byte
-	 *         array corresponding to the provided details.
+	 * @return the largest possible value that can be represented with a byte array corresponding to the provided details.
 	 */
 	public static BigInteger getMaxPossibleValue(int numberOfBytes, boolean isSigned) {
 
@@ -633,8 +587,7 @@ public class ByteUtil {
 	}
 
 	/**
-	 * Return a binary string (ex. 11100010 00011111) of the provided bytes.
-	 * Note: the output will contain a space to separate consecutive bytes.
+	 * Return a binary string (ex. 11100010 00011111) of the provided bytes. Note: the output will contain a space to separate consecutive bytes.
 	 * 
 	 * @param bytes
 	 * @return A string containing 1s and 0s with a space for byte delimitation.
@@ -649,9 +602,7 @@ public class ByteUtil {
 	}
 
 	/**
-	 * Return a byte[] representation of the provided binary String. Note:
-	 * Spaces will be removed prior to conversion which means strings using
-	 * spaces to delimitate bytes will be processed correctly.
+	 * Return a byte[] representation of the provided binary String. Note: Spaces will be removed prior to conversion which means strings using spaces to delimitate bytes will be processed correctly.
 	 * 
 	 * @param binaryString
 	 * @return A byte[] representation of the provided binary string.
@@ -668,13 +619,12 @@ public class ByteUtil {
 		int zeroCount = StringUtil.countMatches(binaryString, "0");
 		int oneAndZerocount = oneCount + zeroCount;
 		if (oneAndZerocount != length) {
-			throw new IllegalArgumentException(
-					"The provided binary string[" + binaryString + "] contains values others than 1 and 0.");
+			throw new IllegalArgumentException("The provided binary string[" + binaryString + "] contains values others than 1 and 0.");
 		}
 
 		if (length % BITS_PER_BYTE != 0) {
-			throw new IllegalArgumentException("The length[" + length + "] of the provided binary string["
-					+ binaryString + "] is not divisible by the number of bits in a byte[" + BITS_PER_BYTE + "].");
+			throw new IllegalArgumentException(
+					"The length[" + length + "] of the provided binary string[" + binaryString + "] is not divisible by the number of bits in a byte[" + BITS_PER_BYTE + "].");
 		}
 
 		int numberOfBytes = (int) Math.ceil((double) binaryString.length() / (double) BITS_PER_BYTE);

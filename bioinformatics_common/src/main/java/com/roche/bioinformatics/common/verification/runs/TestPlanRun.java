@@ -39,15 +39,13 @@ public class TestPlanRun {
 	private final static String EXTRA_ARGUMENTS_KEY = "extraArguments";
 	private final static String INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY = "inputArgumentNamesToFileNameRegex";
 
-	private final static String[] VALID_KEYS = new String[] { DESCRIPTION_KEY, COMMAND_KEY, EXTRA_ARGUMENTS_KEY,
-			INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY, RESULTS_SUBDIRECTORY_KEY, VARIABLES_KEY };
+	private final static String[] VALID_KEYS = new String[] { DESCRIPTION_KEY, COMMAND_KEY, EXTRA_ARGUMENTS_KEY, INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY, RESULTS_SUBDIRECTORY_KEY, VARIABLES_KEY };
 
 	private final static String RUN_DIRECTORY_VARIABLE_KEY = "RUN_DIR";
 	private final static String TEST_PLAN_DIRECTORY_VARIABLE_KEY = "TEST_PLAN_DIR";
 	private final static String SYSTEM_TEMP_DIRECTORY_VARIABLE_KEY = "SYSTEM_TEMP_DIR";
 
-	private TestPlanRun(File testPlanBaseDirectory, File runDirectory, String description, String command,
-			String[] extraArguments, Map<String, List<String>> fileNameRegexToInputArgumentNames,
+	private TestPlanRun(File testPlanBaseDirectory, File runDirectory, String description, String command, String[] extraArguments, Map<String, List<String>> fileNameRegexToInputArgumentNames,
 			String resultsSubDirectory, Map<String, String> variables) {
 		super();
 		this.testPlanBaseDirectory = testPlanBaseDirectory;
@@ -70,8 +68,7 @@ public class TestPlanRun {
 
 		this.variables.put(RUN_DIRECTORY_VARIABLE_KEY, runDirectory.getAbsolutePath());
 		this.variables.put(TEST_PLAN_DIRECTORY_VARIABLE_KEY, testPlanBaseDirectory.getAbsolutePath());
-		this.variables.put(SYSTEM_TEMP_DIRECTORY_VARIABLE_KEY,
-				FileUtil.getSystemSpecificTempDirectory().getAbsolutePath());
+		this.variables.put(SYSTEM_TEMP_DIRECTORY_VARIABLE_KEY, FileUtil.getSystemSpecificTempDirectory().getAbsolutePath());
 	}
 
 	private void setChecks(List<TestPlanRunCheck> checks) {
@@ -113,8 +110,7 @@ public class TestPlanRun {
 			// The backslash stuff is because replace all treats the backslash
 			// as
 			// an escape character
-			replacedText = replacedText.replaceAll("(?i)" + Pattern.quote("$" + entry.getKey() + "$"),
-					entry.getValue().replaceAll("\\\\", "\\\\\\\\"));
+			replacedText = replacedText.replaceAll("(?i)" + Pattern.quote("$" + entry.getKey() + "$"), entry.getValue().replaceAll("\\\\", "\\\\\\\\"));
 		}
 
 		return replacedText;
@@ -145,9 +141,8 @@ public class TestPlanRun {
 					}
 
 					if (matchingFile == null) {
-						throw new IllegalStateException("Unable to find a file in directory(ies)["
-								+ ArraysUtil.toString(directoriesSearched.toArray(new String[0]), ",")
-								+ "] matching the regex[" + regex + "].");
+						throw new IllegalStateException(
+								"Unable to find a file in directory(ies)[" + ArraysUtil.toString(directoriesSearched.toArray(new String[0]), ",") + "] matching the regex[" + regex + "].");
 					} else {
 						arguments.add(argument);
 						arguments.add(matchingFile.getAbsolutePath());
@@ -177,8 +172,7 @@ public class TestPlanRun {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static TestPlanRun readFromDirectory(File testPlanBaseDirectory, File testPlanRunDirectory,
-			TestPlanRun runSettingsToInherit) {
+	public static TestPlanRun readFromDirectory(File testPlanBaseDirectory, File testPlanRunDirectory, TestPlanRun runSettingsToInherit) {
 		TestPlanRun run = null;
 		Yaml yaml = new Yaml();
 
@@ -191,9 +185,8 @@ public class TestPlanRun {
 		});
 
 		if (applicationRunYamlFiles.length > 1) {
-			throw new IllegalStateException("There were multiple[" + applicationRunYamlFiles.length
-					+ "] .run files found in the provided test plan run directory[" + testPlanRunDirectory
-					+ "] whereas only 1 was expected.");
+			throw new IllegalStateException(
+					"There were multiple[" + applicationRunYamlFiles.length + "] .run files found in the provided test plan run directory[" + testPlanRunDirectory + "] whereas only 1 was expected.");
 		}
 
 		if (applicationRunYamlFiles.length == 1) {
@@ -208,8 +201,7 @@ public class TestPlanRun {
 				}
 
 				if (unrecognizedKeys.size() > 0) {
-					throw new IllegalArgumentException("The following YAML tags were not recognized: ["
-							+ ArraysUtil.toString(unrecognizedKeys.toArray(new String[0]), " ") + "] in the run file["
+					throw new IllegalArgumentException("The following YAML tags were not recognized: [" + ArraysUtil.toString(unrecognizedKeys.toArray(new String[0]), " ") + "] in the run file["
 							+ testPlanRunDirectory.getAbsolutePath() + "].");
 				}
 
@@ -252,30 +244,25 @@ public class TestPlanRun {
 					inputArgumentNamesToFileNameRegex.putAll(runSettingsToInherit.inputArgumentNamesToFileNameRegex);
 				}
 
-				Map<?, ?> inputArgumentsMapAsGenericMap = (Map<?, ?>) root
-						.get(INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY);
+				Map<?, ?> inputArgumentsMapAsGenericMap = (Map<?, ?>) root.get(INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY);
 
 				if (inputArgumentsMapAsGenericMap != null) {
 					Object firstValue = inputArgumentsMapAsGenericMap.values().iterator().next();
 
 					if (firstValue != null) {
 						if (firstValue instanceof String) {
-							Map<String, String> currentInputArgumentNamesToFileNameRegex = (Map<String, String>) root
-									.get(INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY);
+							Map<String, String> currentInputArgumentNamesToFileNameRegex = (Map<String, String>) root.get(INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY);
 							if (currentInputArgumentNamesToFileNameRegex != null) {
-								for (Entry<String, String> entry : currentInputArgumentNamesToFileNameRegex
-										.entrySet()) {
+								for (Entry<String, String> entry : currentInputArgumentNamesToFileNameRegex.entrySet()) {
 									List<String> regexes = new ArrayList<String>();
 									regexes.add(entry.getValue());
 									inputArgumentNamesToFileNameRegex.put(entry.getKey(), regexes);
 								}
 							}
 						} else if (firstValue instanceof List<?>) {
-							Map<String, String> currentInputArgumentNamesToFileNameRegex = (Map<String, String>) root
-									.get(INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY);
+							Map<String, String> currentInputArgumentNamesToFileNameRegex = (Map<String, String>) root.get(INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY);
 							if (currentInputArgumentNamesToFileNameRegex != null) {
-								inputArgumentNamesToFileNameRegex
-										.putAll((Map<String, List<String>>) inputArgumentsMapAsGenericMap);
+								inputArgumentNamesToFileNameRegex.putAll((Map<String, List<String>>) inputArgumentsMapAsGenericMap);
 							}
 						} else {
 							throw new AssertionError();
@@ -295,13 +282,11 @@ public class TestPlanRun {
 					}
 				}
 
-				run = new TestPlanRun(testPlanBaseDirectory, testPlanRunDirectory, description, command, extraArguments,
-						inputArgumentNamesToFileNameRegex, resultsSubDirectory, variablesMap);
+				run = new TestPlanRun(testPlanBaseDirectory, testPlanRunDirectory, description, command, extraArguments, inputArgumentNamesToFileNameRegex, resultsSubDirectory, variablesMap);
 				List<TestPlanRunCheck> checks = TestPlanRunCheck.readFromDirectory(run, testPlanRunDirectory);
 				run.setChecks(checks);
 			} catch (Exception e) {
-				throw new IllegalStateException(
-						"Unable to parse yaml file[" + inputYaml.getAbsolutePath() + "].  " + e.getMessage(), e);
+				throw new IllegalStateException("Unable to parse yaml file[" + inputYaml.getAbsolutePath() + "].  " + e.getMessage(), e);
 			}
 		}
 		return run;
@@ -318,8 +303,7 @@ public class TestPlanRun {
 		result = prime * result + ((command == null) ? 0 : CheckSumUtil.checkSum(command));
 		result = prime * result + ((description == null) ? 0 : CheckSumUtil.checkSum(description));
 		result = prime * result + ((extraArguments == null) ? 0 : CheckSumUtil.checkSum(extraArguments));
-		result = prime * result + ((inputArgumentNamesToFileNameRegex == null) ? 0
-				: CheckSumUtil.checkSum(inputArgumentNamesToFileNameRegex));
+		result = prime * result + ((inputArgumentNamesToFileNameRegex == null) ? 0 : CheckSumUtil.checkSum(inputArgumentNamesToFileNameRegex));
 		return result;
 	}
 
@@ -332,8 +316,7 @@ public class TestPlanRun {
 		result = prime * result + ((command == null) ? 0 : command.hashCode());
 		result = prime * result + ((description == null) ? 0 : description.hashCode());
 		result = prime * result + Arrays.hashCode(extraArguments);
-		result = prime * result
-				+ ((inputArgumentNamesToFileNameRegex == null) ? 0 : inputArgumentNamesToFileNameRegex.hashCode());
+		result = prime * result + ((inputArgumentNamesToFileNameRegex == null) ? 0 : inputArgumentNamesToFileNameRegex.hashCode());
 		result = prime * result + ((runDirectory == null) ? 0 : runDirectory.hashCode());
 		return result;
 	}
