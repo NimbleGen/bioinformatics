@@ -178,20 +178,23 @@ public class TestPlan {
 			}
 		});
 
-		boolean startingFolderExists = false;
-		runLoop: for (TestPlanRun run : sortedRuns) {
-			String runFolderName = run.getRunDirectory().getName();
-			startingFolderExists = runFolderName.equals(startingFolder);
-			if (startingFolderExists) {
-				break runLoop;
-			}
-		}
-
 		boolean startingFolderFound = true;
-		if (startingFolder != null && startingFolderExists) {
-			startingFolderFound = false;
-		} else {
-			throw new IllegalStateException("Could not find startFolder[" + startingFolder + "] in test plan directory[" + testPlanDirectory.getAbsolutePath() + "].");
+
+		if (startingFolder != null) {
+			boolean startingFolderExists = false;
+			runLoop: for (TestPlanRun run : sortedRuns) {
+				String runFolderName = run.getRunDirectory().getName();
+				startingFolderExists = runFolderName.equals(startingFolder);
+				if (startingFolderExists) {
+					break runLoop;
+				}
+			}
+
+			if (startingFolderExists) {
+				startingFolderFound = false;
+			} else {
+				throw new IllegalStateException("Could not find startFolder[" + startingFolder + "] in test plan directory[" + testPlanDirectory.getAbsolutePath() + "].");
+			}
 		}
 
 		for (TestPlanRun run : sortedRuns) {
@@ -208,8 +211,8 @@ public class TestPlan {
 
 				table.addCell(naCell);
 				table.addCell(new PdfPCell(new Phrase("" + runNumber, SMALL_BOLD_FONT)));
-				table.addCell(new PdfPCell(
-						new Phrase(run.getDescription() + StringUtil.NEWLINE + StringUtil.NEWLINE + "java -jar " + ArraysUtil.toString(run.getArguments().toArray(new String[0]), " "), SMALL_FONT)));
+				table.addCell(new PdfPCell(new Phrase(run.getDescription() + StringUtil.NEWLINE + StringUtil.NEWLINE + "java -jar "
+						+ ArraysUtil.toString(run.getArguments().toArray(new String[0]), " "), SMALL_FONT)));
 
 				table.addCell(grayCell);
 				table.addCell(grayCell);
