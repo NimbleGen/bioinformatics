@@ -90,7 +90,8 @@ public class ByteUtil {
 		if (isSigned) {
 			boolean resultIsBiggerThanMaxPossibleSignedValue = resultAsBigInteger.compareTo(maxSignedValueForDataType) > 0;
 			if (resultIsBiggerThanMaxPossibleSignedValue) {
-				throw new IllegalStateException("Unable to return the decoded value of [" + result + "] as a signed " + dataTypeName + " which has a max value of [" + maxSignedValueForDataType + "].");
+				throw new IllegalStateException(
+						"Unable to return the decoded value of [" + result + "] as a signed " + dataTypeName + " which has a max value of [" + maxSignedValueForDataType + "].");
 			}
 		} else {
 			if (result < 0) {
@@ -99,8 +100,8 @@ public class ByteUtil {
 				// the unsigned BigInteger value we want we use the following:
 				// SIGNED_VALUE = UNSIGNED_VALUE - 2^NUMBER_OF_BITS
 				BigInteger signedEquivalent = resultAsBigInteger.subtract(BigInteger.valueOf(2).pow(BITS_PER_BYTE * bytesInDataType));
-				throw new IllegalStateException("Unable to return the decoded value of [" + signedEquivalent + "] as a signed " + dataTypeName + " which has a max value of ["
-						+ maxSignedValueForDataType + "].");
+				throw new IllegalStateException(
+						"Unable to return the decoded value of [" + signedEquivalent + "] as a signed " + dataTypeName + " which has a max value of [" + maxSignedValueForDataType + "].");
 			}
 		}
 
@@ -154,6 +155,8 @@ public class ByteUtil {
 		if (results.length < numberOfBytes) {
 			results = increaseNumberOfBytes(results, numberOfBytes, byteOrder, isSigned);
 		}
+
+		System.out.println(results.length);
 
 		if (results.length != numberOfBytes) {
 			String signedText = "an unsigned";
@@ -256,7 +259,7 @@ public class ByteUtil {
 					smallestBytes[i] = originalBytes[originalIndex];
 				}
 			} else {
-				smallestBytes = originalBytes;
+				smallestBytes = new byte[] { originalBytes[0] };
 			}
 		} else if (byteOrder == ByteOrder.LITTLE_ENDIAN) {
 			int byteIndexOfFirstValuedByte = 0;
@@ -274,7 +277,7 @@ public class ByteUtil {
 					smallestBytes[i] = originalBytes[i];
 				}
 			} else {
-				smallestBytes = originalBytes;
+				smallestBytes = new byte[] { originalBytes[0] };
 			}
 		} else {
 			throw new IllegalStateException("Unrecognized ByteOrder value[" + byteOrder + "].");
@@ -452,8 +455,8 @@ public class ByteUtil {
 		}
 
 		if (bytes.length != BYTES_IN_A_SHORT) {
-			throw new NumberOverflowException("The number of bytes required [" + bytes.length
-					+ "] to sufficiently store the value provided by the passed in arguments is too large to fit in a short datatype.");
+			throw new NumberOverflowException(
+					"The number of bytes required [" + bytes.length + "] to sufficiently store the value provided by the passed in arguments is too large to fit in a short datatype.");
 		}
 
 		short value = bytesToShort(bytes, byteOrder, isSigned);
@@ -480,8 +483,8 @@ public class ByteUtil {
 		}
 
 		if (bytes.length != BYTES_IN_AN_INT) {
-			throw new NumberOverflowException("The number of bytes required [" + bytes.length
-					+ "] to sufficiently store the value provided by the passed in arguments is too large to fit in an int datatype.");
+			throw new NumberOverflowException(
+					"The number of bytes required [" + bytes.length + "] to sufficiently store the value provided by the passed in arguments is too large to fit in an int datatype.");
 		}
 
 		int value = bytesToInt(bytes, byteOrder, isSigned);
@@ -508,8 +511,16 @@ public class ByteUtil {
 		}
 
 		if (bytes.length != BYTES_IN_A_LONG) {
-			throw new NumberOverflowException("The number of bytes required [" + bytes.length
-					+ "] to sufficiently store the value provided by the passed in arguments is too large to fit in a long datatype.");
+			if (bytes.length > BYTES_IN_A_LONG) {
+				bytes = reduceToSmallestByteArray(bytes, byteOrder, isSigned);
+			}
+
+			if (bytes.length < BYTES_IN_A_LONG) {
+				bytes = increaseNumberOfBytes(bytes, BYTES_IN_A_LONG, byteOrder, isSigned);
+			}
+			throw new NumberOverflowException("The number of bytes required [" + BYTES_IN_A_LONG
+					+ "] to sufficiently store the value provided by the passed in arguments is too large to fit in a long datatype is not equal to the number of bytes found [" + bytes.length
+					+ "] .");
 		}
 
 		long value = bytesToLong(bytes, byteOrder, isSigned);
@@ -612,8 +623,8 @@ public class ByteUtil {
 		}
 
 		if (length % BITS_PER_BYTE != 0) {
-			throw new IllegalArgumentException("The length[" + length + "] of the provided binary string[" + binaryString + "] is not divisible by the number of bits in a byte[" + BITS_PER_BYTE
-					+ "].");
+			throw new IllegalArgumentException(
+					"The length[" + length + "] of the provided binary string[" + binaryString + "] is not divisible by the number of bits in a byte[" + BITS_PER_BYTE + "].");
 		}
 
 		int numberOfBytes = (int) Math.ceil((double) binaryString.length() / (double) BITS_PER_BYTE);
@@ -658,7 +669,8 @@ public class ByteUtil {
 		// System.out.println(isNegative(bytes, ByteOrder.BIG_ENDIAN, true));
 		// System.out.println(isNegative(bytes, ByteOrder.LITTLE_ENDIAN, true));
 
-		// bytes = increaseNumberOfBytes(bytes, 3, ByteOrder.LITTLE_ENDIAN, true);
+		// bytes = increaseNumberOfBytes(bytes, 3, ByteOrder.LITTLE_ENDIAN,
+		// true);
 		// System.out.println(convertBytesToBinaryString(bytes));
 
 	}

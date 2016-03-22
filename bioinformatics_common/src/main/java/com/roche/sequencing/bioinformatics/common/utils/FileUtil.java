@@ -344,7 +344,8 @@ public final class FileUtil {
 			// Attempt to recursively delete directory
 			FileUtils.deleteDirectory(directory);
 		} catch (IOException e) {
-			// Directories mounted on NFS volumes may have lingering .nfsXXXX files
+			// Directories mounted on NFS volumes may have lingering .nfsXXXX
+			// files
 			// if no streams are open, it is likely from stale objects
 			int totalAttempts = 5;
 			for (int i = 0; i < totalAttempts; i++) {
@@ -555,5 +556,36 @@ public final class FileUtil {
 			throw new IllegalArgumentException("The provided directory[" + directory + "] contains more than one file matching the provided regex[" + regex + "].");
 		}
 		return matchingFile;
+	}
+
+	public static File getMatchingDirectoryRelativeToBaseDirectory(File baseDirectory, String[] regularExpressionsForRelativeFolders) {
+		File currentDirectory = baseDirectory;
+		for (String regularExpressionForNextFolder : regularExpressionsForRelativeFolders) {
+			if (regularExpressionForNextFolder.equals(".")) {
+				// stay in the current directory
+			} else if (regularExpressionForNextFolder.equals("..")) {
+				currentDirectory = currentDirectory.getParentFile();
+			} else {
+				List<File> matchingFiles = new ArrayList<File>();
+				for (File childFile : currentDirectory.listFiles()) {
+					if (childFile.isDirectory()) {
+						if (Pattern.matches(regularExpressionForNextFolder, childFile.getName())) {
+							matchingFiles.add(childFile);
+						}
+					}
+				}
+				if (matchingFiles.size() == 1) {
+					currentDirectory = matchingFiles.get(0);
+				} else if (matchingFiles.size() == 0) {
+					throw new IllegalStateException(
+							"Unable to locate a sub folder matching the regular expression[" + regularExpressionForNextFolder + "] in the directory[" + currentDirectory.getAbsolutePath() + "].");
+				} else {
+					throw new IllegalStateException("The regular expression[" + regularExpressionForNextFolder + "] matches more than one file (" + matchingFiles.size()
+							+ " matches found) in the directory[" + currentDirectory.getAbsolutePath() + "].");
+				}
+			}
+		}
+
+		return currentDirectory;
 	}
 }

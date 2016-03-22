@@ -2,7 +2,6 @@ package com.roche.bioinformatics.common.verification.runs;
 
 import java.io.File;
 import java.io.FilenameFilter;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -13,7 +12,6 @@ import java.util.Map.Entry;
 import java.util.regex.Pattern;
 
 import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.scanner.ScannerException;
 
 import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
 import com.roche.sequencing.bioinformatics.common.utils.CheckSumUtil;
@@ -109,7 +107,9 @@ public class TestPlanRun {
 		String replacedText = text;
 
 		for (Entry<String, String> entry : variables.entrySet()) {
-			// The backlash stuff is because replace all treats the backslash as an escape character
+			// The backslash stuff is because replace all treats the backslash
+			// as
+			// an escape character
 			replacedText = replacedText.replaceAll("(?i)" + Pattern.quote("$" + entry.getKey() + "$"), entry.getValue().replaceAll("\\\\", "\\\\\\\\"));
 		}
 
@@ -141,8 +141,8 @@ public class TestPlanRun {
 					}
 
 					if (matchingFile == null) {
-						throw new IllegalStateException("Unable to find a file in directory(ies)[" + ArraysUtil.toString(directoriesSearched.toArray(new String[0]), ",") + "] matching the regex["
-								+ regex + "].");
+						throw new IllegalStateException(
+								"Unable to find a file in directory(ies)[" + ArraysUtil.toString(directoriesSearched.toArray(new String[0]), ",") + "] matching the regex[" + regex + "].");
 					} else {
 						arguments.add(argument);
 						arguments.add(matchingFile.getAbsolutePath());
@@ -185,15 +185,14 @@ public class TestPlanRun {
 		});
 
 		if (applicationRunYamlFiles.length > 1) {
-			throw new IllegalStateException("There were multiple[" + applicationRunYamlFiles.length + "] .run files found in the provided test plan run directory[" + testPlanRunDirectory
-					+ "] whereas only 1 was expected.");
+			throw new IllegalStateException(
+					"There were multiple[" + applicationRunYamlFiles.length + "] .run files found in the provided test plan run directory[" + testPlanRunDirectory + "] whereas only 1 was expected.");
 		}
 
 		if (applicationRunYamlFiles.length == 1) {
 			File inputYaml = new File(testPlanRunDirectory, applicationRunYamlFiles[0]);
 			try {
 				Map<String, Object> root = (Map<String, Object>) yaml.load(FileUtil.readFileAsString(inputYaml));
-
 				List<String> unrecognizedKeys = new ArrayList<String>();
 				for (String key : root.keySet()) {
 					if (!ArraysUtil.contains(VALID_KEYS, key)) {
@@ -286,11 +285,8 @@ public class TestPlanRun {
 				run = new TestPlanRun(testPlanBaseDirectory, testPlanRunDirectory, description, command, extraArguments, inputArgumentNamesToFileNameRegex, resultsSubDirectory, variablesMap);
 				List<TestPlanRunCheck> checks = TestPlanRunCheck.readFromDirectory(run, testPlanRunDirectory);
 				run.setChecks(checks);
-
-			} catch (ScannerException e) {
+			} catch (Exception e) {
 				throw new IllegalStateException("Unable to parse yaml file[" + inputYaml.getAbsolutePath() + "].  " + e.getMessage(), e);
-			} catch (IOException e) {
-				throw new IllegalStateException(e.getMessage(), e);
 			}
 		}
 		return run;

@@ -83,7 +83,7 @@ public class TestPlan {
 	}
 
 	public boolean createTestPlan(File outputTestPlan) {
-		return createTestPlanReport(null, outputTestPlan, null, null, false, false);
+		return createTestPlanReport(null, outputTestPlan, null, null, false, false, null);
 	}
 
 	/**
@@ -92,8 +92,8 @@ public class TestPlan {
 	 * @param outputReport
 	 * @return true if test plan ran succesfully with no failures, false otherwise
 	 */
-	public boolean createTestPlanReport(File applicationToTest, File testPlanExecutionDirectory, File outputReport, File optionalJvmBinPath, boolean createZip) {
-		return createTestPlanReport(applicationToTest, outputReport, testPlanExecutionDirectory, optionalJvmBinPath, true, createZip);
+	public boolean createTestPlanReport(File applicationToTest, File testPlanExecutionDirectory, File outputReport, File optionalJvmBinPath, boolean createZip, String startingFolder) {
+		return createTestPlanReport(applicationToTest, outputReport, testPlanExecutionDirectory, optionalJvmBinPath, true, createZip, startingFolder);
 	}
 
 	/**
@@ -102,7 +102,8 @@ public class TestPlan {
 	 * @param outputReport
 	 * @return true if test plan ran successfully with no failures, false otherwise
 	 */
-	private boolean createTestPlanReport(File applicationToTest, File outputReport, File testPlanExecutionDirectory, File optionalJvmBinPath, boolean createReport, boolean createZip) {
+	private boolean createTestPlanReport(File applicationToTest, File outputReport, File testPlanExecutionDirectory, File optionalJvmBinPath, boolean createReport, boolean createZip,
+			String startingFolder) {
 		String startTime = DateUtil.getCurrentDateINYYYYMMDDHHMMSSwithColons();
 		if (createReport && !applicationToTest.exists()) {
 			throw new IllegalArgumentException("The provided applicationToTest[" + applicationToTest.getAbsolutePath() + "] does not exist.");
@@ -177,71 +178,92 @@ public class TestPlan {
 			}
 		});
 
+		boolean startingFolderExists = false;
+		runLoop: for (TestPlanRun run : sortedRuns) {
+			String runFolderName = run.getRunDirectory().getName();
+			startingFolderExists = runFolderName.equals(startingFolder);
+			if (startingFolderExists) {
+				break runLoop;
+			}
+		}
+
+		boolean startingFolderFound = true;
+		if (startingFolder != null && startingFolderExists) {
+			startingFolderFound = false;
+		} else {
+			throw new IllegalStateException("Could not find startFolder[" + startingFolder + "] in test plan directory[" + testPlanDirectory.getAbsolutePath() + "].");
+		}
+
 		for (TestPlanRun run : sortedRuns) {
-			RunResults runResults = null;
-			CliStatusConsole.logStatus("");
-			CliStatusConsole.logStatus("Running step " + runNumber + "(" + run.getRunDirectory().getAbsolutePath() + ") : " + run.getDescription());
-			if (createReport) {
-				runResults = executeRun(run, applicationToTest, testPlanExecutionDirectory, runNumber, optionalJvmBinPath);
-			}
+			startingFolderFound = startingFolderFound || run.getRunDirectory().getName().equals(startingFolder);
 
-			table.addCell(naCell);
-			table.addCell(new PdfPCell(new Phrase("" + runNumber, SMALL_BOLD_FONT)));
-			table.addCell(new PdfPCell(new Phrase(run.getDescription() + StringUtil.NEWLINE + StringUtil.NEWLINE + "java -jar " + ArraysUtil.toString(run.getArguments().toArray(new String[0]), " "),
-					SMALL_FONT)));
+			if (startingFolderFound) {
 
-			table.addCell(grayCell);
-			table.addCell(grayCell);
-			table.addCell(grayCell);
-
-			if (run.getChecks().size() == 0) {
-				throw new IllegalStateException("The provided step[" + run.getDescription() + "] has not checks which make it an invalid test.");
-			}
-
-			int checkNumber = 1;
-			for (TestPlanRunCheck check : run.getChecks()) {
-
-				String referenceTypeAndNumbers = "";
-				for (String requirement : check.getRequirements()) {
-					referenceTypeAndNumbers += requirement + StringUtil.NEWLINE;
-				}
-				String stepNumber = runNumber + "." + checkNumber;
-				if (referenceTypeAndNumbers.isEmpty()) {
-					table.addCell(naCell);
-				} else {
-					table.addCell(new PdfPCell(new Phrase(referenceTypeAndNumbers, SMALL_FONT)));
+				RunResults runResults = null;
+				CliStatusConsole.logStatus("");
+				CliStatusConsole.logStatus("Running step " + runNumber + "(" + run.getRunDirectory().getAbsolutePath() + ") : " + run.getDescription());
+				if (createReport) {
+					runResults = executeRun(run, applicationToTest, testPlanExecutionDirectory, runNumber, optionalJvmBinPath);
 				}
 
-				table.addCell(new PdfPCell(new Phrase(stepNumber, SMALL_FONT)));
-				table.addCell(new PdfPCell(new Phrase(check.getDescription(), SMALL_FONT)));
-				table.addCell(new PdfPCell(new Phrase(check.getAcceptanceCriteria(), SMALL_FONT)));
+				table.addCell(naCell);
+				table.addCell(new PdfPCell(new Phrase("" + runNumber, SMALL_BOLD_FONT)));
+				table.addCell(new PdfPCell(
+						new Phrase(run.getDescription() + StringUtil.NEWLINE + StringUtil.NEWLINE + "java -jar " + ArraysUtil.toString(run.getArguments().toArray(new String[0]), " "), SMALL_FONT)));
 
-				if (runResults != null) {
-					TestPlanRunCheckResult checkResult = check.check(runResults);
-					table.addCell(new PdfPCell(new Phrase(checkResult.getResultDescription(), SMALL_FONT)));
+				table.addCell(grayCell);
+				table.addCell(grayCell);
+				table.addCell(grayCell);
 
-					boolean wasCheckSuccess = checkResult.isPassed();
+				if (run.getChecks().size() == 0) {
+					throw new IllegalStateException("The provided step[" + run.getDescription() + "] has not checks which make it an invalid test.");
+				}
 
-					if (wasCheckSuccess) {
-						table.addCell(new PdfPCell(new Phrase("Pass", SMALL_FONT)));
-						CliStatusConsole.logStatus("  Check " + stepNumber + " passed : " + check.getDescription());
+				int checkNumber = 1;
+				for (TestPlanRunCheck check : run.getChecks()) {
+
+					String referenceTypeAndNumbers = "";
+					for (String requirement : check.getRequirements()) {
+						referenceTypeAndNumbers += requirement + StringUtil.NEWLINE;
+					}
+					String stepNumber = runNumber + "." + checkNumber;
+					if (referenceTypeAndNumbers.isEmpty()) {
+						table.addCell(naCell);
 					} else {
-						table.addCell(new PdfPCell(new Phrase("Fail", SMALL_FONT)));
-						CliStatusConsole.logStatus("  Check " + stepNumber + " failed : " + check.getDescription());
+						table.addCell(new PdfPCell(new Phrase(referenceTypeAndNumbers, SMALL_FONT)));
 					}
 
-					if (wasCheckSuccess) {
-						passedChecks++;
-					}
+					table.addCell(new PdfPCell(new Phrase(stepNumber, SMALL_FONT)));
+					table.addCell(new PdfPCell(new Phrase(check.getDescription(), SMALL_FONT)));
+					table.addCell(new PdfPCell(new Phrase(check.getAcceptanceCriteria(), SMALL_FONT)));
 
-					wasSuccess = wasSuccess && wasCheckSuccess;
-				} else {
-					table.addCell(emptyWhiteCell);
-					table.addCell(emptyWhiteCell);
+					if (runResults != null) {
+						TestPlanRunCheckResult checkResult = check.check(runResults);
+						table.addCell(new PdfPCell(new Phrase(checkResult.getResultDescription(), SMALL_FONT)));
+
+						boolean wasCheckSuccess = checkResult.isPassed();
+
+						if (wasCheckSuccess) {
+							table.addCell(new PdfPCell(new Phrase("Pass", SMALL_FONT)));
+							CliStatusConsole.logStatus("  Check " + stepNumber + " passed : " + check.getDescription());
+						} else {
+							table.addCell(new PdfPCell(new Phrase("Fail", SMALL_FONT)));
+							CliStatusConsole.logStatus("  Check " + stepNumber + " failed : " + check.getDescription());
+						}
+
+						if (wasCheckSuccess) {
+							passedChecks++;
+						}
+
+						wasSuccess = wasSuccess && wasCheckSuccess;
+					} else {
+						table.addCell(emptyWhiteCell);
+						table.addCell(emptyWhiteCell);
+					}
+					checkNumber++;
+					totalChecks++;
+
 				}
-				checkNumber++;
-				totalChecks++;
-
 			}
 			runNumber++;
 		}
@@ -287,6 +309,7 @@ public class TestPlan {
 			try {
 				String md5Sum = Md5CheckSumUtil.md5sum(applicationToTest);
 				executionDetailsParagraph.add(new Phrase("Jar File Md5Sum: " + md5Sum, REGULAR_FONT));
+				executionDetailsParagraph.add(new Phrase("Jar File Location: " + applicationToTest.getAbsolutePath()));
 				executionDetailsParagraph.add(Chunk.NEWLINE);
 			} catch (IOException e1) {
 			}
@@ -345,13 +368,6 @@ public class TestPlan {
 			creationDetailsParagraph.add(Chunk.NEWLINE);
 			creationDetailsParagraph.add(new Phrase("Test Plan Directory: " + testPlanDirectory.getAbsolutePath(), REGULAR_FONT));
 			creationDetailsParagraph.add(Chunk.NEWLINE);
-			try {
-				String md5Sum = Md5CheckSumUtil.md5sum(applicationToTest);
-				creationDetailsParagraph.add(new Phrase("Jar File Md5Sum: " + md5Sum, REGULAR_FONT));
-				creationDetailsParagraph.add(new Phrase("Jar File Location: " + applicationToTest.getAbsolutePath()));
-				creationDetailsParagraph.add(Chunk.NEWLINE);
-			} catch (IOException e1) {
-			}
 
 			try {
 				pdfDocument.add(creationDetailsParagraph);

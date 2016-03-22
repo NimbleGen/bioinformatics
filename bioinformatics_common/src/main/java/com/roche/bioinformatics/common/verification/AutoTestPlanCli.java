@@ -55,6 +55,8 @@ public class AutoTestPlanCli {
 	public final static CommandLineOption OUTPUT_FILE_OPTION = new CommandLineOption("Output File", "output", null, "The output file to write the test plan or report.", true, false);
 	public final static CommandLineOption ZIP_RESULTS_OPTION = new CommandLineOption("Zip Results", "zipResults", null,
 			"Zip the results files and place them in the output directory then delete the results directory.", false, true);
+	public final static CommandLineOption STARTING_FOLDER_OPTION = new CommandLineOption("Starting Folder", "startFolder", null,
+			"Starts at the provided folder name if it exists and skips all previous tests.", false, false);
 
 	public final static String FILE_LOGGER_NAME = "root";
 
@@ -197,6 +199,7 @@ public class AutoTestPlanCli {
 		group.addOption(APPLICATION_JAR_FILE_OPTION);
 		group.addOption(OUTPUT_FILE_OPTION);
 		group.addOption(ZIP_RESULTS_OPTION);
+		group.addOption(STARTING_FOLDER_OPTION);
 		group.addOption(JVM_BIN_PATH_OPTION);
 		return group;
 	}
@@ -272,8 +275,12 @@ public class AutoTestPlanCli {
 			File testPlanExecutionDirectory = new File(parsedCommandLine.getOptionsValue(TEST_PLAN_EXECUTION_RESULTS_DIRECTORY_OPTION));
 
 			boolean createZip = parsedCommandLine.isOptionPresent(ZIP_RESULTS_OPTION);
+			String startingFolder = null;
+			if (parsedCommandLine.isOptionPresent(STARTING_FOLDER_OPTION)) {
+				startingFolder = parsedCommandLine.getOptionsValue(STARTING_FOLDER_OPTION);
+			}
 
-			testPlan.createTestPlanReport(appToTest, testPlanExecutionDirectory, outputFile, jvmBinFile, createZip);
+			testPlan.createTestPlanReport(appToTest, testPlanExecutionDirectory, outputFile, jvmBinFile, createZip, startingFolder);
 		} else {
 			testPlan.createTestPlan(outputFile);
 		}
