@@ -79,6 +79,24 @@ public final class ArraysUtil {
 
 	/**
 	 * @param values
+	 * @return the max of all provided values
+	 */
+	public static int max(int[]... values) {
+		int max = Integer.MIN_VALUE;
+
+		for (int[] rows : values) {
+			for (int value : rows) {
+				if (value > max) {
+					max = value;
+				}
+			}
+		}
+
+		return max;
+	}
+
+	/**
+	 * @param values
 	 * @return the min of all provided values
 	 */
 	public static int min(int... values) {

@@ -16,6 +16,8 @@
 
 package com.roche.sequencing.bioinformatics.common.utils;
 
+import java.awt.event.KeyEvent;
+
 /**
  * Utility class for working with Strings
  * 
@@ -192,6 +194,17 @@ public final class StringUtil {
 			startingReferenceIndex++;
 		}
 		return match;
+	}
+
+	/**
+	 * Taken from herehttp://stackoverflow.com/questions/220547/printable-char-in-java
+	 * 
+	 * @param character
+	 * @return
+	 */
+	public static boolean isPrintableChar(char character) {
+		Character.UnicodeBlock block = Character.UnicodeBlock.of(character);
+		return (!Character.isISOControl(character)) && character != KeyEvent.CHAR_UNDEFINED && block != null && block != Character.UnicodeBlock.SPECIALS;
 	}
 
 }
