@@ -217,6 +217,14 @@ public final class ArraysUtil {
 		return newArray;
 	}
 
+	public static int[] createIntArray(int length, int defaultValue) {
+		int[] newArray = new int[length];
+		for (int i = 0; i < length; i++) {
+			newArray[i] = defaultValue;
+		}
+		return newArray;
+	}
+
 	public static int[] createIncrementingArray(int start, int end, int increment) {
 		int size = (end - start + 1) / increment;
 		int[] array = new int[size];
@@ -247,11 +255,16 @@ public final class ArraysUtil {
 	}
 
 	public static String toString(String[] strings, String delimiter) {
-		StringBuilder returnString = new StringBuilder();
-		for (String string : strings) {
-			returnString.append(string + delimiter);
+		String returnString = "";
+
+		if (strings.length > 0) {
+			StringBuilder returnStringBuilder = new StringBuilder();
+			for (String string : strings) {
+				returnStringBuilder.append(string + delimiter);
+			}
+			returnString = returnStringBuilder.substring(0, returnStringBuilder.length() - delimiter.length());
 		}
-		return returnString.substring(0, returnString.length() - delimiter.length());
+		return returnString;
 	}
 
 	public static boolean contains(String[] values, String containedValue) {
@@ -263,5 +276,47 @@ public final class ArraysUtil {
 		}
 
 		return isContained;
+	}
+
+	public static <T> String printMatrix(T[][] a) {
+		StringBuilder stringBuilder = new StringBuilder();
+
+		int maxEntryLength = 0;
+		for (int row = 0; row < a.length; row++) {
+			for (int column = 0; column < a[0].length; column++) {
+				String entryAsString = "" + a[row][column];
+				maxEntryLength = Math.max(entryAsString.length(), maxEntryLength);
+			}
+		}
+
+		for (int row = 0; row < a.length; row++) {
+			for (int column = 0; column < a[0].length; column++) {
+				String entryAsString = "" + a[row][column];
+				stringBuilder.append(a[row][column] + StringUtil.repeatString(" ", maxEntryLength - entryAsString.length()) + " ");
+			}
+			stringBuilder.append(StringUtil.NEWLINE);
+		}
+		return stringBuilder.toString();
+	}
+
+	public static String printMatrix(double[][] a) {
+		StringBuilder stringBuilder = new StringBuilder();
+
+		int maxEntryLength = 0;
+		for (int row = 0; row < a.length; row++) {
+			for (int column = 0; column < a[0].length; column++) {
+				String entryAsString = "" + a[row][column];
+				maxEntryLength = Math.max(entryAsString.length(), maxEntryLength);
+			}
+		}
+
+		for (int row = 0; row < a.length; row++) {
+			for (int column = 0; column < a[0].length; column++) {
+				String entryAsString = "" + a[row][column];
+				stringBuilder.append(a[row][column] + StringUtil.repeatString(" ", maxEntryLength - entryAsString.length()) + " ");
+			}
+			stringBuilder.append(StringUtil.NEWLINE);
+		}
+		return stringBuilder.toString();
 	}
 }

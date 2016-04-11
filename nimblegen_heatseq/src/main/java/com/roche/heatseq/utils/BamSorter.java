@@ -296,21 +296,6 @@ public class BamSorter {
 		}
 	}
 
-	public static class SamRecordCoordinatesComparator implements Comparator<SAMRecord> {
-		@Override
-		public int compare(SAMRecord o1, SAMRecord o2) {
-			int result = o1.getReadName().compareTo(o2.getReadName());
-			if (result == 0) {
-				if (o1.getFirstOfPairFlag() && !o2.getFirstOfPairFlag()) {
-					result = -1;
-				} else {
-					result = 1;
-				}
-			}
-			return result;
-		}
-	}
-
 	public static void main(String[] args) {
 		long start = System.currentTimeMillis();
 		File inputFile = new File("D:/kurts_space/heatseq/big/input.bam");

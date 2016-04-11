@@ -249,12 +249,12 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		Map<String, Probe> readToProbeAssignments = new ConcurrentHashMap<String, Probe>();
 		Set<String> sequenceNames = probeInfo.getSequenceNames();
 
-		Map<String, RangeMap<Probe>> positveStrandProbesRangesBySequenceName = new ConcurrentHashMap<String, RangeMap<Probe>>();
-		Map<String, RangeMap<Probe>> negativeStrandProbesRangesBySequenceName = new ConcurrentHashMap<String, RangeMap<Probe>>();
+		Map<String, IRangeMap<Probe>> positveStrandProbesRangesBySequenceName = new ConcurrentHashMap<String, IRangeMap<Probe>>();
+		Map<String, IRangeMap<Probe>> negativeStrandProbesRangesBySequenceName = new ConcurrentHashMap<String, IRangeMap<Probe>>();
 		for (String sequenceName : sequenceNames) {
 			List<Probe> probes = probeInfo.getProbesBySequenceName(sequenceName);
-			RangeMap<Probe> positiveStrandRangeMap = new NewRangeMap<Probe>();
-			RangeMap<Probe> negativeStrandRangeMap = new NewRangeMap<Probe>();
+			IRangeMap<Probe> positiveStrandRangeMap = new RangeMap<Probe>();
+			IRangeMap<Probe> negativeStrandRangeMap = new RangeMap<Probe>();
 			for (Probe probe : probes) {
 				int queryStart = probe.getStart();
 				Integer basesInsideExtensionPrimerWindow = applicationSettings.getProbeHeaderInformation().getBasesInsideExtensionPrimerWindow();
@@ -327,16 +327,16 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		private final String sequenceName;
 		private final File samFile;
 		private final File samIndexFile;
-		private Map<String, RangeMap<Probe>> positveStrandProbesRangesBySequenceName;
-		private Map<String, RangeMap<Probe>> negativeStrandProbesRangesBySequenceName;
+		private Map<String, IRangeMap<Probe>> positveStrandProbesRangesBySequenceName;
+		private Map<String, IRangeMap<Probe>> negativeStrandProbesRangesBySequenceName;
 		private final TallyMap<Probe> probesAssignedToMult;
 		private final TallyMap<String> readNamesThatAreTheSameForMultiplePairs;
 		private final Map<String, Probe> readToProbeAssignments;
 		private final AtomicInteger assignedToMultProbesCount;
 		private final String commonReadNameBeginning;
 
-		public ReadToProbeAssigner(String sequenceName, File samFile, File samIndexFile, Map<String, RangeMap<Probe>> positveStrandProbesRangesBySequenceName,
-				Map<String, RangeMap<Probe>> negativeStrandProbesRangesBySequenceName, TallyMap<Probe> probesAssignedToMult, TallyMap<String> readNamesThatAreTheSameForMultiplePairs,
+		public ReadToProbeAssigner(String sequenceName, File samFile, File samIndexFile, Map<String, IRangeMap<Probe>> positveStrandProbesRangesBySequenceName,
+				Map<String, IRangeMap<Probe>> negativeStrandProbesRangesBySequenceName, TallyMap<Probe> probesAssignedToMult, TallyMap<String> readNamesThatAreTheSameForMultiplePairs,
 				Map<String, Probe> readToProbeAssignments, AtomicInteger assignedToMultProbesCount, String commonReadNameBeginning) {
 			super();
 			this.sequenceName = sequenceName;
@@ -370,7 +370,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 					boolean isUnmapped = record.getMateUnmappedFlag() || record.getReadUnmappedFlag();
 
 					if (record != null && !isUnmapped) {
-						RangeMap<Probe> probeRanges = null;
+						IRangeMap<Probe> probeRanges = null;
 
 						// ASSUMPTIONS:
 						// Fastq1/firstOfPair always has same strandedness as probe
@@ -1358,15 +1358,30 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 	}
 
 	public static void main(String[] args) {
-		RangeMap<String> rangeMap = new NewRangeMap<String>();
-		rangeMap.put(27101323, 27101469, "chr1:27101345:27101443:-");
-		rangeMap.put(115252164, 115252300, "chr1:115252192:115252274:-");
-		rangeMap.put(115256484, 115256605, "chr1:115256508:115256577:-");
-		rangeMap.put(115258693, 115258810, "chr1:115258721:115258786:-");
+		List<String> test = new ArrayList<String>();
+		test.add("chr1:43803493:43803592:+");
+		test.add("chr1:43803585:43803679:+");
+		test.add("chr1:43803733:43803827:+");
+		test.add("chr1:43803817:43803911:+");
+		test.add("chr1:43806027:43806121:+");
+		test.add("chr1:43812425:43812519:+");
+		test.add("chr1:43814517:43814611:+");
+		test.add("chr1:43803493:43803592:-");
+		test.add("chr1:43803585:43803679:-");
+		test.add("chr1:43803733:43803827:-");
+		test.add("chr1:43803817:43803911:-");
+		test.add("chr1:43806027:43806121:-");
+		test.add("chr1:43812425:43812519:-");
+		test.add("chr1:43814517:43814611:-");
 
-		List<String> values = rangeMap.getObjectsThatContainRangeInclusive(27101323, 27101456);
-		for (String value : values) {
-			System.out.println(value);
+		test.add("chr1:43812515:43812609:-");
+		test.add("chr1:43812515:43812609:+");
+		ProbeIdComparator comparator = new ProbeIdComparator();
+		Collections.sort(test, comparator);
+
+		System.out.println(comparator.compare("chr1:43812515:43812609:+", "chr1:43812515:43812609:-"));
+		for (String s : test) {
+			System.out.println(s);
 		}
 	}
 }

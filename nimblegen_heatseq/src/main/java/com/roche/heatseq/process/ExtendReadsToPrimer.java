@@ -274,10 +274,6 @@ public final class ExtendReadsToPrimer {
 		}
 		record.setAttribute(SAMRecordUtil.READ_GROUP_ATTRIBUTE_TAG, readGroup);
 		record.setAttribute(SAMRecordUtil.EDIT_DISTANCE_ATTRIBUTE_TAG, cigarString.getEditDistance());
-		if (isBestDuplicate) {
-			SAMRecordUtil.setAsBestPairInDuplicateGroup(record);
-		}
-		SAMRecordUtil.setDuplicateGroup(record, probeId, extensionUid + ligationUid);
 		return record;
 	}
 

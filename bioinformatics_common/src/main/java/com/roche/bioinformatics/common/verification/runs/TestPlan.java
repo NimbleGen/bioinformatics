@@ -223,7 +223,18 @@ public class TestPlan {
 				}
 
 				int checkNumber = 1;
-				for (TestPlanRunCheck check : run.getChecks()) {
+
+				List<TestPlanRunCheck> sortedChecks = new ArrayList<TestPlanRunCheck>(run.getChecks());
+				Collections.sort(sortedChecks, new Comparator<TestPlanRunCheck>() {
+					private AlphaNumericStringComparator windowsComparator = new AlphaNumericStringComparator();
+
+					@Override
+					public int compare(TestPlanRunCheck o1, TestPlanRunCheck o2) {
+						return windowsComparator.compare(o1.getFileName(), o2.getFileName());
+					}
+				});
+
+				for (TestPlanRunCheck check : sortedChecks) {
 
 					String referenceTypeAndNumbers = "";
 					for (String requirement : check.getRequirements()) {

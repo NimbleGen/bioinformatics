@@ -33,7 +33,6 @@ public class ProbeProcessingStats {
 	private final int totalDuplicateReadPairsRemoved;
 	private final int totalReadPairsRemainingAfterReduction;
 	private final int maxNumberOfReadPairsPerUid;
-	private final String uidOfEntryWithMaxReadPairs;
 	private final double onTargetDuplicateRate;
 	private final String uidComposition;
 	private final String uidCompositionByPosition;
@@ -57,8 +56,7 @@ public class ProbeProcessingStats {
 	 * @param totalTimeToProcessInMs
 	 */
 	public ProbeProcessingStats(Probe probe, int totalUids, double averageNumberOfReadPairsPerUid, int totalDuplicateReadPairsRemoved, int totalReadPairsRemainingAfterReduction,
-			int maxNumberOfReadPairsPerUid, String uidOfEntryWithMaxReadPairs, String uidComposition, String uidCompositionByPosition, String weightedUidComposition,
-			String weightedUidCompositionByPosition) {
+			int maxNumberOfReadPairsPerUid, String uidComposition, String uidCompositionByPosition, String weightedUidComposition, String weightedUidCompositionByPosition) {
 		super();
 		this.probe = probe;
 		this.totalUids = totalUids;
@@ -66,7 +64,6 @@ public class ProbeProcessingStats {
 		this.totalDuplicateReadPairsRemoved = totalDuplicateReadPairsRemoved;
 		this.totalReadPairsRemainingAfterReduction = totalReadPairsRemainingAfterReduction;
 		this.maxNumberOfReadPairsPerUid = maxNumberOfReadPairsPerUid;
-		this.uidOfEntryWithMaxReadPairs = uidOfEntryWithMaxReadPairs;
 		this.uidComposition = uidComposition;
 		this.uidCompositionByPosition = uidCompositionByPosition;
 		double totalOnTargetReads = (double) (totalDuplicateReadPairsRemoved + totalReadPairsRemainingAfterReduction);
@@ -118,7 +115,7 @@ public class ProbeProcessingStats {
 
 		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + totalReadPairs + StringUtil.TAB + readPairsAfterReduction + StringUtil.TAB + duplicateReadPairs + StringUtil.TAB
 				+ formatter.format(onTargetDuplicateRate * 100) + StringUtil.TAB);
-		stringBuilder.append(formatter.format(averageNumberOfReadPairsPerUid) + StringUtil.TAB + maxNumberOfReadPairsPerUid + StringUtil.TAB + uidOfEntryWithMaxReadPairs.toUpperCase());
+		stringBuilder.append(formatter.format(averageNumberOfReadPairsPerUid) + StringUtil.TAB + maxNumberOfReadPairsPerUid);
 
 		return stringBuilder.toString();
 	}

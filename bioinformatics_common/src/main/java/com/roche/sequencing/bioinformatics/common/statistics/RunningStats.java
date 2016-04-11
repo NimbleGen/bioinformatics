@@ -117,6 +117,42 @@ public class RunningStats {
 		return sumOfValues.doubleValue();
 	}
 
+	public BigDecimal getSumOfSquares() {
+		return sumOfSquares;
+	}
+
+	public void setSumOfSquares(BigDecimal sumOfSquares) {
+		this.sumOfSquares = sumOfSquares;
+	}
+
+	public double getMinValue() {
+		return minValue;
+	}
+
+	public void setMinValue(double minValue) {
+		this.minValue = minValue;
+	}
+
+	public double getMaxValue() {
+		return maxValue;
+	}
+
+	public void setMaxValue(double maxValue) {
+		this.maxValue = maxValue;
+	}
+
+	public int getNumberOfValues() {
+		return numberOfValues;
+	}
+
+	public void setNumberOfValues(int numberOfValues) {
+		this.numberOfValues = numberOfValues;
+	}
+
+	public void setSumOfValues(BigDecimal sumOfValues) {
+		this.sumOfValues = sumOfValues;
+	}
+
 	@Override
 	public String toString() {
 		return "RunningStats [sumOfValues=" + sumOfValues + ", sumOfSquares=" + sumOfSquares + ", minValue=" + minValue + ", maxValue=" + maxValue + ", numberOfValues=" + numberOfValues + "]";
