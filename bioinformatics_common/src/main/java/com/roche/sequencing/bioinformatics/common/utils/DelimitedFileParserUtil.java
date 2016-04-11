@@ -443,11 +443,8 @@ public final class DelimitedFileParserUtil {
 				}
 			}
 		} else {
-			StringBuilder headerNamesAsString = new StringBuilder();
-			for (String headerName : headerNames) {
-				headerNamesAsString.append(headerName + " ");
-			}
-			throw new UnableToFindHeaderException("Could not find header containing header names[" + headerNamesAsString.toString() + "] in file[" + delimitedInputStreamFactory.getName() + "].");
+			throw new UnableToFindHeaderException("Could not find header containing header names[" + ArraysUtil.toString(headerNames, ", ") + "] in file[" + delimitedInputStreamFactory.getName()
+					+ "].");
 		}
 
 		if (wasInterrupted) {

@@ -18,8 +18,6 @@ package com.roche.heatseq.utils;
 
 import java.io.File;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import net.sf.samtools.AbstractBAMFileIndex;
 import net.sf.samtools.BAMIndexMetaData;
@@ -57,12 +55,6 @@ public class SAMRecordUtil {
 	public static final String EDIT_DISTANCE_ATTRIBUTE_TAG = "NM";
 	public static final String EXTENSION_ERROR_ATTRIBUTE_TAG = "EE";
 	public static final String MAPPED_READ_LENGTH_ATTRIBUTE_TAG = "ML";
-	public static final String BEST_DUPLICATE_ATTRIBUTE_TAG = "BD";
-	public static final String DUPLICATE_GROUP_ATTRIBUTE_TAG = "DG";
-
-	public static final String BEST_DUPLICATE_ATTRIBUTE_TEXT = "best_duplicate";
-
-	private static final Map<String, Integer> probeIdAndUidPairToIdMap = new ConcurrentHashMap<String, Integer>();
 
 	private SAMRecordUtil() {
 		throw new AssertionError();
@@ -315,34 +307,6 @@ public class SAMRecordUtil {
 			return totalMappedReads + totalUnmappedReads;
 		}
 
-	}
-
-	public static boolean isBestDuplicate(SAMRecord record) {
-		boolean isBestDuplicate = BEST_DUPLICATE_ATTRIBUTE_TEXT.equals(record.getAttribute(SAMRecordUtil.BEST_DUPLICATE_ATTRIBUTE_TAG));
-		return isBestDuplicate;
-	}
-
-	public static int getDuplicateGroupId(String probeId, String uid) {
-		int duplicateGroupId = 0;
-		String probeUidPairString = probeId + uid;
-		synchronized (probeIdAndUidPairToIdMap) {
-			if (probeIdAndUidPairToIdMap.containsKey(probeUidPairString)) {
-				duplicateGroupId = probeIdAndUidPairToIdMap.get(probeUidPairString);
-			} else {
-				duplicateGroupId = probeIdAndUidPairToIdMap.size() + 1;
-				probeIdAndUidPairToIdMap.put(probeUidPairString, duplicateGroupId);
-			}
-		}
-		return duplicateGroupId;
-	}
-
-	public static void setAsBestPairInDuplicateGroup(SAMRecord record) {
-		record.setAttribute(SAMRecordUtil.BEST_DUPLICATE_ATTRIBUTE_TAG, SAMRecordUtil.BEST_DUPLICATE_ATTRIBUTE_TEXT);
-	}
-
-	public static void setDuplicateGroup(SAMRecord record, String probeId, String uid) {
-		int duplicateGroupId = SAMRecordUtil.getDuplicateGroupId(probeId, uid);
-		record.setAttribute(SAMRecordUtil.DUPLICATE_GROUP_ATTRIBUTE_TAG, duplicateGroupId);
 	}
 
 	public static String getProbeId(SAMRecord record) {

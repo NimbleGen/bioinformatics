@@ -98,8 +98,8 @@ public class DeduplicationCli {
 	// "Use a lenient validation stringency for all SAM files read by this program.", false, true);
 	private final static CommandLineOption MARK_DUPLICATES_OPTION = new CommandLineOption("Mark Duplicates", "markDuplicates", null, "Mark duplicate reads in the bam file instead of removing them.",
 			false, true);
-	private final static CommandLineOption KEEP_DUPLICATES_OPTION = new CommandLineOption("Keep Duplicates", "keepDuplicates", null, "Keep duplicate reads in the bam file instead of removing them. ",
-			false, true);
+	private final static CommandLineOption KEEP_DUPLICATES_OPTION = new CommandLineOption("Keep Duplicates", "disableDuplicateRemoval", null,
+			"Keep duplicate reads in the bam file instead of removing them. ", false, true, true);
 	public final static CommandLineOption MERGE_PAIRS_OPTION = new CommandLineOption("Merge Pairs", "mergePairs", null, "Merge pairs using the highest quality base reads from each read.", false, true);
 	public final static CommandLineOption TRIMMING_SKIPPED_OPTION = new CommandLineOption("Reads Were Not Trimmed Prior to Mapping", "readsNotTrimmed", null,
 			"The reads were not trimmed prior to mapping.", false, true);

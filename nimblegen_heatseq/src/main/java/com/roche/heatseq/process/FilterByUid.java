@@ -154,7 +154,6 @@ class FilterByUid {
 		int totalReadPairs = 0;
 		int minNumberOfReadPairsPerUid = Integer.MAX_VALUE;
 		int maxNumberOfReadPairsPerUid = 0;
-		String uidOfEntryWithMaxNumberOfReadPairs = "";
 		int[] sizeByUid = new int[uidToDataMap.size()];
 		int i = 0;
 
@@ -175,11 +174,7 @@ class FilterByUid {
 			totalReadPairs += readPairsByUid;
 			sizeByUid[i] = readPairsByUid;
 			minNumberOfReadPairsPerUid = Math.min(minNumberOfReadPairsPerUid, readPairsByUid);
-
-			if (readPairsByUid > maxNumberOfReadPairsPerUid) {
-				maxNumberOfReadPairsPerUid = readPairsByUid;
-				uidOfEntryWithMaxNumberOfReadPairs = uid;
-			}
+			maxNumberOfReadPairsPerUid = Math.max(maxNumberOfReadPairsPerUid, readPairsByUid);
 
 			IReadPair bestPair = findBestData(pairsDataByUid);
 			bestPair.setAsBestPairInUidGroup();
@@ -251,7 +246,7 @@ class FilterByUid {
 		String weightedUidCompositionByPosition = NucleotideCompositionUtil.getNucleotideCompositionByPosition(weightedUidsByProbe);
 
 		ProbeProcessingStats probeProcessingStats = new ProbeProcessingStats(probe, totalUids, averageNumberOfReadPairsPerUid, duplicateReadPairs.size(), uniqueReadPairs.size(),
-				maxNumberOfReadPairsPerUid, uidOfEntryWithMaxNumberOfReadPairs, uidComposition, uidCompositionByPosition, weightedUidComposition, weightedUidCompositionByPosition);
+				maxNumberOfReadPairsPerUid, uidComposition, uidCompositionByPosition, weightedUidComposition, weightedUidCompositionByPosition);
 
 		return new UidReductionResultsForAProbe(probeProcessingStats, uniqueReadPairs, duplicateReadPairs);
 	}

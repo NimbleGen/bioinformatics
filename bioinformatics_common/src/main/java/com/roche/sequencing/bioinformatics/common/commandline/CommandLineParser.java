@@ -34,6 +34,7 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 public class CommandLineParser {
 	final static String LONG_OPTION_INDICATOR = "--";
 	final static String SHORT_OPTION_INDICATOR = "-";
+	private final static String NEGATIVE_NUMBER_REGEX = "^-?[0-9]*(\\.[0-9]+)?$";
 
 	private CommandLineParser() {
 		throw new AssertionError();
@@ -290,7 +291,7 @@ public class CommandLineParser {
 	}
 
 	private static boolean isValue(String argument) {
-		boolean isNegativeNumber = argument.matches("(-{0,1}(?!0)\\d+)");
+		boolean isNegativeNumber = argument.matches(NEGATIVE_NUMBER_REGEX);
 		boolean isShortIdentifier = isShortFormIdentifierArgument(argument) && !isNegativeNumber;
 		boolean isValue = !isLongFormIdentifierArgument(argument) && !isShortIdentifier;
 		return isValue;
