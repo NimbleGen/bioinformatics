@@ -38,7 +38,6 @@ import net.sf.samtools.SAMSequenceRecord;
 
 import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.objects.Probe;
-import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 
 public class BamFileUtil {
 
@@ -233,7 +232,7 @@ public class BamFileUtil {
 			programRecords.addAll(originalHeader.getProgramRecords());
 		}
 
-		String uniqueProgramGroupId = programName + "_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS();
+		String uniqueProgramGroupId = programName;
 		SAMProgramRecord programRecord = new SAMProgramRecord(uniqueProgramGroupId);
 		programRecord.setProgramName(programName);
 		programRecord.setProgramVersion(programVersion);
