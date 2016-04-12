@@ -218,10 +218,6 @@ public class TestPlan {
 				table.addCell(grayCell);
 				table.addCell(grayCell);
 
-				if (run.getChecks().size() == 0) {
-					throw new IllegalStateException("The provided step[" + run.getDescription() + "] has not checks which make it an invalid test.");
-				}
-
 				int checkNumber = 1;
 
 				List<TestPlanRunCheck> sortedChecks = new ArrayList<TestPlanRunCheck>(run.getChecks());

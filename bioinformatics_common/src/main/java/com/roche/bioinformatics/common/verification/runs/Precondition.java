@@ -60,6 +60,9 @@ public class Precondition {
 		case REQUIRED_STORAGE:
 			description = "The test plan will be run on a system with at least [" + values[0] + "] of storage in the output directory.";
 			break;
+		case NUMBER_OF_PROCESSORS:
+			description = "The test plan will be run on a system with at least [" + values[0] + "] processors (Virtual Cental Processing Units).";
+			break;
 		default:
 			throw new AssertionError();
 		}
@@ -79,8 +82,8 @@ public class Precondition {
 				} else if (value.toLowerCase().equals("linux")) {
 					matchFoundForOs = OSUtil.isLinux();
 				} else {
-					throw new IllegalStateException(
-							"An unrecognized value[" + value + "] was provided for the key[" + preconditionEnum + "].  Acceptable values for key[" + preconditionEnum + "] are [windows,mac,linux]");
+					throw new IllegalStateException("An unrecognized value[" + value + "] was provided for the key[" + preconditionEnum + "].  Acceptable values for key[" + preconditionEnum
+							+ "] are [windows,mac,linux]");
 				}
 				if (matchFoundForOs) {
 					break valueLoop;
@@ -100,8 +103,8 @@ public class Precondition {
 				} else if (value.toLowerCase().equals("32")) {
 					matchFoundForOsBitDepth = OSUtil.is32Bit();
 				} else {
-					throw new IllegalStateException(
-							"An unrecognized value[" + value + "] was provided for the key[" + preconditionEnum + "].  Acceptable values for key[" + preconditionEnum + "] are [32,64]");
+					throw new IllegalStateException("An unrecognized value[" + value + "] was provided for the key[" + preconditionEnum + "].  Acceptable values for key[" + preconditionEnum
+							+ "] are [32,64]");
 				}
 				if (matchFoundForOsBitDepth != null && matchFoundForOsBitDepth) {
 					break valueLoop;
@@ -109,15 +112,15 @@ public class Precondition {
 			}
 
 			if (matchFoundForOsBitDepth == null || !matchFoundForOsBitDepth) {
-				throw new IllegalStateException(
-						"The precondition OS_BIT_DEPTH: [" + ArraysUtil.toString(values, ", ") + "] was not met.  The OS Bit Depth of the current system is [" + OSUtil.getOsBits() + "].");
+				throw new IllegalStateException("The precondition OS_BIT_DEPTH: [" + ArraysUtil.toString(values, ", ") + "] was not met.  The OS Bit Depth of the current system is ["
+						+ OSUtil.getOsBits() + "].");
 			}
 
 			break;
 		case MIN_JAVA_VERSION:
 			if (values.length > 1) {
-				throw new IllegalStateException(
-						"Too many values provided for key[" + preconditionEnum + "].  One value was expected whereas the following values were provided:[" + ArraysUtil.toString(values, ", ") + "].");
+				throw new IllegalStateException("Too many values provided for key[" + preconditionEnum + "].  One value was expected whereas the following values were provided:["
+						+ ArraysUtil.toString(values, ", ") + "].");
 			}
 
 			Version minVersion = Version.fromString(values[0]);
@@ -132,8 +135,8 @@ public class Precondition {
 			break;
 		case MAX_JAVA_VERSION:
 			if (values.length > 1) {
-				throw new IllegalStateException(
-						"Too many values provided for key[" + preconditionEnum + "].  One value was expected whereas the following values were provided:[" + ArraysUtil.toString(values, ", ") + "].");
+				throw new IllegalStateException("Too many values provided for key[" + preconditionEnum + "].  One value was expected whereas the following values were provided:["
+						+ ArraysUtil.toString(values, ", ") + "].");
 			}
 
 			Version maxVersion = Version.fromString(values[0]);
@@ -150,8 +153,8 @@ public class Precondition {
 			break;
 		case REQUIRED_STORAGE:
 			if (values.length > 1) {
-				throw new IllegalStateException(
-						"Too many values provided for key[" + preconditionEnum + "].  One value was expected whereas the following values were provided:[" + ArraysUtil.toString(values, ", ") + "].");
+				throw new IllegalStateException("Too many values provided for key[" + preconditionEnum + "].  One value was expected whereas the following values were provided:["
+						+ ArraysUtil.toString(values, ", ") + "].");
 			}
 
 			String value = values[0];
@@ -164,6 +167,21 @@ public class Precondition {
 						+ "] for the key[" + preconditionEnum + "].");
 			}
 
+			break;
+		case NUMBER_OF_PROCESSORS:
+			if (values.length > 1) {
+				throw new IllegalStateException("Too many values provided for key[" + preconditionEnum + "].  One value was expected whereas the following values were provided:["
+						+ ArraysUtil.toString(values, ", ") + "].");
+			}
+
+			String numberOfProcessorsAsString = values[0];
+			int numberOfProcessors = Integer.parseInt(numberOfProcessorsAsString);
+
+			int actualNumberOfProcessors = Runtime.getRuntime().availableProcessors();
+
+			if (numberOfProcessors > actualNumberOfProcessors) {
+				throw new IllegalStateException("The required number of processors[" + numberOfProcessors + "] is larger than the actual number of processors[" + actualNumberOfProcessors + "].");
+			}
 			break;
 		default:
 			throw new AssertionError();
