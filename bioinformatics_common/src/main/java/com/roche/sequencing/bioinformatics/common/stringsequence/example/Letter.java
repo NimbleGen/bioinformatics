@@ -53,6 +53,32 @@ public class Letter implements ILetter {
 	}
 
 	public static void main(String[] args) {
+		example2();
+	}
+
+	public static void example2() {
+		ILetter a = new Letter('a', 1);
+		ILetter b = new Letter('b', 1);
+
+		List<ILetter[]> words = new ArrayList<ILetter[]>();
+		words.add(new ILetter[] { a, a, b });
+		words.add(new ILetter[] { a, b, a });
+		words.add(new ILetter[] { b, a, b });
+		words.add(new ILetter[] { b, b, a });
+		words.add(new ILetter[] { a, b, b });
+		words.add(new ILetter[] { b, a, a });
+		words.add(new ILetter[] { a, a, a });
+		words.add(new ILetter[] { b, b, b });
+
+		ILetter[] result = WordMergerUtil.merge(words);
+
+		System.out.println("final:");
+		for (ILetter letter : result) {
+			System.out.print(letter);
+		}
+	}
+
+	public static void example1() {
 		ILetter a = new Letter('a', 5);
 		ILetter b = new Letter('b', 15);
 		ILetter c = new Letter('c', 25);

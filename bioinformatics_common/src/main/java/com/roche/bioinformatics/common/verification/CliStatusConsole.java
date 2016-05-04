@@ -36,8 +36,11 @@ public class CliStatusConsole {
 	}
 
 	public static void logError(Throwable throwable) {
-		// System.out.println(throwable.getMessage());
-		System.err.println(throwable.getMessage());
+		if (throwable.getMessage() != null) {
+			System.err.println(throwable.getMessage());
+		} else {
+			System.err.println("The following type of error was thrown:" + throwable.getClass().getName());
+		}
 		logger.error(throwable.getMessage(), throwable);
 	}
 

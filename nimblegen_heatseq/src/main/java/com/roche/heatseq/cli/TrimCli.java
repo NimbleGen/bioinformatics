@@ -143,6 +143,7 @@ public class TrimCli {
 	public static CommandLineOptionsGroup getCommandLineOptionsGroupForTrimming() {
 		CommandLineOptionsGroup group = new CommandLineOptionsGroup();
 		group.addOption(DeduplicationCli.USAGE_OPTION);
+		group.addOption(DeduplicationCli.VERSION_OPTION);
 		group.addOption(DeduplicationCli.FASTQ_ONE_OPTION);
 		group.addOption(DeduplicationCli.FASTQ_TWO_OPTION);
 		group.addOption(DeduplicationCli.PROBE_OPTION);

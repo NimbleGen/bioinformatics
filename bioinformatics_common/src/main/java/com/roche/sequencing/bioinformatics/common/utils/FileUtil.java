@@ -28,11 +28,15 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.LineNumberReader;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
@@ -204,19 +208,42 @@ public final class FileUtil {
 			int readChars = 0;
 			if ((readChars = inputStream.read(character)) != -1) {
 				characterLoop: for (int i = 0; i < readChars; ++i) {
-
 					if (((char) character[i]) == StringUtil.NEWLINE_SYMBOL) {
 						firstLine = firstLineBuilder.toString();
 						break characterLoop;
-					} else {
-						if (((char) character[i]) != StringUtil.CARRIAGE_RETURN) {
-							firstLineBuilder.append((char) character[i]);
-						}
+					} else if (((char) character[i]) != StringUtil.CARRIAGE_RETURN) {
+						firstLineBuilder.append((char) character[i]);
 					}
 				}
 			}
 		}
 		return firstLine;
+	}
+
+	/**
+	 * read the first line of a file as a string
+	 * 
+	 * @throws IOException
+	 */
+	public static String getFirstLineEndOfLineSymbolsAsString(File file) throws IOException {
+		String firstLineEOL = null;
+		StringBuilder firstLineEOLBuilder = new StringBuilder();
+		try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
+			byte[] character = new byte[4096];
+			int readChars = 0;
+			if ((readChars = inputStream.read(character)) != -1) {
+				characterLoop: for (int i = 0; i < readChars; ++i) {
+					if (((char) character[i]) == StringUtil.NEWLINE_SYMBOL) {
+						firstLineEOLBuilder.append((char) character[i]);
+						firstLineEOL = firstLineEOLBuilder.toString();
+						break characterLoop;
+					} else if (((char) character[i]) == StringUtil.CARRIAGE_RETURN) {
+						firstLineEOLBuilder.append((char) character[i]);
+					}
+				}
+			}
+		}
+		return firstLineEOL;
 	}
 
 	/**
@@ -312,8 +339,7 @@ public final class FileUtil {
 	public static int countNumberOfLinesInFile(File file) throws IOException {
 		int count = 1;
 		boolean empty = true;
-		InputStream inputStream = new BufferedInputStream(new FileInputStream(file));
-		try {
+		try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
 			byte[] character = new byte[1024];
 			int readChars = 0;
 			while ((readChars = inputStream.read(character)) != -1) {
@@ -324,9 +350,6 @@ public final class FileUtil {
 					}
 				}
 			}
-
-		} finally {
-			inputStream.close();
 		}
 		return (count == 0 && !empty) ? 1 : count;
 	}
@@ -414,15 +437,6 @@ public final class FileUtil {
 		return simplifiedPath;
 	}
 
-	public static void main(String[] args) {
-		File fileA = new File("D://kurts_space/jigar_dirt/2uM_Images/results/210097_bound_635.aln");
-		File fileB = new File("D://kurts_space/jigar_dirt/");
-		File fileC = new File("C://kurts_space/jigar_dirt/");
-		// String relativePath = FileUtil.convertToRelativePath(fileA, fileB);
-		System.out.println(isDirectoryParentOfFile(fileB, fileA));
-		System.out.println(isDirectoryParentOfFile(fileC, fileA));
-	}
-
 	public static boolean isDirectoryParentOfFile(File directory, File file) {
 		boolean directoryIsParent = false;
 		File ancestorOfFile = file.getParentFile();
@@ -449,6 +463,168 @@ public final class FileUtil {
 			contentsAreEqual = FileUtils.contentEquals(fileOne, fileTwo);
 		}
 		return contentsAreEqual;
+	}
+
+	public static class FileComparisonResults {
+		private final boolean filesAreEqual;
+		private final boolean endOfLineMatch;
+		private final boolean fileOneHasAdditionalLines;
+		private final boolean fileTwoHasAdditionalLines;
+		private final int[] fileOnesLinesThatDiffer;
+		private final int[] fileTwosLinesThatDiffer;
+
+		public FileComparisonResults(boolean filesAreEqual, boolean endOfLineMatch, boolean fileOneHasAdditionalLines, boolean fileTwoHasAdditionalLines, int[] fileOnesLinesThatDiffer,
+				int[] fileTwosLinesThatDiffer) {
+			super();
+			this.filesAreEqual = filesAreEqual;
+			this.endOfLineMatch = endOfLineMatch;
+			this.fileOneHasAdditionalLines = fileOneHasAdditionalLines;
+			this.fileTwoHasAdditionalLines = fileTwoHasAdditionalLines;
+			this.fileOnesLinesThatDiffer = fileOnesLinesThatDiffer;
+			this.fileTwosLinesThatDiffer = fileTwosLinesThatDiffer;
+		}
+
+		public boolean isFilesAreEqual() {
+			return filesAreEqual;
+		}
+
+		public boolean isEndOfLineMatch() {
+			return endOfLineMatch;
+		}
+
+		public boolean isFileOneHasAdditionalLines() {
+			return fileOneHasAdditionalLines;
+		}
+
+		public boolean isFileTwoHasAdditionalLines() {
+			return fileTwoHasAdditionalLines;
+		}
+
+		public int[] getFileOnesLinesThatDiffer() {
+			return fileOnesLinesThatDiffer;
+		}
+
+		public int[] getFileTwosLinesThatDiffer() {
+			return fileTwosLinesThatDiffer;
+		}
+
+		@Override
+		public String toString() {
+			return "FileComparisonResults [filesAreEqual=" + filesAreEqual + ", endOfLineMatch=" + endOfLineMatch + ", fileOneHasAdditionalLines=" + fileOneHasAdditionalLines
+					+ ", fileTwoHasAdditionalLines=" + fileTwoHasAdditionalLines + ", fileOnesLinesThatDiffer=" + Arrays.toString(fileOnesLinesThatDiffer) + ", fileTwosLinesThatDiffer="
+					+ Arrays.toString(fileTwosLinesThatDiffer) + "]";
+		}
+
+	}
+
+	public static boolean isTextFile(File file) throws IOException {
+		// assuming a text file will have a line break in the first 4096
+		boolean isTextFile = readFirstLineAsString(file) != null;
+		return isTextFile;
+	}
+
+	public static FileComparisonResults compareTextFiles(File fileOne, File fileTwo, boolean ignoreEndOfLine, boolean ignoreCommentLines, boolean caseInsensitiveComparison,
+			int[] linesInFileOneToIgnore, int[] linesInFileTwoToIgnore) throws IOException {
+		List<Integer> fileOnesLinesThatDiffer = new ArrayList<Integer>();
+		List<Integer> fileTwosLinesThatDiffer = new ArrayList<Integer>();
+
+		boolean endOfLinesMatch = true;
+
+		boolean fileOneHasAdditionalLines = false;
+		boolean fileTwoHasAdditionalLines = false;
+
+		if (fileOne.length() > 0 && fileTwo.length() > 0) {
+
+			if (fileOne.length() > 4096 && fileTwo.length() > 4096) {
+				if (!isTextFile(fileOne)) {
+					throw new IllegalStateException("The provided file[" + fileOne.getAbsolutePath() + "] is not a text file.");
+				}
+
+				if (!isTextFile(fileTwo)) {
+					throw new IllegalStateException("The provided file[" + fileTwo.getAbsolutePath() + "] is not a text file.");
+				}
+			}
+
+			String firstFileEOL = getFirstLineEndOfLineSymbolsAsString(fileOne);
+			String secondFileEOL = getFirstLineEndOfLineSymbolsAsString(fileTwo);
+			if (firstFileEOL == null && secondFileEOL == null) {
+				endOfLinesMatch = true;
+			} else if (firstFileEOL != null && secondFileEOL != null) {
+				endOfLinesMatch = firstFileEOL.equals(secondFileEOL);
+			} else {
+				// one is null and one is not null
+				endOfLinesMatch = false;
+			}
+
+			Set<Integer> fileOneLinesToIgnoreSet = new HashSet<Integer>();
+			if (linesInFileOneToIgnore != null) {
+				for (int i : linesInFileOneToIgnore) {
+					fileOneLinesToIgnoreSet.add(i);
+				}
+			}
+
+			Set<Integer> fileTwoLinesToIgnoreSet = new HashSet<Integer>();
+			if (linesInFileTwoToIgnore != null) {
+				for (int i : linesInFileTwoToIgnore) {
+					fileTwoLinesToIgnoreSet.add(i);
+				}
+			}
+
+			try (LineNumberReader reader1 = new LineNumberReader(new FileReader(fileOne))) {
+				try (LineNumberReader reader2 = new LineNumberReader(new FileReader(fileTwo))) {
+					String line1 = reader1.readLine();
+					String line2 = reader2.readLine();
+
+					while (line1 != null && line2 != null) {
+						while (line1 != null && fileOneLinesToIgnoreSet.contains(reader1.getLineNumber())) {
+							line1 = reader1.readLine();
+						}
+
+						while (line2 != null && fileTwoLinesToIgnoreSet.contains(reader2.getLineNumber())) {
+							line2 = reader2.readLine();
+						}
+
+						if (ignoreCommentLines) {
+							while (line1 != null && line1.startsWith("#")) {
+								line1 = reader1.readLine();
+							}
+
+							while (line2 != null && line2.startsWith("#")) {
+								line2 = reader2.readLine();
+							}
+						}
+
+						boolean areEqual = true;
+
+						if (caseInsensitiveComparison) {
+							areEqual = line1.equalsIgnoreCase(line2);
+						} else {
+							areEqual = line1.equals(line2);
+						}
+
+						if (!areEqual) {
+							fileOnesLinesThatDiffer.add(reader1.getLineNumber());
+							fileTwosLinesThatDiffer.add(reader2.getLineNumber());
+						}
+
+						line1 = reader1.readLine();
+						line2 = reader2.readLine();
+					}
+
+					fileOneHasAdditionalLines = line1 != null;
+					fileTwoHasAdditionalLines = line2 != null;
+				}
+			}
+		}
+
+		boolean filesAreEqual = fileOnesLinesThatDiffer.size() == 0 && !fileOneHasAdditionalLines && !fileTwoHasAdditionalLines;
+		if (filesAreEqual) {
+			filesAreEqual = ignoreEndOfLine || (!ignoreEndOfLine && endOfLinesMatch);
+		}
+
+		FileComparisonResults result = new FileComparisonResults(filesAreEqual, endOfLinesMatch, fileOneHasAdditionalLines, fileTwoHasAdditionalLines,
+				ArraysUtil.convertToIntArray(fileOnesLinesThatDiffer), ArraysUtil.convertToIntArray(fileTwosLinesThatDiffer));
+		return result;
 	}
 
 	public static List<File> getAllSubFiles(File directory) {
@@ -519,7 +695,9 @@ public final class FileUtil {
 
 		if (matchingFileNames != null) {
 			for (String matchingFileName : matchingFileNames) {
-				matchingFiles.add(new File(directory, matchingFileName));
+				if (!matchingFileName.isEmpty()) {
+					matchingFiles.add(new File(directory, matchingFileName));
+				}
 			}
 		}
 
@@ -577,8 +755,8 @@ public final class FileUtil {
 				if (matchingFiles.size() == 1) {
 					currentDirectory = matchingFiles.get(0);
 				} else if (matchingFiles.size() == 0) {
-					throw new IllegalStateException(
-							"Unable to locate a sub folder matching the regular expression[" + regularExpressionForNextFolder + "] in the directory[" + currentDirectory.getAbsolutePath() + "].");
+					throw new IllegalStateException("Unable to locate a sub folder matching the regular expression[" + regularExpressionForNextFolder + "] in the directory["
+							+ currentDirectory.getAbsolutePath() + "].");
 				} else {
 					throw new IllegalStateException("The regular expression[" + regularExpressionForNextFolder + "] matches more than one file (" + matchingFiles.size()
 							+ " matches found) in the directory[" + currentDirectory.getAbsolutePath() + "].");

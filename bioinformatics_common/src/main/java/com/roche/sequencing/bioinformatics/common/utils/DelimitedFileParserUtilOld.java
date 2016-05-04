@@ -16,7 +16,6 @@
 
 package com.roche.sequencing.bioinformatics.common.utils;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -25,32 +24,21 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
 import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import com.roche.multithreading.PausableFixedThreadPoolExecutor;
 
 /**
  * 
  * Utility class to help parse delimited files
  * 
  */
-public final class DelimitedFileParserUtil {
+public final class DelimitedFileParserUtilOld {
 
 	// private static final Logger logger = LoggerFactory.getLogger(DelimitedFileParserUtil.class);
 
@@ -63,9 +51,7 @@ public final class DelimitedFileParserUtil {
 
 	private static final Charset[] CHARSETS_TO_TRY = new Charset[] { Charset.forName("UTF-16"), Charset.forName("UTF-8") };
 
-	private static final int NUMBER_OF_CHARACTERS_TO_SEARCH_FOR_HEADER = 10000;
-
-	private DelimitedFileParserUtil() {
+	private DelimitedFileParserUtilOld() {
 		throw new AssertionError();
 	}
 
@@ -139,102 +125,49 @@ public final class DelimitedFileParserUtil {
 
 		String currentRow = null;
 		int linesRead = 0;
-
-		CharsetDecoder decoder = charset.newDecoder();
-
-		try (InputStream inputStream = new BufferedInputStream(delimitedContentInputStreamFactory.createInputStream())) {
-
-			// this will actually put the current position at the header line but since the first line found
-			// is never read it will work as expected
-			long currentPositionInBytes = 0;
-
-			byte[] bytes = new byte[4096];
-
-			StringBuilder currentLine = new StringBuilder();
-			int numberOfBytesRead = 0;
-
-			boolean shouldContinue = true;
-
-			outerByteLoop: while (((numberOfBytesRead = inputStream.read(bytes)) != -1)) {
-
-				ByteBuffer in = null;
-				if (numberOfBytesRead < bytes.length) {
-					in = ByteBuffer.wrap(Arrays.copyOf(bytes, numberOfBytesRead));
-				} else {
-					in = ByteBuffer.wrap(bytes);
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(delimitedContentInputStreamFactory.createInputStream(), charset), BUFFER_SIZE)) {
+			while (!headerFound && ((currentRow = reader.readLine()) != null)) {
+				// add one for the newline
+				linesRead++;
+				// remove carriage return if this is a windows based file
+				if (currentRow.endsWith(CARRIAGE_RETURN)) {
+					currentRow = currentRow.substring(0, currentRow.length() - 1);
 				}
 
-				CharBuffer out = CharBuffer.allocate(1);
-				out.position(0);
+				String[] parsedCurrentRow = null;
 
-				int lastInPosition = 0;
-				long lastPositionInBytes = -1;
-				while (in.hasRemaining() && (lastPositionInBytes != currentPositionInBytes)) {
-					decoder.decode(in, out, true);
-					char currentCharacter = out.array()[0];
-					int characterLengthInBytes = (in.position() - lastInPosition);
-					lastPositionInBytes = currentPositionInBytes;
-					currentPositionInBytes += characterLengthInBytes;
-					lastInPosition = in.position();
-					out.position(0);
-					if ((currentCharacter == StringUtil.NEWLINE_SYMBOL)) {
-						currentRow = currentLine.toString();
+				if (currentRow != null) {
+					parsedCurrentRow = currentRow.split(columnDelimiter);
+				}
 
-						// add one for the newline
-						linesRead++;
-						// remove carriage return if this is a windows based file
-						if (currentRow.endsWith(CARRIAGE_RETURN)) {
-							currentRow = currentRow.substring(0, currentRow.length() - 1);
-						}
+				if ((currentRow != null) && (parsedCurrentRow != null)) {
+					int columnCount = parsedCurrentRow.length;
 
-						String[] parsedCurrentRow = null;
+					Set<String> foundHeaderMatches = new HashSet<String>();
 
-						if (currentRow != null) {
-							parsedCurrentRow = currentRow.split(columnDelimiter);
-						}
+					for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+						String cellString = parsedCurrentRow[columnIndex].trim();
 
-						if ((currentRow != null) && (parsedCurrentRow != null)) {
-							int columnCount = parsedCurrentRow.length;
+						if (cellString != null) {
+							headerNameLoop: for (String headerName : headerNames) {
+								boolean matchFound = cellString.trim().toLowerCase().equals(headerName.trim().toLowerCase());
 
-							Set<String> foundHeaderMatches = new HashSet<String>();
+								if (matchFound) {
+									foundHeaderMatches.add(headerName.trim().toLowerCase());
 
-							for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
-								String cellString = parsedCurrentRow[columnIndex].trim();
-
-								if (cellString != null) {
-									headerNameLoop: for (String headerName : headerNames) {
-										boolean matchFound = cellString.trim().toLowerCase().equals(headerName.trim().toLowerCase());
-
-										if (matchFound) {
-											foundHeaderMatches.add(headerName.trim().toLowerCase());
-
-											break headerNameLoop;
-										}
-									}
+									break headerNameLoop;
 								}
 							}
-
-							headerFound = foundHeaderMatches.size() >= headerNames.length;
 						}
-
-						currentLine = new StringBuilder();
-					} else {
-						currentLine.append(currentCharacter);
 					}
 
-					shouldContinue = currentPositionInBytes < NUMBER_OF_CHARACTERS_TO_SEARCH_FOR_HEADER;
-
-					if (headerFound || !shouldContinue) {
-						break outerByteLoop;
-					}
+					headerFound = foundHeaderMatches.size() >= headerNames.length;
 				}
 			}
-		} catch (IOException e) {
-			throw new RuntimeException(e.getMessage(), e);
-		}
 
-		if (headerFound) {
-			header = new Header(charset, currentRow, linesRead - 1);
+			if (headerFound) {
+				header = new Header(charset, currentRow, linesRead - 1);
+			}
 		}
 		return header;
 	}
@@ -342,19 +275,6 @@ public final class DelimitedFileParserUtil {
 		}
 	}
 
-	private static int skipLines(InputStream inputStream, long numberOfLinesToSkip) throws IOException {
-		int bytesSkipped = 0;
-		int nextByte = 0;
-		int linesSkipped = 0;
-		while (((nextByte = inputStream.read()) != -1) && (linesSkipped < numberOfLinesToSkip)) {
-			bytesSkipped++;
-			if ((char) nextByte == StringUtil.NEWLINE_SYMBOL) {
-				linesSkipped++;
-			}
-		}
-		return bytesSkipped;
-	}
-
 	public static Iterator<Map<String, String>> getHeaderNameToValueMapRowIteratorFromDelimitedFile(File delimitedFile, String[] headerNames, String columnDelimiter,
 			boolean extractAdditionalHeaderNames) throws UnableToFindHeaderException, IOException {
 
@@ -429,7 +349,7 @@ public final class DelimitedFileParserUtil {
 		private final Map<String, List<String>> headerNameToValuesMap;
 
 		public DefaultLineParser() {
-			headerNameToValuesMap = new ConcurrentHashMap<String, List<String>>();
+			headerNameToValuesMap = new HashMap<String, List<String>>();
 		}
 
 		@Override
@@ -444,7 +364,7 @@ public final class DelimitedFileParserUtil {
 				List<String> values = headerNameToValuesMap.get(headerName);
 
 				if (values == null) {
-					values = Collections.synchronizedList(new ArrayList<String>());
+					values = new ArrayList<String>();
 				}
 
 				values.add(value);
@@ -490,8 +410,8 @@ public final class DelimitedFileParserUtil {
 
 		Header header = findHeaderLine(headerNames, columnDelimiter, delimitedInputStreamFactory);
 		boolean headerFound = header != null;
-		AtomicBoolean wasInterrupted = new AtomicBoolean(false);
-		AtomicInteger linesOfData = new AtomicInteger();
+		boolean wasInterrupted = false;
+		int linesOfData = 0;
 		if (headerFound) {
 			String[] parsedHeaderRow = header.getHeadLine().split(columnDelimiter);
 
@@ -502,10 +422,9 @@ public final class DelimitedFileParserUtil {
 			InputStream inputStream = delimitedInputStreamFactory.createInputStream();
 			try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, header.getCharsetUsed()), BUFFER_SIZE)) {
 				skipLines(bufferedReader, header.getLinesPriorToHeader() + 1);
-
 				String currentRow = null;
 				rowLoop: while ((currentRow = bufferedReader.readLine()) != null) {
-					linesOfData.incrementAndGet();
+					linesOfData++;
 					// remove carriage return if this is a windows based file
 					currentRow = currentRow.replace(CARRIAGE_RETURN, "");
 
@@ -517,8 +436,8 @@ public final class DelimitedFileParserUtil {
 						lineParser.parseDelimitedLine(headerNameToValueMapFromRow);
 					}
 
-					if (linesOfData.get() % 1000 == 0 && Thread.currentThread().isInterrupted()) {
-						wasInterrupted.set(true);
+					if (linesOfData % 1000 == 0 && Thread.currentThread().isInterrupted()) {
+						wasInterrupted = true;
 						break rowLoop;
 					}
 				}
@@ -528,218 +447,10 @@ public final class DelimitedFileParserUtil {
 					+ "].");
 		}
 
-		if (wasInterrupted.get()) {
+		if (wasInterrupted) {
 			lineParser.threadInterrupted();
 		} else {
-			lineParser.doneParsing(linesOfData.get(), headerNames);
-		}
-	}
-
-	/**
-	 * @param delimitedFile
-	 * @param headerNames
-	 * @param columnDelimiter
-	 * @return a list of row entries for each provided header name
-	 * @throws IOException
-	 */
-	public static void parseFileMultiThreaded(IInputStreamFactory delimitedInputStreamFactory, String[] headerNames, IDelimitedLineParser lineParser, String columnDelimiter,
-			boolean extractAdditionalHeaderNames) throws IOException {
-		int numberOfProcessors = Runtime.getRuntime().availableProcessors();
-		int numberOfThreadsToUse = Math.max(1, numberOfProcessors - 2);
-		parseFileMultiThreaded(delimitedInputStreamFactory, headerNames, lineParser, columnDelimiter, extractAdditionalHeaderNames, numberOfThreadsToUse);
-	}
-
-	/**
-	 * @param delimitedFile
-	 * @param headerNames
-	 * @param columnDelimiter
-	 * @return a list of row entries for each provided header name
-	 * @throws IOException
-	 */
-	public static void parseFileMultiThreaded(IInputStreamFactory delimitedInputStreamFactory, String[] headerNames, IDelimitedLineParser lineParser, String columnDelimiter,
-			boolean extractAdditionalHeaderNames, int numberOfThreads) throws IOException {
-
-		Header header = findHeaderLine(headerNames, columnDelimiter, delimitedInputStreamFactory);
-		boolean headerFound = header != null;
-		AtomicBoolean wasInterrupted = new AtomicBoolean(false);
-		AtomicInteger linesOfData = new AtomicInteger();
-		ConcurrentHashMap<Long, Boolean> positionInBytesOfLinesReadByEachFileParser = new ConcurrentHashMap<Long, Boolean>();
-
-		if (headerFound) {
-			String[] parsedHeaderRow = header.getHeadLine().split(columnDelimiter);
-
-			Map<Integer, String> columnToHeaderNameMap = getColumnIndexToHeaderNameMapping(headerNames, parsedHeaderRow, extractAdditionalHeaderNames);
-
-			PausableFixedThreadPoolExecutor executor = new PausableFixedThreadPoolExecutor(numberOfThreads, "FILE_PARSER_");
-
-			for (int i = 0; i < numberOfThreads; i++) {
-				executor.submit(new FileParser(i, numberOfThreads, delimitedInputStreamFactory, lineParser, header, columnToHeaderNameMap, linesOfData, wasInterrupted, columnDelimiter,
-						positionInBytesOfLinesReadByEachFileParser));
-			}
-
-			executor.shutdown();
-			try {
-				executor.awaitTermination(1, TimeUnit.DAYS);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-
-		} else {
-			throw new UnableToFindHeaderException("Could not find header containing header names[" + ArraysUtil.toString(headerNames, ", ") + "] in file[" + delimitedInputStreamFactory.getName()
-					+ "].");
-		}
-
-		if (wasInterrupted.get()) {
-			lineParser.threadInterrupted();
-		} else {
-			lineParser.doneParsing(linesOfData.get(), headerNames);
-		}
-	}
-
-	private static class FileParser implements Runnable {
-
-		private final int readSectionIndex;
-		private final int totalReadSections;
-		private final IInputStreamFactory delimitedInputStreamFactory;
-		private final IDelimitedLineParser lineParser;
-		private final Header header;
-		private final Map<Integer, String> columnToHeaderNameMap;
-
-		private final AtomicInteger linesOfData;
-		private final AtomicBoolean wasInterrupted;
-		private final String columnDelimiter;
-		private final ConcurrentHashMap<Long, Boolean> positionInBytesOfLinesReadByEachFileParser;
-
-		public FileParser(int readSectionIndex, int totalReadSections, IInputStreamFactory delimitedInputStreamFactory, IDelimitedLineParser lineParser, Header header,
-				Map<Integer, String> columnToHeaderNameMap, AtomicInteger linesOfData, AtomicBoolean wasInterrupted, String columnDelimiter,
-				ConcurrentHashMap<Long, Boolean> positionInBytesOfFirstLinesReadByEachFileParser) {
-			super();
-			this.readSectionIndex = readSectionIndex;
-			this.totalReadSections = totalReadSections;
-			this.delimitedInputStreamFactory = delimitedInputStreamFactory;
-			this.lineParser = lineParser;
-			this.header = header;
-			this.columnToHeaderNameMap = columnToHeaderNameMap;
-			this.linesOfData = linesOfData;
-			this.wasInterrupted = wasInterrupted;
-			this.columnDelimiter = columnDelimiter;
-			this.positionInBytesOfLinesReadByEachFileParser = positionInBytesOfFirstLinesReadByEachFileParser;
-		}
-
-		@Override
-		public void run() {
-
-			long sizeInBytes = delimitedInputStreamFactory.getSizeInBytes();
-
-			Map<String, String> headerNameToValueMapFromRow = new HashMap<String, String>();
-
-			CharsetDecoder decoder = header.getCharsetUsed().newDecoder();
-
-			try (InputStream inputStream = new BufferedInputStream(delimitedInputStreamFactory.createInputStream())) {
-
-				// this will actually put the current position at the header line but since the first line found
-				// is never read it will work as expected
-				long currentPositionInBytes = 0;
-
-				long linesToSkipForPreHeader = header.getLinesPriorToHeader();
-				if (linesToSkipForPreHeader > 0) {
-					currentPositionInBytes = skipLines(inputStream, linesToSkipForPreHeader);
-				}
-
-				long startPositionInBytes = (long) Math.floor((sizeInBytes * readSectionIndex) / totalReadSections);
-				long stopPositionInBytes = (long) Math.floor((sizeInBytes * (readSectionIndex + 1)) / totalReadSections) - 1;
-				if (startPositionInBytes > currentPositionInBytes) {
-					inputStream.skip(startPositionInBytes - currentPositionInBytes);
-					currentPositionInBytes = startPositionInBytes;
-				}
-
-				byte[] bytes = new byte[4096];
-
-				StringBuilder currentLine = new StringBuilder();
-				int endLinesFound = 0;
-
-				int numberOfBytesRead = 0;
-
-				boolean shouldContinue = true;
-
-				outerByteLoop: while (((numberOfBytesRead = inputStream.read(bytes)) != -1)) {
-
-					ByteBuffer in = null;
-					if (numberOfBytesRead < bytes.length) {
-						in = ByteBuffer.wrap(Arrays.copyOf(bytes, numberOfBytesRead));
-					} else {
-						in = ByteBuffer.wrap(bytes);
-					}
-
-					CharBuffer out = CharBuffer.allocate(1);
-					out.position(0);
-
-					int lastInPosition = 0;
-					while (in.hasRemaining()) {
-						decoder.decode(in, out, true);
-						char currentCharacter = out.array()[0];
-						currentPositionInBytes += (in.position() - lastInPosition);
-						lastInPosition = in.position();
-						out.position(0);
-						if ((currentCharacter == StringUtil.NEWLINE_SYMBOL)) {
-							endLinesFound++;
-							if (endLinesFound > 1) {
-								shouldContinue = processLine(currentLine.toString(), currentPositionInBytes, stopPositionInBytes, headerNameToValueMapFromRow);
-								if (!shouldContinue) {
-									break outerByteLoop;
-								}
-							}
-							currentLine = new StringBuilder();
-						} else {
-							currentLine.append(currentCharacter);
-						}
-					}
-				}
-				if (shouldContinue && currentLine.length() > 0) {
-					processLine(currentLine.toString(), currentPositionInBytes, stopPositionInBytes, headerNameToValueMapFromRow);
-				}
-			} catch (IOException e) {
-				throw new RuntimeException(e.getMessage(), e);
-			}
-
-		}
-
-		private boolean processLine(String currentLine, long currentPositionInBytes, long stopPositionInBytes, Map<String, String> headerNameToValueMapFromRow) {
-			boolean continueProcessing = true;
-
-			// this is handling the case where two or more file parsers have been positioned in the same line
-			if (positionInBytesOfLinesReadByEachFileParser.putIfAbsent(currentPositionInBytes, true) == null) {
-				// System.out.println(readSectionIndex + ":" + currentLine.toString());
-				linesOfData.incrementAndGet();
-				String currentRow = currentLine.toString();
-				// remove carriage return if this is a windows based file
-				currentRow = currentRow.replace(CARRIAGE_RETURN, "");
-
-				String[] parsedCurrentRow = currentRow.split(columnDelimiter);
-
-				if (parsedCurrentRow != null) {
-					headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow, headerNameToValueMapFromRow);
-
-					lineParser.parseDelimitedLine(headerNameToValueMapFromRow);
-				}
-
-				if (currentPositionInBytes > stopPositionInBytes) {
-					continueProcessing = false;
-				}
-
-				// another thread could have been interrupted meaning that the data will no longer be complete
-				// so there is no point in continuing with this section of data
-				if (wasInterrupted.get()) {
-					continueProcessing = false;
-				}
-
-				if ((linesOfData.get() % 1000 == 0 && Thread.currentThread().isInterrupted())) {
-					wasInterrupted.set(true);
-					continueProcessing = false;
-				}
-			}
-
-			return continueProcessing;
+			lineParser.doneParsing(linesOfData, headerNames);
 		}
 	}
 

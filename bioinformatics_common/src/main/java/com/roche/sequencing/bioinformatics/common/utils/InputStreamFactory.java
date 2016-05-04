@@ -71,6 +71,7 @@ public class InputStreamFactory implements IInputStreamFactory {
 
 	}
 
+	@Override
 	public InputStream createInputStream() throws FileNotFoundException {
 		InputStream inputStream;
 		if (file != null) {
@@ -90,10 +91,30 @@ public class InputStreamFactory implements IInputStreamFactory {
 	}
 
 	@Override
+	public long getSizeInBytes() {
+		long sizeInBytes = 0;
+		try {
+			if (file != null) {
+				sizeInBytes = file.length();
+			} else if (resourceName != null && relativeResourceClass != null) {
+				sizeInBytes = relativeResourceClass.getResourceAsStream(resourceName).available();
+			} else if (this.fileChannel != null) {
+				sizeInBytes = fileChannel.size();
+			} else {
+				throw new AssertionError();
+			}
+		} catch (IOException e) {
+			throw new RuntimeException(e.getMessage(), e);
+		}
+		return sizeInBytes;
+	}
+
+	@Override
 	public String toString() {
 		return "InputStreamFactory [file=" + file + ", resourceName=" + resourceName + ", relativeResourceClass=" + relativeResourceClass + "]";
 	}
 
+	@Override
 	public String getName() {
 		String name = resourceName;
 		if (name == null || name.isEmpty()) {

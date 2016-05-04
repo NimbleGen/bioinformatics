@@ -38,6 +38,7 @@ import net.sf.samtools.SAMSequenceRecord;
 
 import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.objects.Probe;
+import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 
 public class BamFileUtil {
 
@@ -208,8 +209,8 @@ public class BamFileUtil {
 	 * @param programVersion
 	 * @return
 	 */
-	public static SAMFileHeader getHeader(ParsedProbeFile probeInfo, String commandLineSignature, String programName, String programVersion) {
-		return getHeader(false, null, probeInfo, commandLineSignature, programName, programVersion);
+	public static SAMFileHeader getHeader(ParsedProbeFile probeInfo, String commandLineSignature, String programName, String programVersion, boolean excludeProgramInBamHeader) {
+		return getHeader(false, excludeProgramInBamHeader, null, probeInfo, commandLineSignature, programName, programVersion);
 	}
 
 	/**
@@ -222,8 +223,8 @@ public class BamFileUtil {
 	 * @param programVersion
 	 * @return
 	 */
-	public static SAMFileHeader getHeader(boolean onlyIncludeSequencesFromProbeFile, SAMFileHeader originalHeader, ParsedProbeFile probeInfo, String commandLineSignature, String programName,
-			String programVersion) {
+	public static SAMFileHeader getHeader(boolean onlyIncludeSequencesFromProbeFile, boolean excludeProgramInBamHeader, SAMFileHeader originalHeader, ParsedProbeFile probeInfo,
+			String commandLineSignature, String programName, String programVersion) {
 		SAMFileHeader newHeader = new SAMFileHeader();
 
 		List<SAMProgramRecord> programRecords = new ArrayList<SAMProgramRecord>();
@@ -232,13 +233,15 @@ public class BamFileUtil {
 			programRecords.addAll(originalHeader.getProgramRecords());
 		}
 
-		String uniqueProgramGroupId = programName;
-		SAMProgramRecord programRecord = new SAMProgramRecord(uniqueProgramGroupId);
-		programRecord.setProgramName(programName);
-		programRecord.setProgramVersion(programVersion);
-		programRecord.setCommandLine(commandLineSignature);
-		programRecords.add(programRecord);
-		newHeader.setProgramRecords(programRecords);
+		if (!excludeProgramInBamHeader) {
+			String uniqueProgramGroupId = programName + "_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS();
+			SAMProgramRecord programRecord = new SAMProgramRecord(uniqueProgramGroupId);
+			programRecord.setProgramName(programName);
+			programRecord.setProgramVersion(programVersion);
+			programRecord.setCommandLine(commandLineSignature);
+			programRecords.add(programRecord);
+			newHeader.setProgramRecords(programRecords);
+		}
 
 		SAMSequenceDictionary sequenceDictionary = new SAMSequenceDictionary();
 		if (originalHeader != null) {

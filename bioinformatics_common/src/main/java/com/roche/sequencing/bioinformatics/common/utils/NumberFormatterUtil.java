@@ -16,7 +16,12 @@
 package com.roche.sequencing.bioinformatics.common.utils;
 
 import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public class NumberFormatterUtil {
 
@@ -84,5 +89,59 @@ public class NumberFormatterUtil {
 
 	public static String addCommas(int value) {
 		return NumberFormat.getNumberInstance(Locale.US).format(value);
+	}
+
+	/**
+	 * Return a list of strings were adjacent values are clumped together. So 1,2,3,5,6,7,8,10 would be expressed as 1-3, 5-8, 10
+	 * 
+	 * @param numbers
+	 * @return
+	 */
+	public static String summarizeNumbersAsString(int[] numbers) {
+		// filter out duplicates
+		Set<Integer> set = new HashSet<Integer>();
+		for (int number : numbers) {
+			set.add(number);
+		}
+		List<Integer> sortedNumbers = new ArrayList<Integer>(set);
+		Collections.sort(sortedNumbers);
+
+		StringBuilder summaryBuilder = new StringBuilder();
+
+		Integer currentRunMin = null;
+		Integer lastNumber = null;
+		for (int number : sortedNumbers) {
+			if (currentRunMin == null) {
+				currentRunMin = number;
+			} else if (number != lastNumber + 1) {
+				if (currentRunMin == lastNumber) {
+					summaryBuilder.append(wrapNegativeNumbers(currentRunMin) + ", ");
+				} else {
+					summaryBuilder.append(wrapNegativeNumbers(currentRunMin) + "-" + wrapNegativeNumbers(lastNumber) + ", ");
+				}
+				currentRunMin = null;
+			}
+			lastNumber = number;
+		}
+
+		if (currentRunMin == null) {
+			summaryBuilder.append(wrapNegativeNumbers(lastNumber));
+		} else {
+			summaryBuilder.append(wrapNegativeNumbers(currentRunMin) + "-" + wrapNegativeNumbers(lastNumber) + ", ");
+		}
+
+		return summaryBuilder.toString();
+	}
+
+	private static String wrapNegativeNumbers(int number) {
+		String valueAsString = "" + number;
+		if (number < 0) {
+			valueAsString = "(" + number + ")";
+		}
+		return valueAsString;
+	}
+
+	public static void main(String[] args) {
+		System.out.println(summarizeNumbersAsString(new int[] { -5, -4, -3, 9, 0, 100, 1, 2, 3, 5, 6, 7, 8, 10 }));
 	}
 }
