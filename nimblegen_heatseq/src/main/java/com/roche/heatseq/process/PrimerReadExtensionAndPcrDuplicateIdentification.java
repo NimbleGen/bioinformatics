@@ -600,8 +600,8 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 				throw new IllegalStateException(e.getMessage(), e);
 			}
 
-			SAMFileHeader header = BamFileUtil.getHeader(false, mergedSamReader.getFileHeader(), probeInfo, applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(),
-					applicationSettings.getProgramVersion());
+			SAMFileHeader header = BamFileUtil.getHeader(false, applicationSettings.isShouldExcludeProgramInBamHeader(), mergedSamReader.getFileHeader(), probeInfo,
+					applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(), applicationSettings.getProgramVersion());
 			header.setSortOrder(SortOrder.coordinate);
 			samWriter = new SAMFileWriterFactory().setMaxRecordsInRam(DEFAULT_MAX_RECORDS_IN_RAM).setTempDirectory(applicationSettings.getTempDirectory())
 					.makeBAMWriter(header, false, outputSortedBamFile, 0);

@@ -70,57 +70,64 @@ public class HsqUtilsCli {
 			applicationVersionFromManifest = version;
 		}
 
-		String commandLineSignature = CommandLineParser.getCommandLineCallSignature(JAR_FILE_NAME, args, true);
-		CliStatusConsole.logStatus("");
-		CliStatusConsole.logStatus("---------------------------------");
-		CliStatusConsole.logStatus("Roche NimbleGen HeatSeq Utilities (version:" + applicationVersionFromManifest + ")");
-		CliStatusConsole.logStatus("---------------------------------");
-		CliStatusConsole.logStatus("");
-		CliStatusConsole.logStatus("The command line you typed was interpreted as follows:");
-		CliStatusConsole.logStatus(commandLineSignature);
-		CliStatusConsole.logStatus("");
 		Commands commands = getCommands();
 		ParsedCommandLine parsedCommandLine = CommandLineParser.parseCommandLine(args, commands);
-		Command activeCommand = parsedCommandLine.getActiveCommand();
-		boolean noOptionsProvided = (args.length == 0);
-		boolean onlyCommandOptionProvided = (activeCommand != null) && (args.length == 1);
-		boolean showUsage = parsedCommandLine.isOptionPresent(DeduplicationCli.USAGE_OPTION) || noOptionsProvided || onlyCommandOptionProvided;
 
-		if (showUsage) {
-			if (activeCommand != null) {
-				CliStatusConsole.logStatus(activeCommand.getUsage());
-			} else {
-				if (noOptionsProvided) {
-					CliStatusConsole.logStatus("");
-					CliStatusConsole.logStatus("___________________________________________________________________");
-					CliStatusConsole.logStatus("");
-					CliStatusConsole.logStatus("A command was not provided.  Please select from the commands below.");
-					CliStatusConsole.logStatus("As an example, trimming would be executed as follows:");
-					CliStatusConsole.logStatus(APPLICATION_NAME + " " + TRIM_COMMAND_NAME + " <trim specific arguments>");
-					CliStatusConsole.logStatus("");
-				} else {
-					CliStatusConsole.logStatus("");
-					CliStatusConsole.logStatus("___________________________________________________________________");
-					CliStatusConsole.logStatus("");
-				}
-				CliStatusConsole.logStatus(commands.getUsage());
-				CliStatusConsole.logStatus("___________________________________________________________________");
-				CliStatusConsole.logStatus("");
-			}
-
+		boolean showVersion = parsedCommandLine.isOptionPresent(DeduplicationCli.VERSION_OPTION);
+		if (showVersion) {
+			CliStatusConsole.logStatus("Version: " + applicationVersionFromManifest);
 		} else {
-			CommandLineParser.throwCommandLineParsingExceptions(parsedCommandLine);
+			String commandLineSignature = CommandLineParser.getCommandLineCallSignature(JAR_FILE_NAME, args, true);
+			CliStatusConsole.logStatus("");
+			CliStatusConsole.logStatus("---------------------------------");
+			CliStatusConsole.logStatus("Roche NimbleGen HeatSeq Utilities (version:" + applicationVersionFromManifest + ")");
+			CliStatusConsole.logStatus("---------------------------------");
+			CliStatusConsole.logStatus("");
+			CliStatusConsole.logStatus("The command line you typed was interpreted as follows:");
+			CliStatusConsole.logStatus(commandLineSignature);
+			CliStatusConsole.logStatus("");
 
-			if (activeCommand != null) {
-				if (activeCommand.getCommandName().equals(TRIM_COMMAND_NAME)) {
-					TrimCli.trim(parsedCommandLine, commandLineSignature, APPLICATION_NAME, applicationVersionFromManifest);
-				} else if (activeCommand.getCommandName().equals(DEDUPLICATION_COMMAND_NAME)) {
-					DeduplicationCli.identifyDuplicates(parsedCommandLine, commandLineSignature, APPLICATION_NAME, applicationVersionFromManifest);
+			Command activeCommand = parsedCommandLine.getActiveCommand();
+			boolean noOptionsProvided = (args.length == 0);
+			boolean onlyCommandOptionProvided = (activeCommand != null) && (args.length == 1);
+			boolean showUsage = parsedCommandLine.isOptionPresent(DeduplicationCli.USAGE_OPTION) || noOptionsProvided || onlyCommandOptionProvided;
+
+			if (showUsage) {
+				if (activeCommand != null) {
+					CliStatusConsole.logStatus(activeCommand.getUsage());
 				} else {
-					throw new AssertionError();
+					if (noOptionsProvided) {
+						CliStatusConsole.logStatus("");
+						CliStatusConsole.logStatus("___________________________________________________________________");
+						CliStatusConsole.logStatus("");
+						CliStatusConsole.logStatus("A command was not provided.  Please select from the commands below.");
+						CliStatusConsole.logStatus("As an example, trimming would be executed as follows:");
+						CliStatusConsole.logStatus(APPLICATION_NAME + " " + TRIM_COMMAND_NAME + " <trim specific arguments>");
+						CliStatusConsole.logStatus("");
+					} else {
+						CliStatusConsole.logStatus("");
+						CliStatusConsole.logStatus("___________________________________________________________________");
+						CliStatusConsole.logStatus("");
+					}
+					CliStatusConsole.logStatus(commands.getUsage());
+					CliStatusConsole.logStatus("___________________________________________________________________");
+					CliStatusConsole.logStatus("");
 				}
-			}
 
+			} else {
+				CommandLineParser.throwCommandLineParsingExceptions(parsedCommandLine);
+
+				if (activeCommand != null) {
+					if (activeCommand.getCommandName().equals(TRIM_COMMAND_NAME)) {
+						TrimCli.trim(parsedCommandLine, commandLineSignature, APPLICATION_NAME, applicationVersionFromManifest);
+					} else if (activeCommand.getCommandName().equals(DEDUPLICATION_COMMAND_NAME)) {
+						DeduplicationCli.identifyDuplicates(parsedCommandLine, commandLineSignature, APPLICATION_NAME, applicationVersionFromManifest);
+					} else {
+						throw new AssertionError();
+					}
+				}
+
+			}
 		}
 
 	}

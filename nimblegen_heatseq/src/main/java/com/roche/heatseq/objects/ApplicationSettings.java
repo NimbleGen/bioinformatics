@@ -39,6 +39,7 @@ public class ApplicationSettings {
 	private final String outputFilePrefix;
 	private final String originalBamFileName;
 	private final boolean shouldOutputReports;
+	private final boolean shouldExcludeProgramInBamHeader;
 	private final String commandLineSignature;
 	private final String programName;
 	private final String programVersion;
@@ -75,9 +76,9 @@ public class ApplicationSettings {
 	 * @param numProcessors
 	 */
 	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1File, File fastQ2File, File outputDirectory, File tempDirectory, String outputBamFileName,
-			String outputFilePrefix, String originalBamFileName, boolean shouldOutputReports, String commandLineSignature, String programName, String programVersion, int numProcessors,
-			boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, int extensionUidLength, int ligationUidLength, boolean markDuplicates, boolean keepDuplicates, boolean mergePairs,
-			boolean useStrictReadToProbeMatching, ProbeHeaderInformation probeHeaderInformation, boolean readsNotTrimmed, String sampleName) {
+			String outputFilePrefix, String originalBamFileName, boolean shouldOutputReports, boolean shouldExcludeProgramInBamHeader, String commandLineSignature, String programName,
+			String programVersion, int numProcessors, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, int extensionUidLength, int ligationUidLength, boolean markDuplicates,
+			boolean keepDuplicates, boolean mergePairs, boolean useStrictReadToProbeMatching, ProbeHeaderInformation probeHeaderInformation, boolean readsNotTrimmed, String sampleName) {
 		super();
 		this.probeFile = probeFile;
 		this.bamFile = bamFile;
@@ -90,6 +91,7 @@ public class ApplicationSettings {
 		this.outputFilePrefix = outputFilePrefix;
 		this.originalBamFileName = originalBamFileName;
 		this.shouldOutputReports = shouldOutputReports;
+		this.shouldExcludeProgramInBamHeader = shouldExcludeProgramInBamHeader;
 		this.commandLineSignature = commandLineSignature;
 		this.programName = programName;
 		this.programVersion = programVersion;
@@ -189,6 +191,13 @@ public class ApplicationSettings {
 	 */
 	public boolean isShouldOutputReports() {
 		return shouldOutputReports;
+	}
+
+	/**
+	 * @return true if the program entry should not be included in the output bam file.
+	 */
+	public boolean isShouldExcludeProgramInBamHeader() {
+		return shouldExcludeProgramInBamHeader;
 	}
 
 	/**

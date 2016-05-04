@@ -7,4 +7,6 @@ public interface IInputStreamFactory {
 	InputStream createInputStream() throws FileNotFoundException;
 
 	String getName();
+
+	long getSizeInBytes();
 }

@@ -64,7 +64,11 @@ public class TestPlan {
 
 	private void addRun(TestPlanRun run) {
 		if (runs.contains(run)) {
-			throw new IllegalArgumentException("The TestPlanRun[" + run.getDescription() + "] has already been added to the test plan.");
+			String description = run.getDescription();
+			if (description == null) {
+				description = "Run the following " + run.getCommand() + " command:";
+			}
+			throw new IllegalArgumentException("The TestPlanRun[" + description + "] has already been added to the test plan.");
 		}
 		runs.add(run);
 	}
@@ -82,8 +86,8 @@ public class TestPlan {
 		preconditions.add(precondition);
 	}
 
-	public boolean createTestPlan(File outputTestPlan) {
-		return createTestPlanReport(null, outputTestPlan, null, null, false, false, null);
+	public boolean createTestPlan(File outputTestPlan, String applicationName) {
+		return createTestPlanReport(applicationName, null, outputTestPlan, null, null, false, false, null, null);
 	}
 
 	/**
@@ -92,8 +96,9 @@ public class TestPlan {
 	 * @param outputReport
 	 * @return true if test plan ran succesfully with no failures, false otherwise
 	 */
-	public boolean createTestPlanReport(File applicationToTest, File testPlanExecutionDirectory, File outputReport, File optionalJvmBinPath, boolean createZip, String startingFolder) {
-		return createTestPlanReport(applicationToTest, outputReport, testPlanExecutionDirectory, optionalJvmBinPath, true, createZip, startingFolder);
+	public boolean createTestPlanReport(File applicationToTest, File testPlanExecutionDirectory, File outputReport, File optionalJvmBinPath, boolean createZip, String startingFolder,
+			String stoppingFolder) {
+		return createTestPlanReport(null, applicationToTest, outputReport, testPlanExecutionDirectory, optionalJvmBinPath, true, createZip, startingFolder, stoppingFolder);
 	}
 
 	/**
@@ -102,8 +107,8 @@ public class TestPlan {
 	 * @param outputReport
 	 * @return true if test plan ran successfully with no failures, false otherwise
 	 */
-	private boolean createTestPlanReport(File applicationToTest, File outputReport, File testPlanExecutionDirectory, File optionalJvmBinPath, boolean createReport, boolean createZip,
-			String startingFolder) {
+	private boolean createTestPlanReport(String applicationName, File applicationToTest, File outputReport, File testPlanExecutionDirectory, File optionalJvmBinPath, boolean createReport,
+			boolean createZip, String startingFolder, String stoppingFolder) {
 		String startTime = DateUtil.getCurrentDateINYYYYMMDDHHMMSSwithColons();
 		if (createReport && !applicationToTest.exists()) {
 			throw new IllegalArgumentException("The provided applicationToTest[" + applicationToTest.getAbsolutePath() + "] does not exist.");
@@ -142,7 +147,7 @@ public class TestPlan {
 		table.addCell(new PdfPCell(new Phrase("Step Number", SMALL_HEADER_FONT)));
 		table.addCell(new PdfPCell(new Phrase("Test Step", SMALL_HEADER_FONT)));
 		table.addCell(new PdfPCell(new Phrase("Acceptance Criteria", SMALL_HEADER_FONT)));
-		table.addCell(new PdfPCell(new Phrase("Acceptance Results", SMALL_HEADER_FONT)));
+		table.addCell(new PdfPCell(new Phrase("Actual Results", SMALL_HEADER_FONT)));
 		table.addCell(new PdfPCell(new Phrase("Results (Pass/Fail)", SMALL_HEADER_FONT)));
 
 		int totalChecks = 0;
@@ -167,6 +172,7 @@ public class TestPlan {
 		}
 
 		int runNumber = 1;
+		int executedRuns = 0;
 
 		List<TestPlanRun> sortedRuns = new ArrayList<TestPlanRun>(runs);
 		Collections.sort(sortedRuns, new Comparator<TestPlanRun>() {
@@ -179,6 +185,7 @@ public class TestPlan {
 		});
 
 		boolean startingFolderFound = true;
+		boolean stoppingFolderFound = false;
 
 		if (startingFolder != null) {
 			boolean startingFolderExists = false;
@@ -197,21 +204,43 @@ public class TestPlan {
 			}
 		}
 
+		List<String[]> notesByStepNumber = new ArrayList<String[]>();
+
 		for (TestPlanRun run : sortedRuns) {
 			startingFolderFound = startingFolderFound || run.getRunDirectory().getName().equals(startingFolder);
 
-			if (startingFolderFound) {
+			if (startingFolderFound && !stoppingFolderFound) {
+
+				stoppingFolderFound = run.getRunDirectory().getName().equals(stoppingFolder);
 
 				RunResults runResults = null;
 				CliStatusConsole.logStatus("");
-				CliStatusConsole.logStatus("Running step " + runNumber + "(" + run.getRunDirectory().getAbsolutePath() + ") : " + run.getDescription());
+
+				String description = run.getDescription();
+				if (description == null) {
+					description = "Run the following " + run.getCommand() + " command:";
+				}
+
+				CliStatusConsole.logStatus("Running step " + runNumber + "(" + run.getRunDirectory().getAbsolutePath() + ") : " + description);
 				if (createReport) {
 					runResults = executeRun(run, applicationToTest, testPlanExecutionDirectory, runNumber, optionalJvmBinPath);
 				}
 
+				if (run.getNotes() != null) {
+					for (String note : run.getNotes()) {
+						notesByStepNumber.add(new String[] { "" + runNumber, note });
+					}
+				}
+
 				table.addCell(naCell);
 				table.addCell(new PdfPCell(new Phrase("" + runNumber, SMALL_BOLD_FONT)));
-				table.addCell(new PdfPCell(new Phrase(run.getDescription() + StringUtil.NEWLINE + StringUtil.NEWLINE + "java -jar "
+
+				String applicationToTestName = applicationName;
+				if (createReport) {
+					applicationToTestName = applicationToTest.getAbsolutePath();
+				}
+
+				table.addCell(new PdfPCell(new Phrase(description + StringUtil.NEWLINE + StringUtil.NEWLINE + "java -jar " + applicationToTestName + " "
 						+ ArraysUtil.toString(run.getArguments().toArray(new String[0]), " "), SMALL_FONT)));
 
 				table.addCell(grayCell);
@@ -243,22 +272,37 @@ public class TestPlan {
 						table.addCell(new PdfPCell(new Phrase(referenceTypeAndNumbers, SMALL_FONT)));
 					}
 
+					if (check.getNotes() != null) {
+						for (String note : check.getNotes()) {
+							notesByStepNumber.add(new String[] { stepNumber, note });
+						}
+					}
+
 					table.addCell(new PdfPCell(new Phrase(stepNumber, SMALL_FONT)));
 					table.addCell(new PdfPCell(new Phrase(check.getDescription(), SMALL_FONT)));
-					table.addCell(new PdfPCell(new Phrase(check.getAcceptanceCriteria(), SMALL_FONT)));
+
+					if (check.isInformationOnly()) {
+						table.addCell(grayCell);
+					} else {
+						table.addCell(new PdfPCell(new Phrase(check.getAcceptanceCriteria(), SMALL_FONT)));
+					}
 
 					if (runResults != null) {
 						TestPlanRunCheckResult checkResult = check.check(runResults);
+
 						table.addCell(new PdfPCell(new Phrase(checkResult.getResultDescription(), SMALL_FONT)));
 
 						boolean wasCheckSuccess = checkResult.isPassed();
 
-						if (wasCheckSuccess) {
+						if (check.isInformationOnly()) {
+							table.addCell(grayCell);
+						} else if (wasCheckSuccess) {
 							table.addCell(new PdfPCell(new Phrase("Pass", SMALL_FONT)));
 							CliStatusConsole.logStatus("  Check " + stepNumber + " passed : " + check.getDescription());
 						} else {
 							table.addCell(new PdfPCell(new Phrase("Fail", SMALL_FONT)));
 							CliStatusConsole.logStatus("  Check " + stepNumber + " failed : " + check.getDescription());
+							CliStatusConsole.logStatus("    Reason for Failure: " + checkResult.getResultDescription());
 						}
 
 						if (wasCheckSuccess) {
@@ -267,13 +311,19 @@ public class TestPlan {
 
 						wasSuccess = wasSuccess && wasCheckSuccess;
 					} else {
-						table.addCell(emptyWhiteCell);
-						table.addCell(emptyWhiteCell);
+						if (check.isInformationOnly()) {
+							table.addCell(grayCell);
+							table.addCell(grayCell);
+						} else {
+							table.addCell(emptyWhiteCell);
+							table.addCell(emptyWhiteCell);
+						}
 					}
 					checkNumber++;
 					totalChecks++;
 
 				}
+				executedRuns++;
 			}
 			runNumber++;
 		}
@@ -285,6 +335,35 @@ public class TestPlan {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
 
+		if (notesByStepNumber.size() > 0) {
+			Paragraph notesTableParagraph = new Paragraph();
+			notesTableParagraph.add(Chunk.NEWLINE);
+
+			notesTableParagraph.add(new Phrase("Notes", REGULAR_BOLD_FONT));
+
+			PdfPTable notesTable = new PdfPTable(2);
+			try {
+				notesTable.setWidths(new float[] { 15f, 165f });
+			} catch (DocumentException e1) {
+				e1.printStackTrace();
+			}
+			notesTable.addCell(new PdfPCell(new Phrase("Step Number", SMALL_HEADER_FONT)));
+			notesTable.addCell(new PdfPCell(new Phrase("Notes", SMALL_HEADER_FONT)));
+
+			for (String[] entry : notesByStepNumber) {
+				notesTable.addCell(new PdfPCell(new Phrase(entry[0], SMALL_FONT)));
+				notesTable.addCell(new PdfPCell(new Phrase(entry[1], SMALL_FONT)));
+			}
+
+			notesTableParagraph.add(notesTable);
+			notesTableParagraph.add(Chunk.NEWLINE);
+			try {
+				pdfDocument.add(notesTableParagraph);
+			} catch (DocumentException e) {
+				throw new IllegalStateException(e.getMessage(), e);
+			}
+		}
+
 		if (createReport) {
 			String stopTime = DateUtil.getCurrentDateINYYYYMMDDHHMMSSwithColons();
 			// provide details about the system
@@ -293,6 +372,16 @@ public class TestPlan {
 			executionDetailsParagraph.add(Chunk.NEWLINE);
 			executionDetailsParagraph.add(new Phrase("Report generated by " + AutoTestPlanCli.APPLICATION_NAME + " " + AutoTestPlanCli.getApplicationVersion(), REGULAR_FONT));
 			executionDetailsParagraph.add(Chunk.NEWLINE);
+			boolean isRunningWithinJar = AutoTestPlanCli.class.getResource("AutoTestPlanCli.class").toString().startsWith("jar");
+			if (isRunningWithinJar) {
+				try {
+					File jarFile = new java.io.File(AutoTestPlanCli.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+					executionDetailsParagraph.add(new Phrase("Generating Software Jar File: " + jarFile.getAbsolutePath(), REGULAR_FONT));
+					executionDetailsParagraph.add(Chunk.NEWLINE);
+				} catch (Exception e) {
+					// Not a big deal if the generating software is not included
+				}
+			}
 			String userName = System.getProperty("user.name");
 			if (userName != null && !userName.isEmpty()) {
 				executionDetailsParagraph.add(new Phrase("Report generation initiated by: " + userName, REGULAR_FONT));
@@ -319,7 +408,8 @@ public class TestPlan {
 			try {
 				String md5Sum = Md5CheckSumUtil.md5sum(applicationToTest);
 				executionDetailsParagraph.add(new Phrase("Jar File Md5Sum: " + md5Sum, REGULAR_FONT));
-				executionDetailsParagraph.add(new Phrase("Jar File Location: " + applicationToTest.getAbsolutePath()));
+				executionDetailsParagraph.add(Chunk.NEWLINE);
+				executionDetailsParagraph.add(new Phrase("Jar File Location: " + applicationToTest.getAbsolutePath(), REGULAR_FONT));
 				executionDetailsParagraph.add(Chunk.NEWLINE);
 			} catch (IOException e1) {
 			}
@@ -353,6 +443,18 @@ public class TestPlan {
 			creationDetailsParagraph.add(new Phrase("Test Plan Creation Details", REGULAR_BOLD_FONT));
 			creationDetailsParagraph.add(Chunk.NEWLINE);
 			creationDetailsParagraph.add(new Phrase("Report generated by " + AutoTestPlanCli.APPLICATION_NAME + " " + AutoTestPlanCli.getApplicationVersion(), REGULAR_FONT));
+
+			boolean isRunningWithinJar = AutoTestPlanCli.class.getResource("AutoTestPlanCli.class").toString().startsWith("jar");
+			if (isRunningWithinJar) {
+				try {
+					File jarFile = new java.io.File(AutoTestPlanCli.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+					creationDetailsParagraph.add(Chunk.NEWLINE);
+					creationDetailsParagraph.add(new Phrase("Generating Software Jar File: " + jarFile.getAbsolutePath(), REGULAR_FONT));
+				} catch (Exception e) {
+					// Not a big deal if the generating software is not included
+				}
+			}
+
 			creationDetailsParagraph.add(Chunk.NEWLINE);
 			String userName = System.getProperty("user.name");
 			if (userName != null && !userName.isEmpty()) {
@@ -386,6 +488,40 @@ public class TestPlan {
 			}
 		}
 
+		Paragraph summaryParagraph = new Paragraph();
+		if (createReport) {
+			summaryParagraph.add(Chunk.NEWLINE);
+			summaryParagraph.add(new Phrase("Test Plan Creation Details", REGULAR_BOLD_FONT));
+			summaryParagraph.add(Chunk.NEWLINE);
+			int totalRuns = runNumber - 1;
+			if (totalRuns > 1) {
+				summaryParagraph.add(new Phrase(totalRuns + " total runs.", REGULAR_FONT));
+			} else {
+				summaryParagraph.add(new Phrase("1 total run.", REGULAR_FONT));
+			}
+			summaryParagraph.add(Chunk.NEWLINE);
+			if ((executedRuns > 1) || (executedRuns == 0)) {
+				summaryParagraph.add(new Phrase(executedRuns + " runs executed.", REGULAR_FONT));
+			} else {
+				summaryParagraph.add(new Phrase("1 run executed.", REGULAR_FONT));
+			}
+			summaryParagraph.add(Chunk.NEWLINE);
+			summaryParagraph.add(new Phrase(passedChecks + " out of " + totalChecks + " checks passed.", REGULAR_FONT));
+			summaryParagraph.add(Chunk.NEWLINE);
+			summaryParagraph.add(Chunk.NEWLINE);
+			if (wasSuccess) {
+				summaryParagraph.add(new Phrase("The test plan PASSED.", REGULAR_FONT));
+			} else {
+				summaryParagraph.add(new Phrase("The test plan FAILED.", REGULAR_FONT));
+			}
+		}
+
+		try {
+			pdfDocument.add(summaryParagraph);
+		} catch (DocumentException e) {
+			throw new IllegalStateException(e.getMessage(), e);
+		}
+
 		pdfDocument.close();
 		CliStatusConsole.logStatus("");
 		if (createReport) {
@@ -394,6 +530,11 @@ public class TestPlan {
 				CliStatusConsole.logStatus(totalRuns + " total runs.");
 			} else {
 				CliStatusConsole.logStatus("1 total run.");
+			}
+			if ((executedRuns > 1) || (executedRuns == 0)) {
+				CliStatusConsole.logStatus(executedRuns + " runs executed.");
+			} else {
+				CliStatusConsole.logStatus("1 run executed.");
 			}
 			CliStatusConsole.logStatus(passedChecks + " out of " + totalChecks + " checks passed.");
 
@@ -420,6 +561,17 @@ public class TestPlan {
 			directoriesAndFilesToZip.add(outputReport);
 			directoriesAndFilesToZip.add(applicationToTest);
 			directoriesAndFilesToZip.add(LoggingUtil.getLogFile());
+
+			boolean isRunningWithinJar = TestPlan.class.getResource("TestPlan.class").toString().startsWith("jar");
+			if (isRunningWithinJar) {
+				try {
+					File jarFile = new java.io.File(TestPlan.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+					directoriesAndFilesToZip.add(jarFile);
+				} catch (Exception e) {
+					CliStatusConsole.logStatus("Unable to zip the AutoTestPlan application within the zipped results.");
+				}
+			}
+
 			ZipUtil.zipDirectoriesAndFiles(outputZipFile, directoriesAndFilesToZip);
 			CliStatusConsole.logStatus("Done creating results Zip file at [" + outputZipFile + "].");
 			CliStatusConsole.logStatus("");
@@ -536,13 +688,7 @@ public class TestPlan {
 			testPlan.addPrecondition(precondition);
 		}
 
-		TestPlanRun runSettingsToInherit = TestPlanRun.readFromDirectory(testPlanDirectory, testPlanDirectory);
-
-		File[] subdirectories = FileUtil.getSubDirectories(testPlanDirectory);
-
-		for (File subdirectory : subdirectories) {
-			testPlan.addRuns(recursivelyReadRunsFromDirectory(subdirectory, testPlanDirectory, runSettingsToInherit));
-		}
+		testPlan.addRuns(recursivelyReadRunsFromDirectory(testPlanDirectory, testPlanDirectory, null));
 
 		return testPlan;
 	}
@@ -551,15 +697,28 @@ public class TestPlan {
 		List<TestPlanRun> runs = new ArrayList<TestPlanRun>();
 
 		TestPlanRun run = TestPlanRun.readFromDirectory(testPlanDirectory, directory, runSettingsToInherit);
-		if (run != null) {
+
+		boolean isRunsFoundInSubDirectories = false;
+		File[] subdirectories = FileUtil.getSubDirectories(directory);
+		for (File subdirectory : subdirectories) {
+			List<TestPlanRun> runsFoundInSubDirectories = null;
+
+			if (run == null) {
+				runsFoundInSubDirectories = recursivelyReadRunsFromDirectory(subdirectory, testPlanDirectory, runSettingsToInherit);
+			} else {
+				runsFoundInSubDirectories = recursivelyReadRunsFromDirectory(subdirectory, testPlanDirectory, run);
+			}
+
+			if (runsFoundInSubDirectories.size() > 0) {
+				isRunsFoundInSubDirectories = true;
+				runs.addAll(runsFoundInSubDirectories);
+			}
+		}
+
+		if (run != null && !isRunsFoundInSubDirectories) {
 			runs.add(run);
 		}
 
-		File[] subdirectories = FileUtil.getSubDirectories(directory);
-
-		for (File subdirectory : subdirectories) {
-			runs.addAll(recursivelyReadRunsFromDirectory(subdirectory, testPlanDirectory, runSettingsToInherit));
-		}
 		return runs;
 	}
 

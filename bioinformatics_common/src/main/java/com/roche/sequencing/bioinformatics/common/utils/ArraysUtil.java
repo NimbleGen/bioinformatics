@@ -254,12 +254,12 @@ public final class ArraysUtil {
 		return combinedArray;
 	}
 
-	public static String toString(String[] strings, String delimiter) {
+	public static <T> String toString(T[] strings, String delimiter) {
 		String returnString = "";
 
-		if (strings.length > 0) {
+		if (strings != null && strings.length > 0) {
 			StringBuilder returnStringBuilder = new StringBuilder();
-			for (String string : strings) {
+			for (Object string : strings) {
 				returnStringBuilder.append(string + delimiter);
 			}
 			returnString = returnStringBuilder.substring(0, returnStringBuilder.length() - delimiter.length());
@@ -267,7 +267,20 @@ public final class ArraysUtil {
 		return returnString;
 	}
 
-	public static boolean contains(String[] values, String containedValue) {
+	public static String toString(int[] numbers, String delimiter) {
+		String returnString = "";
+
+		if (numbers != null && numbers.length > 0) {
+			StringBuilder returnStringBuilder = new StringBuilder();
+			for (int i : numbers) {
+				returnStringBuilder.append(i + delimiter);
+			}
+			returnString = returnStringBuilder.substring(0, returnStringBuilder.length() - delimiter.length());
+		}
+		return returnString;
+	}
+
+	public static <T> boolean contains(T[] values, T containedValue) {
 		boolean isContained = false;
 		int i = 0;
 		while (!isContained && i < values.length) {

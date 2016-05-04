@@ -19,22 +19,11 @@ import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 
 public class TestPlanRun {
 
-	private final File testPlanBaseDirectory;
-	private final File runDirectory;
-	private final String resultsSubDirectory;
-	private final String description;
-	private final String command;
-	private final String[] extraArguments;
-	private final Map<String, String> variables;
-	private final Map<String, List<String>> inputArgumentNamesToFileNameRegex;
-
-	private List<TestPlanRunCheck> checks;
-	private List<String> arguments;
-
 	private final static String DESCRIPTION_KEY = "description";
 	private final static String COMMAND_KEY = "command";
 	private final static String RESULTS_SUBDIRECTORY_KEY = "resultsSubDirectory";
 	private final static String VARIABLES_KEY = "variables";
+	private final static String NOTES_KEY = "notes";
 
 	private final static String EXTRA_ARGUMENTS_KEY = "extraArguments";
 	private final static String INPUT_ARGUMENT_NAMES_TO_FILE_NAME_REGEX_KEY = "inputArgumentNamesToFileNameRegex";
@@ -45,8 +34,21 @@ public class TestPlanRun {
 	private final static String TEST_PLAN_DIRECTORY_VARIABLE_KEY = "TEST_PLAN_DIR";
 	private final static String SYSTEM_TEMP_DIRECTORY_VARIABLE_KEY = "SYSTEM_TEMP_DIR";
 
+	private final File testPlanBaseDirectory;
+	private final File runDirectory;
+	private final String resultsSubDirectory;
+	private final String description;
+	private final String command;
+	private final String[] extraArguments;
+	private final String[] notes;
+	private final Map<String, String> variables;
+	private final Map<String, List<String>> inputArgumentNamesToFileNameRegex;
+
+	private List<TestPlanRunCheck> checks;
+	private List<String> arguments;
+
 	private TestPlanRun(File testPlanBaseDirectory, File runDirectory, String description, String command, String[] extraArguments, Map<String, List<String>> fileNameRegexToInputArgumentNames,
-			String resultsSubDirectory, Map<String, String> variables) {
+			String resultsSubDirectory, Map<String, String> variables, String[] notes) {
 		super();
 		this.testPlanBaseDirectory = testPlanBaseDirectory;
 		this.runDirectory = runDirectory;
@@ -56,6 +58,7 @@ public class TestPlanRun {
 		this.inputArgumentNamesToFileNameRegex = fileNameRegexToInputArgumentNames;
 		this.resultsSubDirectory = resultsSubDirectory;
 		this.variables = new HashMap<String, String>();
+		this.notes = notes;
 		populateRunVariables(variables);
 	}
 
@@ -69,6 +72,10 @@ public class TestPlanRun {
 		this.variables.put(RUN_DIRECTORY_VARIABLE_KEY, runDirectory.getAbsolutePath());
 		this.variables.put(TEST_PLAN_DIRECTORY_VARIABLE_KEY, testPlanBaseDirectory.getAbsolutePath());
 		this.variables.put(SYSTEM_TEMP_DIRECTORY_VARIABLE_KEY, FileUtil.getSystemSpecificTempDirectory().getAbsolutePath());
+	}
+
+	public String[] getNotes() {
+		return notes;
 	}
 
 	private void setChecks(List<TestPlanRunCheck> checks) {
@@ -106,11 +113,18 @@ public class TestPlanRun {
 	String replaceVariables(String text) {
 		String replacedText = text;
 
-		for (Entry<String, String> entry : variables.entrySet()) {
-			// The backslash stuff is because replace all treats the backslash
-			// as
-			// an escape character
-			replacedText = replacedText.replaceAll("(?i)" + Pattern.quote("$" + entry.getKey() + "$"), entry.getValue().replaceAll("\\\\", "\\\\\\\\"));
+		if (replacedText != null) {
+			for (Entry<String, String> entry : variables.entrySet()) {
+				// The backslash stuff is because replace all treats the backslash
+				// as an escape character
+				String key = entry.getKey();
+				String value = entry.getValue();
+				if (key != null && value != null) {
+					replacedText = replacedText.replaceAll("(?i)" + Pattern.quote("$" + key + "$"), value.replaceAll("\\\\", "\\\\\\\\"));
+				} else {
+					System.out.println("key is null.");
+				}
+			}
 		}
 
 		return replacedText;
@@ -141,8 +155,8 @@ public class TestPlanRun {
 					}
 
 					if (matchingFile == null) {
-						throw new IllegalStateException(
-								"Unable to find a file in directory(ies)[" + ArraysUtil.toString(directoriesSearched.toArray(new String[0]), ",") + "] matching the regex[" + regex + "].");
+						throw new IllegalStateException("Unable to find a file in directory(ies)[" + ArraysUtil.toString(directoriesSearched.toArray(new String[0]), ",") + "] matching the regex["
+								+ regex + "].");
 					} else {
 						arguments.add(argument);
 						arguments.add(matchingFile.getAbsolutePath());
@@ -179,14 +193,14 @@ public class TestPlanRun {
 		String[] applicationRunYamlFiles = testPlanRunDirectory.list(new FilenameFilter() {
 
 			@Override
-			public boolean accept(File dir, String name) {
-				return name.toLowerCase().endsWith("run");
+			public boolean accept(File file, String name) {
+				return name.toLowerCase().endsWith("run") && new File(file, name).isFile();
 			}
 		});
 
 		if (applicationRunYamlFiles.length > 1) {
-			throw new IllegalStateException(
-					"There were multiple[" + applicationRunYamlFiles.length + "] .run files found in the provided test plan run directory[" + testPlanRunDirectory + "] whereas only 1 was expected.");
+			throw new IllegalStateException("There were multiple[" + applicationRunYamlFiles.length + "] .run files found in the provided test plan run directory[" + testPlanRunDirectory
+					+ "] whereas only 1 was expected.");
 		}
 
 		if (applicationRunYamlFiles.length == 1) {
@@ -282,7 +296,9 @@ public class TestPlanRun {
 					}
 				}
 
-				run = new TestPlanRun(testPlanBaseDirectory, testPlanRunDirectory, description, command, extraArguments, inputArgumentNamesToFileNameRegex, resultsSubDirectory, variablesMap);
+				String[] notes = TestPlanRunCheck.parseStringOrListYamlNode(root.get(NOTES_KEY));
+
+				run = new TestPlanRun(testPlanBaseDirectory, testPlanRunDirectory, description, command, extraArguments, inputArgumentNamesToFileNameRegex, resultsSubDirectory, variablesMap, notes);
 				List<TestPlanRunCheck> checks = TestPlanRunCheck.readFromDirectory(run, testPlanRunDirectory);
 				run.setChecks(checks);
 			} catch (Exception e) {

@@ -9,10 +9,10 @@
 		<relativePath>../../git_superpom/pom.xml</relativePath>
 	</parent>
 
-	<artifactId>autotestplan</artifactId>
+	<artifactId>autotestplan_tester</artifactId>
 	<packaging>pom</packaging>
 	<name>Auto Test Plan</name>
-	<description>Command line tool for Automating Test Plans</description>
+	<description>Command line tool for Testing the Automating Test Plans Application</description>
 	<version>v1_0</version>
 
 	<modules>
@@ -58,7 +58,7 @@
 					<appendAssemblyId>false</appendAssemblyId>
 					<archive>
 						<manifestEntries>
-							<Second-Main-Class>com/roche/bioinformatics/common/verification/AutoTestPlanCli</Second-Main-Class>
+							<Second-Main-Class>com/roche/bioinformatics/common/verification/testapp/AutoTestPlanTesterCli</Second-Main-Class>
 							<Implementation-Build>${maven.build.timestamp}</Implementation-Build>
 							<version>${project.version}</version>
 							<Main-Class>com/roche/bioinformatics/common/java/JavaVersionChecker</Main-Class>

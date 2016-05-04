@@ -38,11 +38,13 @@ public class PausableFixedThreadPoolExecutor extends ThreadPoolExecutor {
 	 * 
 	 * @param numberOfThreads
 	 */
-	public PausableFixedThreadPoolExecutor(int numberOfThreads) {
+	public PausableFixedThreadPoolExecutor(int numberOfThreads, String threadNamePrefix) {
 		super(numberOfThreads, numberOfThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingDeque<Runnable>());
 		exceptionListeners = new ArrayList<IExceptionListener>();
 
 		isPaused = false;
+
+		setThreadFactory(new NamePrependingThreadFactory(threadNamePrefix));
 	}
 
 	@Override

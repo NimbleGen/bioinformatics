@@ -64,7 +64,7 @@ public class DeduplicationCli {
 
 	private final static String SAM_FILE_EXTENSION = "sam";
 
-	public final static int DEFAULT_EXTENSION_UID_LENGTH = 0;
+	public final static int DEFAULT_EXTENSION_UID_LENGTH = 10;
 	public final static int DEFAULT_LIGATION_UID_LENGTH = 0;
 	public final static String BAM_EXTENSION = ".bam";
 
@@ -104,7 +104,10 @@ public class DeduplicationCli {
 	public final static CommandLineOption TRIMMING_SKIPPED_OPTION = new CommandLineOption("Reads Were Not Trimmed Prior to Mapping", "readsNotTrimmed", null,
 			"The reads were not trimmed prior to mapping.", false, true);
 	private final static CommandLineOption INTERNAL_REPORTS_OPTION = new CommandLineOption("Output interal reports", "internalReports", null, "Output internal reports.", false, true, true);
+	private final static CommandLineOption EXCLUDE_NEW_PROGRAM_IN_BAM_HEADER_OPTION = new CommandLineOption("Exclude Program in Bam Header", "excludeProgramInBamHeader", null,
+			"Don not include a program entry for this application in the bam header.", false, true, true);
 	private final static CommandLineOption SAVE_TEMP_OPTION = new CommandLineOption("Save Temp Files", "saveTemp", null, "Save temporary files.", false, true, true);
+	public final static CommandLineOption VERSION_OPTION = new CommandLineOption("Print Version", "version", null, "Print the version for this application.", false, true);
 
 	// Note: these variables are for debugging purposes
 	// saveTemporaryFiles default is false
@@ -314,6 +317,7 @@ public class DeduplicationCli {
 		boolean markDuplicates = parsedCommandLine.isOptionPresent(MARK_DUPLICATES_OPTION);
 		boolean keepDuplicates = parsedCommandLine.isOptionPresent(KEEP_DUPLICATES_OPTION);
 		boolean shouldOutputInternalReports = parsedCommandLine.isOptionPresent(INTERNAL_REPORTS_OPTION);
+		boolean shouldExcludeProgramInBamHeader = parsedCommandLine.isOptionPresent(EXCLUDE_NEW_PROGRAM_IN_BAM_HEADER_OPTION);
 		saveTemporaryFiles = parsedCommandLine.isOptionPresent(SAVE_TEMP_OPTION);
 
 		if (markDuplicates && keepDuplicates) {
@@ -545,8 +549,8 @@ public class DeduplicationCli {
 			boolean readsNotTrimmed = parsedCommandLine.isOptionPresent(TRIMMING_SKIPPED_OPTION);
 
 			sortMergeFilterAndExtendReads(applicationName, applicationVersion, probeInfoFile, validSamOrBamInputFile, bamIndexFile, fastQ1File, fastQ2File, outputDirectory, outputBamFileName,
-					outputFilePrefix, tempOutputDirectory, shouldOutputInternalReports, commandLineSignature, numProcessors, extensionUidLength, ligationUidLength, allowVariableLengthUids,
-					alignmentScorer, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching, readsNotTrimmed, probeHeaderInformation, sampleName);
+					outputFilePrefix, tempOutputDirectory, shouldOutputInternalReports, shouldExcludeProgramInBamHeader, commandLineSignature, numProcessors, extensionUidLength, ligationUidLength,
+					allowVariableLengthUids, alignmentScorer, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching, readsNotTrimmed, probeHeaderInformation, sampleName);
 
 			long applicationStop = System.currentTimeMillis();
 			CliStatusConsole.logStatus("Deduplication has completed successfully.");
@@ -560,15 +564,16 @@ public class DeduplicationCli {
 	}
 
 	public static void sortMergeFilterAndExtendReads(String applicationName, String applicationVersion, File probeFile, File bamFile, File bamIndexFile, File fastQ1File, File fastQ2File,
-			File outputDirectory, String outputBamFileName, String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputReports, String commandLineSignature, int numProcessors,
-			int extensionUidLength, int ligationUidLength, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean markDuplicates, boolean keepDuplicates, boolean mergePairs,
-			boolean useStrictReadToProbeMatching, boolean readsNotTrimmed, ProbeHeaderInformation probeHeaderInformation, String sampleName) {
+			File outputDirectory, String outputBamFileName, String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputReports, boolean shouldExcludeProgramInBamHeader,
+			String commandLineSignature, int numProcessors, int extensionUidLength, int ligationUidLength, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean markDuplicates,
+			boolean keepDuplicates, boolean mergePairs, boolean useStrictReadToProbeMatching, boolean readsNotTrimmed, ProbeHeaderInformation probeHeaderInformation, String sampleName) {
 		try {
 
 			long totalTimeStart = System.currentTimeMillis();
 			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, bamFile, bamIndexFile, fastQ1File, fastQ2File, outputDirectory, tempOutputDirectory, outputBamFileName,
-					outputFilePrefix, bamFile.getName(), shouldOutputReports, commandLineSignature, applicationName, applicationVersion, numProcessors, allowVariableLengthUids, alignmentScorer,
-					extensionUidLength, ligationUidLength, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching, probeHeaderInformation, readsNotTrimmed, sampleName);
+					outputFilePrefix, bamFile.getName(), shouldOutputReports, shouldExcludeProgramInBamHeader, commandLineSignature, applicationName, applicationVersion, numProcessors,
+					allowVariableLengthUids, alignmentScorer, extensionUidLength, ligationUidLength, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching, probeHeaderInformation,
+					readsNotTrimmed, sampleName);
 
 			ReadNameDetails readNameDetails = PrimerReadExtensionAndPcrDuplicateIdentification.verifyReadNamesCanBeHandledByDedupAndFindCommonReadNameBeginning(applicationSettings.getFastQ1File(),
 					applicationSettings.getFastQ2File());
@@ -589,6 +594,7 @@ public class DeduplicationCli {
 		CommandLineOptionsGroup group = new CommandLineOptionsGroup();
 
 		group.addOption(USAGE_OPTION);
+		group.addOption(VERSION_OPTION);
 		group.addOption(FASTQ_ONE_OPTION);
 		group.addOption(FASTQ_TWO_OPTION);
 		group.addOption(PROBE_OPTION);
@@ -600,6 +606,7 @@ public class DeduplicationCli {
 		group.addOption(NUM_PROCESSORS_OPTION);
 		group.addOption(SAVE_TEMP_OPTION);
 		group.addOption(TRIMMING_SKIPPED_OPTION);
+
 		// group.addOption(MATCH_SCORE_OPTION);
 		// group.addOption(MISMATCH_PENALTY_OPTION);
 		// group.addOption(GAP_OPEN_PENALTY_OPTION);
@@ -610,6 +617,7 @@ public class DeduplicationCli {
 		// group.addOption(MERGE_PAIRS_OPTION);
 		// group.addOption(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
 		group.addOption(INTERNAL_REPORTS_OPTION);
+		group.addOption(EXCLUDE_NEW_PROGRAM_IN_BAM_HEADER_OPTION);
 		return group;
 	}
 }

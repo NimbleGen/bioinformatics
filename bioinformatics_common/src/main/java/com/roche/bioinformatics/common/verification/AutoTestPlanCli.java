@@ -18,9 +18,6 @@ package com.roche.bioinformatics.common.verification;
 import java.io.File;
 import java.io.IOException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.roche.bioinformatics.common.verification.runs.TestPlan;
 import com.roche.sequencing.bioinformatics.common.commandline.Command;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
@@ -50,6 +47,8 @@ public class AutoTestPlanCli {
 			"Base directory for placing results file from running the test plan", true, false);
 	public final static CommandLineOption APPLICATION_JAR_FILE_OPTION = new CommandLineOption("Application Jar File", "application", null, "The path to the application jar file to be tested.", true,
 			false);
+	public final static CommandLineOption APPLICATION_NAME_OPTION = new CommandLineOption("Application Name", "applicationName", null,
+			"The name of the application jar file to be tested that will be displayed in the test plan.", true, false);
 	public final static CommandLineOption JVM_BIN_PATH_OPTION = new CommandLineOption("JVM Bin Path", "jvm", null,
 			"The path to the jvm bin to use for executing the tests.  If not provided, the application will use the default JVM.", false, false);
 	public final static CommandLineOption OUTPUT_FILE_OPTION = new CommandLineOption("Output File", "output", null, "The output file to write the test plan or report.", true, false);
@@ -57,6 +56,8 @@ public class AutoTestPlanCli {
 			"Zip the results files and place them in the output directory then delete the results directory.", false, true);
 	public final static CommandLineOption STARTING_FOLDER_OPTION = new CommandLineOption("Starting Folder", "startFolder", null,
 			"Starts at the provided folder name if it exists and skips all previous tests.", false, false);
+	public final static CommandLineOption STOPPING_FOLDER_OPTION = new CommandLineOption("Stopping Folder", "stopFolder", null,
+			"Stops at the provided folder name if it exists and skips all tests found after this folder.", false, false);
 
 	public final static String FILE_LOGGER_NAME = "root";
 
@@ -73,6 +74,7 @@ public class AutoTestPlanCli {
 			CliStatusConsole.logError(funError);
 			CliStatusConsole.logError("");
 			CliStatusConsole.logError(t);
+
 			if (logFile != null) {
 				CliStatusConsole.logError("You may find additional details regarding your error in the log file [" + logFile.getAbsolutePath() + "].");
 			} else {
@@ -96,12 +98,24 @@ public class AutoTestPlanCli {
 			applicationVersionFromManifest = version;
 		}
 
-		String commandLineSignature = CommandLineParser.getCommandLineCallSignature(JAR_FILE_NAME, args, true);
+		String jarFileName = JAR_FILE_NAME;
+		boolean isRunningWithinJar = AutoTestPlanCli.class.getResource("AutoTestPlanCli.class").toString().startsWith("jar");
+		if (isRunningWithinJar) {
+			try {
+				File jarFile = new java.io.File(AutoTestPlanCli.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+				jarFileName = jarFile.getAbsolutePath();
+			} catch (Exception e) {
+				jarFileName = JAR_FILE_NAME;
+			}
+		}
+
+		String commandLineSignature = CommandLineParser.getCommandLineCallSignature(jarFileName, args, true);
 		CliStatusConsole.logStatus("");
 		CliStatusConsole.logStatus("---------------------------------");
 		CliStatusConsole.logStatus("Roche NimbleGen AutoTestPlan (version:" + applicationVersionFromManifest + ")");
 		CliStatusConsole.logStatus("---------------------------------");
 		CliStatusConsole.logStatus("");
+
 		CliStatusConsole.logStatus("The command line you typed was interpreted as follows:");
 		CliStatusConsole.logStatus(commandLineSignature);
 		CliStatusConsole.logStatus("");
@@ -187,6 +201,7 @@ public class AutoTestPlanCli {
 		CommandLineOptionsGroup group = new CommandLineOptionsGroup();
 		group.addOption(USAGE_OPTION);
 		group.addOption(TEST_PLAN_DIRECTORY_OPTION);
+		group.addOption(APPLICATION_NAME_OPTION);
 		group.addOption(OUTPUT_FILE_OPTION);
 		return group;
 	}
@@ -200,6 +215,7 @@ public class AutoTestPlanCli {
 		group.addOption(OUTPUT_FILE_OPTION);
 		group.addOption(ZIP_RESULTS_OPTION);
 		group.addOption(STARTING_FOLDER_OPTION);
+		group.addOption(STOPPING_FOLDER_OPTION);
 		group.addOption(JVM_BIN_PATH_OPTION);
 		return group;
 	}
@@ -248,9 +264,8 @@ public class AutoTestPlanCli {
 			throw new IllegalArgumentException("The provided file for " + TEST_PLAN_DIRECTORY_OPTION.getLongFormOption() + " does not exist.");
 		}
 
-		Logger logger = LoggerFactory.getLogger(AutoTestPlanCli.class);
-		logger.info(applicationName + " version:" + applicationVersion);
-		logger.info("command line signature: " + commandLineSignature);
+		CliStatusConsole.logStatus(applicationName + " version:" + applicationVersion);
+		CliStatusConsole.logStatus("command line signature: " + commandLineSignature);
 
 		TestPlan testPlan = TestPlan.readFromDirectory(testPlanDirectory);
 		CliStatusConsole.logStatus("Test Plan CheckSum:" + testPlan.checkSum());
@@ -280,9 +295,15 @@ public class AutoTestPlanCli {
 				startingFolder = parsedCommandLine.getOptionsValue(STARTING_FOLDER_OPTION);
 			}
 
-			testPlan.createTestPlanReport(appToTest, testPlanExecutionDirectory, outputFile, jvmBinFile, createZip, startingFolder);
+			String stoppingFolder = null;
+			if (parsedCommandLine.isOptionPresent(STOPPING_FOLDER_OPTION)) {
+				stoppingFolder = parsedCommandLine.getOptionsValue(STOPPING_FOLDER_OPTION);
+			}
+
+			testPlan.createTestPlanReport(appToTest, testPlanExecutionDirectory, outputFile, jvmBinFile, createZip, startingFolder, stoppingFolder);
 		} else {
-			testPlan.createTestPlan(outputFile);
+			applicationName = parsedCommandLine.getOptionsValue(APPLICATION_NAME_OPTION);
+			testPlan.createTestPlan(outputFile, applicationName);
 		}
 
 	}
