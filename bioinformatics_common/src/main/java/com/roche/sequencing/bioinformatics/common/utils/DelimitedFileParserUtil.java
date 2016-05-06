@@ -56,6 +56,8 @@ public final class DelimitedFileParserUtil {
 
 	private static final String CARRIAGE_RETURN = "" + StringUtil.CARRIAGE_RETURN;
 
+	private final static int BYTES_IN_100MB = 100000000;
+
 	// NOTE: WINDOWS_NEWLINE = CARRIAGE_RETURN + LINE_FEED;
 	// NOTE: LINUX_NEWLINE = LINE_FEED;
 
@@ -318,19 +320,6 @@ public final class DelimitedFileParserUtil {
 
 	}
 
-	public static Map<Integer, String> getHeaderIndexToHeaderNameMap(File delimitedFile, String[] headerNames, String columnDelimiter, boolean extractAdditionalHeaderNames) throws IOException {
-		Map<Integer, String> headerColumnToNameMap = null;
-
-		Header header = findHeaderLine(headerNames, columnDelimiter, new InputStreamFactory(delimitedFile));
-		boolean headerFound = header != null;
-		if (headerFound) {
-			String[] parsedHeaderRow = header.getHeadLine().split(columnDelimiter);
-			headerColumnToNameMap = getColumnIndexToHeaderNameMapping(headerNames, parsedHeaderRow, extractAdditionalHeaderNames);
-		}
-
-		return headerColumnToNameMap;
-	}
-
 	public static Iterator<Map<String, String>> getHeaderNameToValueMapRowIteratorFromDelimitedFile(File delimitedFile, String[] headerNames, String columnDelimiter)
 			throws UnableToFindHeaderException, IOException {
 		return getHeaderNameToValueMapRowIteratorFromDelimitedFile(delimitedFile, headerNames, columnDelimiter, false);
@@ -355,7 +344,7 @@ public final class DelimitedFileParserUtil {
 		return bytesSkipped;
 	}
 
-	public static Iterator<Map<String, String>> getHeaderNameToValueMapRowIteratorFromDelimitedFile(File delimitedFile, String[] headerNames, String columnDelimiter,
+	private static Iterator<Map<String, String>> getHeaderNameToValueMapRowIteratorFromDelimitedFile(File delimitedFile, String[] headerNames, String columnDelimiter,
 			boolean extractAdditionalHeaderNames) throws UnableToFindHeaderException, IOException {
 
 		DelimitedFileLineIterator delimitedFileLineIterator = null;
@@ -556,7 +545,7 @@ public final class DelimitedFileParserUtil {
 	 * @return a list of row entries for each provided header name
 	 * @throws IOException
 	 */
-	public static void parseFileMultiThreaded(IInputStreamFactory delimitedInputStreamFactory, String[] headerNames, IDelimitedLineParser lineParser, String columnDelimiter,
+	private static void parseFileMultiThreaded(IInputStreamFactory delimitedInputStreamFactory, String[] headerNames, IDelimitedLineParser lineParser, String columnDelimiter,
 			boolean extractAdditionalHeaderNames, int numberOfThreads) throws IOException {
 
 		Header header = findHeaderLine(headerNames, columnDelimiter, delimitedInputStreamFactory);
@@ -571,6 +560,10 @@ public final class DelimitedFileParserUtil {
 			Map<Integer, String> columnToHeaderNameMap = getColumnIndexToHeaderNameMapping(headerNames, parsedHeaderRow, extractAdditionalHeaderNames);
 
 			PausableFixedThreadPoolExecutor executor = new PausableFixedThreadPoolExecutor(numberOfThreads, "FILE_PARSER_");
+
+			if (delimitedInputStreamFactory.getSizeInBytes() < BYTES_IN_100MB) {
+				numberOfThreads = 1;
+			}
 
 			for (int i = 0; i < numberOfThreads; i++) {
 				executor.submit(new FileParser(i, numberOfThreads, delimitedInputStreamFactory, lineParser, header, columnToHeaderNameMap, linesOfData, wasInterrupted, columnDelimiter,
@@ -805,15 +798,6 @@ public final class DelimitedFileParserUtil {
 		}
 
 		return headerNameToValueMap;
-	}
-
-	public static boolean isHeaderNameFoundInHeader(String headerName, File delimitedFile, String columnDelimiter) throws IOException {
-		boolean headerWithNameFound = false;
-
-		Header header = findHeaderLine(new String[] { headerName }, columnDelimiter, new InputStreamFactory(delimitedFile));
-		headerWithNameFound = header != null;
-
-		return headerWithNameFound;
 	}
 
 	public static void filterFileBasedOnColumnValues(File delimitedFile, File reducedFilteredFile, String columnDelimiter, Map<String, String[]> headerNameToAcceptableValuesMapping,

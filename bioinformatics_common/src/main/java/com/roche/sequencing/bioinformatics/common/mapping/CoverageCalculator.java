@@ -114,24 +114,24 @@ public class CoverageCalculator {
 		return stringBuilder.toString();
 	}
 
-	public class StartWithTally {
+	private class StartWithTally {
 
 		private final int position;
 		private int tally;
 
-		public StartWithTally(int index) {
+		private StartWithTally(int index) {
 			super();
 			this.position = index;
 			this.tally = 0;
 		}
 
-		public StartWithTally(int position, int tally) {
+		private StartWithTally(int position, int tally) {
 			super();
 			this.position = position;
 			this.tally = tally;
 		}
 
-		public void incrementTally() {
+		private void incrementTally() {
 			tally++;
 		}
 
@@ -141,10 +141,6 @@ public class CoverageCalculator {
 
 		public int getTally() {
 			return tally;
-		}
-
-		public void incrementTally(int count) {
-			tally += count;
 		}
 	}
 

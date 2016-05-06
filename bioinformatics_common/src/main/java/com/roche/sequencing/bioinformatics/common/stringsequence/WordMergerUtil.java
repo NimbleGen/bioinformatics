@@ -37,7 +37,7 @@ public class WordMergerUtil {
 		return merge(requiredWords, extraWords, maxScoreThreshold, DEFAULT_NUMBER_OF_ITERATIONS_TO_WAIT_FOR_IMPROVEMENT, DEFAULT_NUMBER_OF_SHAKES_PER_ITERATION);
 	}
 
-	public static ILetter[] merge(List<ILetter[]> words, int numberOfIterationsToWaitForImprovement, int numberOfShakesPerIteration) {
+	private static ILetter[] merge(List<ILetter[]> words, int numberOfIterationsToWaitForImprovement, int numberOfShakesPerIteration) {
 		return merge(words, numberOfIterationsToWaitForImprovement, numberOfShakesPerIteration, WordMergerScorer.DEFAULT_LARGE_NEGATIVE_NUMBER_FOR_MISMATCH_PENALTY);
 	}
 
@@ -45,7 +45,7 @@ public class WordMergerUtil {
 		private final ILetter[] result;
 		private final List<ILetter[]> excludedWords;
 
-		public ThresholdedMergeResults(ILetter[] result, List<ILetter[]> excludedWords) {
+		private ThresholdedMergeResults(ILetter[] result, List<ILetter[]> excludedWords) {
 			super();
 			this.result = result;
 			this.excludedWords = excludedWords;
@@ -60,13 +60,13 @@ public class WordMergerUtil {
 		}
 	}
 
-	public static ThresholdedMergeResults merge(List<ILetter[]> requiredWords, List<ILetter[]> extraWords, int maxScoreThreshold, int numberOfIterationsToWaitForImprovement,
+	private static ThresholdedMergeResults merge(List<ILetter[]> requiredWords, List<ILetter[]> extraWords, int maxScoreThreshold, int numberOfIterationsToWaitForImprovement,
 			int numberOfShakesPerIterations) {
 		return merge(requiredWords, extraWords, maxScoreThreshold, numberOfIterationsToWaitForImprovement, numberOfShakesPerIterations,
 				WordMergerScorer.DEFAULT_LARGE_NEGATIVE_NUMBER_FOR_MISMATCH_PENALTY);
 	}
 
-	public static ThresholdedMergeResults merge(List<ILetter[]> requiredWords, List<ILetter[]> extraWords, int maxScoreThreshold, int numberOfIterationsToWaitForImprovement,
+	private static ThresholdedMergeResults merge(List<ILetter[]> requiredWords, List<ILetter[]> extraWords, int maxScoreThreshold, int numberOfIterationsToWaitForImprovement,
 			int numberOfShakesPerIteration, double largeNegativeNumberForMismatchPenalty) {
 		WordMergerScorer scorer = new WordMergerScorer(largeNegativeNumberForMismatchPenalty);
 
@@ -123,7 +123,7 @@ public class WordMergerUtil {
 		return new ThresholdedMergeResults(finalWord, excludedWords);
 	}
 
-	public static ILetter[] merge(List<ILetter[]> words, int numberOfIterationsToWaitForImprovement, int numberOfShakesPerIteration, double largeNegativeNumberForMismatchPenalty) {
+	private static ILetter[] merge(List<ILetter[]> words, int numberOfIterationsToWaitForImprovement, int numberOfShakesPerIteration, double largeNegativeNumberForMismatchPenalty) {
 		WordMergerScorer scorer = new WordMergerScorer(largeNegativeNumberForMismatchPenalty);
 
 		ILetter[] bestWord = null;

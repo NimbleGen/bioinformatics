@@ -16,7 +16,7 @@
 
 package com.roche.heatseq.objects;
 
-import net.sf.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecord;
 
 /**
  * 

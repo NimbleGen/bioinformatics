@@ -1,6 +1,6 @@
 package com.roche.sequencing.bioinformatics.common.utils.bed;
 
-public class RGB {
+class RGB {
 	private final int red;
 	private final int green;
 	private final int blue;

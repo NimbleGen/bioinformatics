@@ -35,31 +35,31 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 public class AutoTestPlanCli {
 
 	public final static String APPLICATION_NAME = "AutoTestPlan";
-	public final static String JAR_FILE_NAME = "autotestplan.jar";
+	private final static String JAR_FILE_NAME = "autotestplan.jar";
 	private static String applicationVersionFromManifest = "unversioned--currently running in eclipse";
 
-	public final static String TEST_PLAN_COMMAND_NAME = "testplan";
-	public final static String TEST_PLAN_REPORT_COMMAND_NAME = "report";
+	private final static String TEST_PLAN_COMMAND_NAME = "testplan";
+	private final static String TEST_PLAN_REPORT_COMMAND_NAME = "report";
 
-	public final static CommandLineOption USAGE_OPTION = new CommandLineOption("Print Usage", "usage", 'h', "Print Usage.", false, true);
-	public final static CommandLineOption TEST_PLAN_DIRECTORY_OPTION = new CommandLineOption("Test Plan Directory", "testPlanDir", null, "Path to the Test Plan Directory", true, false);
-	public final static CommandLineOption TEST_PLAN_EXECUTION_RESULTS_DIRECTORY_OPTION = new CommandLineOption("Test Plan Execution Directory", "runDir", null,
+	private final static CommandLineOption USAGE_OPTION = new CommandLineOption("Print Usage", "usage", 'h', "Print Usage.", false, true);
+	private final static CommandLineOption TEST_PLAN_DIRECTORY_OPTION = new CommandLineOption("Test Plan Directory", "testPlanDir", null, "Path to the Test Plan Directory", true, false);
+	private final static CommandLineOption TEST_PLAN_EXECUTION_RESULTS_DIRECTORY_OPTION = new CommandLineOption("Test Plan Execution Directory", "runDir", null,
 			"Base directory for placing results file from running the test plan", true, false);
-	public final static CommandLineOption APPLICATION_JAR_FILE_OPTION = new CommandLineOption("Application Jar File", "application", null, "The path to the application jar file to be tested.", true,
+	private final static CommandLineOption APPLICATION_JAR_FILE_OPTION = new CommandLineOption("Application Jar File", "application", null, "The path to the application jar file to be tested.", true,
 			false);
-	public final static CommandLineOption APPLICATION_NAME_OPTION = new CommandLineOption("Application Name", "applicationName", null,
+	private final static CommandLineOption APPLICATION_NAME_OPTION = new CommandLineOption("Application Name", "applicationName", null,
 			"The name of the application jar file to be tested that will be displayed in the test plan.", true, false);
-	public final static CommandLineOption JVM_BIN_PATH_OPTION = new CommandLineOption("JVM Bin Path", "jvm", null,
+	private final static CommandLineOption JVM_BIN_PATH_OPTION = new CommandLineOption("JVM Bin Path", "jvm", null,
 			"The path to the jvm bin to use for executing the tests.  If not provided, the application will use the default JVM.", false, false);
-	public final static CommandLineOption OUTPUT_FILE_OPTION = new CommandLineOption("Output File", "output", null, "The output file to write the test plan or report.", true, false);
-	public final static CommandLineOption ZIP_RESULTS_OPTION = new CommandLineOption("Zip Results", "zipResults", null,
+	private final static CommandLineOption OUTPUT_FILE_OPTION = new CommandLineOption("Output File", "output", null, "The output file to write the test plan or report.", true, false);
+	private final static CommandLineOption ZIP_RESULTS_OPTION = new CommandLineOption("Zip Results", "zipResults", null,
 			"Zip the results files and place them in the output directory then delete the results directory.", false, true);
-	public final static CommandLineOption STARTING_FOLDER_OPTION = new CommandLineOption("Starting Folder", "startFolder", null,
+	private final static CommandLineOption STARTING_FOLDER_OPTION = new CommandLineOption("Starting Folder", "startFolder", null,
 			"Starts at the provided folder name if it exists and skips all previous tests.", false, false);
-	public final static CommandLineOption STOPPING_FOLDER_OPTION = new CommandLineOption("Stopping Folder", "stopFolder", null,
+	private final static CommandLineOption STOPPING_FOLDER_OPTION = new CommandLineOption("Stopping Folder", "stopFolder", null,
 			"Stops at the provided folder name if it exists and skips all tests found after this folder.", false, false);
 
-	public final static String FILE_LOGGER_NAME = "root";
+	private final static String FILE_LOGGER_NAME = "root";
 
 	public static void main(String[] args) {
 		String funError = FunGeneralErrors.getFunError();
@@ -92,7 +92,7 @@ public class AutoTestPlanCli {
 		return applicationVersionFromManifest;
 	}
 
-	public static void runCommandLineApp(String[] args) {
+	private static void runCommandLineApp(String[] args) {
 		String version = ManifestUtil.getManifestValue("version");
 		if (version != null) {
 			applicationVersionFromManifest = version;
@@ -174,30 +174,7 @@ public class AutoTestPlanCli {
 		return commands;
 	}
 
-	public static File getLogFile(File outputDirectory, String outputFilePrefix, String applicationName, String command) {
-		if (outputFilePrefix == null) {
-			outputFilePrefix = "";
-		}
-		String logFileName = outputFilePrefix;
-		logFileName = logFileName + applicationName + "_" + command + "_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS() + ".log";
-		logFileName = logFileName.replaceAll(" ", "_");
-		logFileName = logFileName.replaceAll("/", "_");
-		logFileName = logFileName.replaceAll(":", "-");
-		File logFile = new File(outputDirectory, logFileName);
-		return logFile;
-	}
-
-	public static String getTempPrefix(String applicationName, String outputFilePrefix) {
-		String tempPrefix = outputFilePrefix;
-		if (!tempPrefix.isEmpty()) {
-			tempPrefix += applicationName + "_";
-		} else {
-			tempPrefix = applicationName + "_";
-		}
-		return tempPrefix;
-	}
-
-	public static CommandLineOptionsGroup getCommandLineOptionsGroupForTestPlan() {
+	private static CommandLineOptionsGroup getCommandLineOptionsGroupForTestPlan() {
 		CommandLineOptionsGroup group = new CommandLineOptionsGroup();
 		group.addOption(USAGE_OPTION);
 		group.addOption(TEST_PLAN_DIRECTORY_OPTION);
@@ -206,7 +183,7 @@ public class AutoTestPlanCli {
 		return group;
 	}
 
-	public static CommandLineOptionsGroup getCommandLineOptionsGroupForTestPlanReport() {
+	private static CommandLineOptionsGroup getCommandLineOptionsGroupForTestPlanReport() {
 		CommandLineOptionsGroup group = new CommandLineOptionsGroup();
 		group.addOption(USAGE_OPTION);
 		group.addOption(TEST_PLAN_DIRECTORY_OPTION);
@@ -220,7 +197,7 @@ public class AutoTestPlanCli {
 		return group;
 	}
 
-	public static File getLogFile(File outputFile, String applicationName, String command) {
+	private static File getLogFile(File outputFile, String applicationName, String command) {
 		String logFileName = applicationName + "_" + command + "_" + DateUtil.getCurrentDateINYYYY_MM_DD_HH_MM_SS() + ".log";
 		logFileName = logFileName.replaceAll(" ", "_");
 		logFileName = logFileName.replaceAll("/", "_");
@@ -229,7 +206,7 @@ public class AutoTestPlanCli {
 		return logFile;
 	}
 
-	public static void runTestPlan(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion, boolean generateReport) {
+	private static void runTestPlan(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion, boolean generateReport) {
 		long applicationStart = System.currentTimeMillis();
 		CliStatusConsole.logStatus("The generation of the Test Plan has started at " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "(YYYY/MM/DD HH:MM:SS)." + StringUtil.NEWLINE);
 

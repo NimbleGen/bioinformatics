@@ -22,7 +22,7 @@ import java.text.DecimalFormat;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.TabDelimitedFileWriter;
 
-public class SummaryReport {
+class SummaryReport {
 
 	private final TabDelimitedFileWriter detailsReportWriter;
 
@@ -58,8 +58,8 @@ public class SummaryReport {
 
 		FileUtil.createNewFile(summaryReportFile);
 		String[] header = new String[] { "sample_prefix", "input_read_pairs", "pairs_with_both_reads_mapped", "pairs_with_both_reads_unmapped", "pairs_with_only_one_read_mapped",
-				"pairs_with_on-target_reads", "pct_pairs_with_on-target_reads", "pairs_with_off-target_reads", "pct_pairs_with_off-target_reads", "duplicate_read_pairs_removed", "probes",
-				"probes_with_no_mapped_read_pairs", "unique_read_pairs", "distinct_uids_found", "average_uids_per_probe", "average_uids_per_probes_with_reads", "max_uids_per_probe",
+				"pairs_with_on-target_reads", "pct_pairs_with_on-target_reads", "pairs_with_off-target_reads", "pct_pairs_with_off-target_reads", "duplicate_read_pairs_removed", "duplicate_rate",
+				"probes", "probes_with_no_mapped_read_pairs", "unique_read_pairs", "distinct_uids_found", "average_uids_per_probe", "average_uids_per_probes_with_reads", "max_uids_per_probe",
 				"average_read_pairs_per_uid", "unpaired_reads", "input_reads" };
 		detailsReportWriter = new TabDelimitedFileWriter(summaryReportFile, preHeader, header);
 	}
@@ -148,9 +148,12 @@ public class SummaryReport {
 		String uniqueReadpairs = "" + totalReadPairsAfterReduction;
 		String averageUidsPerProbesWithReads = "" + formatter.format(averageUidsPerProbeWithReads);
 		String averageReadPairsPerUid = "" + formatter.format(averageNumberOfReadPairsPerProbeUid);
+
+		String duplicateRate = "" + formatter.format(duplicateReadPairsRemoved / (totalReadPairsAfterReduction + duplicateReadPairsRemoved) * 100);
+
 		detailsReportWriter.writeLine(sampleName, inputReadPairs, pairsWithBothReadsMapped, pairsWithBothReadsUnmapped, pairsWithOnlyOneReadMapped, pairsWithOnTargetReads,
-				percentPairsWithOnTargetReads, numberOfPairsWithOffTargetReads, percentPairsWithOffTargetReads, duplicateReadPairsRemoved, totalProbes, probesWithNoMappedReadPairs, uniqueReadpairs,
-				distinctUidsFound, formatter.format(averageUidsPerProbe), averageUidsPerProbesWithReads, maxUidsPerProbe, averageReadPairsPerUid, unpairedReads, inputReads);
+				percentPairsWithOnTargetReads, numberOfPairsWithOffTargetReads, percentPairsWithOffTargetReads, duplicateReadPairsRemoved, duplicateRate, totalProbes, probesWithNoMappedReadPairs,
+				uniqueReadpairs, distinctUidsFound, formatter.format(averageUidsPerProbe), averageUidsPerProbesWithReads, maxUidsPerProbe, averageReadPairsPerUid, unpairedReads, inputReads);
 		detailsReportWriter.close();
 	}
 

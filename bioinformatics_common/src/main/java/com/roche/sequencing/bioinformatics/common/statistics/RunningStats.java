@@ -45,12 +45,14 @@ public class RunningStats {
 		numberOfValues++;
 	}
 
+	
 	public void addAllValues(Iterable<Double> values) {
 		for (double value : values) {
 			addValue(value);
 		}
 	}
 
+	
 	public void addAllValues(double[] values) {
 		for (double value : values) {
 			addValue(value);

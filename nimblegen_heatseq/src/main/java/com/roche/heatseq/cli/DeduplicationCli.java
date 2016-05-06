@@ -16,6 +16,15 @@
 
 package com.roche.heatseq.cli;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReader.Type;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -25,13 +34,6 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import net.sf.samtools.SAMFileHeader;
-import net.sf.samtools.SAMFileHeader.SortOrder;
-import net.sf.samtools.SAMFileReader;
-import net.sf.samtools.SAMFileReader.ValidationStringency;
-import net.sf.samtools.SAMRecord;
-import net.sf.samtools.SAMRecordIterator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,12 +68,12 @@ public class DeduplicationCli {
 
 	public final static int DEFAULT_EXTENSION_UID_LENGTH = 10;
 	public final static int DEFAULT_LIGATION_UID_LENGTH = 0;
-	public final static String BAM_EXTENSION = ".bam";
+	private final static String BAM_EXTENSION = ".bam";
 
 	private final static int BYTES_PER_MEGABYTE = 1000000;
 	private final static DecimalFormat doubleFormatter = new DecimalFormat("#,###.##");
 
-	public final static CommandLineOption USAGE_OPTION = new CommandLineOption("Print Usage", "usage", 'h', "Print Usage.", false, true);
+	final static CommandLineOption USAGE_OPTION = new CommandLineOption("Print Usage", "usage", 'h', "Print Usage.", false, true);
 	public final static CommandLineOption FASTQ_ONE_OPTION = new CommandLineOption("FastQ One File", "r1", null,
 			"Path to first input fastq file (as an uncompressed file with a fastq extension or a compressed file with the gz extension).", true, false);
 	public final static CommandLineOption FASTQ_TWO_OPTION = new CommandLineOption("FastQ Two File", "r2", null,
@@ -79,13 +81,13 @@ public class DeduplicationCli {
 	public final static CommandLineOption INPUT_BAM_OPTION = new CommandLineOption("Input BAM or SAM File Path", "inputBam", null, "Path to input BAM or SAM file containing the aligned reads.", true,
 			false);
 	public final static CommandLineOption PROBE_OPTION = new CommandLineOption("Probe Information File", "probe", null, "NimbleGen probe file.", true, false);
-	public final static CommandLineOption OUTPUT_DIR_OPTION = new CommandLineOption("Output Directory", "outputDir", null, "Location to store resultant files.", false, false);
-	public final static CommandLineOption OUTPUT_FILE_PREFIX_OPTION = new CommandLineOption("Output File Prefix", "outputPrefix", null, "Text to put at beginning of output file names.", false, false);
-	public final static CommandLineOption TMP_DIR_OPTION = new CommandLineOption("Temporary Directory", "tmpDir", null, "Location to store temporary files.", false, false);
-	public final static CommandLineOption NUM_PROCESSORS_OPTION = new CommandLineOption("Number of Processors", "numProcessors", null,
+	final static CommandLineOption OUTPUT_DIR_OPTION = new CommandLineOption("Output Directory", "outputDir", null, "Location to store resultant files.", false, false);
+	final static CommandLineOption OUTPUT_FILE_PREFIX_OPTION = new CommandLineOption("Output File Prefix", "outputPrefix", null, "Text to put at beginning of output file names.", false, false);
+	private final static CommandLineOption TMP_DIR_OPTION = new CommandLineOption("Temporary Directory", "tmpDir", null, "Location to store temporary files.", false, false);
+	private final static CommandLineOption NUM_PROCESSORS_OPTION = new CommandLineOption("Number of Processors", "numProcessors", null,
 			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.  The designated value and default value will be capped at "
 					+ MAX_NUMBER_OF_PROCESSORS + ".", false, false);
-	public final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o', "Name for output bam file.", true, false);
+	private final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o', "Name for output bam file.", true, false);
 	private final static CommandLineOption MATCH_SCORE_OPTION = new CommandLineOption("Match Score", "matchScore", null,
 			"The score given to matching nucleotides when extending alignments to the primers. (Default: " + SimpleAlignmentScorer.DEFAULT_MATCH_SCORE + ")", false, false);
 	private final static CommandLineOption MISMATCH_PENALTY_OPTION = new CommandLineOption("Mismatch Penalty", "mismatchPenalty", null,
@@ -100,14 +102,15 @@ public class DeduplicationCli {
 			false, true);
 	private final static CommandLineOption KEEP_DUPLICATES_OPTION = new CommandLineOption("Keep Duplicates", "disableDuplicateRemoval", null,
 			"Keep duplicate reads in the bam file instead of removing them. ", false, true, true);
-	public final static CommandLineOption MERGE_PAIRS_OPTION = new CommandLineOption("Merge Pairs", "mergePairs", null, "Merge pairs using the highest quality base reads from each read.", false, true);
+	private final static CommandLineOption MERGE_PAIRS_OPTION = new CommandLineOption("Merge Pairs", "mergePairs", null, "Merge pairs using the highest quality base reads from each read.", false,
+			true);
 	public final static CommandLineOption TRIMMING_SKIPPED_OPTION = new CommandLineOption("Reads Were Not Trimmed Prior to Mapping", "readsNotTrimmed", null,
 			"The reads were not trimmed prior to mapping.", false, true);
 	private final static CommandLineOption INTERNAL_REPORTS_OPTION = new CommandLineOption("Output interal reports", "internalReports", null, "Output internal reports.", false, true, true);
 	private final static CommandLineOption EXCLUDE_NEW_PROGRAM_IN_BAM_HEADER_OPTION = new CommandLineOption("Exclude Program in Bam Header", "excludeProgramInBamHeader", null,
 			"Don not include a program entry for this application in the bam header.", false, true, true);
 	private final static CommandLineOption SAVE_TEMP_OPTION = new CommandLineOption("Save Temp Files", "saveTemp", null, "Save temporary files.", false, true, true);
-	public final static CommandLineOption VERSION_OPTION = new CommandLineOption("Print Version", "version", null, "Print the version for this application.", false, true);
+	final static CommandLineOption VERSION_OPTION = new CommandLineOption("Print Version", "version", null, "Print the version for this application.", false, true);
 
 	// Note: these variables are for debugging purposes
 	// saveTemporaryFiles default is false
@@ -311,7 +314,7 @@ public class DeduplicationCli {
 
 		// boolean useLenientValidation = parsedCommandLine.isOptionPresent(LENIENT_VALIDATION_STRINGENCY_OPTION);
 		if (useLenientValidation) {
-			SAMFileReader.setDefaultValidationStringency(ValidationStringency.LENIENT);
+			SamReaderFactory.setDefaultValidationStringency(ValidationStringency.LENIENT);
 		}
 
 		boolean markDuplicates = parsedCommandLine.isOptionPresent(MARK_DUPLICATES_OPTION);
@@ -361,8 +364,8 @@ public class DeduplicationCli {
 
 			boolean newSortedBamFileCreated = false;
 
-			try (SAMFileReader samReader = new SAMFileReader(samOrBamFile)) {
-				isSamFormat = !samReader.isBinary();
+			try (SamReader samReader = SamReaderFactory.makeDefault().open(samOrBamFile);) {
+				isSamFormat = samReader.type() == Type.SAM_TYPE;
 
 				SAMFileHeader header = samReader.getFileHeader();
 
@@ -471,46 +474,44 @@ public class DeduplicationCli {
 				}
 			}
 
-			try (SAMFileReader samReader = new SAMFileReader(sortedBamFile)) {
-				if (!newSortedBamFileCreated) {
-					// Look for the index in the same location as the file but with a .bai extension instead of a .bam extension
-					File tempBamIndexfile = new File(FileUtil.getFileNameWithoutExtension(bamFileString) + ".bai");
+			if (!newSortedBamFileCreated) {
+				// Look for the index in the same location as the file but with a .bai extension instead of a .bam extension
+				File tempBamIndexfile = new File(FileUtil.getFileNameWithoutExtension(bamFileString) + ".bai");
+				if (tempBamIndexfile.exists()) {
+					bamIndexFile = tempBamIndexfile;
+					CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
+				}
+
+				// Try looking for a .bai file in the same location as the bam file
+				if (bamIndexFile == null) {
+					// Try looking for a .bam.bai file in the same location as the bam file
+					tempBamIndexfile = new File(bamFileString + ".bai");
 					if (tempBamIndexfile.exists()) {
 						bamIndexFile = tempBamIndexfile;
 						CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
 					}
-
-					// Try looking for a .bai file in the same location as the bam file
-					if (bamIndexFile == null) {
-						// Try looking for a .bam.bai file in the same location as the bam file
-						tempBamIndexfile = new File(bamFileString + ".bai");
-						if (tempBamIndexfile.exists()) {
-							bamIndexFile = tempBamIndexfile;
-							CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
-						}
-					}
 				}
+			}
 
-				// We couldn't find an index file, create one in our temp directory
-				if ((bamIndexFile == null) || !bamIndexFile.exists()) {
-					// a bam index file was not provided so create one in the default location
-					bamIndexFile = new File(tempOutputDirectory, sortedBamFile.getName() + ".bai");
-					FileUtil.createNewFile(bamIndexFile);
-					CliStatusConsole.logStatus("A BAM Index File was not found in the default location so creating bam index file at [" + bamIndexFile.getAbsolutePath() + "].");
-					long indexStart = System.currentTimeMillis();
-					try {
-						BamFileUtil.createIndex(samReader, bamIndexFile);
-						long indexStop = System.currentTimeMillis();
-						CliStatusConsole.logStatus("Done creating the BAM Index File in " + DateUtil.convertMillisecondsToHHMMSS(indexStop - indexStart) + "(HH:MM:SS).");
-					} catch (Exception e) {
-						throw new IllegalStateException("Could not create bam index file at [" + bamIndexFile.getAbsolutePath() + "].", e);
-					}
+			// We couldn't find an index file, create one in our temp directory
+			if ((bamIndexFile == null) || !bamIndexFile.exists()) {
+				// a bam index file was not provided so create one in the default location
+				bamIndexFile = new File(tempOutputDirectory, sortedBamFile.getName() + ".bai");
+				FileUtil.createNewFile(bamIndexFile);
+				CliStatusConsole.logStatus("A BAM Index File was not found in the default location so creating bam index file at [" + bamIndexFile.getAbsolutePath() + "].");
+				long indexStart = System.currentTimeMillis();
+				try {
+					BamFileUtil.createIndex(sortedBamFile, bamIndexFile);
+					long indexStop = System.currentTimeMillis();
+					CliStatusConsole.logStatus("Done creating the BAM Index File in " + DateUtil.convertMillisecondsToHHMMSS(indexStop - indexStart) + "(HH:MM:SS).");
+				} catch (Exception e) {
+					throw new IllegalStateException("Could not create bam index file at [" + bamIndexFile.getAbsolutePath() + "].", e);
 				}
 			}
 
 			validSamOrBamInputFile = sortedBamFile;
 
-			try (SAMFileReader samReader = new SAMFileReader(validSamOrBamInputFile)) {
+			try (SamReader samReader = SamReaderFactory.makeDefault().open(validSamOrBamInputFile)) {
 				SAMRecordIterator samIter = samReader.iterator();
 
 				boolean noEntriesInBam = false;
@@ -563,7 +564,7 @@ public class DeduplicationCli {
 		}
 	}
 
-	public static void sortMergeFilterAndExtendReads(String applicationName, String applicationVersion, File probeFile, File bamFile, File bamIndexFile, File fastQ1File, File fastQ2File,
+	private static void sortMergeFilterAndExtendReads(String applicationName, String applicationVersion, File probeFile, File bamFile, File bamIndexFile, File fastQ1File, File fastQ2File,
 			File outputDirectory, String outputBamFileName, String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputReports, boolean shouldExcludeProgramInBamHeader,
 			String commandLineSignature, int numProcessors, int extensionUidLength, int ligationUidLength, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean markDuplicates,
 			boolean keepDuplicates, boolean mergePairs, boolean useStrictReadToProbeMatching, boolean readsNotTrimmed, ProbeHeaderInformation probeHeaderInformation, String sampleName) {
@@ -590,7 +591,7 @@ public class DeduplicationCli {
 		}
 	}
 
-	public static CommandLineOptionsGroup getCommandLineOptionsGroup() {
+	static CommandLineOptionsGroup getCommandLineOptionsGroup() {
 		CommandLineOptionsGroup group = new CommandLineOptionsGroup();
 
 		group.addOption(USAGE_OPTION);

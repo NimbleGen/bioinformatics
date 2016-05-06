@@ -48,6 +48,7 @@ public class OSUtil {
 	/**
 	 * @param window
 	 */
+	
 	public static boolean setOSXFullscreen(Window window, boolean isFullScreen) {
 		boolean success = false;
 		if (window != null && isMacOsX()) {
@@ -104,6 +105,7 @@ public class OSUtil {
 		return osBits;
 	}
 
+	
 	public static boolean isHeadless() {
 		String headlessProperty = System.getProperty("java.awt.headless");
 		boolean isHeadless = headlessProperty != null;

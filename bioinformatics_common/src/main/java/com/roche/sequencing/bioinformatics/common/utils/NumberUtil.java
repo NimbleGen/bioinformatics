@@ -20,7 +20,7 @@ public class NumberUtil {
 		return unsignedShort;
 	}
 
-	public static int convertUnsignedShortToPositiveSignedInt(short unsignedShortValue) {
+	private static int convertUnsignedShortToPositiveSignedInt(short unsignedShortValue) {
 		int positiveSignedInt = (int) unsignedShortValue & 0xffff;
 		return positiveSignedInt;
 	}

@@ -177,7 +177,7 @@ public final class ArraysUtil {
 		return doubleArray;
 	}
 
-	public static int[] convertToIntArray(List<? extends Number> values) {
+	static int[] convertToIntArray(List<? extends Number> values) {
 		int[] intArray = new int[values.size()];
 		for (int i = 0; i < values.size(); i++) {
 			intArray[i] = values.get(i).intValue();
@@ -291,6 +291,7 @@ public final class ArraysUtil {
 		return isContained;
 	}
 
+	
 	public static <T> String printMatrix(T[][] a) {
 		StringBuilder stringBuilder = new StringBuilder();
 

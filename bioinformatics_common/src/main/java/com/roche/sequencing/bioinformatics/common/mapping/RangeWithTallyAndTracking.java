@@ -3,7 +3,7 @@ package com.roche.sequencing.bioinformatics.common.mapping;
 import java.util.Collections;
 import java.util.List;
 
-public class RangeWithTallyAndTracking<V> {
+class RangeWithTallyAndTracking<V> {
 
 	private final int start;
 	private final int stop;

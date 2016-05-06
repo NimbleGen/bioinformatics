@@ -30,13 +30,13 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 public class HsqUtilsCli {
 
 	public final static String APPLICATION_NAME = "HSQUtils";
-	public final static String JAR_FILE_NAME = "hsqutils.jar";
+	private final static String JAR_FILE_NAME = "hsqutils.jar";
 	private static String applicationVersionFromManifest = "unversioned--currently running in eclipse";
 
 	public final static String TRIM_COMMAND_NAME = "trim";
 	public final static String DEDUPLICATION_COMMAND_NAME = "dedup";
 
-	public final static String FILE_LOGGER_NAME = "root";
+	final static String FILE_LOGGER_NAME = "root";
 
 	public static void main(String[] args) {
 		String funError = FunGeneralErrors.getFunError();
@@ -142,7 +142,7 @@ public class HsqUtilsCli {
 		return commands;
 	}
 
-	public static File getLogFile(File outputDirectory, String outputFilePrefix, String applicationName, String command) {
+	static File getLogFile(File outputDirectory, String outputFilePrefix, String applicationName, String command) {
 		if (outputFilePrefix == null) {
 			outputFilePrefix = "";
 		}

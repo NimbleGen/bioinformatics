@@ -16,8 +16,8 @@
 
 package com.roche.heatseq.objects;
 
-import net.sf.samtools.SAMFileHeader;
-import net.sf.samtools.SAMRecord;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
 
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 

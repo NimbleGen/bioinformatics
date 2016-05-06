@@ -12,7 +12,7 @@ public class CheckSumUtil {
 		throw new AssertionError();
 	}
 
-	public static long checkSum(List<String> stringList) {
+	private static long checkSum(List<String> stringList) {
 		long result = 1;
 		for (String string : stringList) {
 			result = (result * PRIME) + checkSum(string);

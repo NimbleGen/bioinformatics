@@ -2,7 +2,7 @@ package com.roche.sequencing.bioinformatics.common.utils.bed;
 
 import java.util.List;
 
-public class BedEntry implements IBedEntry {
+class BedEntry implements IBedEntry {
 
 	private final String chromosomeName;
 	private final int chromosomeStart;
@@ -17,7 +17,7 @@ public class BedEntry implements IBedEntry {
 	private final List<Integer> blockSizes;
 	private final List<Integer> blockStarts;
 
-	public BedEntry(String chromosomeName, int chromosomeStart, int chromosomeEnd, String name, Integer score, Character strand, Integer thickStart, Integer thickEnd, RGB itemRgb, Integer blockCount,
+	BedEntry(String chromosomeName, int chromosomeStart, int chromosomeEnd, String name, Integer score, Character strand, Integer thickStart, Integer thickEnd, RGB itemRgb, Integer blockCount,
 			List<Integer> blockSizes, List<Integer> blockStarts) {
 		super();
 		this.chromosomeName = chromosomeName;

@@ -77,11 +77,6 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 		this("");
 	}
 
-	public IupacNucleotideCodeSequence(int numberOfBits, BitSet sequenceAsBits) {
-		this.currentNumberOfBits = numberOfBits;
-		this.sequenceAsBits = sequenceAsBits;
-	}
-
 	IupacNucleotideCodeSequence(ICode[] codes) {
 		Objects.requireNonNull(codes, "argument[codes] cannot be null");
 

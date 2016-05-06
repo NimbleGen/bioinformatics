@@ -16,17 +16,14 @@
 
 package com.roche.heatseq.utils;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+
 import java.io.File;
 import java.util.List;
-
-import net.sf.samtools.AbstractBAMFileIndex;
-import net.sf.samtools.BAMIndexMetaData;
-import net.sf.samtools.SAMFileHeader;
-import net.sf.samtools.SAMFileHeader.SortOrder;
-import net.sf.samtools.SAMFileReader;
-import net.sf.samtools.SAMFileWriter;
-import net.sf.samtools.SAMFileWriterFactory;
-import net.sf.samtools.SAMRecord;
 
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.SAMRecordPair;
@@ -53,8 +50,8 @@ public class SAMRecordUtil {
 	public static final String MISMATCH_DETAILS_ATTRIBUTE_TAG = "MD";
 	public static final String READ_GROUP_ATTRIBUTE_TAG = "RG";
 	public static final String EDIT_DISTANCE_ATTRIBUTE_TAG = "NM";
-	public static final String EXTENSION_ERROR_ATTRIBUTE_TAG = "EE";
-	public static final String MAPPED_READ_LENGTH_ATTRIBUTE_TAG = "ML";
+	private static final String EXTENSION_ERROR_ATTRIBUTE_TAG = "EE";
+	private static final String MAPPED_READ_LENGTH_ATTRIBUTE_TAG = "ML";
 
 	private SAMRecordUtil() {
 		throw new AssertionError();
@@ -85,6 +82,7 @@ public class SAMRecordUtil {
 	 * @param uidLength
 	 * @return a read sequence without the UID
 	 */
+	
 	public static String removeUidFromReadOne(String sequence, int extensionUidLength) {
 		sequence = sequence.substring(extensionUidLength, sequence.length());
 		return sequence;
@@ -155,6 +153,7 @@ public class SAMRecordUtil {
 	 * @param record
 	 * @param uid
 	 */
+	
 	public static void setExtensionErrorAttribute(SAMRecord record, boolean unableToExtendReadOne, boolean unableToExtendReadTwo) {
 		if (unableToExtendReadOne && unableToExtendReadTwo) {
 			record.setAttribute(EXTENSION_ERROR_ATTRIBUTE_TAG, "FAILED_TO_EXTEND_READ_ONE_AND_READ_TWO");
@@ -192,7 +191,7 @@ public class SAMRecordUtil {
 	 * @param primerSequence
 	 * @return the variable length UID based on the primer alignment, null if the uid cannot be extracted
 	 */
-	public static String getVariableLengthUid(String completeReadWithUid, ISequence primerSequence, ReportManager reportManager, Probe probe, IAlignmentScorer alignmentScorer) {
+	private static String getVariableLengthUid(String completeReadWithUid, ISequence primerSequence, ReportManager reportManager, Probe probe, IAlignmentScorer alignmentScorer) {
 		ISequence completeReadSequence = new IupacNucleotideCodeSequence(completeReadWithUid);
 		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(completeReadSequence, primerSequence, alignmentScorer);
 		int uidEndIndex = alignment.getIndexOfFirstMatchInReference();
@@ -260,6 +259,7 @@ public class SAMRecordUtil {
 		samRecord.setMateUnmappedFlag(mate.getReadUnmappedFlag());
 	}
 
+	
 	public static void createBamFile(SAMFileHeader header, File outputFile, List<SAMRecordPair> records) {
 		// Make an output BAM file sorted by coordinates and as compressed as possible
 		header.setSortOrder(SortOrder.coordinate);
@@ -269,20 +269,6 @@ public class SAMRecordUtil {
 			samWriter.addAlignment(pair.getSecondOfPairRecord());
 		}
 		samWriter.close();
-	}
-
-	public static SamReadCount countReads(SAMFileReader samFileReader) {
-		int totalUnmappedReads = 0;
-		int totalMappedReads = 0;
-		AbstractBAMFileIndex bamIndex = (AbstractBAMFileIndex) samFileReader.getIndex();
-
-		for (int referenceIndex = 0; referenceIndex < bamIndex.getNumberOfReferences(); referenceIndex++) {
-			BAMIndexMetaData metaData = bamIndex.getMetaData(referenceIndex);
-			totalMappedReads += metaData.getAlignedRecordCount();
-			totalUnmappedReads += metaData.getUnalignedRecordCount();
-		}
-
-		return new SamReadCount(totalUnmappedReads, totalMappedReads);
 	}
 
 	public static class SamReadCount {

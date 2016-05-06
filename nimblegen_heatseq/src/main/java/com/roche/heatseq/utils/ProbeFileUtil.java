@@ -226,7 +226,7 @@ public final class ProbeFileUtil {
 		private final String genomeName;
 		private final String headerlessMd5Sum;
 
-		public ProbeHeaderInformation(Integer ligationUidLength, Integer extensionUidLength, Integer additionalLigationTrimLength, Integer additionalExtensionTrimLength,
+		private ProbeHeaderInformation(Integer ligationUidLength, Integer extensionUidLength, Integer additionalLigationTrimLength, Integer additionalExtensionTrimLength,
 				Integer basesInsideExtensionPrimerWindow, Integer basesInsideLigationPrimerWindow, Boolean performThreePrimeTrimming, String genomeName, String headerlessMd5Sum) {
 			super();
 			this.ligationUidLength = ligationUidLength;
@@ -358,6 +358,7 @@ public final class ProbeFileUtil {
 				basesInsideLigationPrimerWindow, performThreePrimeTrimming, genomeName, headerlessMd5Sum);
 	}
 
+	
 	public static void reverseComplimentProbeFile(File inputProbeInfoFile, File outputProbeInfoFile) {
 		try {
 			FileUtil.createNewFile(outputProbeInfoFile);

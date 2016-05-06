@@ -6,7 +6,7 @@ public class RangeWithTally {
 	private final int stop;
 	private final int count;
 
-	public RangeWithTally(int start, int stop, int count) {
+	RangeWithTally(int start, int stop, int count) {
 		super();
 		this.start = start;
 		this.stop = stop;

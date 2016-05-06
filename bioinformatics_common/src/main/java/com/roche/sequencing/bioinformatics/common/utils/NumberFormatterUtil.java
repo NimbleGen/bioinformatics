@@ -38,6 +38,7 @@ public class NumberFormatterUtil {
 	 *            Specify if the comma should be included for numbers like 10,234.56
 	 * @return such a string
 	 */
+	
 	public static String formatDouble(Double someDouble, boolean includeThousandsSeparator) {
 
 		int numberOfDigitsPastTheDecimal = 4;
@@ -65,7 +66,7 @@ public class NumberFormatterUtil {
 	 * 
 	 * @return such a string
 	 */
-	public static String formatDouble(Double someDouble, int fractionCount, boolean includeThousandsSeparator) {
+	private static String formatDouble(Double someDouble, int fractionCount, boolean includeThousandsSeparator) {
 		NumberFormat numberFormat = NumberFormat.getInstance();
 		numberFormat.setMinimumFractionDigits(fractionCount);
 		numberFormat.setMaximumFractionDigits(fractionCount);
@@ -83,6 +84,7 @@ public class NumberFormatterUtil {
 	 *            Number of Fraction Digits
 	 * @return such a string
 	 */
+	
 	public static String formatDouble(Double someDouble, int fractionCount) {
 		return formatDouble(someDouble, fractionCount, true);
 	}
@@ -97,7 +99,7 @@ public class NumberFormatterUtil {
 	 * @param numbers
 	 * @return
 	 */
-	public static String summarizeNumbersAsString(int[] numbers) {
+	public static String[] summarizeNumbersAsString(int[] numbers) {
 		// filter out duplicates
 		Set<Integer> set = new HashSet<Integer>();
 		for (int number : numbers) {
@@ -106,31 +108,31 @@ public class NumberFormatterUtil {
 		List<Integer> sortedNumbers = new ArrayList<Integer>(set);
 		Collections.sort(sortedNumbers);
 
-		StringBuilder summaryBuilder = new StringBuilder();
+		List<String> summarizedStrings = new ArrayList<String>();
 
 		Integer currentRunMin = null;
 		Integer lastNumber = null;
 		for (int number : sortedNumbers) {
 			if (currentRunMin == null) {
 				currentRunMin = number;
-			} else if (number != lastNumber + 1) {
-				if (currentRunMin == lastNumber) {
-					summaryBuilder.append(wrapNegativeNumbers(currentRunMin) + ", ");
+			} else if (number > (int) (lastNumber + 1)) {
+				if (currentRunMin.equals(lastNumber)) {
+					summarizedStrings.add(wrapNegativeNumbers(currentRunMin));
 				} else {
-					summaryBuilder.append(wrapNegativeNumbers(currentRunMin) + "-" + wrapNegativeNumbers(lastNumber) + ", ");
+					summarizedStrings.add(wrapNegativeNumbers(currentRunMin) + "-" + wrapNegativeNumbers(lastNumber));
 				}
-				currentRunMin = null;
+				currentRunMin = number;
 			}
 			lastNumber = number;
 		}
 
-		if (currentRunMin == null) {
-			summaryBuilder.append(wrapNegativeNumbers(lastNumber));
+		if (currentRunMin == null || currentRunMin.equals(lastNumber)) {
+			summarizedStrings.add(wrapNegativeNumbers(lastNumber));
 		} else {
-			summaryBuilder.append(wrapNegativeNumbers(currentRunMin) + "-" + wrapNegativeNumbers(lastNumber) + ", ");
+			summarizedStrings.add(wrapNegativeNumbers(currentRunMin) + "-" + wrapNegativeNumbers(lastNumber));
 		}
 
-		return summaryBuilder.toString();
+		return summarizedStrings.toArray(new String[0]);
 	}
 
 	private static String wrapNegativeNumbers(int number) {
@@ -142,6 +144,6 @@ public class NumberFormatterUtil {
 	}
 
 	public static void main(String[] args) {
-		System.out.println(summarizeNumbersAsString(new int[] { -5, -4, -3, 9, 0, 100, 1, 2, 3, 5, 6, 7, 8, 10 }));
+		System.out.println(ArraysUtil.toString(summarizeNumbersAsString(new int[] { 34, 35, 132, 370, 521, 1343, 1440, 1834, 2159, 2268, 4352 }), ", "));
 	}
 }

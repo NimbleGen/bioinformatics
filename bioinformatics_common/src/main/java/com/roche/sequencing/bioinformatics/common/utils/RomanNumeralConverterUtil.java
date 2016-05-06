@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
  * numeral values are used: i-1, v-5, x-10, l-50, c-100, d-500, m-1000. This does not search for
  *
  */
-public class RomanNumeralConverterUtil {
+class RomanNumeralConverterUtil {
 	private static final RomanNumeralValues ROMAN_NUMERAL_VALUES = new RomanNumeralValues();
 
 	private static class RomanNumeralValues extends HashMap<Character, Integer> {

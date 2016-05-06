@@ -35,7 +35,7 @@ public class CliStatusConsole {
 		System.err.println(errorMessage);
 	}
 
-	public static void logError(Throwable throwable) {
+	static void logError(Throwable throwable) {
 		// System.out.println(throwable.getMessage());
 		System.err.println(throwable.getMessage());
 		logger.error(throwable.getMessage(), throwable);

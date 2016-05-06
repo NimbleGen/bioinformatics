@@ -29,7 +29,6 @@ public class TestPlanRunCheck {
 	private final static String RELATIVE_PATH_TO_OUTPUT_FILE_KEY = "relativePathToOutputFile";
 	private final static String TEXT_TO_FIND_KEY = "textToFind";
 	private final static String MD5SUM_KEY = "md5sum";
-	private final static String RELATIVE_PATH_TO_MATCHING_FILE_KEY = "relativePathToMatchingFile";
 	private final static String RELATIVE_PATH_TO_MATCHING_FILE_DIRECTORY_KEY = "relativePathToMatchingFileDirectory";
 	private final static String MATCHING_FILE_REGEX_KEY = "matchingFileRegex";
 	private final static String ACCEPTANCE_CRITERIA_KEY = "acceptanceCriteria";
@@ -45,9 +44,10 @@ public class TestPlanRunCheck {
 	private final String outputFileRegex;
 	private final String[] relativePathToOutputFile;
 	private final String md5Sum;
-	private final String relativePathToMatchingFile;
+
 	private final String relativePathToMatchingFileDirectory;
 	private final String matchingFileRegex;
+
 	private final String description;
 	private final String[] requirements;
 	private final String acceptanceCriteria;
@@ -62,8 +62,8 @@ public class TestPlanRunCheck {
 	private TestPlanRun parentRun;
 
 	private TestPlanRunCheck(String fileName, TestPlanRun parentRun, TestPlanRunCheckTypeEnum checkType, String[] textToFind, String outputFileRegex, String[] relativePathToOutputFile, String md5Sum,
-			String relativePathToMatchingFile, String relativePathToMatchingFileDirectory, String matchingFileRegex, String description, String[] requirements, String acceptanceCriteria,
-			String[] notes, FileComparisonOptionsEnum[] fileComparisonOptions, int[] linesToSkipInOutputFileForComparing, int[] linesToSkipInMathcingFileForComparing) {
+			String relativePathToMatchingFileDirectory, String matchingFileRegex, String description, String[] requirements, String acceptanceCriteria, String[] notes,
+			FileComparisonOptionsEnum[] fileComparisonOptions, int[] linesToSkipInOutputFileForComparing, int[] linesToSkipInMathcingFileForComparing) {
 		super();
 		this.fileName = fileName;
 		this.parentRun = parentRun;
@@ -72,7 +72,6 @@ public class TestPlanRunCheck {
 		this.outputFileRegex = outputFileRegex;
 		this.relativePathToOutputFile = relativePathToOutputFile;
 		this.md5Sum = md5Sum;
-		this.relativePathToMatchingFile = relativePathToMatchingFile;
 		this.relativePathToMatchingFileDirectory = relativePathToMatchingFileDirectory;
 		this.matchingFileRegex = matchingFileRegex;
 		this.description = description;
@@ -91,56 +90,52 @@ public class TestPlanRunCheck {
 		case CONSOLE_OUTPUT_CONTAINS_TEXT:
 			if (textToFind == null || textToFind.length == 0) {
 				throw new IllegalStateException("The textToFind key/value pair is expected for the check type[" + checkType + "].");
-			} else if (outputFileRegex != null || md5Sum != null || relativePathToMatchingFile != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
+			} else if (outputFileRegex != null || md5Sum != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
 				throw new IllegalStateException("Key/value pairs were provided which do not match what is expected for the check type[" + checkType + "].");
 			}
 			break;
 		case OUTPUT_FILE_CONTAINS_TEXT:
 			if (textToFind == null || textToFind.length == 0 || outputFileRegex == null || outputFileRegex.isEmpty()) {
 				throw new IllegalStateException("The textToFind and outputFileRegex key/value pairs are expected for the check type[" + checkType + "].");
-			} else if (md5Sum != null || relativePathToMatchingFile != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
+			} else if (md5Sum != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
 				throw new IllegalStateException("Key/value pairs were provided which do not match what is expected for the check type[" + checkType + "].");
 			}
 			break;
 		case OUTPUT_FILE_PRESENT:
 			if (outputFileRegex == null || outputFileRegex.isEmpty()) {
 				throw new IllegalStateException("The outputFileRegex key/value pair is expected for the check type[" + checkType + "].");
-			} else if (textToFind != null || md5Sum != null || relativePathToMatchingFile != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
+			} else if (textToFind != null || md5Sum != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
 				throw new IllegalStateException("Key/value pairs were provided which do not match what is expected for the check type[" + checkType + "].");
 			}
 			break;
 		case OUTPUT_FILE_PRESENT_WITH_NONZERO_SIZE:
 			if (outputFileRegex == null || outputFileRegex.isEmpty()) {
 				throw new IllegalStateException("The outputFileRegex key/value pair is expected for the check type[" + checkType + "].");
-			} else if (textToFind != null || md5Sum != null || relativePathToMatchingFile != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
+			} else if (textToFind != null || md5Sum != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
 				throw new IllegalStateException("Key/value pairs were provided which do not match what is expected for the check type[" + checkType + "].");
 			}
 			break;
 		case OUTPUT_FILE_NOT_PRESENT:
 			if (outputFileRegex == null || outputFileRegex.isEmpty()) {
 				throw new IllegalStateException("The outputFileRegex key/value pair is expected for the check type[" + checkType + "].");
-			} else if (textToFind != null || md5Sum != null || relativePathToMatchingFile != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
+			} else if (textToFind != null || md5Sum != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
 				throw new IllegalStateException("Key/value pairs were provided which do not match what is expected for the check type[" + checkType + "].");
 			}
 			break;
 		case OUTPUT_FILE_MATCHES_EXISTING_FILE:
 			boolean directoryAndRegexInputs = matchingFileRegex != null && !matchingFileRegex.isEmpty() && relativePathToMatchingFileDirectory != null
 					&& !relativePathToMatchingFileDirectory.isEmpty() && outputFileRegex != null && !outputFileRegex.isEmpty();
-			boolean fileInput = relativePathToMatchingFile != null && !relativePathToMatchingFile.isEmpty() && outputFileRegex != null && !outputFileRegex.isEmpty();
 
-			if (!directoryAndRegexInputs && !fileInput) {
-				throw new IllegalStateException("The relativePathToMatchingFile or relativePathToMatchingFileDirectory and the matchingFileRegex key/value pairs are expected for the check type["
-						+ checkType + "].");
-			} else if (directoryAndRegexInputs && (md5Sum != null || textToFind != null || relativePathToMatchingFile != null)) {
-				throw new IllegalStateException("Key/value pairs were provided which do not match what is expected for the check type[" + checkType + "].");
-			} else if (fileInput && (md5Sum != null || textToFind != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null)) {
+			if (!directoryAndRegexInputs) {
+				throw new IllegalStateException("The relativePathToMatchingFileDirectory and the matchingFileRegex key/value pairs are expected for the check type[" + checkType + "].");
+			} else if (directoryAndRegexInputs && (md5Sum != null || textToFind != null)) {
 				throw new IllegalStateException("Key/value pairs were provided which do not match what is expected for the check type[" + checkType + "].");
 			}
 			break;
 		case OUTPUT_FILE_MATCHES_MD5SUM:
 			if (md5Sum == null || md5Sum.isEmpty() || outputFileRegex == null || outputFileRegex.isEmpty()) {
 				throw new IllegalStateException("The md5Sum and outputFileRegex key/value pairs are expected for the check type[" + checkType + "].");
-			} else if (textToFind != null || relativePathToMatchingFile != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
+			} else if (textToFind != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
 				throw new IllegalStateException("Key/value pairs were provided which do not match what is expected for the check type[" + checkType + "].");
 			}
 			break;
@@ -276,7 +271,7 @@ public class TestPlanRunCheck {
 				}
 				break;
 			case RECORD_CONSOLE_OUTPUT:
-				description = "Record the text provided in the console output.";
+				description = "Record the text from the console output in the 'Actual Results' section.";
 				break;
 			default:
 				throw new IllegalStateException("The TestPlanRunCheckType[" + checkType + "] is not recognized.");
@@ -372,7 +367,7 @@ public class TestPlanRunCheck {
 				}
 				break;
 			case RECORD_CONSOLE_OUTPUT:
-				acceptanceCriteria = "Always passes.";
+				acceptanceCriteria = "";
 				break;
 			default:
 				throw new IllegalStateException("The TestPlanRunCheckType[" + checkType + "] is not recognized.");
@@ -391,10 +386,8 @@ public class TestPlanRunCheck {
 	}
 
 	private String getMatchingFileDescriptions() {
-		String description = "file matching the regular expression \"" + parentRun.replaceVariables(matchingFileRegex) + "\"";
-		if (relativePathToMatchingFile != null) {
-			description += " and in the relative directory[" + relativePathToMatchingFile + "]";
-		}
+		String description = "file matching the regular expression \"" + parentRun.replaceVariables(matchingFileRegex) + "\" and in the relative directory[" + relativePathToMatchingFileDirectory
+				+ "]";
 		return description;
 	}
 
@@ -590,8 +583,6 @@ public class TestPlanRunCheck {
 				existingFileDirectory = new File(runResults.getTestDirectory(), relativePathToMatchingFileDirectory);
 				existingFileRegex = parentRun.replaceVariables(matchingFileRegex);
 				existingFile = FileUtil.getMatchingFileInDirectory(existingFileDirectory, existingFileRegex);
-			} else if (relativePathToMatchingFile != null && !relativePathToMatchingFile.isEmpty()) {
-				existingFile = new File(runResults.getTestDirectory(), relativePathToMatchingFile);
 			} else {
 				throw new AssertionError();
 			}
@@ -620,21 +611,21 @@ public class TestPlanRunCheck {
 						} else {
 							resultsDescription += "The output file[" + outputFile.getAbsolutePath() + "] DOES NOT MATCH the existing file[" + existingFile.getAbsolutePath()
 									+ "] for the following reason(s):";
-
 							if (comparisonResults.getFileOnesLinesThatDiffer().length > 0 || comparisonResults.getFileTwosLinesThatDiffer().length > 0) {
 								resultsDescription += StringUtil.NEWLINE + "*Lines[";
-								if (comparisonResults.getFileOnesLinesThatDiffer().length <= 10) {
-									resultsDescription += ArraysUtil.toString(comparisonResults.getFileOnesLinesThatDiffer(), " ,");
+								String[] summarizedFileOneStrings = NumberFormatterUtil.summarizeNumbersAsString(comparisonResults.getFileOnesLinesThatDiffer());
+								if (summarizedFileOneStrings.length <= 10) {
+									resultsDescription += ArraysUtil.toString(summarizedFileOneStrings, ", ");
 								} else {
-									resultsDescription += ArraysUtil.toString(Arrays.copyOf(comparisonResults.getFileOnesLinesThatDiffer(), 10), " ,") + " and "
-											+ (comparisonResults.getFileOnesLinesThatDiffer().length - 10) + " additional lines";
+									resultsDescription += ArraysUtil.toString(Arrays.copyOf(summarizedFileOneStrings, 10), ", ") + " and additional lines";
 								}
 								resultsDescription += "] in the output file do not match the corresponding Lines[";
-								if (comparisonResults.getFileTwosLinesThatDiffer().length <= 10) {
-									resultsDescription += ArraysUtil.toString(comparisonResults.getFileOnesLinesThatDiffer(), " ,");
+
+								String[] summarizedFileTwoStrings = NumberFormatterUtil.summarizeNumbersAsString(comparisonResults.getFileTwosLinesThatDiffer());
+								if (summarizedFileTwoStrings.length <= 10) {
+									resultsDescription += ArraysUtil.toString(summarizedFileTwoStrings, ", ");
 								} else {
-									resultsDescription += ArraysUtil.toString(Arrays.copyOf(comparisonResults.getFileTwosLinesThatDiffer(), 10), " ,") + " and "
-											+ (comparisonResults.getFileTwosLinesThatDiffer().length - 10) + " additional lines";
+									resultsDescription += ArraysUtil.toString(Arrays.copyOf(summarizedFileTwoStrings, 10), ", ") + " and  additional lines";
 								}
 
 								resultsDescription += "] in the existing file.";
@@ -766,7 +757,7 @@ public class TestPlanRunCheck {
 			break;
 		case RECORD_CONSOLE_OUTPUT:
 			success = true;
-			resultsDescription = "The console output is as follows: " + StringUtil.NEWLINE + runResults.getConsoleOutput();
+			resultsDescription = "Console Output: " + StringUtil.NEWLINE + runResults.getConsoleOutput();
 			break;
 		default:
 			throw new IllegalStateException("The TestPlanRunCheckType[" + checkType + "] is not recognized.");
@@ -775,17 +766,6 @@ public class TestPlanRunCheck {
 	}
 
 	private List<File> getMatchingFiles(RunResults runResults) {
-		// TODO
-		// if (relativePathToMatchingFileDirectory != null && !relativePathToMatchingFileDirectory.isEmpty()) {
-		// existingFileDirectory = new File(runResults.getTestDirectory(), relativePathToMatchingFileDirectory);
-		// existingFileRegex = parentRun.replaceVariables(matchingFileRegex);
-		// existingFile = FileUtil.getMatchingFileInDirectory(existingFileDirectory, existingFileRegex);
-		// } else if (relativePathToMatchingFile != null && !relativePathToMatchingFile.isEmpty()) {
-		// existingFile = new File(runResults.getTestDirectory(), relativePathToMatchingFile);
-		// } else {
-		// throw new AssertionError();
-		// }
-
 		File directory = runResults.getOutputDirectory();
 		if (relativePathToOutputFile != null && relativePathToOutputFile.length > 0) {
 			String[] relativePathToOutputFileWithReplacedVariables = new String[relativePathToOutputFile.length];
@@ -868,7 +848,6 @@ public class TestPlanRunCheck {
 					}
 				}
 				String md5Sum = (String) root.get(MD5SUM_KEY);
-				String relativePathToMatchingFile = (String) root.get(RELATIVE_PATH_TO_MATCHING_FILE_KEY);
 				String relativePathToMatchingFileDirectory = (String) root.get(RELATIVE_PATH_TO_MATCHING_FILE_DIRECTORY_KEY);
 				String matchingFileRegex = (String) root.get(MATCHING_FILE_REGEX_KEY);
 				String acceptanceCriteria = (String) root.get(ACCEPTANCE_CRITERIA_KEY);
@@ -906,9 +885,8 @@ public class TestPlanRunCheck {
 					}
 				}
 
-				checks.add(new TestPlanRunCheck(checkFileName, parentRun, checkType, textToFind, outputFileRegex, relativePathToOutputFile, md5Sum, relativePathToMatchingFile,
-						relativePathToMatchingFileDirectory, matchingFileRegex, description, requirements, acceptanceCriteria, notes, comparisonOptions, lineNumberInOutputFileToSkip,
-						lineNumberInMatchingFileToSkip));
+				checks.add(new TestPlanRunCheck(checkFileName, parentRun, checkType, textToFind, outputFileRegex, relativePathToOutputFile, md5Sum, relativePathToMatchingFileDirectory,
+						matchingFileRegex, description, requirements, acceptanceCriteria, notes, comparisonOptions, lineNumberInOutputFileToSkip, lineNumberInMatchingFileToSkip));
 			} catch (Exception e) {
 				throw new IllegalStateException(e.getMessage() + " File[" + inputYaml.getAbsolutePath() + "].", e);
 			}
@@ -955,7 +933,6 @@ public class TestPlanRunCheck {
 		result = prime * result + ((matchingFileRegex == null) ? 0 : CheckSumUtil.checkSum(matchingFileRegex));
 		result = prime * result + ((md5Sum == null) ? 0 : CheckSumUtil.checkSum(md5Sum));
 		result = prime * result + ((outputFileRegex == null) ? 0 : CheckSumUtil.checkSum(outputFileRegex));
-		result = prime * result + ((relativePathToMatchingFile == null) ? 0 : CheckSumUtil.checkSum(relativePathToMatchingFile));
 		result = prime * result + ((relativePathToMatchingFileDirectory == null) ? 0 : CheckSumUtil.checkSum(relativePathToMatchingFileDirectory));
 		result = prime * result + ((requirements == null) ? 0 : CheckSumUtil.checkSum(requirements));
 		result = prime * result + ((textToFind == null) ? 0 : CheckSumUtil.checkSum(textToFind));
@@ -974,7 +951,6 @@ public class TestPlanRunCheck {
 		result = prime * result + ((md5Sum == null) ? 0 : md5Sum.hashCode());
 		result = prime * result + ((notes == null) ? 0 : notes.hashCode());
 		result = prime * result + ((outputFileRegex == null) ? 0 : outputFileRegex.hashCode());
-		result = prime * result + ((relativePathToMatchingFile == null) ? 0 : relativePathToMatchingFile.hashCode());
 		result = prime * result + ((relativePathToMatchingFileDirectory == null) ? 0 : relativePathToMatchingFileDirectory.hashCode());
 		result = prime * result + Arrays.hashCode(relativePathToOutputFile);
 		result = prime * result + Arrays.hashCode(requirements);
@@ -1027,11 +1003,6 @@ public class TestPlanRunCheck {
 			if (other.outputFileRegex != null)
 				return false;
 		} else if (!outputFileRegex.equals(other.outputFileRegex))
-			return false;
-		if (relativePathToMatchingFile == null) {
-			if (other.relativePathToMatchingFile != null)
-				return false;
-		} else if (!relativePathToMatchingFile.equals(other.relativePathToMatchingFile))
 			return false;
 		if (relativePathToMatchingFileDirectory == null) {
 			if (other.relativePathToMatchingFileDirectory != null)

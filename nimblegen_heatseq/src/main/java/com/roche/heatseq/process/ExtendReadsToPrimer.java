@@ -16,11 +16,11 @@
 
 package com.roche.heatseq.process;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import net.sf.samtools.SAMFileHeader;
-import net.sf.samtools.SAMRecord;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +46,7 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
  * Extends reads for a probe to the primer locations
  * 
  */
-public final class ExtendReadsToPrimer {
+final class ExtendReadsToPrimer {
 	private static final Logger logger = LoggerFactory.getLogger(ExtendReadsToPrimer.class);
 
 	private static final int PRIMER_ALIGNMENT_BUFFER = 25;
@@ -91,7 +91,7 @@ public final class ExtendReadsToPrimer {
 	 * @param twoMappingQuality
 	 * @return readPair that has been extended to the primers (the primers are not included in the new alignment)
 	 */
-	public static IReadPair extendReadPair(boolean isMarkedDuplicate, String extensionUid, String ligationUid, Probe probe, SAMFileHeader samHeader, String sequenceName, String readName,
+	private static IReadPair extendReadPair(boolean isMarkedDuplicate, String extensionUid, String ligationUid, Probe probe, SAMFileHeader samHeader, String sequenceName, String readName,
 			String readGroup, ISequence sequenceOne, String sequenceOneQualityString, ISequence sequenceTwo, String sequenceTwoQualityString, int oneMappingQuality, int twoMappingQuality,
 			boolean isBestDuplicate, IAlignmentScorer alignmentScorer) {
 		IReadPair extendedReadPair = null;
@@ -247,7 +247,7 @@ public final class ExtendReadsToPrimer {
 		return readExtensionDetails;
 	}
 
-	public static SAMRecord createRecord(SAMFileHeader samHeader, String readName, String readGroup, boolean isNegativeStrand, CigarString cigarString, String mismatchDetailsString,
+	private static SAMRecord createRecord(SAMFileHeader samHeader, String readName, String readGroup, boolean isNegativeStrand, CigarString cigarString, String mismatchDetailsString,
 			int alignmentStartInReference, String readString, String baseQualityString, String sequenceName, int mappingQuality, int referenceLength, boolean isMarkedDuplicate, String extensionUid,
 			String ligationUid, String probeId, boolean isBestDuplicate) {
 		if (readString.length() != baseQualityString.length()) {
@@ -277,7 +277,7 @@ public final class ExtendReadsToPrimer {
 		return record;
 	}
 
-	public static Integer getPrimerEndIndexInRead(ISequence primerSequence, ISequence readSequence) {
+	private static Integer getPrimerEndIndexInRead(ISequence primerSequence, ISequence readSequence) {
 		// cutoff excess sequence beyond primer
 		readSequence = readSequence.subSequence(0, Math.min(readSequence.size() - 1, primerSequence.size() + PRIMER_ALIGNMENT_BUFFER));
 

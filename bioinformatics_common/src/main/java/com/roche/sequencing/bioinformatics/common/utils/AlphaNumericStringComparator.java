@@ -223,7 +223,7 @@ public class AlphaNumericStringComparator implements Comparator<String>, Seriali
 	 *            names to be analyzed for appropriateness of roman numeral conversion attempts
 	 * @return true if Roman numerals should not be converted to numbers
 	 */
-	public static boolean shouldNotConvertRomanNumerals(List<String> names) {
+	private static boolean shouldNotConvertRomanNumerals(List<String> names) {
 		// the problem is that some chromosomes are labeled with
 		// Roman numerals (ex. chrxi). ordering differs whether chrx
 		// is treated as a roman numeral or the sex chromosome

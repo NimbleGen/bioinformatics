@@ -153,7 +153,7 @@ public final class FileUtil {
 	 * @return the line numbers of lines that contain the provided text
 	 * @throws FileNotFoundException
 	 */
-	public static int[] getLineNumbersContainingTextInFile(File file, String textToFind, int startingLineNumber, int numberOfMatchesToFind) throws FileNotFoundException {
+	private static int[] getLineNumbersContainingTextInFile(File file, String textToFind, int startingLineNumber, int numberOfMatchesToFind) throws FileNotFoundException {
 		List<Integer> lineNumbers = new ArrayList<Integer>();
 
 		try (Scanner scanner = new Scanner(file)) {
@@ -225,7 +225,7 @@ public final class FileUtil {
 	 * 
 	 * @throws IOException
 	 */
-	public static String getFirstLineEndOfLineSymbolsAsString(File file) throws IOException {
+	private static String getFirstLineEndOfLineSymbolsAsString(File file) throws IOException {
 		String firstLineEOL = null;
 		StringBuilder firstLineEOLBuilder = new StringBuilder();
 		try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
@@ -473,7 +473,7 @@ public final class FileUtil {
 		private final int[] fileOnesLinesThatDiffer;
 		private final int[] fileTwosLinesThatDiffer;
 
-		public FileComparisonResults(boolean filesAreEqual, boolean endOfLineMatch, boolean fileOneHasAdditionalLines, boolean fileTwoHasAdditionalLines, int[] fileOnesLinesThatDiffer,
+		private FileComparisonResults(boolean filesAreEqual, boolean endOfLineMatch, boolean fileOneHasAdditionalLines, boolean fileTwoHasAdditionalLines, int[] fileOnesLinesThatDiffer,
 				int[] fileTwosLinesThatDiffer) {
 			super();
 			this.filesAreEqual = filesAreEqual;
@@ -627,7 +627,7 @@ public final class FileUtil {
 		return result;
 	}
 
-	public static List<File> getAllSubFiles(File directory) {
+	static List<File> getAllSubFiles(File directory) {
 		List<File> subFiles = new ArrayList<File>();
 
 		for (File file : directory.listFiles()) {
@@ -680,7 +680,7 @@ public final class FileUtil {
 	 * @param regex
 	 * @return matching files
 	 */
-	public static List<File> getMatchingFilesInDirectory(File directory, String regex, boolean isCaseInsensitive) {
+	private static List<File> getMatchingFilesInDirectory(File directory, String regex, boolean isCaseInsensitive) {
 		List<File> matchingFiles = new ArrayList<File>();
 
 		final Pattern pattern = isCaseInsensitive ? Pattern.compile(regex, Pattern.CASE_INSENSITIVE) : Pattern.compile(regex);
@@ -724,7 +724,7 @@ public final class FileUtil {
 	 * @param regex
 	 * @return matching file
 	 */
-	public static File getMatchingFileInDirectory(File directory, String regex, boolean isCaseInsensitive) {
+	private static File getMatchingFileInDirectory(File directory, String regex, boolean isCaseInsensitive) {
 		List<File> matchingFiles = getMatchingFilesInDirectory(directory, regex, isCaseInsensitive);
 
 		File matchingFile = null;

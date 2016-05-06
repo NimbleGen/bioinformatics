@@ -8,7 +8,7 @@ public class Version implements Comparable<Version> {
 	private final int updateNumber;
 	private final String identifier;
 
-	public Version(int majorVersion, int minorVersion, int microVersion, int updateNumber, String identifier) {
+	Version(int majorVersion, int minorVersion, int microVersion, int updateNumber, String identifier) {
 		super();
 		this.majorVersion = majorVersion;
 		this.minorVersion = minorVersion;

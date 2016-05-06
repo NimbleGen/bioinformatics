@@ -59,7 +59,7 @@ public class CommandLineParser {
 		return parsedCommandLine;
 	}
 
-	static Command findMatchingCommand(String[] arguments, Commands commands) {
+	private static Command findMatchingCommand(String[] arguments, Commands commands) {
 		Command matchingCommand = null;
 		if (commands != null) {
 			commandLoop: for (Command command : commands) {
@@ -150,7 +150,7 @@ public class CommandLineParser {
 	 * @param commandLineOptionGroup
 	 * @return ParsedCommandLine
 	 */
-	public static ParsedCommandLine parseCommandLineWithExceptions(String[] arguments, CommandLineOptionsGroup commandLineOptionGroup) {
+	static ParsedCommandLine parseCommandLineWithExceptions(String[] arguments, CommandLineOptionsGroup commandLineOptionGroup) {
 		ParsedCommandLine parsedCommandLine = parseCommandLine(arguments, commandLineOptionGroup);
 
 		throwCommandLineParsingExceptions(parsedCommandLine);
@@ -164,7 +164,7 @@ public class CommandLineParser {
 	 * @param Commands
 	 * @return ParsedCommandLine
 	 */
-	public static ParsedCommandLine parseCommandLineWithExceptions(String[] arguments, Commands commands) {
+	static ParsedCommandLine parseCommandLineWithExceptions(String[] arguments, Commands commands) {
 		ParsedCommandLine parsedCommandLine = parseCommandLine(arguments, commands);
 
 		throwCommandLineParsingExceptions(parsedCommandLine);
