@@ -15,6 +15,15 @@
  */
 package com.roche.heatseq.utils;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,14 +32,6 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
-
-import net.sf.samtools.SAMFileHeader;
-import net.sf.samtools.SAMFileHeader.SortOrder;
-import net.sf.samtools.SAMFileReader;
-import net.sf.samtools.SAMFileWriter;
-import net.sf.samtools.SAMFileWriterFactory;
-import net.sf.samtools.SAMRecord;
-import net.sf.samtools.SAMRecordIterator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,18 +44,21 @@ public class BamSorter {
 	private final static Logger logger = LoggerFactory.getLogger(FastqSorter.class);
 	private final static int RECORDS_PER_CHUNK = 3000000;
 
-	public static void sortBam(File inputBamFile, File tempDirectory, File outputBamFile, final Comparator<SAMRecord> comparator) {
+	private static void sortBam(File inputBamFile, File tempDirectory, File outputBamFile, final Comparator<SAMRecord> comparator) {
 		long start = System.currentTimeMillis();
 		try (CloseableAndIterableIterator<SAMRecord> iter = getSortedBamIterator(inputBamFile, tempDirectory, comparator)) {
 			SAMFileHeader header = null;
-			try (SAMFileReader reader = new SAMFileReader(inputBamFile)) {
+			try (SamReader reader = SamReaderFactory.makeDefault().open(inputBamFile)) {
 				header = reader.getFileHeader();
+			} catch (IOException e) {
+				throw new PicardException(e.getMessage(), e);
 			}
 
-			SAMFileWriter sortedBamWriter = new SAMFileWriterFactory().makeBAMWriter(header, true, outputBamFile, 0);
-			while (iter.hasNext()) {
-				SAMRecord record = iter.next();
-				sortedBamWriter.addAlignment(record);
+			try (SAMFileWriter sortedBamWriter = new SAMFileWriterFactory().makeBAMWriter(header, true, outputBamFile, 0)) {
+				while (iter.hasNext()) {
+					SAMRecord record = iter.next();
+					sortedBamWriter.addAlignment(record);
+				}
 			}
 		}
 		long stop = System.currentTimeMillis();
@@ -63,15 +67,17 @@ public class BamSorter {
 
 	public static CloseableAndIterableIterator<SAMRecord> getSortedBamIterator(File inputBamFile, File tempDirectory, final Comparator<SAMRecord> comparator) {
 		CloseableAndIterableIterator<SAMRecord> returnIter = null;
-		try (SAMFileReader currentReader = new SAMFileReader(inputBamFile)) {
+		try (SamReader currentReader = SamReaderFactory.makeDefault().open(inputBamFile)) {
 			SAMFileHeader header = currentReader.getFileHeader();
 			Iterator<SAMRecord> iter = currentReader.iterator();
 			returnIter = getSortedBamIterator(iter, header, tempDirectory, comparator);
+		} catch (IOException e) {
+			throw new PicardException(e.getMessage(), e);
 		}
 		return returnIter;
 	}
 
-	public static CloseableAndIterableIterator<SAMRecord> getSortedBamIterator(Iterator<SAMRecord> samIterator, SAMFileHeader header, File tempDirectory, final Comparator<SAMRecord> comparator) {
+	private static CloseableAndIterableIterator<SAMRecord> getSortedBamIterator(Iterator<SAMRecord> samIterator, SAMFileHeader header, File tempDirectory, final Comparator<SAMRecord> comparator) {
 		File chunkDirectory = new File(tempDirectory, "bam_chunks_" + System.currentTimeMillis() + "/");
 		List<File> chunkFiles = createInitialSortedFileChunks(samIterator, header, chunkDirectory, comparator);
 		return new SortedBamIterator(chunkDirectory, chunkFiles, comparator);
@@ -82,16 +88,15 @@ public class BamSorter {
 		void close();
 	}
 
-	public static class SortedBamIterator implements CloseableAndIterableIterator<SAMRecord> {
+	private static class SortedBamIterator implements CloseableAndIterableIterator<SAMRecord> {
 
 		private final File chunkDirectory;
 		private final TreeSet<SamRecordAndChunkIndex> currentSortedRecords;
 		private final SAMRecordIterator[] iters;
-		private final SAMFileReader[] readers;
+		private final SamReader[] readers;
 		private SAMRecord nextRecord;
 
-		@SuppressWarnings("resource")
-		public SortedBamIterator(File chunkDirectory, List<File> chunkFiles, final Comparator<SAMRecord> comparator) {
+		private SortedBamIterator(File chunkDirectory, List<File> chunkFiles, final Comparator<SAMRecord> comparator) {
 			this.chunkDirectory = chunkDirectory;
 
 			currentSortedRecords = new TreeSet<SamRecordAndChunkIndex>(new Comparator<SamRecordAndChunkIndex>() {
@@ -101,10 +106,10 @@ public class BamSorter {
 				}
 			});
 
-			readers = new SAMFileReader[chunkFiles.size()];
+			readers = new SamReader[chunkFiles.size()];
 			iters = new SAMRecordIterator[chunkFiles.size()];
 			for (int i = 0; i < chunkFiles.size(); i++) {
-				SAMFileReader currentReader = new SAMFileReader(chunkFiles.get(i));
+				SamReader currentReader = SamReaderFactory.makeDefault().open(chunkFiles.get(i));
 				readers[i] = currentReader;
 				SAMRecordIterator currentIter = currentReader.iterator();
 				iters[i] = currentIter;
@@ -149,8 +154,12 @@ public class BamSorter {
 				iter.close();
 			}
 
-			for (SAMFileReader reader : readers) {
-				reader.close();
+			for (SamReader reader : readers) {
+				try {
+					reader.close();
+				} catch (IOException e) {
+					logger.error(e.getMessage(), e);
+				}
 			}
 			try {
 				FileUtil.deleteDirectory(chunkDirectory);

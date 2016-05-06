@@ -15,6 +15,9 @@
  */
 package com.roche.heatseq.utils;
 
+import htsjdk.samtools.fastq.FastqRecord;
+import htsjdk.samtools.util.CloseableIterator;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,9 +26,6 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
-
-import net.sf.picard.fastq.FastqRecord;
-import net.sf.samtools.util.CloseableIterator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +37,7 @@ public class FastqSorter {
 	private final static Logger logger = LoggerFactory.getLogger(FastqSorter.class);
 	private final static int RECORDS_PER_CHUNK = 3000000;
 
-	public static void sortFastq(File inputFastQFile, File tempDirectory, File outputFastQFile, final Comparator<FastqRecord> comparator) {
+	private static void sortFastq(File inputFastQFile, File tempDirectory, File outputFastQFile, final Comparator<FastqRecord> comparator) {
 		long start = System.currentTimeMillis();
 		CloseableIterator<FastqRecord> iter = getSortedFastqIterator(inputFastQFile, tempDirectory, comparator);
 
@@ -56,13 +56,13 @@ public class FastqSorter {
 		return getSortedFastqIterator(new FastqReader(inputFastqFile), tempDirectory, comparator);
 	}
 
-	public static CloseableIterator<FastqRecord> getSortedFastqIterator(Iterator<FastqRecord> fastqIterator, File tempDirectory, final Comparator<FastqRecord> comparator) {
+	private static CloseableIterator<FastqRecord> getSortedFastqIterator(Iterator<FastqRecord> fastqIterator, File tempDirectory, final Comparator<FastqRecord> comparator) {
 		File chunkDirectory = new File(tempDirectory, "fastq_chunks_" + System.currentTimeMillis() + "/");
 		List<File> chunkFiles = createInitialSortedFileChunks(fastqIterator, chunkDirectory, comparator);
 		return new SortedFastqIterator(chunkDirectory, chunkFiles, comparator);
 	}
 
-	public static class SortedFastqIterator implements CloseableIterator<FastqRecord> {
+	private static class SortedFastqIterator implements CloseableIterator<FastqRecord> {
 
 		private final File chunkDirectory;
 		private final TreeSet<FastqRecordAndChunkIndex> currentSortedRecords;
@@ -70,7 +70,7 @@ public class FastqSorter {
 		private FastqRecord nextRecord;
 
 		@SuppressWarnings("resource")
-		public SortedFastqIterator(File chunkDirectory, List<File> chunkFiles, final Comparator<FastqRecord> comparator) {
+		private SortedFastqIterator(File chunkDirectory, List<File> chunkFiles, final Comparator<FastqRecord> comparator) {
 			this.chunkDirectory = chunkDirectory;
 
 			currentSortedRecords = new TreeSet<FastqRecordAndChunkIndex>(new Comparator<FastqRecordAndChunkIndex>() {

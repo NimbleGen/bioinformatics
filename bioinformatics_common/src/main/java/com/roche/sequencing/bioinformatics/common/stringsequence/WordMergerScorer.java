@@ -2,7 +2,7 @@ package com.roche.sequencing.bioinformatics.common.stringsequence;
 
 import com.roche.sequencing.bioinformatics.common.stringsequence.alignment.IStringAlignmentScorer;
 
-public class WordMergerScorer implements IStringAlignmentScorer {
+class WordMergerScorer implements IStringAlignmentScorer {
 
 	final static double DEFAULT_LARGE_NEGATIVE_NUMBER_FOR_MISMATCH_PENALTY = -100000;
 

@@ -2,7 +2,7 @@ package com.roche.bioinformatics.common.verification.runs;
 
 import java.io.File;
 
-public class RunResults {
+class RunResults {
 	private final String consoleOutput;
 	private final String consoleErrors;
 	private final File outputDirectory;

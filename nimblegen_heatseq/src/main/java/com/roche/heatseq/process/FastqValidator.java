@@ -15,6 +15,8 @@
  */
 package com.roche.heatseq.process;
 
+import htsjdk.samtools.fastq.FastqRecord;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -22,13 +24,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Iterator;
 
-import net.sf.picard.PicardException;
-import net.sf.picard.fastq.FastqRecord;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.utils.FastqReader;
+import com.roche.heatseq.utils.PicardException;
 
 public class FastqValidator {
 

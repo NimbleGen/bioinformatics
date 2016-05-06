@@ -15,13 +15,13 @@
  */
 package com.roche.heatseq.utils;
 
+import htsjdk.samtools.fastq.FastqConstants;
+import htsjdk.samtools.fastq.FastqRecord;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-
-import net.sf.picard.fastq.FastqConstants;
-import net.sf.picard.fastq.FastqRecord;
 
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 

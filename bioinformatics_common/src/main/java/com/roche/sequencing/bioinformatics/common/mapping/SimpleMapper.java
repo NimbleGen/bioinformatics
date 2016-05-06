@@ -65,7 +65,7 @@ public class SimpleMapper<O> {
 	 * @param minHitThreshold
 	 *            min number of hits required to return as a best candidate reference
 	 */
-	public SimpleMapper(int comparisonSequenceSize, int referenceSpacing, int querySpacing) {
+	private SimpleMapper(int comparisonSequenceSize, int referenceSpacing, int querySpacing) {
 		this.comparisonSequenceSize = comparisonSequenceSize;
 		this.referenceSpacing = referenceSpacing;
 		this.querySpacing = querySpacing;
@@ -95,6 +95,7 @@ public class SimpleMapper<O> {
 	 * @param referenceSequence
 	 * @param sequenceAddress
 	 */
+	
 	public void removeReferenceSequenceByAddress(O sequenceAddress) {
 		for (Entry<ISequence, Set<O>> entry : sequenceSliceToReferenceAddressMap.entrySet()) {
 			Set<O> set = entry.getValue();
@@ -155,6 +156,7 @@ public class SimpleMapper<O> {
 		return getBestCandidateReferences(querySequence, DEFAULT_BEST_CANDIDATE_LIMIT);
 	}
 
+	
 	public int getOptimalScore(ISequence querySequence) {
 		return querySequence.size() - comparisonSequenceSize;
 	}

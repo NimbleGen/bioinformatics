@@ -27,7 +27,7 @@ public final class StringUtil {
 
 	public static final String TAB = "\t";
 	public static final char CARRIAGE_RETURN = '\r';
-	public static final char NEWLINE_SYMBOL = '\n';
+	static final char NEWLINE_SYMBOL = '\n';
 	// NOTE: WINDOWS_NEWLINE = CARRIAGE_RETURN + LINE_FEED;
 	// NOTE: LINUX_NEWLINE = LINE_FEED;
 	public static final String LINUX_NEWLINE = "" + NEWLINE_SYMBOL;
@@ -116,7 +116,8 @@ public final class StringUtil {
 	 *            Which occurrence of the character to return the index for
 	 * @return The index of the nth occurrence of the character, or -1 if there isn't an nth occurrence of the character in the string.
 	 */
-	public static int nthOccurrence(String string, char character, int indexOfDesiredOccurence) {
+	
+	static int nthOccurrence(String string, char character, int indexOfDesiredOccurence) {
 		int position = string.indexOf(character, 0);
 		int timesCharacterFoundSoFar = 1;
 		while ((timesCharacterFoundSoFar < indexOfDesiredOccurence) && (position != -1)) {
@@ -164,7 +165,8 @@ public final class StringUtil {
 	 *            number of spaces to place in between inserts
 	 * @return altered string
 	 */
-	public static String insertStringEveryNSpaces(String baseString, String stringToInsert, int spaces) {
+	
+	static String insertStringEveryNSpaces(String baseString, String stringToInsert, int spaces) {
 		StringBuilder result = new StringBuilder();
 		int i = 0;
 		for (; i + spaces < baseString.length(); i += spaces) {
@@ -202,6 +204,7 @@ public final class StringUtil {
 	 * @param character
 	 * @return
 	 */
+	
 	public static boolean isPrintableChar(char character) {
 		Character.UnicodeBlock block = Character.UnicodeBlock.of(character);
 		return (!Character.isISOControl(character)) && character != KeyEvent.CHAR_UNDEFINED && block != null && block != Character.UnicodeBlock.SPECIALS;

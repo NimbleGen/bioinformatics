@@ -16,24 +16,17 @@
 
 package com.roche.sequencing.bioinformatics.common.alignment;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.roche.sequencing.bioinformatics.common.sequence.ICode;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCode;
-import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class CigarStringUtil {
 	public final static char CIGAR_DELETION_FROM_REFERENCE = 'D';
-	public final static char CIGAR_ALIGNMENT_MATCH = 'M';
+	private final static char CIGAR_ALIGNMENT_MATCH = 'M';
 	public final static char CIGAR_INSERTION_TO_REFERENCE = 'I';
 	public final static char CIGAR_SEQUENCE_MATCH = '=';
 	public final static char CIGAR_SEQUENCE_MISMATCH = 'X';
 	public final static String REFERENCE_DELETION_INDICATOR_IN_MD_TAG = "^";
-
-	private final static String CIGAR_STRING_REGEX = "([0-9]+)([MIDX]{1})";
-	private final static Pattern CIGAR_STRING_PATTERN = Pattern.compile(CIGAR_STRING_REGEX);
 
 	private CigarStringUtil() {
 		throw new AssertionError();
@@ -144,21 +137,6 @@ public class CigarStringUtil {
 		}
 
 		return summarizedCigarString.toString();
-	}
-
-	static String unsummarizeCigarString(String summarizedCigarString) {
-		StringBuilder unsummarizedStringBuilder = new StringBuilder();
-		Matcher matcher = CIGAR_STRING_PATTERN.matcher(summarizedCigarString);
-
-		while (matcher.find()) {
-			String numberOfRepeatsAsString = matcher.group(1);
-			int numberOfRepeats = Integer.valueOf(numberOfRepeatsAsString);
-			String cigarChar = matcher.group(2);
-
-			unsummarizedStringBuilder.append(StringUtil.repeatString(cigarChar, numberOfRepeats));
-		}
-
-		return unsummarizedStringBuilder.toString();
 	}
 
 	static int getEditDistance(CigarString cigarString) {

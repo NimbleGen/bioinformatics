@@ -17,7 +17,7 @@ import com.roche.sequencing.bioinformatics.common.utils.JVMUtil;
 import com.roche.sequencing.bioinformatics.common.utils.OSUtil;
 import com.roche.sequencing.bioinformatics.common.utils.Version;
 
-public class Precondition {
+class Precondition {
 
 	private final static int BYTES_PER_MEGABYTE = 1000000;
 	private final static int MEGABYTES_PER_GIGABYTE = 1000;
@@ -25,7 +25,7 @@ public class Precondition {
 	private final PreconditionEnum preconditionEnum;
 	private final String[] values;
 
-	public Precondition(PreconditionEnum preconditionEnum, String[] values) {
+	private Precondition(PreconditionEnum preconditionEnum, String[] values) {
 		if (preconditionEnum == null) {
 			throw new IllegalArgumentException("The provided variable preconditionEnum is null.");
 		}

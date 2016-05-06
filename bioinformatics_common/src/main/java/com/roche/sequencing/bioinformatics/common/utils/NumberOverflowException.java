@@ -8,20 +8,8 @@ public class NumberOverflowException extends RuntimeException {
 		super();
 	}
 
-	public NumberOverflowException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
-		super(message, cause, enableSuppression, writableStackTrace);
-	}
-
-	public NumberOverflowException(String message, Throwable cause) {
-		super(message, cause);
-	}
-
-	public NumberOverflowException(String message) {
+	NumberOverflowException(String message) {
 		super(message);
-	}
-
-	public NumberOverflowException(Throwable cause) {
-		super(cause);
 	}
 
 }

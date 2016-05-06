@@ -23,6 +23,7 @@ public class ImageUtil {
 	 * @param angleInDegrees
 	 * @return buffered image rotated with the values slightly changed due to interpolation
 	 */
+	
 	public static BufferedImage rotate(BufferedImage image, double angleInDegrees) {
 		double angleInRadians = Math.toRadians(angleInDegrees);
 		double sin = Math.abs(Math.sin(angleInRadians)), cos = Math.abs(Math.cos(angleInRadians));

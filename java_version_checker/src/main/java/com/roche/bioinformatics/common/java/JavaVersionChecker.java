@@ -33,6 +33,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 
+
 public class JavaVersionChecker {
 
 	private final static Preferences preferences = Preferences.userRoot().node(JavaVersionChecker.class.getName());

@@ -43,6 +43,12 @@ package com.roche.heatseq.utils;
  * Note:  this file was modified to allow for a reader input which ultimately allows gzipped fastq
  * files to be passed directly using GZipInputStream
  */
+import htsjdk.samtools.fastq.FastqConstants;
+import htsjdk.samtools.fastq.FastqRecord;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.RuntimeIOException;
+import htsjdk.samtools.util.StringUtil;
+
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.File;
@@ -52,13 +58,6 @@ import java.io.InputStreamReader;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.zip.GZIPInputStream;
-
-import net.sf.picard.PicardException;
-import net.sf.picard.fastq.FastqConstants;
-import net.sf.picard.fastq.FastqRecord;
-import net.sf.picard.io.IoUtil;
-import net.sf.samtools.util.RuntimeIOException;
-import net.sf.samtools.util.StringUtil;
 
 import com.roche.sequencing.bioinformatics.common.utils.GZipUtil;
 
@@ -78,21 +77,21 @@ public class FastqReader implements Iterator<FastqRecord>, Iterable<FastqRecord>
 		this(gzippedOrUncompressedFastqFile, DEFAULT_BUFFER_SIZE);
 	}
 
-	public FastqReader(final File gzippedOrUncompressedFastqFile, boolean checkRecords) {
+	FastqReader(final File gzippedOrUncompressedFastqFile, boolean checkRecords) {
 		this(gzippedOrUncompressedFastqFile, DEFAULT_BUFFER_SIZE, checkRecords);
 	}
 
-	public FastqReader(final File gzippedOrUncompressedFastqFile, int bufferSize) {
+	private FastqReader(final File gzippedOrUncompressedFastqFile, int bufferSize) {
 		this(gzippedOrUncompressedFastqFile, bufferSize, true);
 	}
 
-	public FastqReader(final File gzippedOrUncompressedFastqFile, int bufferSize, boolean checkRecords) {
+	private FastqReader(final File gzippedOrUncompressedFastqFile, int bufferSize, boolean checkRecords) {
 		try {
 			boolean isGzipped = GZipUtil.isCompressed(gzippedOrUncompressedFastqFile);
 			if (isGzipped) {
 				reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(gzippedOrUncompressedFastqFile), bufferSize)), bufferSize);
 			} else {
-				reader = new BufferedReader(new InputStreamReader(IoUtil.openFileForReading(gzippedOrUncompressedFastqFile)), bufferSize);
+				reader = new BufferedReader(new InputStreamReader(IOUtil.openFileForReading(gzippedOrUncompressedFastqFile)), bufferSize);
 			}
 			this.fileAbsolutePath = gzippedOrUncompressedFastqFile.getAbsolutePath();
 			if (checkRecords) {

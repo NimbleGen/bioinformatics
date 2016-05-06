@@ -15,6 +15,12 @@
  */
 package com.roche.heatseq.process;
 
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SamInputResource;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,19 +31,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.sf.samtools.SAMFileReader;
-import net.sf.samtools.SAMRecord;
-import net.sf.samtools.SAMRecordIterator;
-
 import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.utils.IlluminaFastQReadNameUtil;
+import com.roche.heatseq.utils.PicardException;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 
-public class RangeMap<O> implements IRangeMap<O> {
+class RangeMap<O> implements IRangeMap<O> {
 
-	public final List<StartLocationToValue<O>> startingLocationToValue;
+	private final List<StartLocationToValue<O>> startingLocationToValue;
 	private boolean locationsSorted;
 
 	private ForwardComparator<O> forwardComparator = new ForwardComparator<O>();
@@ -213,7 +216,8 @@ public class RangeMap<O> implements IRangeMap<O> {
 		go4();
 	}
 
-	public static void go2() throws IOException {
+	@SuppressWarnings("unused")
+	private static void go2() throws IOException {
 		ParsedProbeFile probeInfo = ProbeFileUtil.parseProbeInfoFile(new File("D://kurts_space/heatseq/big/probe_info.txt"));
 		Set<String> sequenceNames = probeInfo.getSequenceNames();
 
@@ -248,7 +252,8 @@ public class RangeMap<O> implements IRangeMap<O> {
 		// System.out.println(rangeMap.getObjectsThatContainRangeInclusive(84937745, 84937839).size());
 	}
 
-	public static void go3() {
+	@SuppressWarnings("unused")
+	private static void go3() {
 		RangeMap<String> rangeMap = new RangeMap<String>();
 		rangeMap.put(2145, 2284, "a");
 		rangeMap.put(6462, 6601, "b");
@@ -258,7 +263,7 @@ public class RangeMap<O> implements IRangeMap<O> {
 
 	}
 
-	public static void go4() {
+	private static void go4() {
 		RangeMap<String> rangeMap = new RangeMap<String>();
 		rangeMap.put(1, 10, "a");
 		rangeMap.put(2, 11, "b");
@@ -268,7 +273,8 @@ public class RangeMap<O> implements IRangeMap<O> {
 
 	}
 
-	public static void go() {
+	@SuppressWarnings("unused")
+	private static void go() {
 		// NewRangeMap<String> rangeMap = new NewRangeMap<String>();
 		// rangeMap.put(1, 3, "a");
 		// rangeMap.put(4, 7, "b");
@@ -282,47 +288,50 @@ public class RangeMap<O> implements IRangeMap<O> {
 		File bamFile = new File("D://kurts_space/heatseq/big/input.bam");
 		File bamFileIndex = new File("D://kurts_space/heatseq/big/input.bai");
 
-		SAMFileReader samReader = new SAMFileReader(bamFile, bamFileIndex);
-		SAMRecordIterator samIter = samReader.iterator();
+		try (SamReader samReader = SamReaderFactory.makeDefault().open(SamInputResource.of(bamFile).index(bamFileIndex))) {
+			SAMRecordIterator samIter = samReader.iterator();
 
-		Map<String, SAMRecord> firstFoundRecordByReadName = new HashMap<String, SAMRecord>();
+			Map<String, SAMRecord> firstFoundRecordByReadName = new HashMap<String, SAMRecord>();
 
-		int lineNumber = 1;
-		// Scan through the entire bam, finding matches by name to the fastq data in our hash
-		while (samIter.hasNext()) {
-			SAMRecord samRecord = samIter.next();
-			String readNameFromBam = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(samRecord.getReadName());
+			int lineNumber = 1;
+			// Scan through the entire bam, finding matches by name to the fastq data in our hash
+			while (samIter.hasNext()) {
+				SAMRecord samRecord = samIter.next();
+				String readNameFromBam = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(samRecord.getReadName());
 
-			if (readNameFromBam.equals("HISEQ-MFG:361:HFCJVADXX:2:2110:4461:33497")) {
-				System.out.println(samRecord.getReferenceName() + " " + samRecord.getAlignmentStart() + " " + samRecord.getAlignmentEnd() + " line:" + lineNumber);
+				if (readNameFromBam.equals("HISEQ-MFG:361:HFCJVADXX:2:2110:4461:33497")) {
+					System.out.println(samRecord.getReferenceName() + " " + samRecord.getAlignmentStart() + " " + samRecord.getAlignmentEnd() + " line:" + lineNumber);
+				}
+
+				// if (firstFoundRecordByReadName.containsKey(readNameFromBam)) {
+				// SAMRecord firstFoundRecord = firstFoundRecordByReadName.get(readNameFromBam);
+				// boolean firstFoundIsCorrect = firstFoundRecord.getMateUnmappedFlag() == samRecord.getReadUnmappedFlag();
+				// boolean secondFoundIsCorrect = samRecord.getMateUnmappedFlag() == firstFoundRecord.getReadUnmappedFlag();
+				// if (!firstFoundIsCorrect || !secondFoundIsCorrect) {
+				// System.out.println("read name pair[" + readNameFromBam + "] is not labeled correctly with regards to mapped flag at line[" + lineNumber + "].");
+				// System.out.println("r1_mate_unmapped[" + firstFoundRecord.getMateUnmappedFlag() + "] r1_unmapped[" + firstFoundRecord.getReadUnmappedFlag() + "] r2_mate_unmapped["
+				// + samRecord.getMateUnmappedFlag() + "] r2_unmapped[" + samRecord.getReadUnmappedFlag() + "].");
+				// }
+				// firstFoundRecordByReadName.remove(readNameFromBam);
+				// } else {
+				// firstFoundRecordByReadName.put(readNameFromBam, samRecord);
+				// }
+
+				lineNumber++;
 			}
 
-			// if (firstFoundRecordByReadName.containsKey(readNameFromBam)) {
-			// SAMRecord firstFoundRecord = firstFoundRecordByReadName.get(readNameFromBam);
-			// boolean firstFoundIsCorrect = firstFoundRecord.getMateUnmappedFlag() == samRecord.getReadUnmappedFlag();
-			// boolean secondFoundIsCorrect = samRecord.getMateUnmappedFlag() == firstFoundRecord.getReadUnmappedFlag();
-			// if (!firstFoundIsCorrect || !secondFoundIsCorrect) {
-			// System.out.println("read name pair[" + readNameFromBam + "] is not labeled correctly with regards to mapped flag at line[" + lineNumber + "].");
-			// System.out.println("r1_mate_unmapped[" + firstFoundRecord.getMateUnmappedFlag() + "] r1_unmapped[" + firstFoundRecord.getReadUnmappedFlag() + "] r2_mate_unmapped["
-			// + samRecord.getMateUnmappedFlag() + "] r2_unmapped[" + samRecord.getReadUnmappedFlag() + "].");
-			// }
-			// firstFoundRecordByReadName.remove(readNameFromBam);
-			// } else {
-			// firstFoundRecordByReadName.put(readNameFromBam, samRecord);
-			// }
+			System.out.println("orphaned reads:");
+			for (String name : firstFoundRecordByReadName.keySet()) {
+				System.out.println(name);
+			}
 
-			lineNumber++;
+			long end = System.currentTimeMillis();
+			System.out.println("total read time:" + (end - start));
+
+			samIter.close();
+		} catch (IOException e) {
+			throw new PicardException(e.getMessage(), e);
 		}
 
-		System.out.println("orphaned reads:");
-		for (String name : firstFoundRecordByReadName.keySet()) {
-			System.out.println(name);
-		}
-
-		long end = System.currentTimeMillis();
-		System.out.println("total read time:" + (end - start));
-
-		samIter.close();
-		samReader.close();
 	}
 }

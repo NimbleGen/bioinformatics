@@ -13,7 +13,7 @@ public class ParsedBedFile {
 		this.bedTracks = new ArrayList<BedTrack>();
 	}
 
-	public void addTrack(BedTrack bedTrack) {
+	void addTrack(BedTrack bedTrack) {
 		this.bedTracks.add(bedTrack);
 	}
 

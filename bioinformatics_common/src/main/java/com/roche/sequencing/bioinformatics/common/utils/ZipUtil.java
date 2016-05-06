@@ -43,7 +43,7 @@ public class ZipUtil {
 
 	}
 
-	public static void addToZipFile(File rootDirectory, File file, ZipOutputStream zos) throws FileNotFoundException, IOException {
+	private static void addToZipFile(File rootDirectory, File file, ZipOutputStream zos) throws FileNotFoundException, IOException {
 
 		String zipKey = FileUtil.convertToRelativePath(rootDirectory, file);
 

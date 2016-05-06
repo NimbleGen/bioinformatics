@@ -19,15 +19,15 @@ public class BedTrack {
 		this.bedEntriesByChromosome = new HashMap<String, List<IBedEntry>>();
 	}
 
-	public void addBrowserCommand(String browserCommand) {
+	void addBrowserCommand(String browserCommand) {
 		this.browserCommands.add(browserCommand);
 	}
 
-	public void addTrackNameValuePair(String name, String value) {
+	void addTrackNameValuePair(String name, String value) {
 		this.nameValuePairs.put(name, value);
 	}
 
-	public void addBedEntry(IBedEntry bedEntry) {
+	void addBedEntry(IBedEntry bedEntry) {
 		String chromosomeName = bedEntry.getChromosomeName();
 		List<IBedEntry> bedEntries = null;
 		if (bedEntriesByChromosome.containsKey(chromosomeName)) {
@@ -53,10 +53,6 @@ public class BedTrack {
 			bedEntries.addAll(value);
 		}
 		return bedEntries;
-	}
-
-	public List<IBedEntry> getBedEntries(String chromosomeName) {
-		return Collections.unmodifiableList(bedEntriesByChromosome.get(chromosomeName));
 	}
 
 }

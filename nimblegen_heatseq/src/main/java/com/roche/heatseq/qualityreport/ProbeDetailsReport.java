@@ -53,7 +53,7 @@ public class ProbeDetailsReport {
 			detailsReportWriter = new PrintWriter(detailsReportFile);
 			detailsReportWriter.println("probe_id" + StringUtil.TAB + "total_read_pairs" + StringUtil.TAB + "total_read_pairs_after_duplicate_removal" + StringUtil.TAB
 					+ "total_duplicate_read_pairs_removed" + StringUtil.TAB + "pct_duplicate_rate" + StringUtil.TAB + "average_number_of_read_pairs_per_uid" + StringUtil.TAB
-					+ "max_read_pairs_per_uid" + StringUtil.TAB + "uid_with_max_read_pairs");
+					+ "max_read_pairs_per_uid");
 			detailsReportWriter.flush();
 		} else {
 			detailsReportWriter = null;

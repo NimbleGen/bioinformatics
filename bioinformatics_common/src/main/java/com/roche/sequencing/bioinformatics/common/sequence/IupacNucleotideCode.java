@@ -69,7 +69,7 @@ public enum IupacNucleotideCode implements ICode, Comparable<IupacNucleotideCode
 		this.complimentAbbreviation = complimentAbbreviation;
 	}
 
-	public static IupacNucleotideCode getCode(Set<NucleotideCode> nucleotideCodes) {
+	static IupacNucleotideCode getCode(Set<NucleotideCode> nucleotideCodes) {
 		return reverseCodeMap.get(nucleotideCodes);
 	}
 

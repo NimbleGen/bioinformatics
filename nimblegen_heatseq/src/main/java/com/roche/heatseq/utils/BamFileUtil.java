@@ -16,25 +16,27 @@
 
 package com.roche.heatseq.utils;
 
+import htsjdk.samtools.BAMIndexer;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.SAMFileReader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMProgramRecord;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.IOUtil;
+
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import net.sf.picard.io.IoUtil;
-import net.sf.picard.sam.ValidateSamFile;
-import net.sf.samtools.BAMIndexer;
-import net.sf.samtools.SAMFileHeader;
-import net.sf.samtools.SAMFileHeader.SortOrder;
-import net.sf.samtools.SAMFileReader;
-import net.sf.samtools.SAMFileWriter;
-import net.sf.samtools.SAMFileWriterFactory;
-import net.sf.samtools.SAMProgramRecord;
-import net.sf.samtools.SAMRecord;
-import net.sf.samtools.SAMSequenceDictionary;
-import net.sf.samtools.SAMSequenceRecord;
 
 import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.objects.Probe;
@@ -65,10 +67,6 @@ public class BamFileUtil {
 		return sumOfQualityScores;
 	}
 
-	public static void createIndexOnCoordinateSortedBamFile(SAMFileReader samReader, File outputIndexFile) {
-		createIndex(samReader, outputIndexFile);
-	}
-
 	/**
 	 * Generates a BAM index file from an input BAM file. Uses the same filename as the input file and appends a .bai to the end of the file
 	 * 
@@ -80,37 +78,43 @@ public class BamFileUtil {
 	public static void createIndex(File inputBamFile) {
 		String outputBamIndexFileName = inputBamFile + ".bai";
 		File outputBamIndexFile = new File(outputBamIndexFileName);
-		final SAMFileReader reader = new SAMFileReader(IoUtil.openFileForReading(inputBamFile));
-		createIndex(reader, outputBamIndexFile);
+		createIndex(inputBamFile, outputBamIndexFile);
 	}
 
 	/**
-	 * Generates a BAM index file from an input BAM file reader
+	 * Generates a BAM index file from an input BAM file. Uses the same filename as the input file and appends a .bai to the end of the file
 	 * 
-	 * @param reader
-	 *            SAMFileReader for input BAM file
-	 * @param output
+	 * @param inputBamFile
+	 *            input BAM file
+	 * @param outputBamIndex
 	 *            File for output index file
 	 */
-	public static void createIndex(SAMFileReader reader, File output) {
+	public static void createIndex(File inputBamFile, File outputBamIndexFile) {
+		deprecatedCreateIndex(inputBamFile, outputBamIndexFile);
+	}
 
-		BAMIndexer indexer = new BAMIndexer(output, reader.getFileHeader());
+	// TODO This is still being used because I haven't had the time to figure out
+	// how this is done in the new API
+	@SuppressWarnings("deprecation")
+	private static void deprecatedCreateIndex(File inputBamFile, File outputBamIndexFile) {
+		try (SAMFileReader reader = new SAMFileReader(inputBamFile)) {
+			BAMIndexer indexer = new BAMIndexer(outputBamIndexFile, reader.getFileHeader());
 
-		reader.enableFileSource(true);
+			reader.enableFileSource(true);
 
-		// create and write the content
-		for (SAMRecord rec : reader) {
-			indexer.processAlignment(rec);
+			// create and write the content
+			for (SAMRecord rec : reader) {
+				indexer.processAlignment(rec);
+			}
+			indexer.finish();
 		}
-		indexer.finish();
-
 	}
 
 	public static void convertSamToBam(File inputSamFile, File outputBamFile) {
 		picardSortAndCompress(true, inputSamFile, outputBamFile, SortOrder.coordinate, null);
 	}
 
-	public static void convertBamToSam(File inputBamFile, File outputSamFile) {
+	private static void convertBamToSam(File inputBamFile, File outputSamFile) {
 		picardSortAndCompress(false, inputBamFile, outputSamFile, SortOrder.coordinate, null);
 	}
 
@@ -121,6 +125,7 @@ public class BamFileUtil {
 	 * @param output
 	 * @return output
 	 */
+
 	public static File sortOnReadName(File input, File output) {
 		return picardSortAndCompress(true, input, output, SortOrder.queryname, null);
 	}
@@ -143,6 +148,7 @@ public class BamFileUtil {
 	 * @param output
 	 * @return output
 	 */
+
 	public static File sortOnCoordinatesAndExcludeReads(File input, File output, Set<String> readNamesToExclude) {
 		return picardSortAndCompress(true, input, output, SortOrder.coordinate, readNamesToExclude);
 	}
@@ -156,47 +162,39 @@ public class BamFileUtil {
 	 * @return
 	 */
 	private static File picardSortAndCompress(boolean outputAsBam, File input, File output, SortOrder sortOrder, Set<String> readNamesToExclude) {
-		IoUtil.assertFileIsReadable(input);
-		IoUtil.assertFileIsWritable(output);
+		IOUtil.assertFileIsReadable(input);
+		IOUtil.assertFileIsWritable(output);
 
-		final SAMFileReader reader = new SAMFileReader(IoUtil.openFileForReading(input));
+		try (SamReader reader = SamReaderFactory.makeDefault().open(input)) {
 
-		SAMFileHeader header = reader.getFileHeader();
-		header.setSortOrder(sortOrder);
+			SAMFileHeader header = reader.getFileHeader();
+			header.setSortOrder(sortOrder);
 
-		SAMFileWriter writer = null;
+			SAMFileWriter writer = null;
 
-		if (outputAsBam) {
-			writer = new SAMFileWriterFactory().makeBAMWriter(header, false, output, 9);
-		} else {
-			writer = new SAMFileWriterFactory().makeSAMWriter(header, false, output);
-		}
-
-		for (final SAMRecord record : reader) {
-			boolean shouldInclude = true;
-			if (readNamesToExclude != null) {
-				String readName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(record.getReadName());
-				shouldInclude = !readNamesToExclude.contains(readName);
+			if (outputAsBam) {
+				writer = new SAMFileWriterFactory().makeBAMWriter(header, false, output, 9);
+			} else {
+				writer = new SAMFileWriterFactory().makeSAMWriter(header, false, output);
 			}
 
-			if (shouldInclude) {
-				writer.addAlignment(record);
+			for (final SAMRecord record : reader) {
+				boolean shouldInclude = true;
+				if (readNamesToExclude != null) {
+					String readName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(record.getReadName());
+					shouldInclude = !readNamesToExclude.contains(readName);
+				}
+
+				if (shouldInclude) {
+					writer.addAlignment(record);
+				}
 			}
+			writer.close();
+		} catch (IOException e) {
+			throw new PicardException(e.getMessage(), e);
 		}
-		writer.close();
-		reader.close();
 
 		return output;
-	}
-
-	/**
-	 * Use picards validateSamFile to validate the provided inputBamFile
-	 * 
-	 * @param inputBamFile
-	 * @param outputErrorFile
-	 */
-	public static void validateSamFile(File inputBamFile, File outputErrorFile) {
-		ValidateSamFile.main(new String[] { "INPUT=" + inputBamFile.getAbsolutePath(), "OUTPUT=" + outputErrorFile.getAbsolutePath() });
 	}
 
 	/**
@@ -209,6 +207,7 @@ public class BamFileUtil {
 	 * @param programVersion
 	 * @return
 	 */
+
 	public static SAMFileHeader getHeader(ParsedProbeFile probeInfo, String commandLineSignature, String programName, String programVersion, boolean excludeProgramInBamHeader) {
 		return getHeader(false, excludeProgramInBamHeader, null, probeInfo, commandLineSignature, programName, programVersion);
 	}
@@ -229,6 +228,7 @@ public class BamFileUtil {
 
 		List<SAMProgramRecord> programRecords = new ArrayList<SAMProgramRecord>();
 		if (originalHeader != null) {
+
 			newHeader.setReadGroups(originalHeader.getReadGroups());
 			programRecords.addAll(originalHeader.getProgramRecords());
 		}
@@ -240,8 +240,8 @@ public class BamFileUtil {
 			programRecord.setProgramVersion(programVersion);
 			programRecord.setCommandLine(commandLineSignature);
 			programRecords.add(programRecord);
-			newHeader.setProgramRecords(programRecords);
 		}
+		newHeader.setProgramRecords(programRecords);
 
 		SAMSequenceDictionary sequenceDictionary = new SAMSequenceDictionary();
 		if (originalHeader != null) {
@@ -275,15 +275,14 @@ public class BamFileUtil {
 	}
 
 	public static boolean isSortedBasedOnHeader(File bamFile, SortOrder sortOrder) {
-		IoUtil.assertFileIsReadable(bamFile);
-
-		final SAMFileReader reader = new SAMFileReader(IoUtil.openFileForReading(bamFile));
-
-		SAMFileHeader header = reader.getFileHeader();
-		boolean isSorted = header.getSortOrder().equals(SortOrder.coordinate);
-
-		reader.close();
-
+		IOUtil.assertFileIsReadable(bamFile);
+		boolean isSorted = false;
+		try (SamReader reader = SamReaderFactory.makeDefault().open(bamFile)) {
+			SAMFileHeader header = reader.getFileHeader();
+			isSorted = header.getSortOrder().equals(SortOrder.coordinate);
+		} catch (IOException e) {
+			throw new PicardException(e.getMessage(), e);
+		}
 		return isSorted;
 	}
 

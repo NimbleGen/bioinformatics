@@ -2,7 +2,7 @@ package com.roche.sequencing.bioinformatics.common.utils.bed;
 
 import java.util.List;
 
-public class SimpleBedEntry implements IBedEntry {
+class SimpleBedEntry implements IBedEntry {
 
 	private final String chromosomeName;
 	private final int start;

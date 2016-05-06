@@ -23,7 +23,7 @@ package com.roche.sequencing.bioinformatics.common.utils;
  */
 public class LogarithmUtil {
 
-	public static final double LOG2 = Math.log(2.0);
+	private static final double LOG2 = Math.log(2.0);
 	// private static final Logger LOGGER =
 	// LoggerFactory.getLogger(LogarithmUtil.class);
 
@@ -59,6 +59,7 @@ public class LogarithmUtil {
 	 * @param values
 	 *            array of values to be converted to anti-logs
 	 */
+	
 	public static double[] antiLog2(double[] log2Values) {
 		double[] values = new double[log2Values.length];
 		for (int index = 0; index < log2Values.length; index++) {
@@ -89,6 +90,7 @@ public class LogarithmUtil {
 	 *            of values to be converted to log2
 	 * @return array of values converted to log2
 	 */
+	
 	public static double[] log2(double[] values) {
 		double[] log2Values = new double[values.length];
 		for (int index = 0; index < values.length; index++) {
@@ -104,6 +106,7 @@ public class LogarithmUtil {
 	 *            of values to be converted to log2
 	 * @return array of values converted to log2
 	 */
+	
 	public static double[] log2(float[] values) {
 		double[] log2Values = new double[values.length];
 		for (int index = 0; index < values.length; index++) {
@@ -118,6 +121,7 @@ public class LogarithmUtil {
 	 * @param values
 	 *            input data
 	 */
+	
 	public static void antiLog(double[] values) {
 		if (values.length > 0) {
 			for (int index = 0; index < values.length; index++) {

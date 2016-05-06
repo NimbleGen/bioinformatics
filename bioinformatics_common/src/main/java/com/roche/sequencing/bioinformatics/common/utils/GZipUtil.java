@@ -46,7 +46,7 @@ public final class GZipUtil {
 	 * 
 	 * @throws java.io.IOException if the byte array couldn't be read
 	 */
-	public static boolean isCompressed(byte[] bytes) throws IOException {
+	private static boolean isCompressed(byte[] bytes) throws IOException {
 		boolean isCompressed = false;
 		if ((bytes != null) && (bytes.length >= 2)) {
 			isCompressed = ((bytes[0] == (byte) (GZIPInputStream.GZIP_MAGIC)) && (bytes[1] == (byte) (GZIPInputStream.GZIP_MAGIC >> 8)));

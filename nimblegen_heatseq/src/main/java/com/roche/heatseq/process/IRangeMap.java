@@ -17,7 +17,7 @@ package com.roche.heatseq.process;
 
 import java.util.List;
 
-public interface IRangeMap<O> {
+interface IRangeMap<O> {
 
 	void put(int startInclusive, int stopInclusive, O object);
 

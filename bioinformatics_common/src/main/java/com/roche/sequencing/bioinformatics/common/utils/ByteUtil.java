@@ -90,8 +90,7 @@ public class ByteUtil {
 		if (isSigned) {
 			boolean resultIsBiggerThanMaxPossibleSignedValue = resultAsBigInteger.compareTo(maxSignedValueForDataType) > 0;
 			if (resultIsBiggerThanMaxPossibleSignedValue) {
-				throw new IllegalStateException(
-						"Unable to return the decoded value of [" + result + "] as a signed " + dataTypeName + " which has a max value of [" + maxSignedValueForDataType + "].");
+				throw new IllegalStateException("Unable to return the decoded value of [" + result + "] as a signed " + dataTypeName + " which has a max value of [" + maxSignedValueForDataType + "].");
 			}
 		} else {
 			if (result < 0) {
@@ -100,8 +99,8 @@ public class ByteUtil {
 				// the unsigned BigInteger value we want we use the following:
 				// SIGNED_VALUE = UNSIGNED_VALUE - 2^NUMBER_OF_BITS
 				BigInteger signedEquivalent = resultAsBigInteger.subtract(BigInteger.valueOf(2).pow(BITS_PER_BYTE * bytesInDataType));
-				throw new IllegalStateException(
-						"Unable to return the decoded value of [" + signedEquivalent + "] as a signed " + dataTypeName + " which has a max value of [" + maxSignedValueForDataType + "].");
+				throw new IllegalStateException("Unable to return the decoded value of [" + signedEquivalent + "] as a signed " + dataTypeName + " which has a max value of ["
+						+ maxSignedValueForDataType + "].");
 			}
 		}
 
@@ -233,7 +232,7 @@ public class ByteUtil {
 	 * @param isSigned
 	 * @return a byte array which uses the least number of bytes to store the value.
 	 */
-	public static byte[] reduceToSmallestByteArray(byte[] originalBytes, ByteOrder byteOrder, boolean isSigned) {
+	private static byte[] reduceToSmallestByteArray(byte[] originalBytes, ByteOrder byteOrder, boolean isSigned) {
 
 		byte[] smallestBytes = null;
 
@@ -340,7 +339,7 @@ public class ByteUtil {
 	 * @param isSigned
 	 * @return true if the provided details indicate a negative valued number
 	 */
-	public static boolean isNegative(byte[] bytes, ByteOrder byteOrder, boolean isSigned) {
+	private static boolean isNegative(byte[] bytes, ByteOrder byteOrder, boolean isSigned) {
 		boolean isNegative = false;
 
 		if (isSigned) {
@@ -358,7 +357,7 @@ public class ByteUtil {
 	 * @param byteOrder
 	 * @return the most significant byte based on endianess.
 	 */
-	public static byte getMostSignificantByte(byte[] bytes, ByteOrder byteOrder) {
+	private static byte getMostSignificantByte(byte[] bytes, ByteOrder byteOrder) {
 		byte mostSignificantByte = bytes[0];
 		if (byteOrder == ByteOrder.BIG_ENDIAN) {
 			// do nothing
@@ -378,7 +377,7 @@ public class ByteUtil {
 	 * @param bitIndex
 	 * @return true if the bitIndex position is occupied by a 1.
 	 */
-	public static boolean isBitOn(byte aByte, int bitIndex) {
+	static boolean isBitOn(byte aByte, int bitIndex) {
 		boolean isBitOn = getBitValue(aByte, bitIndex) == 1;
 		return isBitOn;
 	}
@@ -390,7 +389,7 @@ public class ByteUtil {
 	 * @param bitIndex
 	 * @return 0 or 1 based on the bit value at the bitIndex position in the provided byte.
 	 */
-	public static int getBitValue(byte aByte, int bitIndex) {
+	private static int getBitValue(byte aByte, int bitIndex) {
 		if (bitIndex >= BITS_PER_BYTE) {
 			throw new ArrayIndexOutOfBoundsException("The provided bitIndex[" + bitIndex + "] is larger than the size of a byte[" + BITS_PER_BYTE + "].");
 		}
@@ -455,8 +454,8 @@ public class ByteUtil {
 		}
 
 		if (bytes.length != BYTES_IN_A_SHORT) {
-			throw new NumberOverflowException(
-					"The number of bytes required [" + bytes.length + "] to sufficiently store the value provided by the passed in arguments is too large to fit in a short datatype.");
+			throw new NumberOverflowException("The number of bytes required [" + bytes.length
+					+ "] to sufficiently store the value provided by the passed in arguments is too large to fit in a short datatype.");
 		}
 
 		short value = bytesToShort(bytes, byteOrder, isSigned);
@@ -483,8 +482,8 @@ public class ByteUtil {
 		}
 
 		if (bytes.length != BYTES_IN_AN_INT) {
-			throw new NumberOverflowException(
-					"The number of bytes required [" + bytes.length + "] to sufficiently store the value provided by the passed in arguments is too large to fit in an int datatype.");
+			throw new NumberOverflowException("The number of bytes required [" + bytes.length
+					+ "] to sufficiently store the value provided by the passed in arguments is too large to fit in an int datatype.");
 		}
 
 		int value = bytesToInt(bytes, byteOrder, isSigned);
@@ -519,8 +518,7 @@ public class ByteUtil {
 				bytes = increaseNumberOfBytes(bytes, BYTES_IN_A_LONG, byteOrder, isSigned);
 			}
 			throw new NumberOverflowException("The number of bytes required [" + BYTES_IN_A_LONG
-					+ "] to sufficiently store the value provided by the passed in arguments is too large to fit in a long datatype is not equal to the number of bytes found [" + bytes.length
-					+ "] .");
+					+ "] to sufficiently store the value provided by the passed in arguments is too large to fit in a long datatype is not equal to the number of bytes found [" + bytes.length + "] .");
 		}
 
 		long value = bytesToLong(bytes, byteOrder, isSigned);
@@ -549,7 +547,7 @@ public class ByteUtil {
 		return value;
 	}
 
-	public static byte[] toggleEndianess(byte[] bytes) {
+	private static byte[] toggleEndianess(byte[] bytes) {
 		byte[] toggledBytes = new byte[bytes.length];
 		for (int i = 0; i < bytes.length; i++) {
 			toggledBytes[i] = bytes[bytes.length - i - 1];
@@ -565,7 +563,7 @@ public class ByteUtil {
 	 *            (Are these bytes two's compiment?)
 	 * @return the largest possible value that can be represented with a byte array corresponding to the provided details.
 	 */
-	public static BigInteger getMaxPossibleValue(int numberOfBytes, boolean isSigned) {
+	private static BigInteger getMaxPossibleValue(int numberOfBytes, boolean isSigned) {
 
 		BigInteger maxPossibleValue = null;
 		BigInteger two = BigInteger.valueOf(2);
@@ -592,7 +590,7 @@ public class ByteUtil {
 	 * @param bytes
 	 * @return A string containing 1s and 0s with a space for byte delimitation.
 	 */
-	public static String convertBytesToBinaryString(byte[] bytes) {
+	private static String convertBytesToBinaryString(byte[] bytes) {
 		StringBuilder stringBuilder = new StringBuilder();
 		for (byte aByte : bytes) {
 			String string = String.format("%8s", Integer.toBinaryString(aByte & 0xFF)).replace(' ', '0');
@@ -607,7 +605,7 @@ public class ByteUtil {
 	 * @param binaryString
 	 * @return A byte[] representation of the provided binary string.
 	 */
-	public static byte[] convertBinaryStringToBytes(String binaryString) {
+	private static byte[] convertBinaryStringToBytes(String binaryString) {
 		binaryString = binaryString.replaceAll(" ", "");
 		int length = binaryString.length();
 
@@ -623,8 +621,8 @@ public class ByteUtil {
 		}
 
 		if (length % BITS_PER_BYTE != 0) {
-			throw new IllegalArgumentException(
-					"The length[" + length + "] of the provided binary string[" + binaryString + "] is not divisible by the number of bits in a byte[" + BITS_PER_BYTE + "].");
+			throw new IllegalArgumentException("The length[" + length + "] of the provided binary string[" + binaryString + "] is not divisible by the number of bits in a byte[" + BITS_PER_BYTE
+					+ "].");
 		}
 
 		int numberOfBytes = (int) Math.ceil((double) binaryString.length() / (double) BITS_PER_BYTE);

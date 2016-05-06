@@ -61,6 +61,7 @@ public class TallyMap<O> {
 		}
 	}
 
+	
 	public boolean contains(O object) {
 		return objectCount.containsKey(object);
 	}

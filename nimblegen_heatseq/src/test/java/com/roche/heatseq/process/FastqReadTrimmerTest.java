@@ -16,9 +16,9 @@
 
 package com.roche.heatseq.process;
 
-import java.io.IOException;
+import htsjdk.samtools.fastq.FastqRecord;
 
-import net.sf.picard.fastq.FastqRecord;
+import java.io.IOException;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;

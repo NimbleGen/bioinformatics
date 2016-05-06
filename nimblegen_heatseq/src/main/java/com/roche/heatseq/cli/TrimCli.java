@@ -37,7 +37,7 @@ import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.LoggingUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
-public class TrimCli {
+class TrimCli {
 
 	private static final Logger logger = LoggerFactory.getLogger(TrimCli.class);
 	private static final String FASTQ_EXTENSION = ".fastq";

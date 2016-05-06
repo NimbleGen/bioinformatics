@@ -1,13 +1,18 @@
 package com.roche.heatseq.utils;
 
-import java.io.File;
+import htsjdk.samtools.fastq.FastqRecord;
 
-import net.sf.picard.fastq.FastqRecord;
+import java.io.File;
 
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.NucleotideCodeSequence;
 
+
 public class FastqUtil {
+
+	private FastqUtil() {
+		throw new AssertionError();
+	}
 
 	public static void reverseCompliment(File inputFastqFile, File outputFastqFile) {
 

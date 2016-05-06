@@ -70,7 +70,7 @@ public class SimpleNucleotideCodeSequence implements ISequence, Comparable<Simpl
 		this.sequenceAsBits = sequenceAsBits;
 	}
 
-	SimpleNucleotideCodeSequence(ICode[] codes) {
+	private SimpleNucleotideCodeSequence(ICode[] codes) {
 		Objects.requireNonNull(codes, "argument[codes] cannot be null");
 
 		if (codes instanceof IupacNucleotideCode[]) {
@@ -126,6 +126,7 @@ public class SimpleNucleotideCodeSequence implements ISequence, Comparable<Simpl
 	 * 
 	 * @param code
 	 */
+	
 	public void append(ICode code) {
 		if (code instanceof IupacNucleotideCode) {
 			IupacNucleotideCode codeAsIupacCode = (IupacNucleotideCode) code;

@@ -130,6 +130,7 @@ public class CommonMathUtil {
 	 * @param second
 	 * @return least common denominator
 	 */
+
 	public static long getLeastCommonDenominator(long first, long second) {
 		long smaller = Math.min(first, second);
 		long larger = Math.max(first, second);

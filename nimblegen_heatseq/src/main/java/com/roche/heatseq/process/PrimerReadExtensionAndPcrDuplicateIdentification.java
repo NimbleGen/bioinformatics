@@ -16,6 +16,18 @@
 
 package com.roche.heatseq.process;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SamInputResource;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.fastq.FastqRecord;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,16 +46,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
-import net.sf.picard.fastq.FastqRecord;
-import net.sf.samtools.SAMFileHeader;
-import net.sf.samtools.SAMFileHeader.SortOrder;
-import net.sf.samtools.SAMFileReader;
-import net.sf.samtools.SAMFileWriter;
-import net.sf.samtools.SAMFileWriterFactory;
-import net.sf.samtools.SAMRecord;
-import net.sf.samtools.SAMRecordIterator;
-import net.sf.samtools.SAMSequenceRecord;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +67,7 @@ import com.roche.heatseq.qualityreport.ReportManager;
 import com.roche.heatseq.utils.BamFileUtil;
 import com.roche.heatseq.utils.FastqReader;
 import com.roche.heatseq.utils.IlluminaFastQReadNameUtil;
+import com.roche.heatseq.utils.PicardException;
 import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.heatseq.utils.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
@@ -75,7 +78,6 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.AlphaNumericStringComparator;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
-import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.IntersectionUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 import com.roche.sequencing.bioinformatics.common.utils.TabDelimitedFileWriter;
@@ -97,16 +99,16 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 	private static volatile Semaphore primerReadExtensionAndFilteringOfUniquePcrProbesSemaphore = null;
 	private final static int READ_TO_PROBE_ALIGNMENT_BUFFER = 0;
-	public final static int DEFAULT_MAX_RECORDS_IN_RAM = 500000;
+	final static int DEFAULT_MAX_RECORDS_IN_RAM = 500000;
 
 	// final Set<String> uniqueReads;
-	final Set<String> unableToExtendReads;
-	final AtomicLong numberOfUniqueReadPairs;
+	private final Set<String> unableToExtendReads;
+	private final AtomicLong numberOfUniqueReadPairs;
 	// final Set<String> duplicateReads;
-	final AtomicLong numberOfDuplicateReadPairs;
-	final String commonReadNameBeginning;
+	private final AtomicLong numberOfDuplicateReadPairs;
+	private final String commonReadNameBeginning;
 
-	final static Map<String, ProbeProcessingStats> probeProcessingStatsByProbeId = new ConcurrentHashMap<String, ProbeProcessingStats>();
+	private final static Map<String, ProbeProcessingStats> probeProcessingStatsByProbeId = new ConcurrentHashMap<String, ProbeProcessingStats>();
 
 	/**
 	 * We never create instances of this class, we only expose static methods
@@ -165,18 +167,13 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		logger.debug("Done merging bam and fastq files ... result[" + mergedBamFileSortedByCoordinates.getAbsolutePath() + "] in "
 				+ DateUtil.convertMillisecondsToHHMMSS(timeAfterMergeUnsorted - mergeStart) + ".");
 
-		try (SAMFileReader samReader = new SAMFileReader(mergedBamFileSortedByCoordinates);) {
-			// Build bam index
-			indexFileForMergedBamFileSortedByCoordinates = new File(mergedBamFileSortedByCoordinates.getParent(), mergedBamFileSortedByCoordinates.getName() + ".bai");
+		// Build bam index
+		indexFileForMergedBamFileSortedByCoordinates = new File(mergedBamFileSortedByCoordinates.getParent(), mergedBamFileSortedByCoordinates.getName() + ".bai");
 
-			FileUtil.createNewFile(indexFileForMergedBamFileSortedByCoordinates);
-			BamFileUtil.createIndexOnCoordinateSortedBamFile(samReader, indexFileForMergedBamFileSortedByCoordinates);
-			long timeAfterBuildBamIndex = System.currentTimeMillis();
-			logger.debug("Done creating index for merged and sorted bam file ... result[" + indexFileForMergedBamFileSortedByCoordinates.getAbsolutePath() + "] in "
-					+ DateUtil.convertMillisecondsToHHMMSS(timeAfterBuildBamIndex - timeAfterMergeUnsorted));
-		} catch (IOException e) {
-			throw new IllegalStateException("Unable to create temp files at [" + applicationSettings.getTempDirectory() + "].");
-		}
+		BamFileUtil.createIndex(mergedBamFileSortedByCoordinates, indexFileForMergedBamFileSortedByCoordinates);
+		long timeAfterBuildBamIndex = System.currentTimeMillis();
+		logger.debug("Done creating index for merged and sorted bam file ... result[" + indexFileForMergedBamFileSortedByCoordinates.getAbsolutePath() + "] in "
+				+ DateUtil.convertMillisecondsToHHMMSS(timeAfterBuildBamIndex - timeAfterMergeUnsorted));
 
 		// Initialize the thread semaphore if it hasn't already been initialized
 
@@ -200,7 +197,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		logger.debug("Total time: " + DateUtil.convertMillisecondsToHHMMSS(stop - start));
 	}
 
-	public static boolean readPairAlignsWithProbeCoordinates(Probe probe, SAMRecord record, boolean isFastq1, int extensionUidLength, int ligationUidLength) {
+	static boolean readPairAlignsWithProbeCoordinates(Probe probe, SAMRecord record, boolean isFastq1, int extensionUidLength, int ligationUidLength) {
 		boolean readLocationIsSuitableForProbe = false;
 		int mappedReadLength = SAMRecordUtil.getMappedReadLengthFromAttribute(record);
 		int rawReadLength = record.getReadLength();
@@ -360,7 +357,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 			Map<String, List<Probe>> containedProbesForFirstFoundReadByReadName = new HashMap<String, List<Probe>>();
 			Map<String, AlignmentStartAndStop> alignmentBoundsForFirstFoundReadByReadName = new HashMap<String, AlignmentStartAndStop>();
-			try (SAMFileReader samReader = new SAMFileReader(samFile, samIndexFile)) {
+			try (SamReader samReader = SamReaderFactory.makeDefault().open(SamInputResource.of(samFile).index(samIndexFile))) {
 				SAMRecordIterator allSamRecordsIter = samReader.query(sequenceName, 0, Integer.MAX_VALUE, false);
 				while (allSamRecordsIter.hasNext()) {
 					SAMRecord record = allSamRecordsIter.next();
@@ -517,10 +514,11 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 				}
 
 				allSamRecordsIter.close();
+			} catch (IOException e) {
+				throw new PicardException(e.getMessage(), e);
 			}
 
 		}
-
 	}
 
 	private static class AlignmentStartAndStop {
@@ -589,7 +587,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		SAMFileWriter samWriter = null;
 
 		int totalProbes = 0;
-		try (SAMFileReader mergedSamReader = new SAMFileReader(mergedBamFile, mergedBamFileIndex)) {
+		try (SamReader mergedSamReader = SamReaderFactory.makeDefault().open(SamInputResource.of(mergedBamFile).index(mergedBamFileIndex))) {
 
 			String outputSortedBamFileName = applicationSettings.getOutputBamFileName();
 			File outputSortedBamFile = new File(applicationSettings.getOutputDirectory(), outputSortedBamFileName);
@@ -729,10 +727,10 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 			// Make index for BAM file
 			BamFileUtil.createIndex(outputSortedBamFile);
 
+		} catch (IOException e) {
+			throw new PicardException(e.getMessage(), e);
 		}
-
-		try (SAMFileReader originalInputSamReader = new SAMFileReader(applicationSettings.getBamFile(), applicationSettings.getBamFileIndex())) {
-
+		try (SamReader originalInputSamReader = SamReaderFactory.makeDefault().open(SamInputResource.of(applicationSettings.getBamFile()).index(applicationSettings.getBamFileIndex()))) {
 			int totalReadPairs = 0;
 			int totalFullyMappedOffTargetReadPairs = 0;
 			int totalPartiallyMappedReadPairs = 0;
@@ -826,6 +824,8 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 					totalFullyUnmappedReadPairs, totalFullyMappedOnTargetReadPairs, uniqueOnTargetReadPairs, duplicateOnTargetReadPairs, unpairedReads);
 
 			reportManager.close();
+		} catch (IOException e) {
+			throw new PicardException(e.getMessage(), e);
 		}
 	}
 
@@ -1078,7 +1078,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		private final ISequence overlappingSequence;
 		private final String overlappingQuality;
 
-		public MergeInformation(ISequence overlappingSequence, String overlappingQuality) {
+		private MergeInformation(ISequence overlappingSequence, String overlappingQuality) {
 			super();
 			this.overlappingSequence = overlappingSequence;
 			this.overlappingQuality = overlappingQuality;
@@ -1290,7 +1290,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		private final String commonReadNameBeginning;
 		private final Set<Character> charactersExcludingCommonBeginning;
 
-		public ReadNameDetails(String commonReadNameBeginning, Set<Character> charactersExcludingCommonBeginning) {
+		private ReadNameDetails(String commonReadNameBeginning, Set<Character> charactersExcludingCommonBeginning) {
 			super();
 			this.commonReadNameBeginning = commonReadNameBeginning;
 			this.charactersExcludingCommonBeginning = charactersExcludingCommonBeginning;

@@ -168,6 +168,7 @@ public class ParsedCommandLine {
 	 * @param option
 	 * @return true if the provided options were all found within the arguments passed into the application
 	 */
+	
 	public CommandLineOption[] getMissingOptions(CommandLineOption[] options) {
 		List<CommandLineOption> missingOptions = new ArrayList<CommandLineOption>();
 		for (CommandLineOption option : options) {
@@ -180,6 +181,7 @@ public class ParsedCommandLine {
 
 	/**
 	 * @param option
+	 * 
 	 * @return true if any of the provided options were found within the arguments passed into the application
 	 */
 	public boolean isAnyOptionPresent(CommandLineOption[] options) {

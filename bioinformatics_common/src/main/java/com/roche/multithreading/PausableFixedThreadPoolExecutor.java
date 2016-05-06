@@ -89,6 +89,7 @@ public class PausableFixedThreadPoolExecutor extends ThreadPoolExecutor {
 		exceptionListeners.add(exceptionListener);
 	}
 
+	
 	public void clearExceptionListeners() {
 		exceptionListeners.clear();
 	}

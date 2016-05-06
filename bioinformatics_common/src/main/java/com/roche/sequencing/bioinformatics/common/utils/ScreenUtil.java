@@ -62,6 +62,7 @@ public class ScreenUtil {
 		return currentScreenSize;
 	}
 
+	
 	public static Point getPointWithinGraphicsEnvironment(Point pointToTest, Dimension windowDimension) {
 		Point pointToReturn = new Point(pointToTest);
 		// Point can be a few pixels off of screen

@@ -10,20 +10,28 @@ public interface IBedEntry {
 
 	int getChromosomeEnd();
 
+	
 	String getName();
 
+	
 	Integer getScore();
 
+	
 	Character getStrand();
 
+	
 	Integer getThickStart();
 
+	
 	Integer getThickEnd();
 
+	
 	RGB getItemRgb();
 
+	
 	Integer getBlockCount();
 
+	
 	List<Integer> getBlockSizes();
 
 	List<Integer> getBlockStarts();

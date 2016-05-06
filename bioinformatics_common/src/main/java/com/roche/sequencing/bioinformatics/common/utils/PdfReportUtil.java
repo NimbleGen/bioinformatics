@@ -23,9 +23,9 @@ import com.itextpdf.text.pdf.PdfWriter;
 
 public class PdfReportUtil {
 
-	public static Font CAT_FONT = new Font(Font.FontFamily.TIMES_ROMAN, 18, Font.BOLD);
-	public static Font NORMAL_FONT = new Font(Font.FontFamily.TIMES_ROMAN, 12, Font.NORMAL);
-	public static Font HEADER_FONT = new Font(Font.FontFamily.TIMES_ROMAN, 14, Font.BOLD);
+	private static Font CAT_FONT = new Font(Font.FontFamily.TIMES_ROMAN, 18, Font.BOLD);
+	private static Font NORMAL_FONT = new Font(Font.FontFamily.TIMES_ROMAN, 12, Font.NORMAL);
+	private static Font HEADER_FONT = new Font(Font.FontFamily.TIMES_ROMAN, 14, Font.BOLD);
 
 	private static Font SUB_FONT = new Font(Font.FontFamily.TIMES_ROMAN, 16, Font.BOLD);
 
@@ -53,6 +53,7 @@ public class PdfReportUtil {
 		return document;
 	}
 
+	
 	public static Chapter createChapter(String chapterName, int chapterNumber) {
 		Anchor anchor = new Anchor(chapterName, HEADER_FONT);
 		anchor.setName(chapterName);
@@ -60,6 +61,7 @@ public class PdfReportUtil {
 		return chapter;
 	}
 
+	
 	public static Paragraph getPhotoInParagraph(BufferedImage bufferedImage, float scalePercent, float spacingAbove) throws BadElementException, IOException {
 		Paragraph paragraph = new Paragraph(" ", SUB_FONT);
 		PdfPTable table = new PdfPTable(1);
@@ -71,20 +73,23 @@ public class PdfReportUtil {
 		return paragraph;
 	}
 
+	
 	public static Paragraph getTextInParagraph(String text) {
 		return getTextInParagraph(text, NORMAL_FONT);
 	}
 
+	
 	public static Paragraph getHeaderTextInParagraph(String text) {
 		return getTextInParagraph(text, HEADER_FONT);
 	}
 
-	public static Paragraph getTextInParagraph(String text, Font font) {
+	private static Paragraph getTextInParagraph(String text, Font font) {
 		Paragraph paragraph = new Paragraph(" ", font);
 		paragraph.add(new Chunk(text));
 		return paragraph;
 	}
 
+	
 	public static Paragraph getPhotosInParagraph(List<BufferedImage> bufferedImages, float scalePercent, boolean isHorizontallyCentered) throws BadElementException, IOException {
 		Paragraph paragraph = new Paragraph(" ", SUB_FONT);
 		PdfPTable table = new PdfPTable(1);
@@ -100,7 +105,7 @@ public class PdfReportUtil {
 		return paragraph;
 	}
 
-	public static PdfPCell getPhotoCell(BufferedImage bufferedImage, float scalePercent, boolean isHorizontallyCentered) throws BadElementException, IOException {
+	private static PdfPCell getPhotoCell(BufferedImage bufferedImage, float scalePercent, boolean isHorizontallyCentered) throws BadElementException, IOException {
 		Image jpeg = Image.getInstance(bufferedImage, null);
 		jpeg.scalePercent(scalePercent);
 		jpeg.setAlignment(Image.MIDDLE);

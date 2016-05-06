@@ -24,11 +24,12 @@ public class SequenceUtil {
 		throw new AssertionError();
 	}
 
+	
 	public static boolean matches(ISequence referenceSequence, ISequence querySequence) {
 		return match(referenceSequence, querySequence, 4);
 	}
 
-	public static boolean match(ISequence referenceString, ISequence queryString, int allowedMismatches) {
+	private static boolean match(ISequence referenceString, ISequence queryString, int allowedMismatches) {
 		boolean match = false;
 
 		int startingReferenceIndex = 0;

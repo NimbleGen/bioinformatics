@@ -29,7 +29,7 @@ import com.roche.sequencing.bioinformatics.common.utils.BitSetUtil;
  * Sequence composed of IUPAC codes
  * 
  */
-public class ChanneledNucleotideCodeSequence implements ISequence, Comparable<ChanneledNucleotideCodeSequence> {
+class ChanneledNucleotideCodeSequence implements ISequence, Comparable<ChanneledNucleotideCodeSequence> {
 	private static final int BITS_PER_BYTE = 8;
 	private static final int NUMBER_OF_CHANNELS = 4;
 
@@ -55,23 +55,7 @@ public class ChanneledNucleotideCodeSequence implements ISequence, Comparable<Ch
 		this("");
 	}
 
-	public ChanneledNucleotideCodeSequence(int numberOfBits, BitSet aChannelAsBits, BitSet cChannelAsBits, BitSet gChannelAsBits, BitSet tChannelAsBits) {
-		this.currentNumberOfBits = numberOfBits;
-		this.aChannelAsBits = aChannelAsBits;
-		this.cChannelAsBits = cChannelAsBits;
-		this.gChannelAsBits = gChannelAsBits;
-		this.tChannelAsBits = tChannelAsBits;
-	}
-
-	public ChanneledNucleotideCodeSequence(int numberOfBits, BitSet allChannelAsBits) {
-		this.currentNumberOfBits = numberOfBits / NUMBER_OF_CHANNELS;
-		this.aChannelAsBits = allChannelAsBits.get(0, currentNumberOfBits - 1);
-		this.cChannelAsBits = allChannelAsBits.get(currentNumberOfBits, (2 * currentNumberOfBits) - 1);
-		this.gChannelAsBits = allChannelAsBits.get((2 * currentNumberOfBits), (3 * currentNumberOfBits) - 1);
-		this.tChannelAsBits = allChannelAsBits.get((3 * currentNumberOfBits), (4 * currentNumberOfBits) - 1);
-	}
-
-	ChanneledNucleotideCodeSequence(ICode[] codes) {
+	private ChanneledNucleotideCodeSequence(ICode[] codes) {
 		Objects.requireNonNull(codes, "argument[codes] cannot be null");
 
 		if (codes instanceof IupacNucleotideCode[]) {
@@ -131,19 +115,6 @@ public class ChanneledNucleotideCodeSequence implements ISequence, Comparable<Ch
 			currentNumberOfBits += codeSequenceToAppendAsIupacSequence.currentNumberOfBits;
 		} else {
 			throw new IllegalArgumentException("The passed in ISequence codeSequenceToAppend must be of type ChanneledNucleotideCodeSequence to be utilized by the append method.");
-		}
-	}
-
-	/**
-	 * Add the provided code to the end of this sequence
-	 * 
-	 * @param code
-	 */
-	public void append(ICode code) {
-		if (code instanceof IupacNucleotideCode) {
-			IupacNucleotideCode codeAsIupacCode = (IupacNucleotideCode) code;
-
-			append(new ChanneledNucleotideCodeSequence(new IupacNucleotideCode[] { codeAsIupacCode }));
 		}
 	}
 
@@ -373,10 +344,6 @@ public class ChanneledNucleotideCodeSequence implements ISequence, Comparable<Ch
 		newA.or(newT);
 		numberOfMismatches = newA.cardinality();
 		return numberOfMismatches;
-	}
-
-	public static boolean matches(ChanneledNucleotideCodeSequence referenceSequence, ChanneledNucleotideCodeSequence querySequence, int numberOfAllowedMismatches) {
-		return getNumberOfMismatches(referenceSequence, querySequence) <= numberOfAllowedMismatches;
 	}
 
 }
