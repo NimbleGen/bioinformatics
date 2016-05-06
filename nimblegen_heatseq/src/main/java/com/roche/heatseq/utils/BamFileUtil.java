@@ -42,6 +42,7 @@ import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.objects.Probe;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 
+@SuppressWarnings("deprecation")
 public class BamFileUtil {
 
 	public final static short PHRED_ASCII_OFFSET = 33;
@@ -95,7 +96,6 @@ public class BamFileUtil {
 
 	// TODO This is still being used because I haven't had the time to figure out
 	// how this is done in the new API
-	@SuppressWarnings("deprecation")
 	private static void deprecatedCreateIndex(File inputBamFile, File outputBamIndexFile) {
 		try (SAMFileReader reader = new SAMFileReader(inputBamFile)) {
 			BAMIndexer indexer = new BAMIndexer(outputBamIndexFile, reader.getFileHeader());
