@@ -125,17 +125,6 @@ public class FastqReadTrimmer {
 
 	}
 
-	public static void main(String[] args) throws IOException {
-		File probeInfoFile = new File("D:/kurts_space/heatseq/todd_trim_625/RH4_plus_RSU_probe_info.txt");
-		ParsedProbeFile probes = ProbeFileUtil.parseProbeInfoFile(probeInfoFile);
-
-		ProbeInfoStats probeInfoStats = collectStatsFromProbeInformation(probes);
-		System.out.println(probeInfoStats.maxExtensionPrimerLength);
-		System.out.println(probeInfoStats.minExtensionPrimerLength);
-		System.out.println(probeInfoStats.maxLigationPrimerLength);
-		System.out.println(probeInfoStats.minLigationPrimerLength);
-	}
-
 	static ProbeInfoStats collectStatsFromProbeInformation(ParsedProbeFile probes) throws IOException {
 
 		int maxExtensionPrimerLength = 0;

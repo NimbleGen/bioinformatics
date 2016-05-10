@@ -36,34 +36,12 @@ import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 
 public class BamSorter {
 
 	private final static Logger logger = LoggerFactory.getLogger(FastqSorter.class);
 	private final static int RECORDS_PER_CHUNK = 3000000;
-
-	private static void sortBam(File inputBamFile, File tempDirectory, File outputBamFile, final Comparator<SAMRecord> comparator) {
-		long start = System.currentTimeMillis();
-		try (CloseableAndIterableIterator<SAMRecord> iter = getSortedBamIterator(inputBamFile, tempDirectory, comparator)) {
-			SAMFileHeader header = null;
-			try (SamReader reader = SamReaderFactory.makeDefault().open(inputBamFile)) {
-				header = reader.getFileHeader();
-			} catch (IOException e) {
-				throw new PicardException(e.getMessage(), e);
-			}
-
-			try (SAMFileWriter sortedBamWriter = new SAMFileWriterFactory().makeBAMWriter(header, true, outputBamFile, 0)) {
-				while (iter.hasNext()) {
-					SAMRecord record = iter.next();
-					sortedBamWriter.addAlignment(record);
-				}
-			}
-		}
-		long stop = System.currentTimeMillis();
-		logger.info("total time for sorting bam:" + DateUtil.convertMillisecondsToHHMMSS(stop - start));
-	}
 
 	public static CloseableAndIterableIterator<SAMRecord> getSortedBamIterator(File inputBamFile, File tempDirectory, final Comparator<SAMRecord> comparator) {
 		CloseableAndIterableIterator<SAMRecord> returnIter = null;
@@ -303,17 +281,6 @@ public class BamSorter {
 			}
 			return result;
 		}
-	}
-
-	public static void main(String[] args) {
-		long start = System.currentTimeMillis();
-		File inputFile = new File("D:/kurts_space/heatseq/big/input.bam");
-		File tempDirectory = new File("D:/kurts_space/heatseq/big/temp/");
-		File outputFile = new File("D:/kurts_space/heatseq/big/sorted_input.bam");
-
-		sortBam(inputFile, tempDirectory, outputFile, new SamRecordNameComparator());
-		long stop = System.currentTimeMillis();
-		System.out.println("total time:" + DateUtil.convertMillisecondsToHHMMSS(stop - start));
 	}
 
 }
