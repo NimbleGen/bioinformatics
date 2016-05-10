@@ -78,7 +78,6 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.AlphaNumericStringComparator;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
-import com.roche.sequencing.bioinformatics.common.utils.IntersectionUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 import com.roche.sequencing.bioinformatics.common.utils.TabDelimitedFileWriter;
 
@@ -387,55 +386,6 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 							String readName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(commonReadNameBeginning, record.getReadName());
 
 							List<Probe> containedProbes = probeRanges.getObjectsThatContainRangeInclusive(record.getAlignmentStart(), record.getAlignmentEnd());
-							List<Probe> containedProbes2 = probeRanges.getObjectsThatContainRangeInclusiveOld(record.getAlignmentStart(), record.getAlignmentEnd());
-
-							if (!containedProbes.equals(containedProbes2)) {
-								List<Probe> difference = new ArrayList<Probe>(containedProbes);
-								difference.removeAll(IntersectionUtil.getIntersection(containedProbes, containedProbes2));
-								if (difference.size() == 1) {
-									StringBuilder builder = new StringBuilder();
-									Probe probe = difference.iterator().next();
-									builder.append("PREVIOUSLY MISSED ______________________" + StringUtil.NEWLINE);
-									builder.append("readName:" + readName + StringUtil.NEWLINE);
-									builder.append(probe.getProbeId() + StringUtil.NEWLINE);
-									builder.append("probe start:" + probe.getStart() + StringUtil.NEWLINE);
-									builder.append("probe stop:" + probe.getStop() + StringUtil.NEWLINE);
-									builder.append("ext:" + probe.getExtensionPrimerSequence() + StringUtil.NEWLINE);
-									builder.append("extrc:" + probe.getExtensionPrimerSequence().getReverseCompliment() + StringUtil.NEWLINE);
-									builder.append("lig:" + probe.getLigationPrimerSequence() + StringUtil.NEWLINE);
-									builder.append("ligrc:" + probe.getLigationPrimerSequence().getReverseCompliment() + StringUtil.NEWLINE);
-									builder.append("ct:" + probe.getCaptureTargetSequence() + StringUtil.NEWLINE);
-									builder.append("read:" + record.getReadString() + StringUtil.NEWLINE);
-									builder.append("read start:" + record.getAlignmentStart() + StringUtil.NEWLINE);
-									builder.append("read end:" + record.getAlignmentEnd() + StringUtil.NEWLINE);
-									builder.append("readrc:" + new IupacNucleotideCodeSequence(record.getReadString()).getReverseCompliment() + StringUtil.NEWLINE);
-									builder.append(StringUtil.NEWLINE);
-									System.out.print(builder.toString());
-								}
-
-								List<Probe> difference2 = new ArrayList<Probe>(containedProbes2);
-								difference2.removeAll(IntersectionUtil.getIntersection(containedProbes, containedProbes2));
-								if (difference2.size() == 1) {
-									StringBuilder builder = new StringBuilder();
-									Probe probe = difference.iterator().next();
-									builder.append("CURRENTLY MISSED ______________________" + StringUtil.NEWLINE);
-									builder.append("readName:" + readName + StringUtil.NEWLINE);
-									builder.append(probe.getProbeId() + StringUtil.NEWLINE);
-									builder.append("probe start:" + probe.getStart() + StringUtil.NEWLINE);
-									builder.append("probe stop:" + probe.getStop() + StringUtil.NEWLINE);
-									builder.append("ext:" + probe.getExtensionPrimerSequence() + StringUtil.NEWLINE);
-									builder.append("extrc:" + probe.getExtensionPrimerSequence().getReverseCompliment() + StringUtil.NEWLINE);
-									builder.append("lig:" + probe.getLigationPrimerSequence() + StringUtil.NEWLINE);
-									builder.append("ligrc:" + probe.getLigationPrimerSequence().getReverseCompliment() + StringUtil.NEWLINE);
-									builder.append("ct:" + probe.getCaptureTargetSequence() + StringUtil.NEWLINE);
-									builder.append("read:" + record.getReadString() + StringUtil.NEWLINE);
-									builder.append("read start:" + record.getAlignmentStart() + StringUtil.NEWLINE);
-									builder.append("read end:" + record.getAlignmentEnd() + StringUtil.NEWLINE);
-									builder.append("readrc:" + new IupacNucleotideCodeSequence(record.getReadString()).getReverseCompliment() + StringUtil.NEWLINE);
-									builder.append(StringUtil.NEWLINE);
-									System.out.print(builder.toString());
-								}
-							}
 
 							List<Probe> containedProbesFromFirstFoundReadInPair = containedProbesForFirstFoundReadByReadName.get(readName);
 							boolean isFirstFoundReadOfPair = containedProbesFromFirstFoundReadInPair == null;
