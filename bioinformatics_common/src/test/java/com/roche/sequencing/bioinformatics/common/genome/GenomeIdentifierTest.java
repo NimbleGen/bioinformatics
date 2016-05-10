@@ -13,13 +13,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.roche.sequencing.bioinformatics.genome;
+package com.roche.sequencing.bioinformatics.common.genome;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import com.roche.sequencing.bioinformatics.common.genome.GenomeIdentifier;
 
 public class GenomeIdentifierTest {
 

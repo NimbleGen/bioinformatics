@@ -26,7 +26,7 @@
 		<dependency>
 			<groupId>com.github.samtools</groupId>
 			<artifactId>htsjdk</artifactId>
-		</dependency>
+		</dependency>		
 	</dependencies>
 
 

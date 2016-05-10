@@ -13,9 +13,9 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import com.roche.multithreading.IExceptionListener;
-import com.roche.multithreading.PausableFixedThreadPoolExecutor;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
+import com.roche.sequencing.bioinformatics.common.multithreading.IExceptionListener;
+import com.roche.sequencing.bioinformatics.common.multithreading.PausableFixedThreadPoolExecutor;
 import com.roche.sequencing.bioinformatics.common.stringsequence.alignment.NeedlemanWunschGlobalStringAlignment;
 import com.roche.sequencing.bioinformatics.common.stringsequence.alignment.StringAlignmentPair;
 

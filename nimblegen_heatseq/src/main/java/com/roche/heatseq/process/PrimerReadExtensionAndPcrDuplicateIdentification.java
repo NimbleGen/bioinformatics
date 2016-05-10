@@ -78,7 +78,6 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.AlphaNumericStringComparator;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
-import com.roche.sequencing.bioinformatics.common.utils.IntersectionUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 import com.roche.sequencing.bioinformatics.common.utils.TabDelimitedFileWriter;
 
@@ -149,7 +148,7 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		try {
 			probeTrimmingInformation = FastqReadTrimmer.getProbeTrimmingInformation(probeInfo, applicationSettings.getProbeFile(), !applicationSettings.isReadsNotTrimmed());
 		} catch (IOException e1) {
-			throw new IllegalStateException("Unabel to read probe file[" + applicationSettings.getProbeFile() + "].");
+			throw new IllegalStateException("Unable to read probe file[" + applicationSettings.getProbeFile() + "].");
 		}
 
 		try {
@@ -387,29 +386,6 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 							String readName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(commonReadNameBeginning, record.getReadName());
 
 							List<Probe> containedProbes = probeRanges.getObjectsThatContainRangeInclusive(record.getAlignmentStart(), record.getAlignmentEnd());
-							List<Probe> oldContainedProbes = probeRanges.getObjectsThatContainRangeInclusiveOld(record.getAlignmentStart(), record.getAlignmentEnd());
-
-							if (!containedProbes.equals(oldContainedProbes)) {
-								List<Probe> difference = new ArrayList<Probe>(containedProbes);
-								difference.removeAll(IntersectionUtil.getIntersection(containedProbes, oldContainedProbes));
-								if (difference.size() == 1) {
-									StringBuilder builder = new StringBuilder();
-									Probe probe = difference.iterator().next();
-									builder.append("readName:" + readName + StringUtil.NEWLINE);
-									builder.append(probe.getProbeId() + StringUtil.NEWLINE);
-									builder.append("probe start:" + probe.getStart() + StringUtil.NEWLINE);
-									builder.append("probe stop:" + probe.getStop() + StringUtil.NEWLINE);
-									builder.append("ext:" + probe.getExtensionPrimerSequence() + StringUtil.NEWLINE);
-									builder.append("extrc:" + probe.getExtensionPrimerSequence().getReverseCompliment() + StringUtil.NEWLINE);
-									builder.append("lig:" + probe.getLigationPrimerSequence() + StringUtil.NEWLINE);
-									builder.append("ligrc:" + probe.getLigationPrimerSequence().getReverseCompliment() + StringUtil.NEWLINE);
-									builder.append("ct:" + probe.getCaptureTargetSequence() + StringUtil.NEWLINE);
-									builder.append("read:" + record.getReadString() + StringUtil.NEWLINE);
-									builder.append("readrc:" + new IupacNucleotideCodeSequence(record.getReadString()).getReverseCompliment() + StringUtil.NEWLINE);
-									System.out.print(builder.toString());
-
-								}
-							}
 
 							List<Probe> containedProbesFromFirstFoundReadInPair = containedProbesForFirstFoundReadByReadName.get(readName);
 							boolean isFirstFoundReadOfPair = containedProbesFromFirstFoundReadInPair == null;
@@ -1355,33 +1331,5 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 		logger.info("Verified that the read names can be handled by dedup and found the common beginning for all read names[" + currentCommonBeginning + "] in "
 				+ DateUtil.convertMillisecondsToHHMMSS(end - start) + ".");
 		return new ReadNameDetails(currentCommonBeginning, uniqueCharacters);
-	}
-
-	public static void main(String[] args) {
-		List<String> test = new ArrayList<String>();
-		test.add("chr1:43803493:43803592:+");
-		test.add("chr1:43803585:43803679:+");
-		test.add("chr1:43803733:43803827:+");
-		test.add("chr1:43803817:43803911:+");
-		test.add("chr1:43806027:43806121:+");
-		test.add("chr1:43812425:43812519:+");
-		test.add("chr1:43814517:43814611:+");
-		test.add("chr1:43803493:43803592:-");
-		test.add("chr1:43803585:43803679:-");
-		test.add("chr1:43803733:43803827:-");
-		test.add("chr1:43803817:43803911:-");
-		test.add("chr1:43806027:43806121:-");
-		test.add("chr1:43812425:43812519:-");
-		test.add("chr1:43814517:43814611:-");
-
-		test.add("chr1:43812515:43812609:-");
-		test.add("chr1:43812515:43812609:+");
-		ProbeIdComparator comparator = new ProbeIdComparator();
-		Collections.sort(test, comparator);
-
-		System.out.println(comparator.compare("chr1:43812515:43812609:+", "chr1:43812515:43812609:-"));
-		for (String s : test) {
-			System.out.println(s);
-		}
 	}
 }

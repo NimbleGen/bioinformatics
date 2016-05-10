@@ -16,6 +16,8 @@
 
 package com.roche.heatseq.process;
 
+import htsjdk.samtools.SAMRecord;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -25,8 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-
-import htsjdk.samtools.SAMRecord;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,9 +73,6 @@ class FilterByUid {
 			int expectedExtensionUidLength, int expectedLigationUidLength, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids, boolean markDuplicates,
 			boolean useStrictReadToProbeMatching) {
 
-		if (probe.getProbeId().equals("chr1:43803493:43803592:-")) {
-			System.out.println("here");
-		}
 		List<IReadPair> uniqueReadPairs = new ArrayList<IReadPair>();
 		List<IReadPair> duplicateReadPairs = new ArrayList<IReadPair>();
 

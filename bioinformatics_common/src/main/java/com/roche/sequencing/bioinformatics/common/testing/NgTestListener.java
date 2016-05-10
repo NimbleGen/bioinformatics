@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.roche.bioinformatics.common.testing;
+package com.roche.sequencing.bioinformatics.common.testing;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

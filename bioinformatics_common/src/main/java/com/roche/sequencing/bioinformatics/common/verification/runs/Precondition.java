@@ -1,4 +1,4 @@
-package com.roche.bioinformatics.common.verification.runs;
+package com.roche.sequencing.bioinformatics.common.verification.runs;
 
 import java.io.File;
 import java.io.FilenameFilter;

@@ -572,34 +572,38 @@ public final class FileUtil {
 
 			try (LineNumberReader reader1 = new LineNumberReader(new FileReader(fileOne))) {
 				try (LineNumberReader reader2 = new LineNumberReader(new FileReader(fileTwo))) {
-					String line1 = reader1.readLine();
-					String line2 = reader2.readLine();
+					String file1Line = reader1.readLine();
+					String file2Line = reader2.readLine();
 
-					while (line1 != null && line2 != null) {
-						while (line1 != null && fileOneLinesToIgnoreSet.contains(reader1.getLineNumber())) {
-							line1 = reader1.readLine();
+					while (file1Line != null || file2Line != null) {
+						while (file1Line != null && fileOneLinesToIgnoreSet.contains(reader1.getLineNumber())) {
+							file1Line = reader1.readLine();
 						}
 
-						while (line2 != null && fileTwoLinesToIgnoreSet.contains(reader2.getLineNumber())) {
-							line2 = reader2.readLine();
+						while (file2Line != null && fileTwoLinesToIgnoreSet.contains(reader2.getLineNumber())) {
+							file2Line = reader2.readLine();
 						}
 
 						if (ignoreCommentLines) {
-							while (line1 != null && line1.startsWith("#")) {
-								line1 = reader1.readLine();
+							while (file1Line != null && file1Line.startsWith("#")) {
+								file1Line = reader1.readLine();
 							}
 
-							while (line2 != null && line2.startsWith("#")) {
-								line2 = reader2.readLine();
+							while (file2Line != null && file2Line.startsWith("#")) {
+								file2Line = reader2.readLine();
 							}
 						}
 
 						boolean areEqual = true;
 
-						if (caseInsensitiveComparison) {
-							areEqual = line1.equalsIgnoreCase(line2);
+						if (file1Line == null && file2Line == null) {
+							areEqual = true;
+						} else if ((file1Line == null && file2Line != null) || ((file1Line != null) && (file2Line == null))) {
+							areEqual = false;
+						} else if (caseInsensitiveComparison) {
+							areEqual = file1Line.equalsIgnoreCase(file2Line);
 						} else {
-							areEqual = line1.equals(line2);
+							areEqual = file1Line.equals(file2Line);
 						}
 
 						if (!areEqual) {
@@ -607,12 +611,12 @@ public final class FileUtil {
 							fileTwosLinesThatDiffer.add(reader2.getLineNumber());
 						}
 
-						line1 = reader1.readLine();
-						line2 = reader2.readLine();
+						file1Line = reader1.readLine();
+						file2Line = reader2.readLine();
 					}
 
-					fileOneHasAdditionalLines = line1 != null;
-					fileTwoHasAdditionalLines = line2 != null;
+					fileOneHasAdditionalLines = file1Line != null;
+					fileTwoHasAdditionalLines = file2Line != null;
 				}
 			}
 		}
@@ -766,4 +770,5 @@ public final class FileUtil {
 
 		return currentDirectory;
 	}
+
 }

@@ -1,4 +1,4 @@
-package com.roche.bioinformatics.common.verification.runs;
+package com.roche.sequencing.bioinformatics.common.verification.runs;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -136,6 +136,13 @@ public class TestPlanRunCheck {
 			if (md5Sum == null || md5Sum.isEmpty() || outputFileRegex == null || outputFileRegex.isEmpty()) {
 				throw new IllegalStateException("The md5Sum and outputFileRegex key/value pairs are expected for the check type[" + checkType + "].");
 			} else if (textToFind != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
+				throw new IllegalStateException("Key/value pairs were provided which do not match what is expected for the check type[" + checkType + "].");
+			}
+			break;
+		case OUTPUT_FILE_DOES_NOT_CONTAIN_TEXT:
+			if (textToFind == null || textToFind.length == 0 || outputFileRegex == null || outputFileRegex.isEmpty()) {
+				throw new IllegalStateException("The textToFind and outputFileRegex key/value pairs are expected for the check type[" + checkType + "].");
+			} else if (md5Sum != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
 				throw new IllegalStateException("Key/value pairs were provided which do not match what is expected for the check type[" + checkType + "].");
 			}
 			break;
@@ -652,10 +659,12 @@ public class TestPlanRunCheck {
 							comparisonStrings.add("comment lines are ignored");
 						}
 						if (getLinesToSkipInOutputFileForComparing().length > 0) {
-							comparisonStrings.add("lines[" + NumberFormatterUtil.summarizeNumbersAsString(getLinesToSkipInOutputFileForComparing()) + "] in the output file are ignored");
+							comparisonStrings.add("lines[" + ArraysUtil.toString(NumberFormatterUtil.summarizeNumbersAsString(getLinesToSkipInOutputFileForComparing()), ", ")
+									+ "] in the output file are ignored");
 						}
 						if (getLinesToSkipInMatchingFileForComparing().length > 0) {
-							comparisonStrings.add("lines[" + NumberFormatterUtil.summarizeNumbersAsString(getLinesToSkipInMatchingFileForComparing()) + "] in the matching file are ignored");
+							comparisonStrings.add("lines[" + ArraysUtil.toString(NumberFormatterUtil.summarizeNumbersAsString(getLinesToSkipInMatchingFileForComparing()), ", ")
+									+ "] in the matching file are ignored");
 						}
 
 						if (comparisonStrings.size() == 1) {

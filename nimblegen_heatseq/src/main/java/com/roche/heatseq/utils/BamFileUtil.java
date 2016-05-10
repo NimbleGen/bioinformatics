@@ -97,6 +97,9 @@ public class BamFileUtil {
 	// TODO This is still being used because I haven't had the time to figure out
 	// how this is done in the new API
 	private static void deprecatedCreateIndex(File inputBamFile, File outputBamIndexFile) {
+		// make sure that the default validation strategy for the SamReaderFactory is used here too.
+		SAMFileReader.setDefaultValidationStringency(SamReaderFactory.makeDefault().validationStringency());
+
 		try (SAMFileReader reader = new SAMFileReader(inputBamFile)) {
 			BAMIndexer indexer = new BAMIndexer(outputBamIndexFile, reader.getFileHeader());
 
