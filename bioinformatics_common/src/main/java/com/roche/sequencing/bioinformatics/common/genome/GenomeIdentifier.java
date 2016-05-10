@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.roche.sequencing.bioinformatics.genome;
+package com.roche.sequencing.bioinformatics.common.genome;
 
 import java.io.IOException;
 import java.io.InputStream;

@@ -13,12 +13,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.roche.bioinformatics.common.verification;
+package com.roche.sequencing.bioinformatics.common.verification;
 
 import java.io.File;
 import java.io.IOException;
 
-import com.roche.bioinformatics.common.verification.runs.TestPlan;
 import com.roche.sequencing.bioinformatics.common.commandline.Command;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
@@ -31,6 +30,7 @@ import com.roche.sequencing.bioinformatics.common.utils.FunGeneralErrors;
 import com.roche.sequencing.bioinformatics.common.utils.LoggingUtil;
 import com.roche.sequencing.bioinformatics.common.utils.ManifestUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
+import com.roche.sequencing.bioinformatics.common.verification.runs.TestPlan;
 
 public class AutoTestPlanCli {
 

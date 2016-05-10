@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.roche.multithreading.PausableFixedThreadPoolExecutor;
+import com.roche.sequencing.bioinformatics.common.multithreading.PausableFixedThreadPoolExecutor;
 
 /**
  * 

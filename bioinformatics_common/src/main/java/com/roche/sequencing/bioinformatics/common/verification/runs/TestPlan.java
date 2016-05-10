@@ -1,4 +1,4 @@
-package com.roche.bioinformatics.common.verification.runs;
+package com.roche.sequencing.bioinformatics.common.verification.runs;
 
 import java.awt.Color;
 import java.io.File;
@@ -25,8 +25,6 @@ import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.Phrase;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
-import com.roche.bioinformatics.common.verification.AutoTestPlanCli;
-import com.roche.bioinformatics.common.verification.CliStatusConsole;
 import com.roche.sequencing.bioinformatics.common.utils.AlphaNumericStringComparator;
 import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
@@ -39,6 +37,8 @@ import com.roche.sequencing.bioinformatics.common.utils.PdfReportUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 import com.roche.sequencing.bioinformatics.common.utils.Version;
 import com.roche.sequencing.bioinformatics.common.utils.ZipUtil;
+import com.roche.sequencing.bioinformatics.common.verification.AutoTestPlanCli;
+import com.roche.sequencing.bioinformatics.common.verification.CliStatusConsole;
 
 public class TestPlan {
 
