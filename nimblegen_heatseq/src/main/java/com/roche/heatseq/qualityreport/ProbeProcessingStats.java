@@ -33,7 +33,6 @@ public class ProbeProcessingStats {
 	private final int totalDuplicateReadPairsRemoved;
 	private final int totalReadPairsRemainingAfterReduction;
 	private final int maxNumberOfReadPairsPerUid;
-	private final double onTargetDuplicateRate;
 	private final String uidComposition;
 	private final String uidCompositionByPosition;
 	private final String weightedUidComposition;
@@ -66,12 +65,6 @@ public class ProbeProcessingStats {
 		this.maxNumberOfReadPairsPerUid = maxNumberOfReadPairsPerUid;
 		this.uidComposition = uidComposition;
 		this.uidCompositionByPosition = uidCompositionByPosition;
-		double totalOnTargetReads = (double) (totalDuplicateReadPairsRemoved + totalReadPairsRemainingAfterReduction);
-		if (totalOnTargetReads != 0) {
-			this.onTargetDuplicateRate = (double) totalDuplicateReadPairsRemoved / totalOnTargetReads;
-		} else {
-			this.onTargetDuplicateRate = 0;
-		}
 		this.weightedUidComposition = weightedUidComposition;
 		this.weightedUidCompositionByPosition = weightedUidCompositionByPosition;
 		this.numberOfUniqueReadPairsUnableExtendPrimer = 0;
@@ -113,8 +106,7 @@ public class ProbeProcessingStats {
 
 		int totalReadPairs = readPairsAfterReduction + totalDuplicateReadPairsRemoved;
 
-		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + totalReadPairs + StringUtil.TAB + readPairsAfterReduction + StringUtil.TAB + duplicateReadPairs + StringUtil.TAB
-				+ formatter.format(onTargetDuplicateRate * 100) + StringUtil.TAB);
+		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + totalReadPairs + StringUtil.TAB + readPairsAfterReduction + StringUtil.TAB + duplicateReadPairs + StringUtil.TAB);
 		stringBuilder.append(formatter.format(averageNumberOfReadPairsPerUid) + StringUtil.TAB + maxNumberOfReadPairsPerUid);
 
 		return stringBuilder.toString();
