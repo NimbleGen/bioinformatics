@@ -58,10 +58,10 @@
 					<appendAssemblyId>false</appendAssemblyId>
 					<archive>
 						<manifestEntries>
-							<Second-Main-Class>com/roche/bioinformatics/common/verification/AutoTestPlanCli</Second-Main-Class>
+							<Second-Main-Class>com/roche/sequencing/bioinformatics/common/verification/AutoTestPlanCli</Second-Main-Class>
 							<Implementation-Build>${maven.build.timestamp}</Implementation-Build>
 							<version>${project.version}</version>
-							<Main-Class>com/roche/bioinformatics/common/java/JavaVersionChecker</Main-Class>
+							<Main-Class>com/roche/sequencing/bioinformatics/common/java/JavaVersionChecker</Main-Class>
 							<Required-Java-Version>${java.version}</Required-Java-Version>
 							<Display-Java-Version-Warning-In-Dialog>false</Display-Java-Version-Warning-In-Dialog>
 						</manifestEntries>

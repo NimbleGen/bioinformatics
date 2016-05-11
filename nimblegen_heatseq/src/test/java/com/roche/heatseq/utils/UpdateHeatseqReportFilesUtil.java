@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -63,8 +62,8 @@ public class UpdateHeatseqReportFilesUtil {
 	}
 
 	public static void main(String[] args) throws IOException {
-		// updateProbeDetailsFiles();
-		updateSummaryFiles();
+		updateProbeDetailsFiles();
+		// updateSummaryFiles();
 	}
 
 	public static void updateProbeDetailsFiles() throws IOException {
@@ -74,8 +73,6 @@ public class UpdateHeatseqReportFilesUtil {
 				new File("R:\\SoftwareDevelopment\\HeatSeqApplication\\Validation\\autotestplan_current\\hsqutils_testplan\\run59\\expected_results\\EXPECTED_OUTPUT_probe_details.txt"),
 				new File("R:\\SoftwareDevelopment\\HeatSeqApplication\\Validation\\autotestplan_current\\hsqutils_testplan\\run63\\expected_results\\EXPECTED_OUTPUT_probe_details.txt"),
 				new File("R:\\SoftwareDevelopment\\HeatSeqApplication\\Validation\\autotestplan_current\\hsqutils_testplan\\run2\\expected_results\\Results_probe_details.txt"),
-				new File(
-						"R:\\SoftwareDevelopment\\HeatSeqApplication\\Validation\\autotestplan_current\\hsqutils_testplan\\run6_and_7\\run6\\expected_results\\Results_DuplicateCheck_probe_details.txt"),
 				new File("R:\\SoftwareDevelopment\\HeatSeqApplication\\Validation\\autotestplan_current\\hsqutils_testplan\\run11\\expected_results\\Results_ext_UID_probe_details.txt") };
 
 		for (File file : files) {
@@ -117,9 +114,10 @@ public class UpdateHeatseqReportFilesUtil {
 
 			StringBuilder output = new StringBuilder();
 
-			output.append(removeLastColumn(firstLine) + StringUtil.LINUX_NEWLINE);
+			output.append(removeNthColumn(4, removeLastColumn(firstLine)) + StringUtil.LINUX_NEWLINE);
+
 			for (String liney : lines) {
-				output.append(removeLastColumn(liney) + StringUtil.LINUX_NEWLINE);
+				output.append(removeNthColumn(4, removeLastColumn(liney)) + StringUtil.LINUX_NEWLINE);
 			}
 
 			File outputFile = new File(file.getParent() + "//updated_" + file.getName());
@@ -200,7 +198,6 @@ public class UpdateHeatseqReportFilesUtil {
 	}
 
 	private static String insertNthColumn(int columnIndex, String line, String valueToInsert) {
-		// add a space so a terminating tab is accounted for
 		String[] split = line.split(StringUtil.TAB);
 		String[] newSplit = new String[split.length + 1];
 		for (int i = 0; i < split.length; i++) {
@@ -217,13 +214,32 @@ public class UpdateHeatseqReportFilesUtil {
 		return newString;
 	}
 
-	private static String removeLastColumn(String string) {
-		// add a space so a terminating tab is accounted for
-		string += " ";
-		String[] split = string.split(StringUtil.TAB);
-		split = Arrays.copyOf(split, split.length - 1);
-		String newString = ArraysUtil.toString(split, StringUtil.TAB);
+	private static String SPECIAL_TERMINATOR = "*SPECIAL_TERMINATER*";
+
+	private static String removeNthColumn(int columnIndex, String string) {
+		String stringWithSpace = string + SPECIAL_TERMINATOR;
+
+		String[] split = stringWithSpace.split(StringUtil.TAB);
+		String[] newSplit = new String[split.length - 1];
+
+		for (int i = 0; i < split.length; i++) {
+			if (i < columnIndex) {
+				newSplit[i] = split[i];
+			} else if (i > columnIndex) {
+				newSplit[i - 1] = split[i];
+			}
+		}
+
+		newSplit[newSplit.length - 1] = newSplit[newSplit.length - 1].replace(SPECIAL_TERMINATOR, "");
+		String newString = ArraysUtil.toString(newSplit, StringUtil.TAB);
 		return newString;
+	}
+
+	private static String removeLastColumn(String string) {
+		// account for terminating tabs
+		String stringWithSpace = string + SPECIAL_TERMINATOR;
+		int length = stringWithSpace.split(StringUtil.TAB).length;
+		return removeNthColumn(length - 1, string);
 	}
 
 }

@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.roche.bioinformatics.common.java;
+package com.roche.sequencing.bioinformatics.common.java;
 
 import java.awt.GraphicsEnvironment;
 import java.io.BufferedReader;
