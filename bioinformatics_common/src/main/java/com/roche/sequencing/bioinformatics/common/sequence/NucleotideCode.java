@@ -60,6 +60,7 @@ public enum NucleotideCode implements ICode {
 	 * @return returns null if no such string is found
 	 */
 	static NucleotideCode[] getNucleotidesFromString(String nucleotidesAsString) {
+		nucleotidesAsString = nucleotidesAsString.toUpperCase();
 		NucleotideCode[] nucleotides = new NucleotideCode[nucleotidesAsString.length()];
 
 		for (int i = 0; i < nucleotidesAsString.length(); i++) {

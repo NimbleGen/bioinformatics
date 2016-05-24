@@ -18,6 +18,7 @@ package com.roche.heatseq.cli;
 import java.io.File;
 
 import com.roche.sequencing.bioinformatics.common.commandline.Command;
+import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineParser;
 import com.roche.sequencing.bioinformatics.common.commandline.Commands;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
@@ -134,12 +135,20 @@ public class HsqUtilsCli {
 
 	private static Commands getCommands() {
 		Commands commands = new Commands("Available Commands:" + StringUtil.NEWLINE + "Command" + StringUtil.TAB + StringUtil.TAB + "Description" + StringUtil.NEWLINE + "------" + StringUtil.TAB
-				+ StringUtil.TAB + "-----------");
+				+ StringUtil.TAB + "-----------", getCommandLineOptionsGroupForAll());
 		commands.addCommand(new Command(TRIM_COMMAND_NAME, "Trim reads within the fastq files to represent the capture target regions.", TrimCli.getCommandLineOptionsGroupForTrimming()));
 		commands.addCommand(new Command(DEDUPLICATION_COMMAND_NAME,
 				"Eliminate or Identify duplicate reads and include only portions of the read that overlap with the capture target sequence in the sequence alignment (BAM file).", DeduplicationCli
 						.getCommandLineOptionsGroup()));
+
 		return commands;
+	}
+
+	public static CommandLineOptionsGroup getCommandLineOptionsGroupForAll() {
+		CommandLineOptionsGroup group = new CommandLineOptionsGroup();
+		group.addOption(DeduplicationCli.USAGE_OPTION);
+		group.addOption(DeduplicationCli.VERSION_OPTION);
+		return group;
 	}
 
 	static File getLogFile(File outputDirectory, String outputFilePrefix, String applicationName, String command) {

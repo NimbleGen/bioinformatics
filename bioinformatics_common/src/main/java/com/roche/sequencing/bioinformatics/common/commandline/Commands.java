@@ -25,15 +25,30 @@ public class Commands implements Iterable<Command> {
 
 	private final String usageBanner;
 	private final List<Command> commands;
+	private final CommandLineOptionsGroup commandOptions;
 
-	public Commands(String usageBanner) {
+	public Commands(String usageBanner, CommandLineOptionsGroup commandOptions) {
 		super();
 		this.commands = new LinkedList<Command>();
 		this.usageBanner = usageBanner;
+		if (commandOptions != null) {
+			this.commandOptions = commandOptions;
+		} else {
+			this.commandOptions = new CommandLineOptionsGroup();
+		}
+
+	}
+
+	public Commands(String usageBanner) {
+		this(usageBanner, null);
 	}
 
 	public Commands() {
-		this(null);
+		this(null, null);
+	}
+
+	public CommandLineOptionsGroup getCommandOptions() {
+		return commandOptions;
 	}
 
 	public void addCommand(Command command) {

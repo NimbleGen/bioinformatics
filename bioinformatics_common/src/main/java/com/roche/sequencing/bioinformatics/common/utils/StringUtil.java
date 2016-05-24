@@ -17,6 +17,7 @@
 package com.roche.sequencing.bioinformatics.common.utils;
 
 import java.awt.event.KeyEvent;
+import java.util.Random;
 
 /**
  * Utility class for working with Strings
@@ -32,6 +33,10 @@ public final class StringUtil {
 	// NOTE: LINUX_NEWLINE = LINE_FEED;
 	public static final String LINUX_NEWLINE = "" + NEWLINE_SYMBOL;
 	public static final String WINDOWS_NEWLINE = CARRIAGE_RETURN + LINUX_NEWLINE;
+
+	private static Random RANDOM = new Random(System.currentTimeMillis());
+	private static char[] CHARACTERS = new char[] { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2',
+			'3', '4', '5', '6', '7', '8', '9' };
 
 	private StringUtil() {
 		throw new AssertionError();
@@ -116,7 +121,7 @@ public final class StringUtil {
 	 *            Which occurrence of the character to return the index for
 	 * @return The index of the nth occurrence of the character, or -1 if there isn't an nth occurrence of the character in the string.
 	 */
-	
+
 	static int nthOccurrence(String string, char character, int indexOfDesiredOccurence) {
 		int position = string.indexOf(character, 0);
 		int timesCharacterFoundSoFar = 1;
@@ -165,7 +170,7 @@ public final class StringUtil {
 	 *            number of spaces to place in between inserts
 	 * @return altered string
 	 */
-	
+
 	static String insertStringEveryNSpaces(String baseString, String stringToInsert, int spaces) {
 		StringBuilder result = new StringBuilder();
 		int i = 0;
@@ -204,10 +209,19 @@ public final class StringUtil {
 	 * @param character
 	 * @return
 	 */
-	
+
 	public static boolean isPrintableChar(char character) {
 		Character.UnicodeBlock block = Character.UnicodeBlock.of(character);
 		return (!Character.isISOControl(character)) && character != KeyEvent.CHAR_UNDEFINED && block != null && block != Character.UnicodeBlock.SPECIALS;
+	}
+
+	public static String generateRandomString(int length) {
+		char[] text = new char[length];
+		for (int i = 0; i < length; i++) {
+			text[i] = CHARACTERS[RANDOM.nextInt(CHARACTERS.length)];
+		}
+		return new String(text);
+
 	}
 
 }

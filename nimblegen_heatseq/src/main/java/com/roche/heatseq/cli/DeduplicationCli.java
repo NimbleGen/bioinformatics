@@ -105,7 +105,7 @@ public class DeduplicationCli {
 	private final static CommandLineOption MERGE_PAIRS_OPTION = new CommandLineOption("Merge Pairs", "mergePairs", null, "Merge pairs using the highest quality base reads from each read.", false,
 			true);
 	public final static CommandLineOption TRIMMING_SKIPPED_OPTION = new CommandLineOption("Reads Were Not Trimmed Prior to Mapping", "readsNotTrimmed", null,
-			"The reads were not trimmed prior to mapping.", false, true);
+			"The reads were not trimmed prior to mapping.", false, true, true);
 	private final static CommandLineOption INTERNAL_REPORTS_OPTION = new CommandLineOption("Output interal reports", "internalReports", null, "Output internal reports.", false, true, true);
 	private final static CommandLineOption EXCLUDE_NEW_PROGRAM_IN_BAM_HEADER_OPTION = new CommandLineOption("Exclude Program in Bam Header", "excludeProgramInBamHeader", null,
 			"Don not include a program entry for this application in the bam header.", false, true, true);

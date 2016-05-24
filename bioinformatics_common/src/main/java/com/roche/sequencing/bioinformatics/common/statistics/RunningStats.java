@@ -17,6 +17,8 @@ package com.roche.sequencing.bioinformatics.common.statistics;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
 
 public class RunningStats {
 
@@ -45,14 +47,12 @@ public class RunningStats {
 		numberOfValues++;
 	}
 
-	
 	public void addAllValues(Iterable<Double> values) {
 		for (double value : values) {
 			addValue(value);
 		}
 	}
 
-	
 	public void addAllValues(double[] values) {
 		for (double value : values) {
 			addValue(value);
@@ -157,7 +157,10 @@ public class RunningStats {
 
 	@Override
 	public String toString() {
-		return "RunningStats [sumOfValues=" + sumOfValues + ", sumOfSquares=" + sumOfSquares + ", minValue=" + minValue + ", maxValue=" + maxValue + ", numberOfValues=" + numberOfValues + "]";
+		DecimalFormat formatter = new DecimalFormat("#.###");
+		formatter.setRoundingMode(RoundingMode.HALF_UP);
+		return "RunningStats [sumOfValues=" + formatter.format(sumOfValues) + ", sumOfSquares=" + formatter.format(sumOfSquares) + ", minValue=" + minValue + ", maxValue=" + maxValue
+				+ ", numberOfValues=" + numberOfValues + "]";
 	}
 
 }

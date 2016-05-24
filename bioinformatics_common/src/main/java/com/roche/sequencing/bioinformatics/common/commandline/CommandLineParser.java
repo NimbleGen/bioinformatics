@@ -53,6 +53,8 @@ public class CommandLineParser {
 			if (arguments.length > 0) {
 				firstArgument = arguments[0];
 			}
+
+			parsedCommandLine = parseCommandLine(arguments, commands.getCommandOptions());
 			parsedCommandLine.setUnrecognizedCommand(firstArgument);
 		}
 		parsedCommandLine.setCommands(commands);
@@ -279,10 +281,12 @@ public class CommandLineParser {
 			nonFlagOptionWithoutArgumentsError = nonFlagOptionWithoutArgumentsErrorBuilder.toString();
 		}
 
-		if (!unrecognizedCommandError.isEmpty() || !missingOptionsError.isEmpty() || !unrecognizedLongOptionsError.isEmpty() || !unrecognizedShortOptionsError.isEmpty()
-				|| !duplicateArguments.isEmpty() || !flagOptionWithArgumentsError.isEmpty() || !nonFlagOptionWithoutArgumentsError.isEmpty()) {
-			throw new IllegalStateException(unrecognizedCommandError + missingOptionsError + unrecognizedLongOptionsError + unrecognizedShortOptionsError + duplicateArgumentsError
-					+ flagOptionWithArgumentsError + nonFlagOptionWithoutArgumentsError);
+		if (!unrecognizedCommandError.isEmpty()) {
+			throw new IllegalStateException(unrecognizedCommandError);
+		} else if (!missingOptionsError.isEmpty() || !unrecognizedLongOptionsError.isEmpty() || !unrecognizedShortOptionsError.isEmpty() || !duplicateArguments.isEmpty()
+				|| !flagOptionWithArgumentsError.isEmpty() || !nonFlagOptionWithoutArgumentsError.isEmpty()) {
+			throw new IllegalStateException(missingOptionsError + unrecognizedLongOptionsError + unrecognizedShortOptionsError + duplicateArgumentsError + flagOptionWithArgumentsError
+					+ nonFlagOptionWithoutArgumentsError);
 		}
 	}
 
