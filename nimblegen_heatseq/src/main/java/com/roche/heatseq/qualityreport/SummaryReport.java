@@ -130,6 +130,7 @@ class SummaryReport {
 
 	void close() {
 		DecimalFormat formatter = new DecimalFormat("0.0000");
+		DecimalFormat duplicateRateFormatter = new DecimalFormat("0.0");
 
 		String inputReadPairs = "" + (totalReadPairs);
 		String inputReads = "" + totalReads;
@@ -149,11 +150,13 @@ class SummaryReport {
 		String averageUidsPerProbesWithReads = "" + formatter.format(averageUidsPerProbeWithReads);
 		String averageReadPairsPerUid = "" + formatter.format(averageNumberOfReadPairsPerProbeUid);
 
-		String duplicateRate = "" + formatter.format(duplicateReadPairsRemoved / (totalReadPairsAfterReduction + duplicateReadPairsRemoved) * 100);
+		double duplicateRate = ((double) duplicateReadPairsRemoved / (double) (totalReadPairsAfterReduction + duplicateReadPairsRemoved)) * 100;
+		String duplicateRateAsString = "" + duplicateRateFormatter.format(duplicateRate);
 
 		detailsReportWriter.writeLine(sampleName, inputReadPairs, pairsWithBothReadsMapped, pairsWithBothReadsUnmapped, pairsWithOnlyOneReadMapped, pairsWithOnTargetReads,
-				percentPairsWithOnTargetReads, numberOfPairsWithOffTargetReads, percentPairsWithOffTargetReads, duplicateReadPairsRemoved, duplicateRate, totalProbes, probesWithNoMappedReadPairs,
-				uniqueReadpairs, distinctUidsFound, formatter.format(averageUidsPerProbe), averageUidsPerProbesWithReads, maxUidsPerProbe, averageReadPairsPerUid, unpairedReads, inputReads);
+				percentPairsWithOnTargetReads, numberOfPairsWithOffTargetReads, percentPairsWithOffTargetReads, duplicateReadPairsRemoved, duplicateRateAsString, totalProbes,
+				probesWithNoMappedReadPairs, uniqueReadpairs, distinctUidsFound, formatter.format(averageUidsPerProbe), averageUidsPerProbesWithReads, maxUidsPerProbe, averageReadPairsPerUid,
+				unpairedReads, inputReads);
 		detailsReportWriter.close();
 	}
 

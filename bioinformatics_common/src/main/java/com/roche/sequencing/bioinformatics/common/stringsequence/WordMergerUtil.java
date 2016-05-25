@@ -11,15 +11,21 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Callable;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.multithreading.IExceptionListener;
 import com.roche.sequencing.bioinformatics.common.multithreading.PausableFixedThreadPoolExecutor;
 import com.roche.sequencing.bioinformatics.common.stringsequence.alignment.NeedlemanWunschGlobalStringAlignment;
 import com.roche.sequencing.bioinformatics.common.stringsequence.alignment.StringAlignmentPair;
+import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
 
 public class WordMergerUtil {
+
+	private static Logger logger = LoggerFactory.getLogger(WordMergerUtil.class);
 
 	private static Random RANDOM_NUMBER_GENERATOR = new Random(System.currentTimeMillis());
 	private static final int DEFAULT_NUMBER_OF_SHAKES_PER_ITERATION = 200;
@@ -27,6 +33,20 @@ public class WordMergerUtil {
 
 	private WordMergerUtil() {
 		throw new AssertionError();
+	}
+
+	private static com.roche.sequencing.bioinformatics.common.multithreading.PausableFixedThreadPoolExecutor getExecutor() {
+		int numProcessors = Runtime.getRuntime().availableProcessors();
+		PausableFixedThreadPoolExecutor executor = new PausableFixedThreadPoolExecutor(Math.max(numProcessors - 2, 1), "WORD_MERGER_");
+
+		executor.addExceptionListener(new IExceptionListener() {
+			@Override
+			public void exceptionOccurred(Throwable throwable) {
+				throw new RuntimeException(throwable);
+			}
+		});
+
+		return executor;
 	}
 
 	public static ILetter[] merge(List<ILetter[]> words) {
@@ -37,7 +57,7 @@ public class WordMergerUtil {
 		return merge(requiredWords, extraWords, maxScoreThreshold, DEFAULT_NUMBER_OF_ITERATIONS_TO_WAIT_FOR_IMPROVEMENT, DEFAULT_NUMBER_OF_SHAKES_PER_ITERATION);
 	}
 
-	private static ILetter[] merge(List<ILetter[]> words, int numberOfIterationsToWaitForImprovement, int numberOfShakesPerIteration) {
+	public static ILetter[] merge(List<ILetter[]> words, int numberOfIterationsToWaitForImprovement, int numberOfShakesPerIteration) {
 		return merge(words, numberOfIterationsToWaitForImprovement, numberOfShakesPerIteration, WordMergerScorer.DEFAULT_LARGE_NEGATIVE_NUMBER_FOR_MISMATCH_PENALTY);
 	}
 
@@ -45,7 +65,7 @@ public class WordMergerUtil {
 		private final ILetter[] result;
 		private final List<ILetter[]> excludedWords;
 
-		private ThresholdedMergeResults(ILetter[] result, List<ILetter[]> excludedWords) {
+		public ThresholdedMergeResults(ILetter[] result, List<ILetter[]> excludedWords) {
 			super();
 			this.result = result;
 			this.excludedWords = excludedWords;
@@ -60,123 +80,125 @@ public class WordMergerUtil {
 		}
 	}
 
-	private static ThresholdedMergeResults merge(List<ILetter[]> requiredWords, List<ILetter[]> extraWords, int maxScoreThreshold, int numberOfIterationsToWaitForImprovement,
+	public static ThresholdedMergeResults merge(List<ILetter[]> requiredWords, List<ILetter[]> extraWords, int maxScoreThreshold, int numberOfIterationsToWaitForImprovement,
 			int numberOfShakesPerIterations) {
 		return merge(requiredWords, extraWords, maxScoreThreshold, numberOfIterationsToWaitForImprovement, numberOfShakesPerIterations,
 				WordMergerScorer.DEFAULT_LARGE_NEGATIVE_NUMBER_FOR_MISMATCH_PENALTY);
 	}
 
-	private static ThresholdedMergeResults merge(List<ILetter[]> requiredWords, List<ILetter[]> extraWords, int maxScoreThreshold, int numberOfIterationsToWaitForImprovement,
+	public static ThresholdedMergeResults merge(List<ILetter[]> requiredWords, List<ILetter[]> extraWords, int maxScoreThreshold, int numberOfIterationsToWaitForImprovement,
 			int numberOfShakesPerIteration, double largeNegativeNumberForMismatchPenalty) {
 		WordMergerScorer scorer = new WordMergerScorer(largeNegativeNumberForMismatchPenalty);
 
+		PausableFixedThreadPoolExecutor executor = getExecutor();
+
 		ILetter[] requiredWord = merge(requiredWords, numberOfIterationsToWaitForImprovement, numberOfShakesPerIteration, largeNegativeNumberForMismatchPenalty);
+		ILetter[] finalWord = requiredWord;
+		List<ILetter[]> excludedWords = new ArrayList<ILetter[]>();
 
 		int scoreForRequiredWord = getScore(requiredWord);
 
-		if (scoreForRequiredWord > maxScoreThreshold) {
-			throw new IllegalStateException("The provided required words have a larger score than the provided threshold[" + maxScoreThreshold + "].");
-		}
-
-		final List<Integer> scoresForExtraWords = new ArrayList<Integer>();
-		List<Integer> indexesSortedOnScore = new ArrayList<Integer>();
-		for (int i = 0; i < extraWords.size(); i++) {
-			ILetter[] word = extraWords.get(i);
-			ILetter[] newWord = merge(requiredWord, word, scorer);
-			int extraWordScore = getScore(newWord) - scoreForRequiredWord;
-			scoresForExtraWords.add(extraWordScore);
-
-			indexesSortedOnScore.add(i);
-		}
-
-		Collections.sort(indexesSortedOnScore, new Comparator<Integer>() {
-			@Override
-			public int compare(Integer o1, Integer o2) {
-				return Integer.compare(scoresForExtraWords.get(o1), scoresForExtraWords.get(o2));
+		try {
+			if (scoreForRequiredWord > maxScoreThreshold) {
+				throw new IllegalStateException("The provided required words have a larger score than the provided threshold[" + maxScoreThreshold + "].");
 			}
-		});
 
-		List<ILetter[]> allUsedWords = new ArrayList<ILetter[]>(requiredWords);
+			final List<Integer> scoresForExtraWords = new ArrayList<Integer>();
+			List<Integer> indexesSortedOnScore = new ArrayList<Integer>();
+			for (int i = 0; i < extraWords.size(); i++) {
+				ILetter[] word = extraWords.get(i);
+				ILetter[] newWord = merge(requiredWord, word, scorer);
+				int extraWordScore = getScore(newWord) - scoreForRequiredWord;
+				scoresForExtraWords.add(extraWordScore);
 
-		List<ILetter[]> excludedWords = new ArrayList<ILetter[]>();
-		ILetter[] finalWord = requiredWord;
-		boolean thresholdMet = false;
-		for (int index : indexesSortedOnScore) {
-			ILetter[] word = extraWords.get(index);
-			if (thresholdMet) {
-				excludedWords.add(word);
-			} else {
-				allUsedWords.add(word);
-				ILetter[] newWord = merge(finalWord, word, scorer);
-				newWord = randomShake(newWord, allUsedWords, scorer, 20);
-				int score = getScore(newWord);
-				if (score > maxScoreThreshold) {
-					thresholdMet = true;
+				indexesSortedOnScore.add(i);
+			}
+
+			Collections.sort(indexesSortedOnScore, new Comparator<Integer>() {
+				@Override
+				public int compare(Integer o1, Integer o2) {
+					return Integer.compare(scoresForExtraWords.get(o1), scoresForExtraWords.get(o2));
+				}
+			});
+
+			List<ILetter[]> allUsedWords = new ArrayList<ILetter[]>(requiredWords);
+
+			boolean thresholdMet = false;
+			for (int index : indexesSortedOnScore) {
+				ILetter[] word = extraWords.get(index);
+				if (thresholdMet) {
 					excludedWords.add(word);
-					allUsedWords.remove(word);
 				} else {
-					finalWord = newWord;
+					allUsedWords.add(word);
+					ILetter[] newWord = merge(finalWord, word, scorer);
+					newWord = randomShake(executor, newWord, allUsedWords, scorer, 20);
+					int score = getScore(newWord);
+					if (score > maxScoreThreshold) {
+						thresholdMet = true;
+						excludedWords.add(word);
+						allUsedWords.remove(word);
+					} else {
+						finalWord = newWord;
+					}
 				}
 			}
+		} finally {
+			executor.shutdown();
 		}
 
 		return new ThresholdedMergeResults(finalWord, excludedWords);
 	}
 
-	private static ILetter[] merge(List<ILetter[]> words, int numberOfIterationsToWaitForImprovement, int numberOfShakesPerIteration, double largeNegativeNumberForMismatchPenalty) {
+	public static ILetter[] merge(List<ILetter[]> words, int numberOfIterationsToWaitForImprovement, int numberOfShakesPerIteration, double largeNegativeNumberForMismatchPenalty) {
 		WordMergerScorer scorer = new WordMergerScorer(largeNegativeNumberForMismatchPenalty);
 
+		PausableFixedThreadPoolExecutor executor = getExecutor();
+
 		ILetter[] bestWord = null;
-		int bestScore = Integer.MAX_VALUE;
+		int bestScore = -Integer.MAX_VALUE;
 
-		int iterationsSinceLastImprovement = 0;
-		int totalIterations = 0;
+		try {
+			int iterationsSinceLastImprovement = 0;
+			int totalIterations = 0;
 
-		while (iterationsSinceLastImprovement < numberOfIterationsToWaitForImprovement) {
-			ILetter[] combinedWord = new ILetter[0];
-			for (ILetter[] currentWord : words) {
-				combinedWord = merge(combinedWord, currentWord, scorer);
+			while (iterationsSinceLastImprovement < numberOfIterationsToWaitForImprovement) {
+				ILetter[] combinedWord = new ILetter[0];
+				for (ILetter[] currentWord : words) {
+					combinedWord = merge(combinedWord, currentWord, scorer);
+				}
+				combinedWord = randomShake(executor, combinedWord, words, scorer, numberOfShakesPerIteration);
+
+				int score = getScore(combinedWord);
+				if (score > bestScore) {
+					bestWord = combinedWord;
+					System.out.println("found improvement from (" + bestScore + ") to (" + score + ") at iteration:" + totalIterations);
+					bestScore = score;
+					iterationsSinceLastImprovement = 0;
+
+				} else {
+					iterationsSinceLastImprovement++;
+				}
+				totalIterations++;
 			}
-			combinedWord = randomShake(combinedWord, words, scorer, numberOfShakesPerIteration);
-
-			int score = getScore(combinedWord);
-			if (score < bestScore) {
-				bestWord = combinedWord;
-				System.out.println("found improvement from (" + bestScore + ") to (" + score + ") at iteration:" + totalIterations);
-				bestScore = score;
-				iterationsSinceLastImprovement = 0;
-
-			} else {
-				iterationsSinceLastImprovement++;
-			}
-			totalIterations++;
-			System.out.println("iteration:" + totalIterations);
+		} finally {
+			executor.shutdown();
 		}
-		System.out.println("best score:" + bestScore);
+		System.out.println("Best Result: " + ArraysUtil.toString(bestWord, ", "));
+		System.out.println("Best Score: " + bestScore);
 		return bestWord;
 	}
 
-	private static ILetter[] randomShake(ILetter[] combinedWord, List<ILetter[]> words, WordMergerScorer scorer, int numberOfShakes) {
+	private static ILetter[] randomShake(PausableFixedThreadPoolExecutor executor, ILetter[] combinedWord, List<ILetter[]> words, WordMergerScorer scorer, int numberOfShakes) {
 		BestResultHolder bestResultHolder = new BestResultHolder(combinedWord);
 
-		int numProcessors = Runtime.getRuntime().availableProcessors();
-		PausableFixedThreadPoolExecutor executor = new PausableFixedThreadPoolExecutor(Math.max(numProcessors - 2, 1), "WORD_MERGER_");
-		executor.addExceptionListener(new IExceptionListener() {
-			@Override
-			public void exceptionOccurred(Throwable throwable) {
-				throw new RuntimeException(throwable);
-			}
-		});
-
+		List<Callable<BestResultHolder>> tasksToRun = new ArrayList<>();
 		for (int i = 0; i < numberOfShakes; i++) {
-			executor.submit(new RandomShakeRunner(bestResultHolder, words, scorer));
+			tasksToRun.add(new RandomShakeRunner(bestResultHolder, words, scorer));
 		}
-
-		executor.shutdown();
 		try {
-			executor.awaitTermination(1, TimeUnit.DAYS);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
+			executor.invokeAll(tasksToRun);
+		} catch (InterruptedException e1) {
+			logger.warn(e1.getMessage(), e1);
 		}
 
 		return bestResultHolder.getBestResult();
@@ -193,10 +215,9 @@ public class WordMergerUtil {
 
 		public synchronized void submitResult(ILetter[] result) {
 			int score = getScore(result);
-			if (score < bestScore) {
+			if (score > bestScore) {
 				bestScore = score;
 				bestResult = result;
-				System.out.print(" " + score);
 			}
 		}
 
@@ -205,7 +226,7 @@ public class WordMergerUtil {
 		}
 	}
 
-	private static class RandomShakeRunner implements Runnable {
+	private static class RandomShakeRunner implements Callable<BestResultHolder> {
 		private final BestResultHolder bestResultHolder;
 		private final List<ILetter[]> words;
 		private final WordMergerScorer scorer;
@@ -217,10 +238,15 @@ public class WordMergerUtil {
 			this.scorer = scorer;
 		}
 
-		@Override
 		public void run() {
 			ILetter[] newResult = randomShake(bestResultHolder.getBestResult(), words, scorer);
 			bestResultHolder.submitResult(newResult);
+		}
+
+		@Override
+		public BestResultHolder call() throws Exception {
+			run();
+			return bestResultHolder;
 		}
 	}
 
@@ -276,7 +302,7 @@ public class WordMergerUtil {
 				ILetter wordLetter = word[indexInWord];
 				ILetter mergedWordLetter = mergedWord[indexInMergedWord];
 
-				if (wordLetter.equals(mergedWordLetter)) {
+				if (wordLetter.matches(mergedWordLetter)) {
 					isUsed[indexInMergedWord] = true;
 					indexInWord++;
 				} else if (indexInMergedWord == mergedWord.length - 1) {

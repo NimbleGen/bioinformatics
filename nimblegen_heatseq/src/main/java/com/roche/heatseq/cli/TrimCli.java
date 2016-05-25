@@ -43,7 +43,7 @@ class TrimCli {
 	private static final String FASTQ_EXTENSION = ".fastq";
 	private static final int BYTES_PER_GIGABYTE = 1000000000;
 	private final static DecimalFormat doubleFormatter = new DecimalFormat("#,###.##");
-	private final static CommandLineOption DO_NOT_TRIM_PRIMERS_OPTION = new CommandLineOption("Do Not Trim Primers", "doNotTrimPrimers", null, "Do not attempt to trim the primers.", false, true);
+	private final static CommandLineOption DO_NOT_TRIM_PRIMERS_OPTION = new CommandLineOption("Do Not Trim Primers", "doNotTrimPrimers", null, "Do not attempt to trim the primers.", false, true, true);
 
 	public static void trim(ParsedCommandLine parsedCommandLine, String commandLineSignature, String applicationName, String applicationVersion) {
 		long applicationStart = System.currentTimeMillis();

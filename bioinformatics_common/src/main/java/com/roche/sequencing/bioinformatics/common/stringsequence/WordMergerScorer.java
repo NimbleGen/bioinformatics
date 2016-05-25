@@ -2,9 +2,9 @@ package com.roche.sequencing.bioinformatics.common.stringsequence;
 
 import com.roche.sequencing.bioinformatics.common.stringsequence.alignment.IStringAlignmentScorer;
 
-class WordMergerScorer implements IStringAlignmentScorer {
+public class WordMergerScorer implements IStringAlignmentScorer {
 
-	final static double DEFAULT_LARGE_NEGATIVE_NUMBER_FOR_MISMATCH_PENALTY = -100000;
+	final static double DEFAULT_LARGE_NEGATIVE_NUMBER_FOR_MISMATCH_PENALTY = -10000000;
 
 	private final double largeNegativeNumberForMismatchPenalty;
 
@@ -19,7 +19,8 @@ class WordMergerScorer implements IStringAlignmentScorer {
 	@Override
 	public double getMatchScore(ILetter codeOne, ILetter codeTwo) {
 		double score = 0.0;
-		if (codeOne.equals(codeTwo)) {
+
+		if (codeOne.matches(codeTwo)) {
 			score = codeOne.getScore();
 		} else {
 			score = largeNegativeNumberForMismatchPenalty;
@@ -30,7 +31,7 @@ class WordMergerScorer implements IStringAlignmentScorer {
 
 	@Override
 	public double getGapScore(ILetter code) {
-		return -code.getScore();
+		return code.getScore() - 1000;
 	}
 
 	@Override

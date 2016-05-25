@@ -419,11 +419,11 @@ public class TestPlanRunCheck {
 			if (success) {
 				resultsDescription = "The text, \"" + ArraysUtil.toString(foundText.toArray(new String[0]), "\", \"")
 						+ "\", was found in the console error output.  The console error output has been saved at ["
-						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
+						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "].";
 			} else {
 				resultsDescription = "The text, \"" + ArraysUtil.toString(notFoundText.toArray(new String[0]), "\", \"")
 						+ "\", was not found in the console error output.  The console error output has been saved at ["
-						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
+						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "].";
 			}
 			break;
 		case CONSOLE_ERRORS_DOES_NOT_CONTAIN_TEXT:
@@ -449,11 +449,11 @@ public class TestPlanRunCheck {
 				if (success) {
 					resultsDescription = "The text, \"" + ArraysUtil.toString(notFoundText2.toArray(new String[0]), "\", \"")
 							+ "\", was not found in the console error outuput.  The console error output has been saved at ["
-							+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
+							+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "].";
 				} else {
 					resultsDescription = "The text, \"" + ArraysUtil.toString(foundText2.toArray(new String[0]), "\", \"")
 							+ "\", was found in the console error output.  The console error output has been saved at ["
-							+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
+							+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "].";
 				}
 			}
 			break;
@@ -726,11 +726,11 @@ public class TestPlanRunCheck {
 			success = notFoundText3.isEmpty();
 			if (success) {
 				resultsDescription = "The text, \"" + ArraysUtil.toString(foundText3.toArray(new String[0]), "\", \"") + "\", was found in the console output.  The console output has been saved at ["
-						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
+						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "].";
 			} else {
 				resultsDescription = "The text, \"" + ArraysUtil.toString(notFoundText3.toArray(new String[0]), "\", \"")
 						+ "\", was NOT found in the console output.  The console output has been saved at ["
-						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
+						+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "].";
 			}
 			break;
 		case CONSOLE_OUTPUT_DOES_NOT_CONTAIN_TEXT:
@@ -756,11 +756,11 @@ public class TestPlanRunCheck {
 				if (success) {
 					resultsDescription = "The text, \"" + ArraysUtil.toString(notFoundText4.toArray(new String[0]), "\", \"")
 							+ "\", was not found in the console output.  The console output has been saved at ["
-							+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
+							+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "].";
 				} else {
 					resultsDescription = "The text, \"" + ArraysUtil.toString(foundText4.toArray(new String[0]), "\", \"")
 							+ "\", was found in the console output.  The console output has been saved at ["
-							+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "] for your convenience.";
+							+ new File(runResults.getOutputDirectory(), TestPlan.CONSOLE_ERRORS_FILE_NAME).getAbsolutePath() + "].";
 				}
 			}
 			break;

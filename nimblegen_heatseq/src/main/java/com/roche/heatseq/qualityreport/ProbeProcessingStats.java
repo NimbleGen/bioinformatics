@@ -16,6 +16,7 @@
 
 package com.roche.heatseq.qualityreport;
 
+import java.math.RoundingMode;
 import java.text.DecimalFormat;
 
 import com.roche.heatseq.objects.Probe;
@@ -99,6 +100,7 @@ public class ProbeProcessingStats {
 
 	String toReportString() {
 		DecimalFormat formatter = new DecimalFormat("0.00");
+		formatter.setRoundingMode(RoundingMode.HALF_UP);
 		StringBuilder stringBuilder = new StringBuilder();
 
 		int readPairsAfterReduction = getTotalReadPairsRemainingAfterReduction();
@@ -118,5 +120,13 @@ public class ProbeProcessingStats {
 
 	public void setNumberOfDuplicateReadPairsUnableToExtendPrimer(int numberOfDuplicateReadPairsUnableExtendPrimer) {
 		this.numberOfDuplicateReadPairsUnableToExtendPrimer = numberOfDuplicateReadPairsUnableExtendPrimer;
+	}
+
+	public static void main(String[] args) {
+		double value = 1.1960;
+		DecimalFormat formatter = new DecimalFormat("0.00");
+		formatter.setRoundingMode(RoundingMode.HALF_UP);
+		System.out.println(formatter.format(value));
+
 	}
 }

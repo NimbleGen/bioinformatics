@@ -2,7 +2,7 @@ package com.roche.sequencing.bioinformatics.common.stringsequence.alignment;
 
 import com.roche.sequencing.bioinformatics.common.stringsequence.ILetter;
 
-class Gap implements ILetter {
+public class Gap implements ILetter {
 
 	private final static String STRING_FOR_GAP = "_";
 	public final static Gap GAP = new Gap();
@@ -17,5 +17,10 @@ class Gap implements ILetter {
 
 	public String toString() {
 		return STRING_FOR_GAP;
+	}
+
+	@Override
+	public boolean matches(ILetter rhs) {
+		return rhs == GAP;
 	}
 }

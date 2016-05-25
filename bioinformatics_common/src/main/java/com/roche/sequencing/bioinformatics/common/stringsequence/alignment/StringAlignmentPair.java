@@ -70,14 +70,14 @@ public class StringAlignmentPair {
 		for (int i = 0; i < referenceAlignment.size(); i++) {
 			ILetter reference = referenceAlignment.get(i);
 			ILetter query = queryAlignment.get(i);
-			if (reference.equals(query)) {
+			if (reference.matches(query)) {
 				mergedAlignment.add(query);
-			} else if (reference.equals(Gap.GAP)) {
+			} else if (reference.matches(Gap.GAP)) {
 				mergedAlignment.add(query);
-			} else if (query.equals(Gap.GAP)) {
+			} else if (query.matches(Gap.GAP)) {
 				mergedAlignment.add(reference);
 			} else {
-				throw new AssertionError();
+				throw new AssertionError("Mismatches are not expected.  query:" + query + " reference:" + reference);
 			}
 		}
 
