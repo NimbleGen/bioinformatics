@@ -77,4 +77,21 @@ public class DateUtil {
 
 		return String.format("%02d:%02d:%02d", hours, minutes, seconds);
 	}
+
+	/**
+	 * @return a milliscond duration in HH:MM:SS:MM format
+	 */
+	public static String convertMillisecondsToHHMMSSMMM(long milliseconds) {
+		long millisecondsLeft = milliseconds;
+		long hours = TimeUnit.MILLISECONDS.toHours(milliseconds);
+		millisecondsLeft -= TimeUnit.HOURS.toMillis(hours);
+
+		long minutes = TimeUnit.MILLISECONDS.toMinutes(millisecondsLeft);
+		millisecondsLeft -= TimeUnit.MINUTES.toMillis(minutes);
+
+		long seconds = TimeUnit.MILLISECONDS.toSeconds(millisecondsLeft);
+		millisecondsLeft -= TimeUnit.SECONDS.toMillis(seconds);
+
+		return String.format("%02d:%02d:%02d:%03d", hours, minutes, seconds, millisecondsLeft);
+	}
 }

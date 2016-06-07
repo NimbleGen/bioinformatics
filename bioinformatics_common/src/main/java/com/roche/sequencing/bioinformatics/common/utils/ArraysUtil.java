@@ -17,6 +17,7 @@
 package com.roche.sequencing.bioinformatics.common.utils;
 
 import java.lang.reflect.Array;
+import java.text.DecimalFormat;
 import java.util.List;
 
 /**
@@ -267,6 +268,26 @@ public final class ArraysUtil {
 		return returnString;
 	}
 
+	public static <T> String toString(T[] strings) {
+		return toString(strings, ", ");
+	}
+
+	public static String toString(int[] numbers) {
+		return toString(numbers, ", ");
+	}
+
+	public static String toString(short[] numbers) {
+		return toString(numbers, ", ");
+	}
+
+	public static String toString(double[] numbers) {
+		return toString(numbers, ", ");
+	}
+
+	public static String toString(double[] numbers, DecimalFormat formatter) {
+		return toString(numbers, ", ", formatter);
+	}
+
 	public static String toString(int[] numbers, String delimiter) {
 		String returnString = "";
 
@@ -274,6 +295,50 @@ public final class ArraysUtil {
 			StringBuilder returnStringBuilder = new StringBuilder();
 			for (int i : numbers) {
 				returnStringBuilder.append(i + delimiter);
+			}
+			returnString = returnStringBuilder.substring(0, returnStringBuilder.length() - delimiter.length());
+		}
+		return returnString;
+	}
+
+	public static String toString(double[] numbers, String delimiter) {
+		return toString(numbers, delimiter, null);
+	}
+
+	public static String toString(short[] numbers, String delimiter) {
+		return toString(numbers, delimiter, null);
+	}
+
+	public static String toString(double[] numbers, String delimiter, DecimalFormat formatter) {
+		String returnString = "";
+
+		if (numbers != null && numbers.length > 0) {
+			StringBuilder returnStringBuilder = new StringBuilder();
+			for (double i : numbers) {
+				if (formatter != null) {
+					returnStringBuilder.append(formatter.format(i) + delimiter);
+				} else {
+					returnStringBuilder.append(i + delimiter);
+
+				}
+			}
+			returnString = returnStringBuilder.substring(0, returnStringBuilder.length() - delimiter.length());
+		}
+		return returnString;
+	}
+
+	public static String toString(short[] numbers, String delimiter, DecimalFormat formatter) {
+		String returnString = "";
+
+		if (numbers != null && numbers.length > 0) {
+			StringBuilder returnStringBuilder = new StringBuilder();
+			for (double i : numbers) {
+				if (formatter != null) {
+					returnStringBuilder.append(formatter.format(i) + delimiter);
+				} else {
+					returnStringBuilder.append(i + delimiter);
+
+				}
 			}
 			returnString = returnStringBuilder.substring(0, returnStringBuilder.length() - delimiter.length());
 		}
@@ -291,7 +356,17 @@ public final class ArraysUtil {
 		return isContained;
 	}
 
-	
+	public static boolean contains(short[] values, short containedValue) {
+		boolean isContained = false;
+		int i = 0;
+		while (!isContained && i < values.length) {
+			isContained = containedValue == values[i];
+			i++;
+		}
+
+		return isContained;
+	}
+
 	public static <T> String printMatrix(T[][] a) {
 		StringBuilder stringBuilder = new StringBuilder();
 

@@ -1,5 +1,6 @@
 package com.roche.sequencing.bioinformatics.common.utils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ListUtil {
@@ -25,4 +26,13 @@ public class ListUtil {
 		return stringBuilder.toString();
 	}
 
+	public static <T> List<T> intersection(List<T> listOne, List<T> listTwo) {
+		ArrayList<T> onlyInOne = new ArrayList<T>(listOne);
+		onlyInOne.removeAll(listTwo);
+
+		ArrayList<T> inBoth = new ArrayList<T>(listOne);
+		inBoth.removeAll(onlyInOne);
+
+		return inBoth;
+	}
 }
