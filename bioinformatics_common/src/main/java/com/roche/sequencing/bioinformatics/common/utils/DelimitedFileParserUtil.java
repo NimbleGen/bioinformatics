@@ -37,6 +37,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -69,6 +70,30 @@ public final class DelimitedFileParserUtil {
 
 	private DelimitedFileParserUtil() {
 		throw new AssertionError();
+	}
+
+	public static void main(String[] args) throws IOException {
+		String[] headers = new String[] { "CONTAINER", "SEQ_ID" };
+		parseFile(new InputStreamFactory(new File("C:\\Users\\heilmank\\Desktop\\UniProt_simple.ndf")), headers, new IDelimitedLineParser() {
+
+			@Override
+			public void threadInterrupted() {
+				// TODO Auto-generated method stub
+
+			}
+
+			@Override
+			public void parseDelimitedLine(Map<String, String> headerNameToValue) {
+				// TODO Auto-generated method stub
+
+			}
+
+			@Override
+			public void doneParsing(int linesOfData, String[] headerNames) {
+				// TODO Auto-generated method stub
+
+			}
+		}, StringUtil.TAB, false);
 	}
 
 	public static Map<String, String> parseNameDelimiterValueNewLineFile(File nameDelimiterValueNewLineFile, String nameValueDelimiter, Charset charset) throws IOException {
@@ -778,21 +803,21 @@ public final class DelimitedFileParserUtil {
 			headerNameToValueMap = new HashMap<String, String>();
 		}
 
-		int columnCount = parsedCurrentRow.length;
-		Set<Integer> columnsUsed = new HashSet<Integer>();
-		for (int i = 0; i < columnCount; i++) {
-			String value = parsedCurrentRow[i];
-			String headerName = headerInfo.get(i);
-			columnsUsed.add(i);
+		for (Entry<Integer, String> headerEntry : headerInfo.entrySet()) {
+			int columnIndex = headerEntry.getKey();
+			String headerName = headerEntry.getValue();
 
-			if (headerName != null) {
-				headerNameToValueMap.put(headerName, value);
+			if (parsedCurrentRow.length == 1 && headerInfo.size() > 1) {
+				String message = "Unable to parse line[" + ArraysUtil.toString(parsedCurrentRow, StringUtil.TAB) + "] because it does not contain column index[" + columnIndex
+						+ "] which is a value for the header name[" + headerName
+						+ "].  This appears to an issue with the provided column deliter; this line does not contain a single instance of the column delimiter string.";
+				throw new IllegalStateException(message);
 			}
-		}
 
-		for (int i = 0; i < headerInfo.size(); i++) {
-			if (!columnsUsed.contains(i)) {
-				String headerName = headerInfo.get(i);
+			if (columnIndex < parsedCurrentRow.length) {
+				String valueFromRow = parsedCurrentRow[columnIndex];
+				headerNameToValueMap.put(headerName, valueFromRow);
+			} else {
 				headerNameToValueMap.put(headerName, null);
 			}
 		}
@@ -912,5 +937,6 @@ public final class DelimitedFileParserUtil {
 			}
 			throw new UnableToFindHeaderException("Could not find header containing header names[" + headerNamesAsString.toString() + "] in file[" + delimitedFile.getAbsolutePath() + "].");
 		}
+
 	}
 }

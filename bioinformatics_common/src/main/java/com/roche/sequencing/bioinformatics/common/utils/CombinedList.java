@@ -104,6 +104,7 @@ public class CombinedList<T> implements List<T> {
 		return null;
 	}
 
+	@SuppressWarnings("hiding")
 	@Override
 	public <T> T[] toArray(T[] a) {
 		throw new IllegalStateException("This method is not implemented.");
@@ -158,8 +159,7 @@ public class CombinedList<T> implements List<T> {
 			overallIndexAfterCurrentList += lists.get(listIndex).size();
 		}
 		if (listIndex >= lists.size()) {
-			throw new IndexOutOfBoundsException(
-					"Unable to access index[" + index + "] on a list of size[" + size + "].");
+			throw new IndexOutOfBoundsException("Unable to access index[" + index + "] on a list of size[" + size + "].");
 		}
 		List<T> currentList = lists.get(listIndex);
 		int indexInList = index - (overallIndexAfterCurrentList - currentList.size());

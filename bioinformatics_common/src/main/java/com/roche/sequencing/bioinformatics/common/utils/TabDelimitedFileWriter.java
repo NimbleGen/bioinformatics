@@ -67,6 +67,7 @@ public class TabDelimitedFileWriter implements AutoCloseable {
 		// Keep track of how many columns we should expect to see
 		this.outputFile = outputFile;
 		this.columnCount = headers.length;
+		FileUtil.createNewFile(outputFile);
 		this.writer = new BufferedWriter(new FileWriter(outputFile), DEFAULT_BUFFER_SIZE);
 		boolean firstHeader = true;
 		synchronized (this) {

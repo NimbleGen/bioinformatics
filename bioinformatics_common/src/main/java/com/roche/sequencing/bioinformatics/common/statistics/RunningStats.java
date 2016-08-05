@@ -17,8 +17,6 @@ package com.roche.sequencing.bioinformatics.common.statistics;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
-import java.math.RoundingMode;
-import java.text.DecimalFormat;
 
 public class RunningStats {
 
@@ -80,16 +78,18 @@ public class RunningStats {
 	}
 
 	private double getCurrentVariance(boolean isPopulationVariance) {
-		BigDecimal sumOfValuesSquared = sumOfValues.multiply(sumOfValues);
 		double variance = 0.0;
-		BigDecimal finalDenominator = null;
+		BigDecimal n = null;
 		if (isPopulationVariance) {
-			finalDenominator = new BigDecimal(numberOfValues);
+			n = new BigDecimal(numberOfValues);
 		} else {
 			// this results in a sample variance calculation
-			finalDenominator = new BigDecimal(numberOfValues - 1);
+			n = new BigDecimal(numberOfValues - 1);
 		}
-		variance = sumOfSquares.subtract(sumOfValuesSquared.divide(new BigDecimal(numberOfValues), MATH_CONTEXT)).divide(finalDenominator, MATH_CONTEXT).doubleValue();
+		// Var(x) = E(x^2) - [E(X)]^2
+		BigDecimal lhs = sumOfSquares.divide(n, MATH_CONTEXT);
+		BigDecimal rhs = sumOfValues.divide(new BigDecimal(numberOfValues), MATH_CONTEXT).pow(2);
+		variance = lhs.subtract(rhs).doubleValue();
 		return variance;
 	}
 
@@ -157,10 +157,16 @@ public class RunningStats {
 
 	@Override
 	public String toString() {
-		DecimalFormat formatter = new DecimalFormat("#.###");
-		formatter.setRoundingMode(RoundingMode.HALF_UP);
-		return "RunningStats [sumOfValues=" + formatter.format(sumOfValues) + ", sumOfSquares=" + formatter.format(sumOfSquares) + ", minValue=" + minValue + ", maxValue=" + maxValue
-				+ ", numberOfValues=" + numberOfValues + "]";
+		return "RunningStats [sumOfValues=" + sumOfValues + ", sumOfSquares=" + sumOfSquares + ", minValue=" + minValue + ", maxValue=" + maxValue + ", numberOfValues=" + numberOfValues
+				+ ", getCurrentMean()=" + getCurrentMean() + ", getCurrentVariance()=" + getCurrentVariance() + ", getCurrentStandardDeviation()=" + getCurrentStandardDeviation() + "]";
+	}
+
+	public void addAll(double[] values) {
+		addAllValues(values);
+	}
+
+	public void add(double value) {
+		addValue(value);
 	}
 
 }

@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 
 import org.apache.commons.codec.digest.DigestUtils;
 
@@ -39,7 +40,18 @@ public class Md5CheckSumUtil {
 	}
 
 	public static String md5sum(File file) throws FileNotFoundException, IOException {
-		return DigestUtils.md5Hex(new FileInputStream(file));
+		String md5Sum = null;
+		try (FileInputStream fis = new FileInputStream(file)) {
+			md5Sum = DigestUtils.md5Hex(fis);
+		}
+		return md5Sum;
 	}
 
+	public static String md5sum(Class<?> resourceReferenceClass, String resourceName) throws FileNotFoundException, IOException {
+		String md5Sum = null;
+		try (InputStream is = resourceReferenceClass.getResourceAsStream(resourceName)) {
+			md5Sum = DigestUtils.md5Hex(is);
+		}
+		return md5Sum;
+	}
 }
