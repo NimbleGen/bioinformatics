@@ -1,6 +1,8 @@
 package com.roche.sequencing.bioinformatics.common.utils.bed;
 
-class RGB {
+import java.awt.Color;
+
+public class RGB {
 	private final int red;
 	private final int green;
 	private final int blue;
@@ -10,6 +12,20 @@ class RGB {
 		this.red = red;
 		this.green = green;
 		this.blue = blue;
+	}
+
+	public RGB(String commaSeparatedRgbValues) {
+		String[] splitRgb = commaSeparatedRgbValues.split(",");
+		if (splitRgb.length != 3) {
+			throw new IllegalStateException("The provided value for the itemRgb[" + commaSeparatedRgbValues + "] is not a valid comma separated RGB value.");
+		}
+		try {
+			this.red = Integer.parseInt(splitRgb[0]);
+			this.green = Integer.parseInt(splitRgb[1]);
+			this.blue = Integer.parseInt(splitRgb[2]);
+		} catch (NumberFormatException e) {
+			throw new IllegalStateException("The provided value for the itemRgb[" + commaSeparatedRgbValues + "] is not a valid comma separated RGB value.");
+		}
 	}
 
 	public int getRed() {
@@ -55,6 +71,10 @@ class RGB {
 	@Override
 	public String toString() {
 		return "RGB [red=" + red + ", green=" + green + ", blue=" + blue + "]";
+	}
+
+	public Color getColor() {
+		return new Color(red, green, blue);
 	}
 
 }

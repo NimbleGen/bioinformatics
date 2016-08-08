@@ -89,12 +89,11 @@ public class PausableFixedThreadPoolExecutor extends ThreadPoolExecutor {
 		exceptionListeners.add(exceptionListener);
 	}
 
-	
 	public void clearExceptionListeners() {
 		exceptionListeners.clear();
 	}
 
-	private void pause() {
+	public void pause() {
 		pauseLock.lock();
 		try {
 			isPaused = true;
@@ -103,7 +102,7 @@ public class PausableFixedThreadPoolExecutor extends ThreadPoolExecutor {
 		}
 	}
 
-	private void resume() {
+	public void resume() {
 		pauseLock.lock();
 		try {
 			isPaused = false;

@@ -215,7 +215,7 @@ public final class StringUtil {
 		return (!Character.isISOControl(character)) && character != KeyEvent.CHAR_UNDEFINED && block != null && block != Character.UnicodeBlock.SPECIALS;
 	}
 
-	public static String generateRandomString(int length) {
+	public synchronized static String generateRandomString(int length) {
 		char[] text = new char[length];
 		for (int i = 0; i < length; i++) {
 			text[i] = CHARACTERS[RANDOM.nextInt(CHARACTERS.length)];

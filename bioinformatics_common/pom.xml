@@ -41,5 +41,10 @@
 			<artifactId>snakeyaml</artifactId>
 			<version>1.5</version>
 		</dependency>
+		<dependency>
+			<groupId>org.la4j</groupId>
+			<artifactId>la4j</artifactId>
+			<version>0.5.5</version>
+		</dependency>
 	</dependencies>
 </project>

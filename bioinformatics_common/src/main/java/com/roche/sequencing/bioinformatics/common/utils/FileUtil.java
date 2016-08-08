@@ -22,6 +22,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
@@ -709,6 +710,37 @@ public final class FileUtil {
 	}
 
 	/**
+	 * @param inputFile
+	 * @param outputFile
+	 * @param ratioToCopy
+	 *            a value greater than zero and less than or equal to 1 which presents the ratio of the original file to be copied
+	 */
+	public static void partialCopy(File inputFile, File outputFile, double ratioToCopy) {
+		if (ratioToCopy <= 0 || ratioToCopy > 1) {
+			throw new IllegalArgumentException("The ratioToCopy[" + ratioToCopy + "] paramter must be greater than zero and less than or equal to 1.");
+		}
+
+		long bytesToCopy = (long) (inputFile.length() * ratioToCopy);
+
+		try (FileInputStream in = new FileInputStream(inputFile)) {
+			createNewFile(outputFile);
+			try (FileOutputStream out = new FileOutputStream(outputFile)) {
+				byte[] b = new byte[1024];
+				int totalBytesRead = 0;
+				int noOfBytes = 0;
+				// read bytes from source file and write to destination file
+				while (((noOfBytes = in.read(b)) != -1) && (totalBytesRead + noOfBytes < bytesToCopy)) {
+					out.write(b, 0, noOfBytes);
+					totalBytesRead += noOfBytes;
+				}
+
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
 	 * returns the matching file if only one exists matching the regex in the provided directory, null if no such files exist and throws an IllegalArgumentException if more than on of such files
 	 * exist.
 	 * 
@@ -769,6 +801,38 @@ public final class FileUtil {
 		}
 
 		return currentDirectory;
+	}
+
+	public static void replaceTextInFile(File file, String textToReplace, String replacementText) throws IOException {
+		replaceTextInFile(file, new String[] { textToReplace }, new String[] { replacementText });
+	}
+
+	public static void replaceTextInFile(File file, String[] textsToReplace, String[] replacementTexts) throws IOException {
+		if (textsToReplace.length != replacementTexts.length) {
+			throw new IllegalStateException("The lengths of the textsToReplace[" + textsToReplace.length + "] and replacementTexts[" + replacementTexts.length + "] must be of the same size.");
+		}
+		String text = readFileAsString(file);
+		for (int i = 0; i < textsToReplace.length; i++) {
+			text = text.replace(textsToReplace[i], replacementTexts[i]);
+		}
+		writeStringToFile(file, text);
+	}
+
+	public static File getTempDirectory() {
+		File tempDirectory = null;
+		String property = "java.io.tmpdir";
+		String tempDirectoryAsString = System.getProperty(property);
+		if (tempDirectoryAsString != null) {
+			tempDirectory = new File(tempDirectoryAsString);
+		}
+		return tempDirectory;
+
+	}
+
+	public static void main(String[] args) {
+		File inputFile = new File("C:\\kurts_space\\github\\private_bioinformatics\\pete_utils\\target\\classes\\com\\roche\\sequencing\\bioinformatics\\pete\\primer3\\ntthal_win_64.exe");
+		File outputFile = new File("C:\\kurts_space\\github\\private_bioinformatics\\pete_utils\\target\\classes\\com\\roche\\sequencing\\bioinformatics\\pete\\primer3\\ntthal_win_642.exe");
+		partialCopy(inputFile, outputFile, 0.99);
 	}
 
 }

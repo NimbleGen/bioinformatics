@@ -17,11 +17,12 @@
 package com.roche.sequencing.bioinformatics.common.sequence;
 
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import com.roche.sequencing.bioinformatics.common.utils.BitSetUtil;
 
 /**
@@ -33,7 +34,8 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 	private static final int BITS_PER_NUCLEOTIDE = 5;
 	private static final int BITS_PER_BYTE = 8;
 
-	private static final BiMap<BitSet, IupacNucleotideCode> BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP = HashBiMap.create();
+	private static final Map<BitSet, IupacNucleotideCode> BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP = new HashMap<BitSet, IupacNucleotideCode>();
+	private static final Map<IupacNucleotideCode, BitSet> IUPAC_NUCLEOTIDE_CODE_TO_BIT_MAP = new HashMap<IupacNucleotideCode, BitSet>();
 
 	static {
 		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("00000"), IupacNucleotideCode.A);
@@ -52,8 +54,11 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("10110"), IupacNucleotideCode.U);
 		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("01110"), IupacNucleotideCode.V);
 		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("11110"), IupacNucleotideCode.W);
-
 		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("00001"), IupacNucleotideCode.Y);
+
+		for (Entry<BitSet, IupacNucleotideCode> entry : BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.entrySet()) {
+			IUPAC_NUCLEOTIDE_CODE_TO_BIT_MAP.put(entry.getValue(), entry.getKey());
+		}
 
 		// open bits "10001","01001","11001","00101","10101","01101","11101","00011","10011","01011","11011","00111","10111","01111","11111"
 	}
@@ -158,7 +163,7 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 	private void setCodeAt(int index, IupacNucleotideCode code) {
 		int startingIndex = index * BITS_PER_NUCLEOTIDE;
 
-		BitSet bitsToSet = BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.inverse().get(code);
+		BitSet bitsToSet = IUPAC_NUCLEOTIDE_CODE_TO_BIT_MAP.get(code);
 
 		for (int i = 0; i < bitsToSet.length(); i++) {
 			sequenceAsBits.set(startingIndex + i, bitsToSet.get(i));
@@ -167,6 +172,11 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 		int lastBitLocationSet = (index + 1) * BITS_PER_NUCLEOTIDE;
 
 		currentNumberOfBits = Math.max(lastBitLocationSet, currentNumberOfBits);
+	}
+
+	@Override
+	public double getGCPercent() {
+		return SequenceUtil.getGCPercent(this);
 	}
 
 	@Override
@@ -328,6 +338,17 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 			}
 		}
 		return bytes;
+	}
+
+	@Override
+	public boolean contains(ICode nucleotide) {
+		boolean nucleotideFound = false;
+		int i = 0;
+		while (i < size() && !nucleotideFound) {
+			nucleotideFound = getCodeAt(i).matches(nucleotide);
+			i++;
+		}
+		return nucleotideFound;
 	}
 
 }

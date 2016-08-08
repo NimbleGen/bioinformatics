@@ -16,7 +16,14 @@
 
 package com.roche.sequencing.bioinformatics.common.utils;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.BitSet;
+
+import org.apache.commons.io.IOUtils;
 
 /**
  * 
@@ -86,6 +93,29 @@ public final class BitSetUtil {
 			currentBitset++;
 		}
 		return combinedBitSet;
+	}
+
+	public static void writeBitSetToFile(BitSet bitset, File outputFile) throws IOException {
+		// erase the existing file since the content at the end of the file
+		// would be preserved if it is not written over thus preventing the containerInformationStart location
+		// from being stored at the very end of the file
+		if (outputFile.exists()) {
+			outputFile.delete();
+		}
+		FileUtil.createNewFile(outputFile);
+		try (FileOutputStream writer = new FileOutputStream(outputFile)) {
+			writer.write(bitset.toByteArray());
+		}
+	}
+
+	public static BitSet readBitSetFromFile(File inputFile) throws IOException {
+		return readBitSetFromInputStream(new FileInputStream(inputFile));
+	}
+
+	public static BitSet readBitSetFromInputStream(InputStream inputStream) throws IOException {
+		byte[] byteArray = IOUtils.toByteArray(inputStream);
+		BitSet bitset = BitSet.valueOf(byteArray);
+		return bitset;
 	}
 
 }

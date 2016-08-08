@@ -178,7 +178,7 @@ public final class ArraysUtil {
 		return doubleArray;
 	}
 
-	static int[] convertToIntArray(List<? extends Number> values) {
+	public static int[] convertToIntArray(List<? extends Number> values) {
 		int[] intArray = new int[values.size()];
 		for (int i = 0; i < values.size(); i++) {
 			intArray[i] = values.get(i).intValue();
@@ -367,6 +367,17 @@ public final class ArraysUtil {
 		return isContained;
 	}
 
+	public static boolean contains(int[] values, int containedValue) {
+		boolean isContained = false;
+		int i = 0;
+		while (!isContained && i < values.length) {
+			isContained = containedValue == values[i];
+			i++;
+		}
+
+		return isContained;
+	}
+
 	public static <T> String printMatrix(T[][] a) {
 		StringBuilder stringBuilder = new StringBuilder();
 
@@ -408,4 +419,38 @@ public final class ArraysUtil {
 		}
 		return stringBuilder.toString();
 	}
+
+	public static int sum(int[] values) {
+		int sum = 0;
+		for (int value : values) {
+			sum += value;
+		}
+		return sum;
+	}
+
+	public static int sum(int[] values, int startIndex, int stopIndex) {
+		int sum = 0;
+		for (int i = startIndex; i <= stopIndex; i++) {
+			int value = values[i];
+			sum += value;
+		}
+		return sum;
+	}
+
+	public static double sum(double[] values) {
+		double sum = 0;
+		for (double value : values) {
+			sum += value;
+		}
+		return sum;
+	}
+
+	public static double sum(long[] values) {
+		long sum = 0;
+		for (long value : values) {
+			sum += value;
+		}
+		return sum;
+	}
+
 }

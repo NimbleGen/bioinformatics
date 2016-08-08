@@ -20,6 +20,9 @@ import java.util.BitSet;
 import java.util.Iterator;
 import java.util.Objects;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.roche.sequencing.bioinformatics.common.utils.BitSetUtil;
@@ -30,6 +33,7 @@ import com.roche.sequencing.bioinformatics.common.utils.BitSetUtil;
  * 
  */
 public class SimpleNucleotideCodeSequence implements ISequence, Comparable<SimpleNucleotideCodeSequence> {
+	private final Logger logger = LoggerFactory.getLogger(SimpleNucleotideCodeSequence.class);
 	public static final int BITS_PER_NUCLEOTIDE = 3;
 	private static final int BITS_PER_BYTE = 8;
 
@@ -126,7 +130,7 @@ public class SimpleNucleotideCodeSequence implements ISequence, Comparable<Simpl
 	 * 
 	 * @param code
 	 */
-	
+
 	public void append(ICode code) {
 		if (code instanceof IupacNucleotideCode) {
 			IupacNucleotideCode codeAsIupacCode = (IupacNucleotideCode) code;
@@ -154,7 +158,8 @@ public class SimpleNucleotideCodeSequence implements ISequence, Comparable<Simpl
 
 		BitSet bitsToSet = BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.inverse().get(code);
 		if (bitsToSet == null) {
-			throw new IllegalStateException("Could not save iupac code[" + code.name() + "].");
+			logger.warn("Could not save iupac code[" + code.name() + "] so replacing it with " + IupacNucleotideCode.N + ".");
+			bitsToSet = BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.inverse().get(IupacNucleotideCode.N);
 		}
 		for (int i = 0; i < bitsToSet.length(); i++) {
 			sequenceAsBits.set(startingIndex + i, bitsToSet.get(i));
@@ -324,6 +329,22 @@ public class SimpleNucleotideCodeSequence implements ISequence, Comparable<Simpl
 			}
 		}
 		return bytes;
+	}
+
+	@Override
+	public double getGCPercent() {
+		return SequenceUtil.getGCPercent(this);
+	}
+
+	@Override
+	public boolean contains(ICode nucleotide) {
+		boolean nucleotideFound = false;
+		int i = 0;
+		while (i < size() && !nucleotideFound) {
+			nucleotideFound = getCodeAt(i).matches(nucleotide);
+			i++;
+		}
+		return nucleotideFound;
 	}
 
 }

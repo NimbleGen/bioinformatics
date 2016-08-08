@@ -1,5 +1,6 @@
 package com.roche.sequencing.bioinformatics.common.utils.bed;
 
+import java.util.Collections;
 import java.util.List;
 
 class BedEntry implements IBedEntry {
@@ -16,6 +17,11 @@ class BedEntry implements IBedEntry {
 	private final Integer blockCount;
 	private final List<Integer> blockSizes;
 	private final List<Integer> blockStarts;
+
+	BedEntry(String chromosomeName, int chromosomeStart, int chromosomeEnd) {
+		this(chromosomeName, chromosomeStart, chromosomeEnd, null, null, null, null, null, null, null, null, null);
+
+	}
 
 	BedEntry(String chromosomeName, int chromosomeStart, int chromosomeEnd, String name, Integer score, Character strand, Integer thickStart, Integer thickEnd, RGB itemRgb, Integer blockCount,
 			List<Integer> blockSizes, List<Integer> blockStarts) {
@@ -70,16 +76,28 @@ class BedEntry implements IBedEntry {
 		return itemRgb;
 	}
 
-	public Integer getBlockCount() {
-		return blockCount;
+	public int getBlockCount() {
+		int blockCountAsInt = 0;
+		if (blockCount != null) {
+			blockCountAsInt = blockCount;
+		}
+		return blockCountAsInt;
 	}
 
 	public List<Integer> getBlockSizes() {
-		return blockSizes;
+		List<Integer> nonNullBlockSizes = blockSizes;
+		if (nonNullBlockSizes == null) {
+			nonNullBlockSizes = Collections.emptyList();
+		}
+		return nonNullBlockSizes;
 	}
 
 	public List<Integer> getBlockStarts() {
-		return blockStarts;
+		List<Integer> nonNullBlockStarts = blockStarts;
+		if (nonNullBlockStarts == null) {
+			nonNullBlockStarts = Collections.emptyList();
+		}
+		return nonNullBlockStarts;
 	}
 
 	@Override

@@ -346,4 +346,20 @@ class ChanneledNucleotideCodeSequence implements ISequence, Comparable<Channeled
 		return numberOfMismatches;
 	}
 
+	@Override
+	public double getGCPercent() {
+		return SequenceUtil.getGCPercent(this);
+	}
+
+	@Override
+	public boolean contains(ICode nucleotide) {
+		boolean nucleotideFound = false;
+		int i = 0;
+		while (i < size() && !nucleotideFound) {
+			nucleotideFound = getCodeAt(i).matches(nucleotide);
+			i++;
+		}
+		return nucleotideFound;
+	}
+
 }

@@ -15,7 +15,9 @@
  */
 package com.roche.sequencing.bioinformatics.common.sequence;
 
+import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class SequenceUtil {
@@ -24,7 +26,6 @@ public class SequenceUtil {
 		throw new AssertionError();
 	}
 
-	
 	public static boolean matches(ISequence referenceSequence, ISequence querySequence) {
 		return match(referenceSequence, querySequence, 4);
 	}
@@ -76,15 +77,82 @@ public class SequenceUtil {
 		return matches;
 	}
 
-	public static void main(String[] args) {
-		ISequence a = new IupacNucleotideCodeSequence(
-				"TCTTTCTGGTTGACCATCAAATATTCCTTCTCTGTTGTCATCAGAAGATAACGCTGATGATGAGGTGGACACACGACCAGCCTCCTTCTGGGAGACATCATAGTGCTAGTACTATGTCAAAGCAACAGTCCACACTTTGTCCAATGGTTTT");
-		System.out.println(a.getReverseCompliment());
-		ISequence b = new IupacNucleotideCodeSequence("AC");
-		Set<StartAndStopIndex> matches = findAllMatches(a, b, 2);
-		for (StartAndStopIndex ss : matches) {
-			System.out.println(ss);
+	public static double getGCPercent(ISequence sequence) {
+		double totalGCs = 0;
+		for (ICode code : sequence) {
+			if (code.matches(NucleotideCode.GUANINE) || code.matches(NucleotideCode.CYTOSINE)) {
+				totalGCs++;
+			}
 		}
+		double gcPercent = totalGCs / sequence.size() * 100;
+		return gcPercent;
+	}
+
+	public static Map<ICode, Integer> getNucloetideCounts(ISequence sequence) {
+		int As = 0;
+		int Gs = 0;
+		int Cs = 0;
+		int Ts = 0;
+		for (ICode code : sequence) {
+			if (code.matches(NucleotideCode.ADENINE)) {
+				As++;
+			} else if (code.matches(NucleotideCode.CYTOSINE)) {
+				Cs++;
+			} else if (code.matches(NucleotideCode.GUANINE)) {
+				Gs++;
+			} else if (code.matches(NucleotideCode.THYMINE)) {
+				Ts++;
+			}
+		}
+		Map<ICode, Integer> ntCounts = new HashMap<ICode, Integer>();
+		ntCounts.put(NucleotideCode.ADENINE, As);
+		ntCounts.put(NucleotideCode.CYTOSINE, Cs);
+		ntCounts.put(NucleotideCode.GUANINE, Gs);
+		ntCounts.put(NucleotideCode.THYMINE, Ts);
+		return ntCounts;
+	}
+
+	/**
+	 * Marmur,J., and Doty,P. (1962) J Mol Biol 5:109-118 [PubMed]
+	 * 
+	 * @param sequence
+	 * @return
+	 */
+	public static double getMeltingTemperatureInCelsiusUsingWallaceMethod(ISequence sequence) {
+		Map<ICode, Integer> ntCount = getNucloetideCounts(sequence);
+		double meltingTemperature = 2 * (ntCount.get(NucleotideCode.ADENINE) + ntCount.get(NucleotideCode.THYMINE)) + 4 * (ntCount.get(NucleotideCode.GUANINE) + ntCount.get(NucleotideCode.CYTOSINE));
+		return meltingTemperature;
+	}
+
+	/**
+	 * Wallace,R.B., Shaffer,J., Murphy,R.F., Bonner,J., Hirose,T., and Itakura,K. (1979) Nucleic Acids Res 6:3543-3557 (Abstract) and Sambrook,J., and Russell,D.W. (2001) Molecular Cloning: A
+	 * Laboratory Manual. Cold Spring Harbor Laboratory Press; Cold Spring Harbor, NY. (CHSL Press)
+	 * 
+	 * @param sequence
+	 * @return
+	 */
+	public static double getMeltingTemperatureInCelsiusBasedOnGC(ISequence sequence) {
+		Map<ICode, Integer> ntCount = getNucloetideCounts(sequence);
+		int yG = ntCount.get(NucleotideCode.GUANINE);
+		int zC = ntCount.get(NucleotideCode.CYTOSINE);
+		int wA = ntCount.get(NucleotideCode.ADENINE);
+		int xT = ntCount.get(NucleotideCode.THYMINE);
+		// Tm= 64.9 +41*(yG+zC-16.4)/(wA+xT+yG+zC)
+		double meltingTemperature = 64.9 + (41 * (yG + zC - 16.4) / (wA + xT + yG + zC));
+		return meltingTemperature;
+	}
+
+	//
+	public static double getMeltingTemperature(ISequence sequence) {
+		return NN_TM_Calculator.getTm(sequence);
+	}
+
+	public static void main(String[] args) {
+		ISequence a = new IupacNucleotideCodeSequence("GAGAAAAGGATGAATTC");
+		System.out.println("NN_python:" + getMeltingTemperature(a));
+		System.out.println("Wallace:" + getMeltingTemperatureInCelsiusUsingWallaceMethod(a));
+		System.out.println("GC:" + getMeltingTemperatureInCelsiusBasedOnGC(a));
+		// System.out.println("NA java:" + NucleicAcid.calcDefaultNearestNeighborTm(a.toString()));
 
 	}
 

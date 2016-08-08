@@ -93,9 +93,15 @@ public class NucleotideCodeSequence implements ISequence, Comparable<NucleotideC
 			sequenceAsBits = (BitSet) origAsNucleotideSequence.sequenceAsBits.clone();
 			currentNumberOfBits = origAsNucleotideSequence.currentNumberOfBits;
 		} else {
-			throw new IllegalArgumentException("The passed in ISequence orig must be of type NucleotideSequence to be utilized by the constructor.");
-		}
+			String nucleotidesAsString = orig.toString();
+			NucleotideCode[] nucleotides = NucleotideCode.getNucleotidesFromString(nucleotidesAsString);
+			currentNumberOfBits = nucleotides.length * BITS_PER_NUCLEOTIDE;
+			sequenceAsBits = new BitSet(currentNumberOfBits);
 
+			for (int i = 0; i < nucleotides.length; i++) {
+				setCodeAt(i, nucleotides[i]);
+			}
+		}
 	}
 
 	@Override
@@ -211,9 +217,13 @@ public class NucleotideCodeSequence implements ISequence, Comparable<NucleotideC
 		return returnString.toString();
 	}
 
-	
 	String toStringAsBits() {
 		return BitSetUtil.getBinaryStringOfBits(sequenceAsBits);
+	}
+
+	@Override
+	public double getGCPercent() {
+		return SequenceUtil.getGCPercent(this);
 	}
 
 	@Override
@@ -298,6 +308,17 @@ public class NucleotideCodeSequence implements ISequence, Comparable<NucleotideC
 		}
 
 		return result;
+	}
+
+	@Override
+	public boolean contains(ICode nucleotide) {
+		boolean nucleotideFound = false;
+		int i = 0;
+		while (i < size() && !nucleotideFound) {
+			nucleotideFound = getCodeAt(i).matches(nucleotide);
+			i++;
+		}
+		return nucleotideFound;
 	}
 
 }

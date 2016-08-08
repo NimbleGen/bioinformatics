@@ -57,4 +57,11 @@ public interface ISequence extends Iterable<ICode> {
 	 * @return the compliment representation of this sequence
 	 */
 	ISequence getCompliment();
+
+	/**
+	 * @return the percent of bases in this sequence that are g's or c's
+	 */
+	double getGCPercent();
+
+	boolean contains(ICode nucleotide);
 }
