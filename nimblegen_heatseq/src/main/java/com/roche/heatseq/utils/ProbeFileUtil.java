@@ -161,7 +161,7 @@ public final class ProbeFileUtil {
 	 * @param fileOsFlavor
 	 * @throws IOException
 	 */
-	public static void writeProbesToFile(List<Probe> probes, File outputProbeInfoFile, FileOsFlavor fileOsFlavor) throws IOException {
+	public static void writeProbesToFile(List<Probe> probes, File outputProbeInfoFile, int extensionUidLenght, int ligationUidLength, FileOsFlavor fileOsFlavor) throws IOException {
 
 		String newLine = null;
 		if (fileOsFlavor == FileOsFlavor.CURRENT_SYSTEM) {
@@ -188,12 +188,16 @@ public final class ProbeFileUtil {
 		FileWriter probeFileWriter = new FileWriter(outputProbeInfoFile.getAbsoluteFile());
 		BufferedWriter probeWriter = new BufferedWriter(probeFileWriter);
 
-		probeWriter.write(header + newLine);
+		String commentLine = "#ligation_uid=" + ligationUidLength + " extension_uid=" + extensionUidLenght + " genome=hg19";
+
+		probeWriter.write(commentLine + newLine + header + newLine);
+
+		int count = 1;
 
 		for (Probe probe : probes) {
 			StringBuilder lineBuilder = new StringBuilder();
 
-			lineBuilder.append(probe.getProbeId() + StringUtil.TAB);
+			lineBuilder.append("probe_" + count + "_" + probe.getProbeId() + StringUtil.TAB);
 			lineBuilder.append(probe.getSequenceName() + StringUtil.TAB);
 			lineBuilder.append(probe.getProbeStrand().getSymbol() + StringUtil.TAB);
 			lineBuilder.append(probe.getExtensionPrimerStart() + StringUtil.TAB);
@@ -210,6 +214,7 @@ public final class ProbeFileUtil {
 
 			String line = lineBuilder.toString();
 			probeWriter.write(line + newLine);
+			count++;
 		}
 
 		probeWriter.close();

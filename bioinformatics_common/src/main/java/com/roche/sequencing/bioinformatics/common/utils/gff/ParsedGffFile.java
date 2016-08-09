@@ -14,11 +14,15 @@ public class ParsedGffFile {
 	private final Map<String, List<GffEntry>> gffEntriesByContainer;
 	private final List<String> sources;
 	private final List<String> types;
+	private double minValue;
+	private double maxValue;
 
 	ParsedGffFile() {
 		gffEntriesByContainer = new HashMap<String, List<GffEntry>>();
 		sources = new ArrayList<String>();
 		types = new ArrayList<String>();
+		this.minValue = 0;
+		this.maxValue = 0;
 	}
 
 	String getSource(int indexOfSource) {
@@ -48,6 +52,8 @@ public class ParsedGffFile {
 			types.add(type);
 		}
 		GffEntry entry = new GffEntry(this, indexOfSource, indexOfType, start, stop, score, strand, attributes);
+		minValue = Math.min(minValue, score);
+		maxValue = Math.max(maxValue, score);
 		gffEntriesForContainer.add(entry);
 	}
 
@@ -65,6 +71,14 @@ public class ParsedGffFile {
 			});
 		}
 
+	}
+
+	public double getMinValue() {
+		return minValue;
+	}
+
+	public double getMaxValue() {
+		return maxValue;
 	}
 
 	public List<String> getContainerNames() {

@@ -224,4 +224,8 @@ public final class StringUtil {
 
 	}
 
+	public static String replace(String originalString, int index, Character charToReplaceWith) {
+		String replacedString = originalString.substring(0, index) + charToReplaceWith + originalString.substring(index + 1);
+		return replacedString;
+	}
 }
