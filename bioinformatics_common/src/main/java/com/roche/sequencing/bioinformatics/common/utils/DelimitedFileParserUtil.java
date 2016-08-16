@@ -810,7 +810,7 @@ public final class DelimitedFileParserUtil {
 			if (parsedCurrentRow.length == 1 && headerInfo.size() > 1) {
 				String message = "Unable to parse line[" + ArraysUtil.toString(parsedCurrentRow, StringUtil.TAB) + "] because it does not contain column index[" + columnIndex
 						+ "] which is a value for the header name[" + headerName
-						+ "].  This appears to an issue with the provided column deliter; this line does not contain a single instance of the column delimiter string.";
+						+ "].  This appears to an issue with the provided column delimiter; this line does not contain a single instance of the column delimiter string.";
 				throw new IllegalStateException(message);
 			}
 

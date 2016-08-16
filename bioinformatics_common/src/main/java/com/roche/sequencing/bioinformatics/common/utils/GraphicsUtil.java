@@ -316,15 +316,7 @@ public class GraphicsUtil {
 
 	public static void setGraphicsHints(Graphics2D graphics2D) {
 		graphics2D.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-		Object antialiasHint = graphics2D.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
-		graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, // Anti-alias!
-				RenderingHints.VALUE_ANTIALIAS_ON);
-		if (antialiasHint == null) {
-			antialiasHint = RenderingHints.VALUE_ANTIALIAS_DEFAULT;
-		}
-		graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, // Anti-alias!
-				antialiasHint);
+		graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 	}
 
 }

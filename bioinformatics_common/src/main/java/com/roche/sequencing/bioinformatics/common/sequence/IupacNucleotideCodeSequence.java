@@ -351,4 +351,9 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 		return nucleotideFound;
 	}
 
+	@Override
+	public ISequence subSequence(int start) {
+		return subSequence(start, size() - 1);
+	}
+
 }

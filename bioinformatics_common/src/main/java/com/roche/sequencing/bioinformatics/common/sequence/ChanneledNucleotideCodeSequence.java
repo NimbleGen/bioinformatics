@@ -362,4 +362,9 @@ class ChanneledNucleotideCodeSequence implements ISequence, Comparable<Channeled
 		return nucleotideFound;
 	}
 
+	@Override
+	public ISequence subSequence(int start) {
+		return subSequence(start, size() - 1);
+	}
+
 }

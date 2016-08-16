@@ -32,6 +32,26 @@ public class CigarStringUtil {
 		throw new AssertionError();
 	}
 
+	public static boolean isMatch(char character) {
+		boolean isMatch = CIGAR_SEQUENCE_MATCH == character || CIGAR_ALIGNMENT_MATCH == character;
+		return isMatch;
+	}
+
+	public static boolean isInsertionToReference(char character) {
+		boolean isInsertion = CIGAR_INSERTION_TO_REFERENCE == character;
+		return isInsertion;
+	}
+
+	public static boolean isMismatch(char character) {
+		boolean isMismatch = CIGAR_SEQUENCE_MISMATCH == character;
+		return isMismatch;
+	}
+
+	public static boolean isDeletionToReference(char character) {
+		boolean isDeletion = CIGAR_DELETION_FROM_REFERENCE == character;
+		return isDeletion;
+	}
+
 	static CigarString getCigarString(AlignmentPair alignmentPair) {
 		AlignmentPair alignmentWithoutEndingAndBeginningQueryInserts = alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts();
 		ISequence referenceSequenceAlignment = alignmentWithoutEndingAndBeginningQueryInserts.getReferenceAlignment();
@@ -155,6 +175,39 @@ public class CigarStringUtil {
 		}
 
 		return editDistance;
+	}
+
+	public static String expandCigarString(String summarizedCigarString) {
+		StringBuilder expandedCigarString = new StringBuilder();
+		StringBuilder currentString = new StringBuilder();
+		for (char currentChar : summarizedCigarString.toCharArray()) {
+			if (Character.isDigit(currentChar)) {
+				currentString.append(currentChar);
+			} else {
+				int number = Integer.valueOf(currentString.toString());
+				if (currentChar == CIGAR_ALIGNMENT_MATCH || currentChar == CIGAR_SEQUENCE_MATCH) {
+					for (int i = 0; i < number; i++) {
+						expandedCigarString.append(currentChar);
+					}
+				} else if (currentChar == CIGAR_INSERTION_TO_REFERENCE) {
+					for (int i = 0; i < number; i++) {
+						expandedCigarString.append(currentChar);
+					}
+				} else if (currentChar == CIGAR_DELETION_FROM_REFERENCE) {
+					for (int i = 0; i < number; i++) {
+						expandedCigarString.append(currentChar);
+					}
+				} else if (currentChar == CIGAR_SEQUENCE_MISMATCH) {
+					for (int i = 0; i < number; i++) {
+						expandedCigarString.append(currentChar);
+					}
+				} else {
+					throw new AssertionError("Unrecognized character[" + currentChar + "] in cigar string[" + summarizedCigarString + "].");
+				}
+				currentString = new StringBuilder();
+			}
+		}
+		return expandedCigarString.toString();
 	}
 
 }

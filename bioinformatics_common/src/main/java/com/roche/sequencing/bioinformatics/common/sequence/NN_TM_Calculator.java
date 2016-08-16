@@ -3,8 +3,8 @@ package com.roche.sequencing.bioinformatics.common.sequence;
 public class NN_TM_Calculator {
 
 	private final static double UNIVERSAL_GAS_CONSTANT = 1.9872;// universal gas constant in Cal/degrees C*Mol;
-	private final static double DEFAULT_OLIGO_CONCENTRATION = 0.00000005;
-	private final static double DEFAULT_SALT_CONCENTRATION = 0.05;
+	private final static double DEFAULT_OLIGO_CONCENTRATION = 25;
+	private final static double DEFAULT_SALT_CONCENTRATION = 50;
 	private final static NN_TM_ParametersSourceEnum DEFAULT_PARAMTERS_SOURCE = NN_TM_ParametersSourceEnum.SantaLucia1997;
 
 	public static double getTm(ISequence sequence) {
@@ -29,7 +29,6 @@ public class NN_TM_Calculator {
 		}
 
 		ICode firstCode = sequence.getCodeAt(0);
-		ICode secondCode = sequence.getCodeAt(1);
 		ICode lastCode = sequence.getCodeAt(sequence.size() - 1);
 
 		boolean fivePrimeEndIsT = firstCode.matches(NucleotideCode.THYMINE);
@@ -53,7 +52,7 @@ public class NN_TM_Calculator {
 			initialGorCCount++;
 		}
 
-		if (secondCode.matches(NucleotideCode.ADENINE) || secondCode.matches(NucleotideCode.THYMINE)) {
+		if (lastCode.matches(NucleotideCode.ADENINE) || lastCode.matches(NucleotideCode.THYMINE)) {
 			initialAorTCount++;
 		} else {
 			initialGorCCount++;
@@ -64,23 +63,16 @@ public class NN_TM_Calculator {
 
 		deltaH += (initialGorCCount * deltaHParameters.getInitGorC());
 		deltaS += (initialGorCCount * deltaSParameters.getInitGorC());
-
 		for (int i = 0; i < sequence.size() - 1; i++) {
 			ISequence twoMerSequence = sequence.subSequence(i, i + 1);
+
 			deltaH += deltaHParameters.getValueForTwoMer(twoMerSequence);
 			deltaS += deltaSParameters.getValueForTwoMer(twoMerSequence);
 		}
 
-		// System.out.println("python dh:" + deltaH);
-		// System.out.println("python ds:" + deltaS);
-
-		double numerator = -(deltaH + 3.4) * 1000;
-		double denominator = (UNIVERSAL_GAS_CONSTANT * Math.log(1.0 / oligoConcentration)) - deltaS;
-		double meltingTemperature = (numerator / denominator) + 16.6 * (Math.log10(saltConcentration)) - 273.15;
-		// double dnac1 = 25;
-		// double dnac2 = 25;
-		// double k = (dnac1 - (dnac2 / 2.0)) * Math.pow(Math.E, -9);
-		// double meltingTemperature = (1000 * deltaH) / (deltaS + (UNIVERSAL_GAS_CONSTANT * (Math.log(k)))) - 273.15;
+		double adjustedDeltaS = (-deltaS) - (0.368 * (sequence.size() - 1)) * Math.log(saltConcentration / 1e3);
+		double k = (oligoConcentration / 4.0) * 1e-9;
+		double meltingTemperature = ((1000 * (deltaH)) / (-adjustedDeltaS + (UNIVERSAL_GAS_CONSTANT * (Math.log(k))))) - 273.15;
 
 		return meltingTemperature;
 	}

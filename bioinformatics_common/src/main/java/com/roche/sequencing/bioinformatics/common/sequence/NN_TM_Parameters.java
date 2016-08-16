@@ -149,7 +149,7 @@ class NN_TM_Parameters {
 			value = GGorCC;
 			break;
 		default:
-			throw new AssertionError();
+			value = 0.0;
 		}
 		return value;
 	}
