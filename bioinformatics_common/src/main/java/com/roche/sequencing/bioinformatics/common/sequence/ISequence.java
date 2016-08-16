@@ -44,6 +44,13 @@ public interface ISequence extends Iterable<ICode> {
 	ISequence subSequence(int start, int end);
 
 	/**
+	 * 
+	 * @param start
+	 * @return the sequence starting at start and ending at the end of the string
+	 */
+	ISequence subSequence(int start);
+
+	/**
 	 * @return the reverse compliment representation of this sequence
 	 */
 	ISequence getReverseCompliment();

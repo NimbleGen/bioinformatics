@@ -192,12 +192,10 @@ public final class ProbeFileUtil {
 
 		probeWriter.write(commentLine + newLine + header + newLine);
 
-		int count = 1;
-
 		for (Probe probe : probes) {
 			StringBuilder lineBuilder = new StringBuilder();
 
-			lineBuilder.append("probe_" + count + "_" + probe.getProbeId() + StringUtil.TAB);
+			lineBuilder.append(probe.getProbeId() + StringUtil.TAB);
 			lineBuilder.append(probe.getSequenceName() + StringUtil.TAB);
 			lineBuilder.append(probe.getProbeStrand().getSymbol() + StringUtil.TAB);
 			lineBuilder.append(probe.getExtensionPrimerStart() + StringUtil.TAB);
@@ -214,7 +212,6 @@ public final class ProbeFileUtil {
 
 			String line = lineBuilder.toString();
 			probeWriter.write(line + newLine);
-			count++;
 		}
 
 		probeWriter.close();

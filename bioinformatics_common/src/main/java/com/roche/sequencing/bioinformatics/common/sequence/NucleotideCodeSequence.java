@@ -321,4 +321,9 @@ public class NucleotideCodeSequence implements ISequence, Comparable<NucleotideC
 		return nucleotideFound;
 	}
 
+	@Override
+	public ISequence subSequence(int start) {
+		return subSequence(start, size() - 1);
+	}
+
 }

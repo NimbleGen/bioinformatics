@@ -76,10 +76,11 @@ public class BamFileUtil {
 	 * @param outputBamIndex
 	 *            File for output index file
 	 */
-	public static void createIndex(File inputBamFile) {
+	public static File createIndex(File inputBamFile) {
 		String outputBamIndexFileName = inputBamFile + ".bai";
 		File outputBamIndexFile = new File(outputBamIndexFileName);
 		createIndex(inputBamFile, outputBamIndexFile);
+		return outputBamIndexFile;
 	}
 
 	/**
