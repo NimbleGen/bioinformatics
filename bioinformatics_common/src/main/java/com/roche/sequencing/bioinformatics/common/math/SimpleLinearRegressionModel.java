@@ -97,6 +97,14 @@ public class SimpleLinearRegressionModel {
 		return coefficientOfDetermination;
 	}
 
+	public double getPearsonCorrelationCoefficient() {
+		return pearsonCorrelationCoefficient;
+	}
+
+	public void setPearsonCorrelationCoefficient(double pearsonCorrelationCoefficient) {
+		this.pearsonCorrelationCoefficient = pearsonCorrelationCoefficient;
+	}
+
 	@Override
 	public String toString() {
 		return "SimpleLinearRegressionModel [xValues=" + Arrays.toString(xValues) + ", yValues=" + Arrays.toString(yValues) + ", xMean=" + xMean + ", yMean=" + yMean + ", xStandardDeviation="

@@ -26,6 +26,8 @@ public class CigarStringUtil {
 	public final static char CIGAR_INSERTION_TO_REFERENCE = 'I';
 	public final static char CIGAR_SEQUENCE_MATCH = '=';
 	public final static char CIGAR_SEQUENCE_MISMATCH = 'X';
+	public final static char CIGAR_SOFT_CLIPPING = 'S';
+	public final static char CIGAR_HARD_CLIPPING = 'H';
 	public final static String REFERENCE_DELETION_INDICATOR_IN_MD_TAG = "^";
 
 	private CigarStringUtil() {
@@ -201,6 +203,10 @@ public class CigarStringUtil {
 					for (int i = 0; i < number; i++) {
 						expandedCigarString.append(currentChar);
 					}
+				} else if (currentChar == CIGAR_SOFT_CLIPPING) {
+					expandedCigarString.append(currentChar);
+				} else if (currentChar == CIGAR_HARD_CLIPPING) {
+					expandedCigarString.append(currentChar);
 				} else {
 					throw new AssertionError("Unrecognized character[" + currentChar + "] in cigar string[" + summarizedCigarString + "].");
 				}
@@ -208,6 +214,21 @@ public class CigarStringUtil {
 			}
 		}
 		return expandedCigarString.toString();
+	}
+
+	public static boolean isSoftClip(char cigarSymbol) {
+		boolean isSoftClip = cigarSymbol == CIGAR_SOFT_CLIPPING;
+		return isSoftClip;
+	}
+
+	public static boolean isHardClip(char cigarSymbol) {
+		boolean isHardClip = cigarSymbol == CIGAR_HARD_CLIPPING;
+		return isHardClip;
+	}
+
+	public static boolean isClip(char cigarSymbol) {
+		boolean isClip = isSoftClip(cigarSymbol) || isHardClip(cigarSymbol);
+		return isClip;
 	}
 
 }

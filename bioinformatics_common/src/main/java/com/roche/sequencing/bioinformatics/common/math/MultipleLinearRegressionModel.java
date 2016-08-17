@@ -239,6 +239,78 @@ public class MultipleLinearRegressionModel {
 		return coefficients;
 	}
 
+	public Set<Predictors> getPredictorValues() {
+		return predictorValues;
+	}
+
+	public void setPredictorValues(Set<Predictors> predictorValues) {
+		this.predictorValues = predictorValues;
+	}
+
+	public double[] getyValues() {
+		return yValues;
+	}
+
+	public void setyValues(double[] yValues) {
+		this.yValues = yValues;
+	}
+
+	public double getMeanSquareError() {
+		return meanSquareError;
+	}
+
+	public void setMeanSquareError(double meanSquareError) {
+		this.meanSquareError = meanSquareError;
+	}
+
+	public double getrSquared() {
+		return rSquared;
+	}
+
+	public void setrSquared(double rSquared) {
+		this.rSquared = rSquared;
+	}
+
+	public double getAdjustedRSquared() {
+		return adjustedRSquared;
+	}
+
+	public void setAdjustedRSquared(double adjustedRSquared) {
+		this.adjustedRSquared = adjustedRSquared;
+	}
+
+	public double getRegressionSumOfSquares() {
+		return regressionSumOfSquares;
+	}
+
+	public void setRegressionSumOfSquares(double regressionSumOfSquares) {
+		this.regressionSumOfSquares = regressionSumOfSquares;
+	}
+
+	public double getErrorSumOfSquares() {
+		return errorSumOfSquares;
+	}
+
+	public void setErrorSumOfSquares(double errorSumOfSquares) {
+		this.errorSumOfSquares = errorSumOfSquares;
+	}
+
+	public double getTotalSumOfSquares() {
+		return totalSumOfSquares;
+	}
+
+	public void setTotalSumOfSquares(double totalSumOfSquares) {
+		this.totalSumOfSquares = totalSumOfSquares;
+	}
+
+	public void setCoefficients(double[] coefficients) {
+		this.coefficients = coefficients;
+	}
+
+	public void setResidualErrors(double[] residualErrors) {
+		this.residualErrors = residualErrors;
+	}
+
 	public static void main(String[] args) throws UnableToFindHeaderException, IOException {
 		example3();
 	}
@@ -267,7 +339,7 @@ public class MultipleLinearRegressionModel {
 			}
 		}
 		MultipleLinearRegressionModel model = calculateModel(yValues, x1Values, x2Values);
-		// System.out.println(model.getMinitabOutput());
+		System.out.println(model.getAdjustedRSquared());
 	}
 
 	public static void example2() {
@@ -276,7 +348,7 @@ public class MultipleLinearRegressionModel {
 		double[] yValues = new double[] { 1, 2, 1, 3, 2, 3, 3, 4, 4, 3, 5, 3, 3, 2, 4, 5, 5, 5, 4, 3 };
 
 		MultipleLinearRegressionModel model = calculateModel(yValues, x1Values, x2Values);
-		// System.out.println(model.getMinitabOutput());
+		System.out.println(model.getAdjustedRSquared());
 	}
 
 	public static void example3() {
