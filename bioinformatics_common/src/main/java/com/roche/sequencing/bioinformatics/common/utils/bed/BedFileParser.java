@@ -29,7 +29,7 @@ public class BedFileParser {
 
 		for (BedTrack bedTrack : parsedBedFile) {
 			for (IBedEntry bedEntry : bedTrack.getBedEntries()) {
-				String container = bedEntry.getChromosomeName();
+				String container = bedEntry.getContainerName();
 				long start = Math.min(bedEntry.getChromosomeStart(), bedEntry.getChromosomeEnd());
 				long stop = Math.max(bedEntry.getChromosomeStart(), bedEntry.getChromosomeEnd());
 				Strand strand = Strand.FORWARD;

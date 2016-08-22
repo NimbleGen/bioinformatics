@@ -40,7 +40,7 @@ class BedEntry implements IBedEntry {
 		this.blockStarts = blockStarts;
 	}
 
-	public String getChromosomeName() {
+	public String getContainerName() {
 		return chromosomeName;
 	}
 

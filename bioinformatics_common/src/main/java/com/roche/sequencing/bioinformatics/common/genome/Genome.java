@@ -10,11 +10,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.SimpleNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
-public class Genome {
+public class Genome implements IGenome {
+
+	private final Logger logger = LoggerFactory.getLogger(Genome.class);
 
 	private final static int LONG_LENGTH_IN_BYTES = 8;
 	private final static int CONTAINER_NAME_INDEX_IN_CONTAINER_INFORMATION = 0;
@@ -83,7 +88,7 @@ public class Genome {
 		return new GenomicRangedCoordinate(containerName, 1, getContainerSize(containerName));
 	}
 
-	public ISequence getSequence(String containerName, long sequenceStart, long sequenceEnd) throws IOException {
+	public ISequence getSequence(String containerName, long sequenceStart, long sequenceEnd) {
 		ISequence sequence = null;
 		StartAndStopLocationsInFile startAndStop = startAndStopLocationsByContainerName.get(containerName);
 
@@ -114,14 +119,18 @@ public class Genome {
 			}
 
 			int numberOfBytes = (int) (lastByteContainingPartOfSequenceInFile - firstByteContainingPartOfSequenceInFile + 1);
-			genomeFileReader.seek(firstByteContainingPartOfSequenceInFile);
-
-			if (numberOfBytes < 0) {
-				System.out.println("here");
+			try {
+				genomeFileReader.seek(firstByteContainingPartOfSequenceInFile);
+			} catch (IOException e) {
+				logger.warn(e.getMessage(), e);
 			}
 
 			byte[] sequenceBytes = new byte[numberOfBytes];
-			genomeFileReader.read(sequenceBytes);
+			try {
+				genomeFileReader.read(sequenceBytes);
+			} catch (IOException e) {
+				logger.warn(e.getMessage(), e);
+			}
 
 			BitSet sequenceWithExtrasAsBits = BitSet.valueOf(sequenceBytes);
 			int startInBitSet = startIndexWithinByteOfSequenceStartInBits;
@@ -148,9 +157,13 @@ public class Genome {
 		return size;
 	}
 
-	public void close() throws IOException {
+	public void close() {
 		if (genomeFileReader != null) {
-			genomeFileReader.close();
+			try {
+				genomeFileReader.close();
+			} catch (IOException e) {
+				logger.warn(e.getMessage(), e);
+			}
 		}
 	}
 
@@ -177,14 +190,17 @@ public class Genome {
 		String stopAsString = split[2];
 		Long stop = Long.parseLong(stopAsString);
 		String strand = split[3];
-		try {
-			sequence = genome.getSequence(sequenceString, start, stop);
-			if (strand.equals("-")) {
-				sequence = sequence.getReverseCompliment();
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
+
+		sequence = genome.getSequence(sequenceString, start, stop);
+		if (strand.equals("-")) {
+			sequence = sequence.getReverseCompliment();
 		}
+
 		return sequence;
+	}
+
+	@Override
+	public boolean containsSequences() {
+		return true;
 	}
 }

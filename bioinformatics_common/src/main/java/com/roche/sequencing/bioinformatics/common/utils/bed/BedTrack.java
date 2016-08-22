@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,14 +27,16 @@ public class BedTrack {
 	private final File file;
 	private final List<String> browserCommands;
 	private final Map<String, String> nameValuePairs;
-	private final Map<String, List<IBedEntry>> bedEntriesByChromosome;
+	private final Map<String, List<IBedEntry>> bedEntriesByContainer;
+	private final Map<String, Long> largestCoordinateByContainer;
 
 	public BedTrack(File file) {
 		super();
 		this.file = file;
 		this.browserCommands = new ArrayList<String>();
 		this.nameValuePairs = new HashMap<String, String>();
-		this.bedEntriesByChromosome = new HashMap<String, List<IBedEntry>>();
+		this.bedEntriesByContainer = new HashMap<String, List<IBedEntry>>();
+		this.largestCoordinateByContainer = new HashMap<String, Long>();
 	}
 
 	void addBrowserCommand(String browserCommand) {
@@ -98,13 +101,19 @@ public class BedTrack {
 	}
 
 	void addBedEntry(IBedEntry bedEntry) {
-		String chromosomeName = bedEntry.getChromosomeName();
+		String containerName = bedEntry.getContainerName();
+
+		Long existingLargestCoordinate = largestCoordinateByContainer.get(containerName);
+		if (existingLargestCoordinate == null || existingLargestCoordinate < bedEntry.getChromosomeEnd()) {
+			largestCoordinateByContainer.put(containerName, (long) bedEntry.getChromosomeEnd());
+		}
+
 		List<IBedEntry> bedEntries = null;
-		if (bedEntriesByChromosome.containsKey(chromosomeName)) {
-			bedEntries = bedEntriesByChromosome.get(chromosomeName);
+		if (bedEntriesByContainer.containsKey(containerName)) {
+			bedEntries = bedEntriesByContainer.get(containerName);
 		} else {
 			bedEntries = new ArrayList<IBedEntry>();
-			bedEntriesByChromosome.put(chromosomeName, bedEntries);
+			bedEntriesByContainer.put(containerName, bedEntries);
 		}
 		bedEntries.add(bedEntry);
 	}
@@ -119,14 +128,14 @@ public class BedTrack {
 
 	public List<IBedEntry> getBedEntries() {
 		List<IBedEntry> bedEntries = new ArrayList<IBedEntry>();
-		for (List<IBedEntry> value : bedEntriesByChromosome.values()) {
+		for (List<IBedEntry> value : bedEntriesByContainer.values()) {
 			bedEntries.addAll(value);
 		}
 		return bedEntries;
 	}
 
 	public List<IBedEntry> getSortedBedEntries(String chromosomeName) {
-		List<IBedEntry> bedEntriesForChromosome = bedEntriesByChromosome.get(chromosomeName);
+		List<IBedEntry> bedEntriesForChromosome = bedEntriesByContainer.get(chromosomeName);
 		if (bedEntriesForChromosome == null) {
 			bedEntriesForChromosome = Collections.emptyList();
 		}
@@ -144,7 +153,7 @@ public class BedTrack {
 	}
 
 	public List<String> getSortedChromsomeNames() {
-		List<String> sortedContainerNames = new ArrayList<String>(bedEntriesByChromosome.keySet());
+		List<String> sortedContainerNames = new ArrayList<String>(bedEntriesByContainer.keySet());
 		Collections.sort(sortedContainerNames, GenomicRangedCoordinate.CONTAINER_COMPARATOR);
 		return sortedContainerNames;
 	}
@@ -185,7 +194,7 @@ public class BedTrack {
 					boolean nextFeatureFound = bedEntry.getChromosomeStart() > currentGenomicCoordinates.getStartLocation()
 							&& (bedEntry.getChromosomeEnd() > currentGenomicCoordinates.getStopLocation());
 					if (hasLoopedThroughAllContaines || nextFeatureFound) {
-						nextFeature = new GenomicRangedCoordinate(bedEntry.getChromosomeName(), bedEntry.getChromosomeStart(), bedEntry.getChromosomeEnd());
+						nextFeature = new GenomicRangedCoordinate(bedEntry.getContainerName(), bedEntry.getChromosomeStart(), bedEntry.getChromosomeEnd());
 						break bedLoop;
 					}
 				}
@@ -237,7 +246,7 @@ public class BedTrack {
 					boolean nextFeatureFound = bedEntry.getChromosomeEnd() < currentGenomicCoordinates.getStopLocation()
 							&& (bedEntry.getChromosomeStart() < currentGenomicCoordinates.getStartLocation());
 					if (hasLoopedThroughAllContaines || nextFeatureFound) {
-						nextFeature = new GenomicRangedCoordinate(bedEntry.getChromosomeName(), bedEntry.getChromosomeStart(), bedEntry.getChromosomeEnd());
+						nextFeature = new GenomicRangedCoordinate(bedEntry.getContainerName(), bedEntry.getChromosomeStart(), bedEntry.getChromosomeEnd());
 						break bedLoop;
 					}
 				}
@@ -259,5 +268,15 @@ public class BedTrack {
 			}
 		}
 		return visibility;
+	}
+
+	public List<GenomicRangedCoordinate> getContainers() {
+		List<GenomicRangedCoordinate> containers = new ArrayList<GenomicRangedCoordinate>();
+
+		for (Entry<String, Long> entry : largestCoordinateByContainer.entrySet()) {
+			containers.add(new GenomicRangedCoordinate(entry.getKey(), 1, entry.getValue()));
+		}
+
+		return containers;
 	}
 }

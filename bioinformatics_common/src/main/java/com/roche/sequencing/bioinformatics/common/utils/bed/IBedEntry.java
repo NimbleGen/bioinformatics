@@ -4,7 +4,7 @@ import java.util.List;
 
 public interface IBedEntry {
 
-	String getChromosomeName();
+	String getContainerName();
 
 	int getChromosomeStart();
 

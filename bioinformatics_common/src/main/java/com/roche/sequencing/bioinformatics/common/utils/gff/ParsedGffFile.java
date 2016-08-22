@@ -6,7 +6,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
+import com.roche.sequencing.bioinformatics.common.genome.GenomicRangedCoordinate;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 
 public class ParsedGffFile {
@@ -17,8 +19,11 @@ public class ParsedGffFile {
 	private double minValue;
 	private double maxValue;
 
+	private final Map<String, Long> largestCoordinateByContainer;
+
 	ParsedGffFile() {
 		gffEntriesByContainer = new HashMap<String, List<GffEntry>>();
+		largestCoordinateByContainer = new HashMap<String, Long>();
 		sources = new ArrayList<String>();
 		types = new ArrayList<String>();
 		this.minValue = 0;
@@ -54,6 +59,12 @@ public class ParsedGffFile {
 		GffEntry entry = new GffEntry(this, indexOfSource, indexOfType, start, stop, score, strand, attributes);
 		minValue = Math.min(minValue, score);
 		maxValue = Math.max(maxValue, score);
+
+		Long existingLargestCoordinate = largestCoordinateByContainer.get(containerName);
+		if (existingLargestCoordinate == null || existingLargestCoordinate < stop) {
+			largestCoordinateByContainer.put(containerName, stop);
+		}
+
 		gffEntriesForContainer.add(entry);
 	}
 
@@ -87,6 +98,16 @@ public class ParsedGffFile {
 
 	public List<GffEntry> getSortedEntriesForContainer(String containerName) {
 		return gffEntriesByContainer.get(containerName);
+	}
+
+	public List<GenomicRangedCoordinate> getContainers() {
+		List<GenomicRangedCoordinate> containers = new ArrayList<GenomicRangedCoordinate>();
+
+		for (Entry<String, Long> entry : largestCoordinateByContainer.entrySet()) {
+			containers.add(new GenomicRangedCoordinate(entry.getKey(), 1, entry.getValue()));
+		}
+
+		return containers;
 	}
 
 }

@@ -143,13 +143,13 @@ public class SequenceUtil {
 	}
 
 	//
-	public static double getMeltingTemperature(ISequence sequence) {
+	public static double getMeltingTemperatureUsingNearestNeighborThermodynamics(ISequence sequence) {
 		return NN_TM_Calculator.getTm(sequence);
 	}
 
 	public static void main(String[] args) {
 		ISequence a = new IupacNucleotideCodeSequence("GAGAAAAGGATGAATTC");
-		System.out.println("NN_python:" + getMeltingTemperature(a));
+		System.out.println("NN_python:" + getMeltingTemperatureUsingNearestNeighborThermodynamics(a));
 		System.out.println("Wallace:" + getMeltingTemperatureInCelsiusUsingWallaceMethod(a));
 		System.out.println("GC:" + getMeltingTemperatureInCelsiusBasedOnGC(a));
 		// System.out.println("NA java:" + NucleicAcid.calcDefaultNearestNeighborTm(a.toString()));
