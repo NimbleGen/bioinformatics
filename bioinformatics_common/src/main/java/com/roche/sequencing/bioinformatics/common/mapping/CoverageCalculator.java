@@ -9,27 +9,22 @@ import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 public class CoverageCalculator {
 
 	private final LinkedList<StartWithTally> range;
+	private int min;
+	private int max;
 
 	public CoverageCalculator() {
 		range = new LinkedList<StartWithTally>();
+		min = Integer.MAX_VALUE;
+		max = Integer.MIN_VALUE;
 		range.add(new StartWithTally(-Integer.MAX_VALUE));
 		range.add(new StartWithTally(Integer.MAX_VALUE));
 	}
-
-	// private int findIndexOfFirstEqualOrLargerValueByBruteForce(int value) {
-	// int index = 0;
-	// while ((index < range.size()) && range.get(index).getPosition() < value) {
-	// index++;
-	// }
-	// return index;
-	// }
 
 	private int findIndexOfFirstEqualOrLargerValue(int position) {
 		return binarySearch(0, range.size() - 1, position);
 	}
 
 	private int binarySearch(int minIndex, int maxIndex, int position) {
-		// System.out.println("min:" + minIndex + "(" + range.get(minIndex).getPosition() + ") max:" + maxIndex + " (" + range.get(maxIndex).getPosition() + ")");
 		int foundIndex = 0;
 		int midIndex = minIndex + ((maxIndex - minIndex) / 2);
 		int indexAboveMidIndex = midIndex + 1;
@@ -48,6 +43,8 @@ public class CoverageCalculator {
 	}
 
 	public void addRange(int startPositionInclusive, int stopPositionInclusive) {
+		min = Math.min(startPositionInclusive, min);
+		max = Math.max(stopPositionInclusive, max);
 		int stopPositionExclusive = stopPositionInclusive + 1;
 		if (startPositionInclusive > stopPositionExclusive) {
 			int temp = stopPositionExclusive;
@@ -267,9 +264,26 @@ public class CoverageCalculator {
 		tallyRange.addRange(32907234, 32907367);
 		tallyRange.addRange(32907368, 32907523);
 		tallyRange.addRange(32907483, 32907590);
+		System.out.println("overlaps: " + tallyRange.overlapsBounds(1, 10));// false
+		System.out.println("overlaps: " + tallyRange.overlapsBounds(32906257, 32906357));// true
+		System.out.println("overlaps: " + tallyRange.overlapsBounds(32907590, 32907690));// true
+		System.out.println("overlaps: " + tallyRange.overlapsBounds(33907590, 33907690));// false
 
 		System.out.println(tallyRange.getCoverageStatsForRegionOfInterest(32906408, 32907524));
 		System.out.println(tallyRange);
+	}
+
+	public int getMaxTally() {
+		int maxTally = 0;
+		for (StartWithTally startWithTally : range) {
+			maxTally = Math.max(maxTally, startWithTally.tally);
+		}
+		return maxTally;
+	}
+
+	public boolean overlapsBounds(int startInGenome, int stopInGenome) {
+		boolean isNotOverlap = startInGenome > max || stopInGenome < min;
+		return !isNotOverlap;
 	}
 
 }

@@ -207,7 +207,7 @@ public class BedTrack {
 	}
 
 	public GenomicRangedCoordinate getGenomicCoordinatesOfPreviousFeature(GenomicRangedCoordinate currentGenomicCoordinates) {
-		GenomicRangedCoordinate nextFeature = null;
+		GenomicRangedCoordinate previousFeature = null;
 
 		List<String> sortedContainerNames = getSortedChromsomeNames();
 
@@ -235,7 +235,7 @@ public class BedTrack {
 			// note the starting container may get checked twice
 			// if there is only one container and we are at the last entry we
 			// have to start over in the same container
-			while (nextFeature == null && containersChecked <= sortedContainerNames.size()) {
+			while (previousFeature == null && containersChecked <= sortedContainerNames.size()) {
 				String currentContainer = sortedContainerNames.get(containerIndex);
 				List<IBedEntry> bedEntriesForContainer = getSortedBedEntries(currentContainer);
 
@@ -246,7 +246,7 @@ public class BedTrack {
 					boolean nextFeatureFound = bedEntry.getChromosomeEnd() < currentGenomicCoordinates.getStopLocation()
 							&& (bedEntry.getChromosomeStart() < currentGenomicCoordinates.getStartLocation());
 					if (hasLoopedThroughAllContaines || nextFeatureFound) {
-						nextFeature = new GenomicRangedCoordinate(bedEntry.getContainerName(), bedEntry.getChromosomeStart(), bedEntry.getChromosomeEnd());
+						previousFeature = new GenomicRangedCoordinate(bedEntry.getContainerName(), bedEntry.getChromosomeStart(), bedEntry.getChromosomeEnd());
 						break bedLoop;
 					}
 				}
@@ -255,7 +255,7 @@ public class BedTrack {
 			}
 		}
 
-		return nextFeature;
+		return previousFeature;
 	}
 
 	public int getVisibility() {
