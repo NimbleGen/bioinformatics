@@ -176,7 +176,9 @@ public class NucleotideCodeSequence implements ISequence, Comparable<NucleotideC
 	@Override
 	public ICode getCodeAt(int index) {
 		if ((index >= size()) || (index < 0)) {
-			throw new IndexOutOfBoundsException("Provided index[" + index + "] is larger than the current size[" + size() + "] or smaller than zero.");
+			throw new IndexOutOfBoundsException("Provided index[" + index + "] is larger than or equal to the current size[" + size() + "].");
+		} else if (index < 0) {
+			throw new IndexOutOfBoundsException("Provided index[" + index + "] is smaller than zero.");
 		}
 
 		int startIndex = index * BITS_PER_NUCLEOTIDE;

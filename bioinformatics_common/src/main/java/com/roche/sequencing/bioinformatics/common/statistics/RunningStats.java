@@ -65,49 +65,54 @@ public class RunningStats {
 		return currentMean;
 	}
 
-	public double getCurrentPopulationVariance() {
+	public Double getCurrentPopulationVariance() {
 		return getCurrentVariance(true);
 	}
 
-	public double getCurrentSampleVariance() {
+	public Double getCurrentSampleVariance() {
 		return getCurrentVariance(false);
 	}
 
-	public double getCurrentVariance() {
+	public Double getCurrentVariance() {
 		return getCurrentSampleVariance();
 	}
 
-	private double getCurrentVariance(boolean isPopulationVariance) {
-		double variance = 0.0;
-		BigDecimal n = null;
-		if (isPopulationVariance) {
-			n = new BigDecimal(numberOfValues);
-		} else {
-			// this results in a sample variance calculation
-			n = new BigDecimal(numberOfValues - 1);
+	private Double getCurrentVariance(boolean isPopulationVariance) {
+		Double variance = Double.NaN;
+		if (numberOfValues > 3) {
+			BigDecimal n = null;
+			if (isPopulationVariance) {
+				n = new BigDecimal(numberOfValues);
+			} else {
+				// this results in a sample variance calculation
+				n = new BigDecimal(numberOfValues - 1);
+			}
+			// Var(x) = E(x^2) - [E(X)]^2
+			BigDecimal lhs = sumOfSquares.divide(n, MATH_CONTEXT);
+			BigDecimal rhs = sumOfValues.divide(new BigDecimal(numberOfValues), MATH_CONTEXT).pow(2);
+			variance = lhs.subtract(rhs).doubleValue();
 		}
-		// Var(x) = E(x^2) - [E(X)]^2
-		BigDecimal lhs = sumOfSquares.divide(n, MATH_CONTEXT);
-		BigDecimal rhs = sumOfValues.divide(new BigDecimal(numberOfValues), MATH_CONTEXT).pow(2);
-		variance = lhs.subtract(rhs).doubleValue();
 		return variance;
 	}
 
-	public double getCurrentPopulationStandardDeviation() {
+	public Double getCurrentPopulationStandardDeviation() {
 		return getCurrentStandardDeviation(true);
 	}
 
-	public double getCurrentSampleStandardDeviation() {
+	public Double getCurrentSampleStandardDeviation() {
 		return getCurrentStandardDeviation(false);
 	}
 
-	public double getCurrentStandardDeviation() {
+	public Double getCurrentStandardDeviation() {
 		return getCurrentSampleStandardDeviation();
 	}
 
-	private double getCurrentStandardDeviation(boolean isPopulationStandardDeviation) {
-		double variance = getCurrentVariance(isPopulationStandardDeviation);
-		double standardDeviation = Math.sqrt(variance);
+	private Double getCurrentStandardDeviation(boolean isPopulationStandardDeviation) {
+		Double standardDeviation = Double.NaN;
+		Double variance = getCurrentVariance(isPopulationStandardDeviation);
+		if (!variance.equals(Double.NaN)) {
+			standardDeviation = Math.sqrt(variance);
+		}
 		return standardDeviation;
 	}
 

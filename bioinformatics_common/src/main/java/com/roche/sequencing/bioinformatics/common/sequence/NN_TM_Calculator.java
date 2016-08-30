@@ -11,6 +11,10 @@ public class NN_TM_Calculator {
 		return getTm(sequence, DEFAULT_PARAMTERS_SOURCE, DEFAULT_OLIGO_CONCENTRATION, DEFAULT_SALT_CONCENTRATION);
 	}
 
+	public static double getTm(ISequence sequence, NN_TM_ParametersSourceEnum parametersSource) {
+		return getTm(sequence, parametersSource, DEFAULT_OLIGO_CONCENTRATION, DEFAULT_SALT_CONCENTRATION);
+	}
+
 	public static double getTm(ISequence sequence, NN_TM_ParametersSourceEnum parametersSource, double oligoConcentration, double saltConcentration) {
 		NN_TM_Pair parameterPair = parametersSource.getParameters();
 		NN_TM_Parameters deltaHParameters = parameterPair.getDeltaHParameters();

@@ -118,7 +118,7 @@ public class SequenceUtil {
 	 * @param sequence
 	 * @return
 	 */
-	public static double getMeltingTemperatureInCelsiusUsingWallaceMethod(ISequence sequence) {
+	public static double getMeltingTemperatureInCelsiusUsingDotyMethod(ISequence sequence) {
 		Map<ICode, Integer> ntCount = getNucloetideCounts(sequence);
 		double meltingTemperature = 2 * (ntCount.get(NucleotideCode.ADENINE) + ntCount.get(NucleotideCode.THYMINE)) + 4 * (ntCount.get(NucleotideCode.GUANINE) + ntCount.get(NucleotideCode.CYTOSINE));
 		return meltingTemperature;
@@ -147,10 +147,14 @@ public class SequenceUtil {
 		return NN_TM_Calculator.getTm(sequence);
 	}
 
+	public static double getMeltingTemperatureUsingNearestNeighborThermodynamics(ISequence sequence, NN_TM_ParametersSourceEnum paramterSource) {
+		return NN_TM_Calculator.getTm(sequence, paramterSource);
+	}
+
 	public static void main(String[] args) {
 		ISequence a = new IupacNucleotideCodeSequence("GAGAAAAGGATGAATTC");
 		System.out.println("NN_python:" + getMeltingTemperatureUsingNearestNeighborThermodynamics(a));
-		System.out.println("Wallace:" + getMeltingTemperatureInCelsiusUsingWallaceMethod(a));
+		System.out.println("Wallace:" + getMeltingTemperatureInCelsiusUsingDotyMethod(a));
 		System.out.println("GC:" + getMeltingTemperatureInCelsiusBasedOnGC(a));
 		// System.out.println("NA java:" + NucleicAcid.calcDefaultNearestNeighborTm(a.toString()));
 

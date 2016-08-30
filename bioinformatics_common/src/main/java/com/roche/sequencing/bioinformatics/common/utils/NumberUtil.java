@@ -35,4 +35,27 @@ public class NumberUtil {
 		System.out.println(maxInt);
 	}
 
+	public static String getNumberSuffix(int number) {
+		String suffix;
+		int ones = number % 10;
+		int tens = (number / 10) % 10;
+
+		if (tens == 1) {
+			suffix = "th";
+		} else if (ones == 1) {
+			suffix = "st";
+		} else if (ones == 2) {
+			suffix = "nd";
+		} else if (ones == 3) {
+			suffix = "rd";
+		} else {
+			suffix = "th";
+		}
+		return suffix;
+	}
+
+	public static String addSuffixToNumber(int number) {
+		return number + getNumberSuffix(number);
+	}
+
 }
