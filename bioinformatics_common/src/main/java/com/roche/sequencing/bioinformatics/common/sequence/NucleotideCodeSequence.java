@@ -220,7 +220,7 @@ public class NucleotideCodeSequence implements ISequence, Comparable<NucleotideC
 	}
 
 	String toStringAsBits() {
-		return BitSetUtil.getBinaryStringOfBits(sequenceAsBits);
+		return BitSetUtil.getBinaryStringOfBits(sequenceAsBits, currentNumberOfBits);
 	}
 
 	@Override

@@ -132,7 +132,7 @@ public class CoverageCalculator {
 				- totalRedundantBasesCoveredInRegionOfInterest;
 
 		return new CoverageStats(totalUniqueBasedCoveredInRegionOfInterest, totalRedundantBasesCoveredInRegionOfInterest, totalUniqueBasesOutsideRegionOfInterest,
-				totalRedundantBasesOutsideRegionOfInterest, totalBasesInTally);
+				totalRedundantBasesOutsideRegionOfInterest, totalBasesInTally, regionOfInterestStartInclusive, regionOfInterestStopInclusive);
 	}
 
 	public String toString() {

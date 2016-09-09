@@ -453,4 +453,19 @@ public final class ArraysUtil {
 		return sum;
 	}
 
+	public static int indexOf(String[] array, String string) {
+		int indexOf = -1;
+		int currentIndex = 0;
+		if (string != null) {
+			arrayLoop: for (String currentString : array) {
+				if (string.equals(currentString)) {
+					indexOf = currentIndex;
+					break arrayLoop;
+				}
+				currentIndex++;
+			}
+		}
+		return indexOf;
+	}
+
 }

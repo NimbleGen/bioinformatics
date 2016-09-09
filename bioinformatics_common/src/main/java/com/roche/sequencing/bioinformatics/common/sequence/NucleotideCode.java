@@ -51,7 +51,9 @@ public enum NucleotideCode implements ICode {
 	@Override
 	public boolean matches(ICode nucleotide) {
 		boolean matches = (nucleotide instanceof NucleotideCode) && this.abbreviation.equals(((NucleotideCode) nucleotide).abbreviation);
-
+		if (!matches && nucleotide instanceof IupacNucleotideCode) {
+			matches = nucleotide.matches(this);
+		}
 		return matches;
 	}
 

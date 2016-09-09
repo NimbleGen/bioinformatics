@@ -6,15 +6,19 @@ public class CoverageStats {
 	private final int totalUniqueBasesOutsideRegionOfInterest;
 	private final int totalRedundantBasesOutsideRegionOfInterest;
 	private final int totalBases;
+	private final int regionOfInterestStartInclusive;
+	private final int regionOfInterestStopInclusive;
 
 	public CoverageStats(int totalUniqueBasesCoveredInRegionOfInterest, int totalRedundantBasesCoveredInRegionOfInterest, int totalUniqueBasesOutsideRegionOfInterest,
-			int totalRedundantBasesOutsideRegionOfInterest, int totalBases) {
+			int totalRedundantBasesOutsideRegionOfInterest, int totalBases, int regionOfInterestStartInclusive, int regionOfInterestStopInclusive) {
 		super();
 		this.totalUniqueBasesCoveredInRegionOfInterest = totalUniqueBasesCoveredInRegionOfInterest;
 		this.totalRedundantBasesCoveredInRegionOfInterest = totalRedundantBasesCoveredInRegionOfInterest;
 		this.totalUniqueBasesOutsideRegionOfInterest = totalUniqueBasesOutsideRegionOfInterest;
 		this.totalRedundantBasesOutsideRegionOfInterest = totalRedundantBasesOutsideRegionOfInterest;
 		this.totalBases = totalBases;
+		this.regionOfInterestStartInclusive = regionOfInterestStartInclusive;
+		this.regionOfInterestStopInclusive = regionOfInterestStopInclusive;
 	}
 
 	public int getTotalUniqueBasesCoveredInRegionOfInterest() {
@@ -35,6 +39,14 @@ public class CoverageStats {
 
 	public int getTotalBases() {
 		return totalBases;
+	}
+
+	public int getSizeOfRegionOfInterest() {
+		return regionOfInterestStopInclusive - regionOfInterestStartInclusive + 1;
+	}
+
+	public double getRatioOfRegionOfInterestCovered() {
+		return (double) totalUniqueBasesCoveredInRegionOfInterest / (double) getSizeOfRegionOfInterest();
 	}
 
 	@Override

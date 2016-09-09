@@ -5,7 +5,7 @@ import java.nio.ByteOrder;
 
 public class ByteUtil {
 
-	private final static int BITS_PER_BYTE = 8;
+	public final static int BITS_PER_BYTE = 8;
 
 	private final static int BYTES_IN_A_LONG = 8;
 	private final static int BYTES_IN_AN_INT = 4;
@@ -154,8 +154,6 @@ public class ByteUtil {
 		if (results.length < numberOfBytes) {
 			results = increaseNumberOfBytes(results, numberOfBytes, byteOrder, isSigned);
 		}
-
-		System.out.println(results.length);
 
 		if (results.length != numberOfBytes) {
 			String signedText = "an unsigned";
@@ -377,7 +375,7 @@ public class ByteUtil {
 	 * @param bitIndex
 	 * @return true if the bitIndex position is occupied by a 1.
 	 */
-	static boolean isBitOn(byte aByte, int bitIndex) {
+	public static boolean isBitOn(byte aByte, int bitIndex) {
 		boolean isBitOn = getBitValue(aByte, bitIndex) == 1;
 		return isBitOn;
 	}
@@ -650,6 +648,22 @@ public class ByteUtil {
 			invertedBytes[i] = (byte) (~bytes[i]);
 		}
 		return invertedBytes;
+	}
+
+	/**
+	 * @param bits
+	 * @return the bitset as a string
+	 */
+	public static String getBinaryStringOfBits(byte[] bytes) {
+		StringBuilder returnString = new StringBuilder();
+
+		for (byte aByte : bytes) {
+			for (int i = 0; i < BITS_PER_BYTE; i++) {
+				returnString.append((getBitValue(aByte, i)));
+			}
+			returnString.append(" ");
+		}
+		return returnString.toString();
 	}
 
 	public static void main(String[] args) {

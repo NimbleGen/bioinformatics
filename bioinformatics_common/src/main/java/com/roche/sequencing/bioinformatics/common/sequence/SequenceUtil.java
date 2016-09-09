@@ -27,7 +27,7 @@ public class SequenceUtil {
 	}
 
 	public static boolean matches(ISequence referenceSequence, ISequence querySequence) {
-		return match(referenceSequence, querySequence, 4);
+		return match(referenceSequence, querySequence, 0);
 	}
 
 	private static boolean match(ISequence referenceString, ISequence queryString, int allowedMismatches) {
@@ -40,7 +40,9 @@ public class SequenceUtil {
 			int mismatches = 0;
 			boolean tooManyMisMatches = false;
 			while (queryIndex < queryString.size() && !tooManyMisMatches) {
-				if (queryString.getCodeAt(queryIndex) != referenceString.getCodeAt(startingReferenceIndex + queryIndex)) {
+				ICode queryCode = queryString.getCodeAt(queryIndex);
+				ICode referenceCode = referenceString.getCodeAt(startingReferenceIndex + queryIndex);
+				if (!queryCode.matches(referenceCode)) {
 					mismatches++;
 				}
 				queryIndex++;

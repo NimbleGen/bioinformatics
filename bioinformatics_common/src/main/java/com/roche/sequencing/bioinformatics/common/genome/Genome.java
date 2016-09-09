@@ -30,15 +30,15 @@ public class Genome implements IGenome {
 
 	private final RandomAccessFile genomeFileReader;
 	private final Map<String, StartAndStopLocationsInFile> startAndStopLocationsByContainerName;
-	private GenomicRangedCoordinate largestContainer;
+	private final GenomicRangedCoordinate largestContainer;
 
 	public Genome(File genomeFile) throws IOException {
 		this.genomeFileReader = new RandomAccessFile(genomeFile, "r");
 		startAndStopLocationsByContainerName = new LinkedHashMap<String, StartAndStopLocationsInFile>();
-		init();
+		largestContainer = initAndReturnLargestContainer();
 	}
 
-	private void init() throws IOException {
+	private GenomicRangedCoordinate initAndReturnLargestContainer() throws IOException {
 
 		// read the last 8 bytes to find the beginning of the container information start
 		long fileEnd = genomeFileReader.length();
@@ -63,11 +63,13 @@ public class Genome implements IGenome {
 			startAndStopLocationsByContainerName.put(containerName, startAndStop);
 		}
 
+		GenomicRangedCoordinate currentLargestContainer = null;
 		for (GenomicRangedCoordinate container : getContainerSizes()) {
-			if (largestContainer == null || container.size() > largestContainer.size()) {
-				largestContainer = container;
+			if (currentLargestContainer == null || container.size() > currentLargestContainer.size()) {
+				currentLargestContainer = container;
 			}
 		}
+		return currentLargestContainer;
 	}
 
 	public GenomicRangedCoordinate getLargestContainer() {
@@ -88,9 +90,17 @@ public class Genome implements IGenome {
 		return new GenomicRangedCoordinate(containerName, 1, getContainerSize(containerName));
 	}
 
-	public ISequence getSequence(String containerName, long sequenceStart, long sequenceEnd) {
+	public ISequence getSequence(String containerName) {
+		return getSequence(containerName, 1, getContainerSize(containerName) - 1);
+	}
+
+	public synchronized ISequence getSequence(String containerName, long sequenceStart, long sequenceEnd) {
 		ISequence sequence = null;
 		StartAndStopLocationsInFile startAndStop = startAndStopLocationsByContainerName.get(containerName);
+
+		if (sequenceStart <= 0) {
+			throw new IndexOutOfBoundsException("The provided sequenceStart[" + sequenceStart + "] must be greater than 0 (The genome is one based).");
+		}
 
 		if (sequenceStart > sequenceEnd) {
 			long temp = sequenceStart;

@@ -11,7 +11,7 @@ public class GenomicCoordinate {
 		this.location = location;
 	}
 
-	public String getContainer() {
+	public String getContainerName() {
 		return container;
 	}
 

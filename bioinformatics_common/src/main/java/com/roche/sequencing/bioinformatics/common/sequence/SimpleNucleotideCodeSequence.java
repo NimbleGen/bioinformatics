@@ -18,13 +18,14 @@ package com.roche.sequencing.bioinformatics.common.sequence;
 
 import java.util.BitSet;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import com.roche.sequencing.bioinformatics.common.utils.BitSetUtil;
 
 /**
@@ -37,7 +38,8 @@ public class SimpleNucleotideCodeSequence implements ISequence, Comparable<Simpl
 	public static final int BITS_PER_NUCLEOTIDE = 3;
 	private static final int BITS_PER_BYTE = 8;
 
-	private static final BiMap<BitSet, IupacNucleotideCode> BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP = HashBiMap.create();
+	private static final Map<BitSet, IupacNucleotideCode> BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP = new ConcurrentHashMap<BitSet, IupacNucleotideCode>();
+	private static final Map<IupacNucleotideCode, BitSet> IUPAC_NUCLEOTIDE_CODE_TO_BIT_MAP = new ConcurrentHashMap<IupacNucleotideCode, BitSet>();
 
 	static {
 		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("000"), IupacNucleotideCode.A);
@@ -48,6 +50,10 @@ public class SimpleNucleotideCodeSequence implements ISequence, Comparable<Simpl
 		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("101"), IupacNucleotideCode.GAP);
 		BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.put(BitSetUtil.createBitSetFromBinaryString("011"), IupacNucleotideCode.N);
 		// open bits "111"
+
+		for (Entry<BitSet, IupacNucleotideCode> entry : BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.entrySet()) {
+			IUPAC_NUCLEOTIDE_CODE_TO_BIT_MAP.put(entry.getValue(), entry.getKey());
+		}
 	}
 
 	private final BitSet sequenceAsBits;
@@ -150,16 +156,22 @@ public class SimpleNucleotideCodeSequence implements ISequence, Comparable<Simpl
 		BitSet bitsForNucleotide = sequenceAsBits.get(startIndex, endIndex);
 		IupacNucleotideCode code = BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.get(bitsForNucleotide);
 
+		if (code == null) {
+			logger.warn("Invalid code[" + BitSetUtil.getBinaryStringOfBits(bitsForNucleotide, 3) + "] found at startIndex:" + startIndex + " endIndexInclusive:" + (endIndex - 1)
+					+ " in getCodeAt(index[" + index + "]).");
+			code = IupacNucleotideCode.N;
+		}
+
 		return code;
 	}
 
 	private void setCodeAt(int index, IupacNucleotideCode code) {
 		int startingIndex = index * BITS_PER_NUCLEOTIDE;
 
-		BitSet bitsToSet = BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.inverse().get(code);
+		BitSet bitsToSet = IUPAC_NUCLEOTIDE_CODE_TO_BIT_MAP.get(code);
 		if (bitsToSet == null) {
 			logger.warn("Could not save iupac code[" + code.name() + "] so replacing it with " + IupacNucleotideCode.N + ".");
-			bitsToSet = BIT_TO_IUPAC_NUCLEOTIDE_CODE_MAP.inverse().get(IupacNucleotideCode.N);
+			bitsToSet = IUPAC_NUCLEOTIDE_CODE_TO_BIT_MAP.get(IupacNucleotideCode.N);
 		}
 		for (int i = 0; i < bitsToSet.length(); i++) {
 			sequenceAsBits.set(startingIndex + i, bitsToSet.get(i));
