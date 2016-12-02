@@ -62,12 +62,16 @@ public class GraphicsUtil {
 		if (emptyJLabel == null) {
 			if (emptyJLabel == null) {
 				try {
-					SwingUtilities.invokeAndWait(new Runnable() {
-						@Override
-						public void run() {
-							emptyJLabel = new JLabel();
-						}
-					});
+					if (SwingUtilities.isEventDispatchThread()) {
+						emptyJLabel = new JLabel();
+					} else {
+						SwingUtilities.invokeAndWait(new Runnable() {
+							@Override
+							public void run() {
+								emptyJLabel = new JLabel();
+							}
+						});
+					}
 				} catch (InterruptedException e) {
 					if (logger.isDebugEnabled()) {
 						logger.debug("Exception trying to create empty jLabel.", e);
@@ -178,6 +182,15 @@ public class GraphicsUtil {
 		Rectangle2D imgTemplate = stringVector.getPixelBounds(frContext, 0, 0);
 		Dimension dimension = new Dimension((int) imgTemplate.getWidth(), (int) imgTemplate.getHeight());
 		return dimension;
+	}
+
+	public static Dimension getStringExtent(Graphics2D graphics, String stringValue) {
+		FontRenderContext frContext = new FontRenderContext(null, true, true);
+		Font curFont = graphics.getFont();
+		GlyphVector stringVector = curFont.createGlyphVector(frContext, stringValue);
+		Rectangle2D imgTemplate = stringVector.getPixelBounds(frContext, 0, 0);
+		Dimension extent = new Dimension((int) imgTemplate.getWidth(), (int) imgTemplate.getHeight());
+		return extent;
 	}
 
 	public static Dimension getStringExtentForTransform(Graphics2D graphics, String stringValue) {

@@ -8,6 +8,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
+import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 
 public class DynamicGenome implements IGenome {
 
@@ -90,6 +91,20 @@ public class DynamicGenome implements IGenome {
 	@Override
 	public boolean containsSequences() {
 		return false;
+	}
+
+	@Override
+	public ISequence getSequence(GenomicRangedCoordinate rangedCoordinate) {
+		return getSequence(rangedCoordinate.getContainerName(), rangedCoordinate.getStartLocation(), rangedCoordinate.getStopLocation());
+	}
+
+	@Override
+	public ISequence getSequence(StrandedGenomicRangedCoordinate rangedCoordinate) {
+		ISequence sequence = getSequence(rangedCoordinate.getContainerName(), rangedCoordinate.getStartLocation(), rangedCoordinate.getStopLocation());
+		if (rangedCoordinate.getStrand() == Strand.REVERSE) {
+			sequence = sequence.getReverseCompliment();
+		}
+		return sequence;
 	}
 
 }

@@ -18,6 +18,7 @@ package com.roche.sequencing.bioinformatics.common.utils;
 
 import java.lang.reflect.Array;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -255,6 +256,28 @@ public final class ArraysUtil {
 		return combinedArray;
 	}
 
+	public static byte[] concatenate(byte[] a, byte[] b) {
+		int aLen = a.length;
+		int bLen = b.length;
+
+		byte[] combinedArray = (byte[]) Array.newInstance(a.getClass().getComponentType(), aLen + bLen);
+		System.arraycopy(a, 0, combinedArray, 0, aLen);
+		System.arraycopy(b, 0, combinedArray, aLen, bLen);
+
+		return combinedArray;
+	}
+
+	public static int[] concatenate(int[] a, int[] b) {
+		int aLen = a.length;
+		int bLen = b.length;
+
+		int[] combinedArray = (int[]) Array.newInstance(a.getClass().getComponentType(), aLen + bLen);
+		System.arraycopy(a, 0, combinedArray, 0, aLen);
+		System.arraycopy(b, 0, combinedArray, aLen, bLen);
+
+		return combinedArray;
+	}
+
 	public static <T> String toString(T[] strings, String delimiter) {
 		String returnString = "";
 
@@ -278,6 +301,14 @@ public final class ArraysUtil {
 
 	public static String toString(short[] numbers) {
 		return toString(numbers, ", ");
+	}
+
+	public static String toString(long[] numbers) {
+		return toString(numbers, ", ");
+	}
+
+	public static String toString(long[] numbers, DecimalFormat formatter) {
+		return toString(numbers, ", ", formatter);
 	}
 
 	public static String toString(double[] numbers) {
@@ -309,6 +340,27 @@ public final class ArraysUtil {
 		return toString(numbers, delimiter, null);
 	}
 
+	public static String toString(long[] numbers, String delimiter) {
+		return toString(numbers, delimiter, null);
+	}
+
+	public static String toString(char[] characters) {
+		return toString(characters, ", ");
+	}
+
+	public static String toString(char[] characters, String delimiter) {
+		String returnString = "";
+
+		if (characters != null && characters.length > 0) {
+			StringBuilder returnStringBuilder = new StringBuilder();
+			for (char i : characters) {
+				returnStringBuilder.append(i + delimiter);
+			}
+			returnString = returnStringBuilder.substring(0, returnStringBuilder.length() - delimiter.length());
+		}
+		return returnString;
+	}
+
 	public static String toString(double[] numbers, String delimiter, DecimalFormat formatter) {
 		String returnString = "";
 
@@ -328,6 +380,24 @@ public final class ArraysUtil {
 	}
 
 	public static String toString(short[] numbers, String delimiter, DecimalFormat formatter) {
+		String returnString = "";
+
+		if (numbers != null && numbers.length > 0) {
+			StringBuilder returnStringBuilder = new StringBuilder();
+			for (double i : numbers) {
+				if (formatter != null) {
+					returnStringBuilder.append(formatter.format(i) + delimiter);
+				} else {
+					returnStringBuilder.append(i + delimiter);
+
+				}
+			}
+			returnString = returnStringBuilder.substring(0, returnStringBuilder.length() - delimiter.length());
+		}
+		return returnString;
+	}
+
+	public static String toString(long[] numbers, String delimiter, DecimalFormat formatter) {
 		String returnString = "";
 
 		if (numbers != null && numbers.length > 0) {
@@ -466,6 +536,112 @@ public final class ArraysUtil {
 			}
 		}
 		return indexOf;
+	}
+
+	/**
+	 * returns all permutations of the given numbers
+	 * 
+	 * @param numbers
+	 * @return
+	 */
+	public static int[][] permutations(int[] numbers) {
+		return permutations(numbers.length, numbers);
+	}
+
+	/**
+	 * returns all possible ways to choose permutations of the given size with the given numbers
+	 * 
+	 * @param numbers
+	 * @return
+	 */
+	public static int[][] permutations(int desiredPermutationSize, int[] numbers) {
+		int[][] permutations = new int[0][0];
+
+		if (desiredPermutationSize > 0) {
+			// n choose r
+			int totalPermutations = StatisticsUtil.factorial(numbers.length) / StatisticsUtil.factorial(numbers.length - desiredPermutationSize);
+			permutations = new int[totalPermutations][desiredPermutationSize];
+
+			int currentPermutationIndex = 0;
+			for (int i = 0; i < numbers.length; i++) {
+				// remove this number
+				// and get the permutation for all remaining numbers
+				if (desiredPermutationSize > 1) {
+					int[][] nextPermutations = permutations(desiredPermutationSize - 1, removeValueAtIndex(numbers, i));
+					for (int j = 0; j < nextPermutations.length; j++) {
+						permutations[currentPermutationIndex][0] = numbers[i];
+						for (int k = 0; k < nextPermutations[j].length; k++) {
+							permutations[currentPermutationIndex][k + 1] = nextPermutations[j][k];
+						}
+						currentPermutationIndex++;
+					}
+				} else {
+					permutations[i] = new int[] { numbers[i] };
+				}
+			}
+		}
+		return permutations;
+	}
+
+	/**
+	 * returns an array that has removed that value at the given index and shifted the remaining values to the left.
+	 * 
+	 * @param values
+	 * @param index
+	 * @return
+	 */
+	public static int[] removeValueAtIndex(int[] values, int indexToRemove) {
+		int[] newNumbers = null;
+		if (indexToRemove < values.length) {
+			newNumbers = new int[values.length - 1];
+			int newIndex = 0;
+			for (int i = 0; i < values.length; i++) {
+				if (i != indexToRemove) {
+					newNumbers[newIndex] = values[i];
+					newIndex++;
+				}
+			}
+		} else {
+			newNumbers = values;
+		}
+		return newNumbers;
+	}
+
+	/**
+	 * removes all values in valuesToRemove array and shifts the remaining values to the left.
+	 * 
+	 * @param values
+	 * @param valuesToRemove
+	 * @return
+	 */
+	public static int[] removeValues(int[] values, int[] valuesToRemove) {
+		List<Integer> newValues = new ArrayList<Integer>();
+
+		for (int value : values) {
+			if (!contains(valuesToRemove, value)) {
+				newValues.add(value);
+			}
+		}
+
+		int[] newValuesArray = new int[newValues.size()];
+		for (int i = 0; i < newValues.size(); i++) {
+			newValuesArray[i] = newValues.get(i);
+		}
+		return newValuesArray;
+	}
+
+	public static boolean equals(byte[] bytes, int start, byte[] comparisonBytes, int comparisonStart, int comparisonLength) {
+		boolean isEqual = true;
+		compLoop: for (int i = 0; i < comparisonLength; i++) {
+			int index = start + i;
+			int comparisonIndex = comparisonStart + i;
+			isEqual = bytes[index] == comparisonBytes[comparisonIndex];
+			if (!isEqual) {
+				break compLoop;
+			}
+		}
+
+		return isEqual;
 	}
 
 }

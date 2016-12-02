@@ -16,6 +16,7 @@
 
 package com.roche.sequencing.bioinformatics.common.alignment;
 
+import com.roche.sequencing.bioinformatics.common.sequence.ICode;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCode;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
@@ -152,6 +153,18 @@ public class AlignmentPair {
 
 	public int getFirstNonInsertQueryMatchInReference() {
 		return firstNonDeletionIndexInQuery;
+	}
+
+	public int getNumberOfMismatches() {
+		int numberOfMismatches = 0;
+		for (int i = 0; i < referenceAlignment.size(); i++) {
+			ICode ref = referenceAlignment.getCodeAt(i);
+			ICode query = queryAlignment.getCodeAt(i);
+			if (!ref.matches(IupacNucleotideCode.GAP) && !query.matches(IupacNucleotideCode.GAP) && !ref.matches(query)) {
+				numberOfMismatches++;
+			}
+		}
+		return numberOfMismatches;
 	}
 
 }

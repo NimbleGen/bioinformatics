@@ -40,12 +40,16 @@ public class Timer {
 		for (Entry<String, RunningStats> entry : runningStatsByKey.entrySet()) {
 			RunningStats stats = entry.getValue();
 			if (stats.getSumOfValues() > 0) {
-				stringBuilder.append(entry.getKey() + ":" + StringUtil.TAB);
-				stringBuilder.append("Total:" + DateUtil.convertMillisecondsToHHMMSSMMM((int) Math.ceil(stats.getSumOfValues())) + StringUtil.TAB);
-				stringBuilder.append("Mean:" + DateUtil.convertMillisecondsToHHMMSSMMM((int) stats.getCurrentMean().intValue()) + StringUtil.TAB);
-				stringBuilder.append("Min:" + DateUtil.convertMillisecondsToHHMMSSMMM((int) Math.ceil(stats.getMinValue())) + StringUtil.TAB);
-				stringBuilder.append("Max:" + DateUtil.convertMillisecondsToHHMMSSMMM((int) Math.ceil(stats.getMaxValue())) + StringUtil.TAB);
-				stringBuilder.append("Entries:" + stats.getNumberOfValues() + StringUtil.NEWLINE);
+				if (stats.getNumberOfValues() == 1) {
+					stringBuilder.append(entry.getKey() + ":" + StringUtil.TAB + DateUtil.convertMillisecondsToHHMMSSMMM((int) Math.ceil(stats.getSumOfValues())) + "(HH:MM:SS:MMM)" + StringUtil.TAB);
+				} else {
+					stringBuilder.append(entry.getKey() + ":" + StringUtil.TAB);
+					stringBuilder.append("Total:" + DateUtil.convertMillisecondsToHHMMSSMMM((int) Math.ceil(stats.getSumOfValues())) + "(HH:MM:SS:MMM)" + StringUtil.TAB);
+					stringBuilder.append("Mean:" + DateUtil.convertMillisecondsToHHMMSSMMM((int) stats.getCurrentMean().intValue()) + "(HH:MM:SS:MMM)" + StringUtil.TAB);
+					stringBuilder.append("Min:" + DateUtil.convertMillisecondsToHHMMSSMMM((int) Math.ceil(stats.getMinValue())) + "(HH:MM:SS:MMM)" + StringUtil.TAB);
+					stringBuilder.append("Max:" + DateUtil.convertMillisecondsToHHMMSSMMM((int) Math.ceil(stats.getMaxValue())) + "(HH:MM:SS:MMM)" + StringUtil.TAB);
+					stringBuilder.append("Entries:" + stats.getNumberOfValues() + StringUtil.NEWLINE);
+				}
 			}
 		}
 		return stringBuilder.toString();

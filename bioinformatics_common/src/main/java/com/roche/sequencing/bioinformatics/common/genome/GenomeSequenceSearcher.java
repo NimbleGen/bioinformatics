@@ -1,7 +1,9 @@
 package com.roche.sequencing.bioinformatics.common.genome;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteOrder;
@@ -35,6 +37,7 @@ import com.roche.sequencing.bioinformatics.common.utils.BitSetUtil;
 import com.roche.sequencing.bioinformatics.common.utils.ByteUtil;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileBasedBitSet;
+import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.IBitSet;
 import com.roche.sequencing.bioinformatics.common.utils.LargeBitSet;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
@@ -45,7 +48,7 @@ public class GenomeSequenceSearcher {
 
 	private final static int THREADS_FOR_PROCESSING_SEQUENCES = Math.min(20, Math.max(4, Runtime.getRuntime().availableProcessors()));;
 
-	private final static int LOOKUP_SEQUENCE_LENGTH = 11;
+	public final static int LOOKUP_SEQUENCE_LENGTH = 11;
 
 	private final static byte EMPTY_BYTE = (byte) 0;
 
@@ -745,7 +748,12 @@ public class GenomeSequenceSearcher {
 	public static void main(String[] args) throws IOException {
 		int maxHitsPerSequence = 1000;
 		File genomeFile = new File("D:\\kurts_space\\sequence\\hg19_genome.gnm");
-		File genomeSequenceSearcherFile = new File("D:\\kurts_space\\sequence\\hg19_genome_" + LOOKUP_SEQUENCE_LENGTH + "_" + maxHitsPerSequence + ".gss");
+		File genomeSequenceSearcherFileOne = new File("D:\\kurts_space\\sequence\\hg19_genome_11_1000.gss");
+		File genomeSequenceSearcherFileTwo = new File("D:\\kurts_space\\sequence\\hg19_genome_11_2000.gss");
+
+		File outputOne = new File("D:\\kurts_space\\sequence\\1000_output.txt");
+		File outputTwo = new File("D:\\kurts_space\\sequence\\2000_output.txt");
+
 		Genome genome;
 		try {
 			genome = new Genome(genomeFile);
@@ -762,13 +770,11 @@ public class GenomeSequenceSearcher {
 
 		// profileGenome(gss);
 
-		GenomeSequenceSearcher gss2 = createFileBasedGenomeSequenceSearcherFromFile(genomeSequenceSearcherFile, genome);
-
-		StrandedLookupResult lookupResult = gss2.search(sequence);
-		System.out.println(lookupResult.getResultDescription());
+		GenomeSequenceSearcher gss1 = createFileBasedGenomeSequenceSearcherFromFile(genomeSequenceSearcherFileOne, genome);
+		GenomeSequenceSearcher gss2 = createFileBasedGenomeSequenceSearcherFromFile(genomeSequenceSearcherFileTwo, genome);
 
 		// profileGenome(gss2);
-		profileEfficacyOfSearcher(genome, gss2);
+		profileEfficacyOfSearcher(genome, gss1, gss2, outputOne, outputTwo);
 
 	}
 
@@ -806,37 +812,50 @@ public class GenomeSequenceSearcher {
 		System.out.println("match:" + matchCount + " repetitive:" + repetitiveCount + " notPresent:" + notPresentCount);
 	}
 
-	public static void profileEfficacyOfSearcher(Genome genome, GenomeSequenceSearcher gss) {
-		TallyMap<LookupResultTypeEnum> allTally = new TallyMap<GenomeSequenceSearcher.LookupResultTypeEnum>();
+	public static void profileEfficacyOfSearcher(Genome genome, GenomeSequenceSearcher gss1, GenomeSequenceSearcher gss2, File fileOne, File fileTwo) throws IOException {
+		TallyMap<LookupResultTypeEnum> oneAllTally = new TallyMap<GenomeSequenceSearcher.LookupResultTypeEnum>();
+		TallyMap<LookupResultTypeEnum> twoAllTally = new TallyMap<GenomeSequenceSearcher.LookupResultTypeEnum>();
 		long count = 0;
 
-		for (String containerName : genome.getContainerNames()) {
-			System.out.println("starting container:" + containerName + " at " + DateUtil.getCurrentDateINYYYYMMDDHHMMSSwithColons());
-			long start = System.currentTimeMillis();
-			TallyMap<LookupResultTypeEnum> tally = new TallyMap<GenomeSequenceSearcher.LookupResultTypeEnum>();
-			ISequence sequence = genome.getSequence(containerName);
-			if (sequence != null) {
-				for (int i = 1; i < sequence.size() - LOOKUP_SEQUENCE_LENGTH - 1; i++) {
-					Integer numberForSequence = getNumberForSequence(sequence, i, i + LOOKUP_SEQUENCE_LENGTH - 1);
-					if (numberForSequence != null) {
-						tally.add(gss.lookupSequence(numberForSequence).getLookupResultType());
-						allTally.add(gss.lookupSequence(numberForSequence).getLookupResultType());
-					}
-					count++;
+		FileUtil.createNewFile(fileOne);
+		FileUtil.createNewFile(fileTwo);
 
-					if (count % 100000 == 0) {
-						System.out.println("count:" + count + StringUtil.NEWLINE);
-						System.out.println("Container:" + tally.getHistogramAsString());
-						System.out.println("ALL:" + allTally.getHistogramAsString());
+		try (BufferedWriter writerOne = new BufferedWriter(new FileWriter(fileOne))) {
+			try (BufferedWriter writerTwo = new BufferedWriter(new FileWriter(fileTwo))) {
+
+				for (String containerName : genome.getContainerNames()) {
+					writerOne.write("starting container:" + containerName + " at " + DateUtil.getCurrentDateINYYYYMMDDHHMMSSwithColons() + StringUtil.NEWLINE);
+					writerTwo.write("starting container:" + containerName + " at " + DateUtil.getCurrentDateINYYYYMMDDHHMMSSwithColons() + StringUtil.NEWLINE);
+					long start = System.currentTimeMillis();
+					TallyMap<LookupResultTypeEnum> onetally = new TallyMap<GenomeSequenceSearcher.LookupResultTypeEnum>();
+					TallyMap<LookupResultTypeEnum> twotally = new TallyMap<GenomeSequenceSearcher.LookupResultTypeEnum>();
+					ISequence sequence = genome.getSequence(containerName);
+					if (sequence != null) {
+						for (int i = 1; i < sequence.size() - LOOKUP_SEQUENCE_LENGTH - 1; i++) {
+							Integer numberForSequence = getNumberForSequence(sequence, i, i + LOOKUP_SEQUENCE_LENGTH - 1);
+							if (numberForSequence != null) {
+								LookupResultTypeEnum one = gss1.lookupSequence(numberForSequence).getLookupResultType();
+								onetally.add(one);
+								oneAllTally.add(one);
+								LookupResultTypeEnum two = gss2.lookupSequence(numberForSequence).getLookupResultType();
+								twotally.add(two);
+								twoAllTally.add(two);
+							}
+							count++;
+						}
 					}
+					long stop = System.currentTimeMillis();
+					writerOne.write("Done with container:" + containerName + " at " + DateUtil.getCurrentDateINYYYYMMDDHHMMSSwithColons() + " in "
+							+ DateUtil.convertMillisecondsToHHMMSSMMM(stop - start) + StringUtil.NEWLINE);
+					writerOne.write(onetally.getHistogramAsString() + StringUtil.NEWLINE);
+					writerTwo.write("Done with container:" + containerName + " at " + DateUtil.getCurrentDateINYYYYMMDDHHMMSSwithColons() + " in "
+							+ DateUtil.convertMillisecondsToHHMMSSMMM(stop - start) + StringUtil.NEWLINE);
+					writerTwo.write(onetally.getHistogramAsString() + StringUtil.NEWLINE);
 				}
 
+				writerOne.write("All--count" + count + oneAllTally.getHistogramAsString() + StringUtil.NEWLINE);
+				writerTwo.write("All--count" + count + oneAllTally.getHistogramAsString() + StringUtil.NEWLINE);
 			}
-			long stop = System.currentTimeMillis();
-			System.out.println("Done with container:" + containerName + " at " + DateUtil.getCurrentDateINYYYYMMDDHHMMSSwithColons() + " in " + DateUtil.convertMillisecondsToHHMMSSMMM(stop - start));
-			System.out.println(tally.getHistogramAsString());
 		}
-
-		System.out.println("All--count" + count + allTally.getHistogramAsString());
 	}
 }

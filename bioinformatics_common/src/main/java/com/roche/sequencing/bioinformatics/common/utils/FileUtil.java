@@ -30,6 +30,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
+import java.nio.file.Files;
+import java.text.DecimalFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,6 +52,11 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public final class FileUtil {
+
+	private static final DecimalFormat DF = new DecimalFormat("###,###.##");
+	private static final String GB = "Gb";
+	private static final String MB = "Mb";
+	private static final String KB = "Kb";
 
 	public static final int BYTES_PER_KB = 1024;
 	private static final int STRING_BUILDER_INITIAL_SIZE = 1000;
@@ -833,6 +840,30 @@ public final class FileUtil {
 		File inputFile = new File("C:\\kurts_space\\github\\private_bioinformatics\\pete_utils\\target\\classes\\com\\roche\\sequencing\\bioinformatics\\pete\\primer3\\ntthal_win_64.exe");
 		File outputFile = new File("C:\\kurts_space\\github\\private_bioinformatics\\pete_utils\\target\\classes\\com\\roche\\sequencing\\bioinformatics\\pete\\primer3\\ntthal_win_642.exe");
 		partialCopy(inputFile, outputFile, 0.99);
+	}
+
+	public static String getFileSizeLabel(long sizeInBytes) {
+		double divisor;
+		String units = "";
+		if (sizeInBytes > Math.pow(10, 9)) {
+			divisor = Math.pow(10, 9);
+			units = GB;
+		} else if (sizeInBytes > Math.pow(10, 6)) {
+			divisor = Math.pow(10, 6);
+			units = MB;
+		} else if (sizeInBytes > Math.pow(10, 3)) {
+			divisor = Math.pow(10, 3);
+			units = KB;
+		} else {
+			divisor = 1.0;
+		}
+
+		double relativeSize = (double) sizeInBytes / divisor;
+		return DF.format(relativeSize) + units;
+	}
+
+	public static byte[] readFileAsBytes(File file) throws IOException {
+		return Files.readAllBytes(file.toPath());
 	}
 
 }

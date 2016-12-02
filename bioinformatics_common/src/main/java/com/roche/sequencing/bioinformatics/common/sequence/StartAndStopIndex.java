@@ -20,7 +20,7 @@ public class StartAndStopIndex {
 	private final int startIndex;
 	private final int stopIndex;
 
-	StartAndStopIndex(int startIndex, int stopIndex) {
+	public StartAndStopIndex(int startIndex, int stopIndex) {
 		super();
 		this.startIndex = startIndex;
 		this.stopIndex = stopIndex;

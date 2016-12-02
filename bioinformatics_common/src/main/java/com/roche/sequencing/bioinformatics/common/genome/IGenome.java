@@ -23,4 +23,8 @@ public interface IGenome {
 
 	boolean containsSequences();
 
+	ISequence getSequence(GenomicRangedCoordinate rangedCoordinate);
+
+	ISequence getSequence(StrandedGenomicRangedCoordinate rangedCoordinate);
+
 }

@@ -5,14 +5,27 @@ public class Region {
 	private final GenomicRangedCoordinate location;
 	private final String string;
 
+	public Region(String locationAsString) {
+		super();
+		this.location = new GenomicRangedCoordinate(locationAsString);
+		this.string = getStringRepresenation(this.location);
+	}
+
 	public Region(GenomicRangedCoordinate location) {
 		super();
 		this.location = location;
+		this.string = getStringRepresenation(location);
+
+	}
+
+	private static String getStringRepresenation(GenomicRangedCoordinate location) {
+		String stringRepresentation = "";
 		if (location.getStartLocation() == location.getStopLocation()) {
-			this.string = location.getContainerName() + ":" + location.getStartLocation();
+			stringRepresentation = location.getContainerName() + ":" + location.getStartLocation();
 		} else {
-			this.string = location.getContainerName() + ":" + location.getStartLocation() + "-" + location.getStopLocation();
+			stringRepresentation = location.getContainerName() + ":" + location.getStartLocation() + "-" + location.getStopLocation();
 		}
+		return stringRepresentation;
 	}
 
 	public GenomicRangedCoordinate getLocation() {

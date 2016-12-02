@@ -32,7 +32,7 @@ public class GenomicContext {
 			strand = Strand.fromString(matcher.group(4));
 			annotation = matcher.group(5);
 		} else {
-			throw new IllegalStateException("descriptionAsString[" + descriptionAsString + "] is not of the format container:start..stop:strand annotation (example: chr1:1200..1210:+ not_brca1");
+			throw new IllegalStateException("descriptionAsString[" + descriptionAsString + "] is not of the format container:start..stop:strand annotation (example: chr1:1200..1210:+ not_brca1)");
 		}
 	}
 

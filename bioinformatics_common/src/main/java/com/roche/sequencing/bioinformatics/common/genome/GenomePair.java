@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
+import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 
 public class GenomePair implements IGenome {
 
@@ -82,6 +83,20 @@ public class GenomePair implements IGenome {
 	@Override
 	public boolean containsSequences() {
 		return genomeOne.containsSequences() || genomeTwo.containsSequences();
+	}
+
+	@Override
+	public ISequence getSequence(GenomicRangedCoordinate rangedCoordinate) {
+		return getSequence(rangedCoordinate.getContainerName(), rangedCoordinate.getStartLocation(), rangedCoordinate.getStopLocation());
+	}
+
+	@Override
+	public ISequence getSequence(StrandedGenomicRangedCoordinate rangedCoordinate) {
+		ISequence sequence = getSequence(rangedCoordinate.getContainerName(), rangedCoordinate.getStartLocation(), rangedCoordinate.getStopLocation());
+		if (rangedCoordinate.getStrand() == Strand.REVERSE) {
+			sequence = sequence.getReverseCompliment();
+		}
+		return sequence;
 	}
 
 }

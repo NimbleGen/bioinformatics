@@ -412,4 +412,8 @@ public class NeedlemanWunschGlobalAlignment {
 		double queryMatchesToQueryLength = matches / queryLength;
 		return queryMatchesToQueryLength;
 	}
+
+	public int getNumberOfMismatches() {
+		return alignment.getNumberOfMismatches();
+	}
 }

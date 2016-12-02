@@ -2,6 +2,7 @@ package com.roche.sequencing.bioinformatics.common.utils;
 
 import java.math.BigInteger;
 import java.nio.ByteOrder;
+import java.util.List;
 
 public class ByteUtil {
 
@@ -71,6 +72,22 @@ public class ByteUtil {
 			throw new IllegalArgumentException("The provided byte array has a length[" + bytes.length + "] other than the required length of [" + bytesInDataType + "].");
 		}
 
+		// this is purposely left as a multi-liner for readability.
+		boolean isTwosComplimentNegative = false;
+		if (isSigned) {
+			if ((byteOrder == ByteOrder.BIG_ENDIAN) && ByteUtil.isBitOn(bytes[0], 0)) {
+				isTwosComplimentNegative = true;
+			} else if ((byteOrder == ByteOrder.LITTLE_ENDIAN) && ByteUtil.isBitOn(bytes[bytes.length - 1], BITS_PER_BYTE - 1)) {
+				isTwosComplimentNegative = true;
+			}
+			if (isTwosComplimentNegative) {
+				for (int i = 0; i < bytes.length; i++) {
+					// flips the bits
+					bytes[i] = (byte) ~bytes[i];
+				}
+			}
+		}
+
 		if (byteOrder == ByteOrder.BIG_ENDIAN) {
 			for (int i = 0; i < bytesInDataType; i++) {
 				result <<= BITS_PER_BYTE;
@@ -102,6 +119,10 @@ public class ByteUtil {
 				throw new IllegalStateException("Unable to return the decoded value of [" + signedEquivalent + "] as a signed " + dataTypeName + " which has a max value of ["
 						+ maxSignedValueForDataType + "].");
 			}
+		}
+
+		if (isTwosComplimentNegative) {
+			result = -(result + 1);
 		}
 
 		return result;
@@ -168,6 +189,129 @@ public class ByteUtil {
 		}
 
 		return results;
+	}
+
+	/**
+	 * Return a byte[] representation of the long based on the passed in parameters.
+	 * 
+	 * @param value
+	 * @param numberOfBytes
+	 * @param byteOrder
+	 * @param isSigned
+	 * @return a byte[] representation of the long based on the passed in parameters.
+	 */
+	public static byte[] convertIntegersToBytes(List<Integer> values, int numberOfBytesPerLong, ByteOrder byteOrder, boolean isSigned) {
+		byte[] resultsForAll = new byte[0];
+
+		for (long value : values) {
+			byte[] results = longToBytes(value, byteOrder, isSigned);
+
+			if (results.length > numberOfBytesPerLong) {
+				results = reduceToSmallestByteArray(results, byteOrder, isSigned);
+			}
+
+			if (results.length < numberOfBytesPerLong) {
+				results = increaseNumberOfBytes(results, numberOfBytesPerLong, byteOrder, isSigned);
+			}
+
+			if (results.length != numberOfBytesPerLong) {
+				String signedText = "an unsigned";
+				if (isSigned) {
+					signedText = "a signed";
+				}
+
+				BigInteger maxValue = getMaxPossibleValue(numberOfBytesPerLong, isSigned);
+
+				throw new NumberOverflowException("The value[" + value + "] cannot be represented as " + signedText + " value which utilizes [" + numberOfBytesPerLong
+						+ "] bytes and has a max value of [" + maxValue + "].  At least [" + results.length + "] bytes are required to store this value.");
+			}
+
+			resultsForAll = ArraysUtil.concatenate(resultsForAll, results);
+		}
+
+		return resultsForAll;
+	}
+
+	/**
+	 * Return a byte[] representation of the long based on the passed in parameters.
+	 * 
+	 * @param value
+	 * @param numberOfBytes
+	 * @param byteOrder
+	 * @param isSigned
+	 * @return a byte[] representation of the long based on the passed in parameters.
+	 */
+	public static byte[] convertLongsToBytes(List<Long> values, int numberOfBytesPerLong, ByteOrder byteOrder, boolean isSigned) {
+		byte[] resultsForAll = new byte[0];
+
+		for (long value : values) {
+			byte[] results = longToBytes(value, byteOrder, isSigned);
+
+			if (results.length > numberOfBytesPerLong) {
+				results = reduceToSmallestByteArray(results, byteOrder, isSigned);
+			}
+
+			if (results.length < numberOfBytesPerLong) {
+				results = increaseNumberOfBytes(results, numberOfBytesPerLong, byteOrder, isSigned);
+			}
+
+			if (results.length != numberOfBytesPerLong) {
+				String signedText = "an unsigned";
+				if (isSigned) {
+					signedText = "a signed";
+				}
+
+				BigInteger maxValue = getMaxPossibleValue(numberOfBytesPerLong, isSigned);
+
+				throw new NumberOverflowException("The value[" + value + "] cannot be represented as " + signedText + " value which utilizes [" + numberOfBytesPerLong
+						+ "] bytes and has a max value of [" + maxValue + "].  At least [" + results.length + "] bytes are required to store this value.");
+			}
+
+			resultsForAll = ArraysUtil.concatenate(resultsForAll, results);
+		}
+
+		return resultsForAll;
+	}
+
+	/**
+	 * Return a byte[] representation of the long based on the passed in parameters.
+	 * 
+	 * @param value
+	 * @param numberOfBytes
+	 * @param byteOrder
+	 * @param isSigned
+	 * @return a byte[] representation of the long based on the passed in parameters.
+	 */
+	public static byte[] convertLongsToBytes(long[] values, int numberOfBytesPerLong, ByteOrder byteOrder, boolean isSigned) {
+		byte[] resultsForAll = new byte[0];
+
+		for (long value : values) {
+			byte[] results = longToBytes(value, byteOrder, isSigned);
+
+			if (results.length > numberOfBytesPerLong) {
+				results = reduceToSmallestByteArray(results, byteOrder, isSigned);
+			}
+
+			if (results.length < numberOfBytesPerLong) {
+				results = increaseNumberOfBytes(results, numberOfBytesPerLong, byteOrder, isSigned);
+			}
+
+			if (results.length != numberOfBytesPerLong) {
+				String signedText = "an unsigned";
+				if (isSigned) {
+					signedText = "a signed";
+				}
+
+				BigInteger maxValue = getMaxPossibleValue(numberOfBytesPerLong, isSigned);
+
+				throw new NumberOverflowException("The value[" + value + "] cannot be represented as " + signedText + " value which utilizes [" + numberOfBytesPerLong
+						+ "] bytes and has a max value of [" + maxValue + "].  At least [" + results.length + "] bytes are required to store this value.");
+			}
+
+			resultsForAll = ArraysUtil.concatenate(resultsForAll, results);
+		}
+
+		return resultsForAll;
 	}
 
 	/**
@@ -489,6 +633,20 @@ public class ByteUtil {
 	}
 
 	/**
+	 * Converts the provided byte into an int based on the passed in parameters.
+	 * 
+	 * @param aByte
+	 * @param isSigned
+	 * @return int value of the bytes
+	 * 
+	 */
+	public static int convertByteToInt(byte aByte, boolean isSigned) {
+		byte[] bytes = new byte[] { aByte };
+		// note byte order does not matter when there is only one byte
+		return convertBytesToInt(bytes, ByteOrder.LITTLE_ENDIAN, isSigned);
+	}
+
+	/**
 	 * Converts the provided bytes into a long based on the passed in parameters. A NumberOverflowException will be thrown if the isSigned parameter is false and the provided bytes cannot fit into a
 	 * long. In cases where this is expected the exception can be caught and the convertBytesToBigInteger method can be called subsequently.
 	 * 
@@ -666,24 +824,44 @@ public class ByteUtil {
 		return returnString.toString();
 	}
 
+	/**
+	 * @param bits
+	 * @return the bitset as a string
+	 */
+	public static String getBinaryStringOfBits(byte aByte) {
+		StringBuilder returnString = new StringBuilder();
+
+		for (int i = 0; i < BITS_PER_BYTE; i++) {
+			returnString.append((getBitValue(aByte, i)));
+		}
+		returnString.append(" ");
+
+		return returnString.toString();
+	}
+
+	/**
+	 * Returns a new byte array of 'length' size containing the contents of the provided 'bytes' array beginning at startIndex to (startIndex+length-1)
+	 * 
+	 * @param bytes
+	 * @param startIndex
+	 * @param length
+	 * @return
+	 */
+	public static byte[] copyOf(byte[] bytes, int startIndex, int length) {
+		byte[] newByteArray = new byte[length];
+		for (int i = 0; i < length; i++) {
+			newByteArray[i] = bytes[i + startIndex];
+		}
+		return newByteArray;
+	}
+
+	public static String convertToHexadecimal(byte aByte) {
+		return String.format("%02X ", aByte);
+	}
+
 	public static void main(String[] args) {
-		String shortString = "00001000 11111111 11111110";
-		byte[] bytes = convertBinaryStringToBytes(shortString);
-		int intValue = convertBytesToInt(bytes, ByteOrder.BIG_ENDIAN, false);
-		long longValue = convertBytesToLong(bytes, ByteOrder.BIG_ENDIAN, false);
-		System.out.println("int value:" + intValue);
-		System.out.println("long value:" + longValue);
-		System.out.println(shortString);
-		System.out.println(convertBytesToBinaryString(convertLongToBytes(intValue, 3, ByteOrder.BIG_ENDIAN, false)));
-
-		// byte[] bytes = convertBinaryStringToBytes("00000101 10000101");
-		// System.out.println(convertBytesToBinaryString(bytes));
-		// System.out.println(isNegative(bytes, ByteOrder.BIG_ENDIAN, true));
-		// System.out.println(isNegative(bytes, ByteOrder.LITTLE_ENDIAN, true));
-
-		// bytes = increaseNumberOfBytes(bytes, 3, ByteOrder.LITTLE_ENDIAN,
-		// true);
-		// System.out.println(convertBytesToBinaryString(bytes));
+		byte one = (byte) 255;
+		System.out.println(convertToHexadecimal(one));
 
 	}
 

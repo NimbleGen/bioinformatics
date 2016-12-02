@@ -44,7 +44,7 @@ public class StatisticsUtil {
 	 *            source of data for calculation
 	 * @return geometric mean
 	 */
-	
+
 	static double geometricMean(double[] values) {
 		double geometricMean;
 
@@ -175,7 +175,7 @@ public class StatisticsUtil {
 	 *            set of data on which to compute
 	 * @return the standard deviation of the values
 	 */
-	
+
 	static double standardDeviation(int[] values) {
 		double[] valuesAsDoubleArray = ArraysUtil.convertToDoubleArray(values);
 		return standardDeviation(valuesAsDoubleArray);
@@ -282,6 +282,42 @@ public class StatisticsUtil {
 			range = quantiles[2] = quantiles[0];
 		}
 		return range;
+	}
+
+	/**
+	 * @param value
+	 *            some value between 0 and 12. 13! is larger than MAX_INTEGER
+	 * @return the factorial of the given number
+	 */
+	public static int factorial(int value) {
+		if (value > 12) {
+			throw new IllegalStateException("The value[" + value + "] is greater than 12 and anything equal to or larger than 13! is too large to be returned as an int.");
+		} else if (value < 0) {
+			throw new IllegalStateException("The value[" + value + "] is less than 0, so factorial cannot be computed.");
+		}
+		int result = 1;
+		for (int i = 2; i <= value; i++) {
+			result *= i;
+		}
+		return result;
+	}
+
+	/**
+	 * @param value
+	 *            some value between 0 and 199. 200! is larger than MAX_LONG
+	 * @return the factorial of the given number
+	 */
+	public static long factorial(long value) {
+		if (value > 199) {
+			throw new IllegalStateException("The value[" + value + "] is greater than 199 and anything equal to or larger than 200! is too large to be returned as an long.");
+		} else if (value < 0) {
+			throw new IllegalStateException("The value[" + value + "] is less than 0, so factorial cannot be computed.");
+		}
+		long result = 1;
+		for (long i = 2; i <= value; i++) {
+			result *= i;
+		}
+		return result;
 	}
 
 }

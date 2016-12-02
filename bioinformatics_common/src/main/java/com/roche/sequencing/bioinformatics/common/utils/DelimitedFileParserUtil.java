@@ -885,7 +885,7 @@ public final class DelimitedFileParserUtil {
 										}
 									}
 
-									isValueAcceptable = acceptableValues == null || acceptableValues.length == 0 || matchesAnAcceptableValue;
+									isValueAcceptable = isValueAcceptable && (acceptableValues == null || acceptableValues.length == 0 || matchesAnAcceptableValue || acceptableValues == null);
 									if (!isValueAcceptable) {
 										break headerLoop;
 									}

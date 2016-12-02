@@ -46,6 +46,7 @@ public class SAMRecordUtil {
 
 	private static final String EXTENSION_UID_SAMRECORD_ATTRIBUTE_TAG = "EI";
 	private static final String LIGATION_UID_SAMRECORD_ATTRIBUTE_TAG = "LI";
+	private static final String UID_GROUP_SAMRECORD_ATTRIBUTE_TAG = "UG";
 	private static final String PROBE_ID_SAMRECORD_ATTRIBUTE_TAG = "PI";
 	public static final String MISMATCH_DETAILS_ATTRIBUTE_TAG = "MD";
 	public static final String READ_GROUP_ATTRIBUTE_TAG = "RG";
@@ -82,7 +83,7 @@ public class SAMRecordUtil {
 	 * @param uidLength
 	 * @return a read sequence without the UID
 	 */
-	
+
 	public static String removeUidFromReadOne(String sequence, int extensionUidLength) {
 		sequence = sequence.substring(extensionUidLength, sequence.length());
 		return sequence;
@@ -106,6 +107,16 @@ public class SAMRecordUtil {
 	 */
 	public static void setSamRecordExtensionUidAttribute(SAMRecord record, String uid) {
 		record.setAttribute(EXTENSION_UID_SAMRECORD_ATTRIBUTE_TAG, uid);
+	}
+
+	/**
+	 * Set the extension UID attribute for this SAMRecord
+	 * 
+	 * @param record
+	 * @param uid
+	 */
+	public static void setSamRecordUidGroupAttribute(SAMRecord record, String uidGroup) {
+		record.setAttribute(UID_GROUP_SAMRECORD_ATTRIBUTE_TAG, uidGroup);
 	}
 
 	/**
@@ -153,7 +164,7 @@ public class SAMRecordUtil {
 	 * @param record
 	 * @param uid
 	 */
-	
+
 	public static void setExtensionErrorAttribute(SAMRecord record, boolean unableToExtendReadOne, boolean unableToExtendReadTwo) {
 		if (unableToExtendReadOne && unableToExtendReadTwo) {
 			record.setAttribute(EXTENSION_ERROR_ATTRIBUTE_TAG, "FAILED_TO_EXTEND_READ_ONE_AND_READ_TWO");
@@ -259,7 +270,6 @@ public class SAMRecordUtil {
 		samRecord.setMateUnmappedFlag(mate.getReadUnmappedFlag());
 	}
 
-	
 	public static void createBamFile(SAMFileHeader header, File outputFile, List<SAMRecordPair> records) {
 		// Make an output BAM file sorted by coordinates and as compressed as possible
 		header.setSortOrder(SortOrder.coordinate);
@@ -302,5 +312,32 @@ public class SAMRecordUtil {
 			probeId = probeIdAsObject.toString();
 		}
 		return probeId;
+	}
+
+	public static String getExtensionUid(SAMRecord record) {
+		String extensionUid = null;
+		Object extensionUidAsObject = record.getAttribute(EXTENSION_UID_SAMRECORD_ATTRIBUTE_TAG);
+		if (extensionUidAsObject != null) {
+			extensionUid = extensionUidAsObject.toString();
+		}
+		return extensionUid;
+	}
+
+	public static String getLigationUid(SAMRecord record) {
+		String ligationUid = null;
+		Object ligationUidAsObject = record.getAttribute(LIGATION_UID_SAMRECORD_ATTRIBUTE_TAG);
+		if (ligationUidAsObject != null) {
+			ligationUid = ligationUidAsObject.toString();
+		}
+		return ligationUid;
+	}
+
+	public static String getUidGroup(SAMRecord record) {
+		String uidGroup = null;
+		Object uidGroupAsObject = record.getAttribute(UID_GROUP_SAMRECORD_ATTRIBUTE_TAG);
+		if (uidGroupAsObject != null) {
+			uidGroup = uidGroupAsObject.toString();
+		}
+		return uidGroup;
 	}
 }

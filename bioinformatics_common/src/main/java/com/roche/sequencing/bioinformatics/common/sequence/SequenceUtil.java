@@ -54,18 +54,17 @@ public class SequenceUtil {
 		return match;
 	}
 
-	public static Set<StartAndStopIndex> findAllMatches(ISequence referenceString, ISequence queryString, int allowedMismatches) {
-
+	public static Set<StartAndStopIndex> findMatches(ISequence referenceString, ISequence queryString, int allowedMismatches, int maxNumberOfMatches) {
 		Set<StartAndStopIndex> matches = new LinkedHashSet<StartAndStopIndex>();
 
 		int startingReferenceIndex = 0;
 
-		while ((startingReferenceIndex + queryString.size()) <= referenceString.size()) {
+		startingIndexLoop: while ((startingReferenceIndex + queryString.size()) <= referenceString.size()) {
 			int queryIndex = 0;
 			int mismatches = 0;
 			boolean tooManyMisMatches = false;
 			while (queryIndex < queryString.size() && !tooManyMisMatches) {
-				if (queryString.getCodeAt(queryIndex) != referenceString.getCodeAt(startingReferenceIndex + queryIndex)) {
+				if (!queryString.getCodeAt(queryIndex).matches(referenceString.getCodeAt(startingReferenceIndex + queryIndex))) {
 					mismatches++;
 				}
 				queryIndex++;
@@ -73,10 +72,28 @@ public class SequenceUtil {
 			}
 			if (!tooManyMisMatches) {
 				matches.add(new StartAndStopIndex(startingReferenceIndex + 1, startingReferenceIndex + queryString.size()));
+				if (matches.size() >= maxNumberOfMatches) {
+					break startingIndexLoop;
+				}
 			}
 			startingReferenceIndex++;
 		}
 		return matches;
+	}
+
+	public static Set<StartAndStopIndex> findAllMatches(ISequence referenceString, ISequence queryString, int allowedMismatches) {
+		return findMatches(referenceString, queryString, allowedMismatches, Integer.MAX_VALUE);
+	}
+
+	public static StartAndStopIndex findFirstMatch(ISequence referenceString, ISequence queryString, int allowedMismatches) {
+		Set<StartAndStopIndex> matches = findMatches(referenceString, queryString, allowedMismatches, 1);
+		StartAndStopIndex match;
+		if (matches.size() > 0) {
+			match = matches.iterator().next();
+		} else {
+			match = null;
+		}
+		return match;
 	}
 
 	public static double getGCPercent(ISequence sequence) {
@@ -154,10 +171,9 @@ public class SequenceUtil {
 	}
 
 	public static void main(String[] args) {
-		ISequence a = new IupacNucleotideCodeSequence("GAGAAAAGGATGAATTC");
-		System.out.println("NN_python:" + getMeltingTemperatureUsingNearestNeighborThermodynamics(a));
-		System.out.println("Wallace:" + getMeltingTemperatureInCelsiusUsingDotyMethod(a));
-		System.out.println("GC:" + getMeltingTemperatureInCelsiusBasedOnGC(a));
+		ISequence a = new IupacNucleotideCodeSequence("CGGAACATCCTGGGGGGGACTGTCTTCCGCCCACTGTCTGGCACTCCCTAGTGAGATGAACCCGGTACCTCAGATG");
+		System.out.println(a);
+		System.out.println(a.getReverseCompliment());
 		// System.out.println("NA java:" + NucleicAcid.calcDefaultNearestNeighborTm(a.toString()));
 
 	}

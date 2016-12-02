@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
+import com.roche.sequencing.bioinformatics.common.sequence.NucleotideCodeSequence;
 
 /**
  * 
@@ -40,9 +41,13 @@ public class SimpleMapper<O> {
 	private final static int DEFAULT_REFERENCE_SPACING = 1;
 	private final static int DEFAULT_QUERY_SPACING = 1;
 	private final static int DEFAULT_BEST_CANDIDATE_LIMIT = 10;
+	private final static int DEFAULT_MAX_REFERENCES_STORED_PER_SEQUENCE = 50;
+	private final static double DEFAULT_MIN_RATIO_OF_HITS_TO_AVAILABLE_HITS = 0.5;
 	private final int comparisonSequenceSize;
 	private final int referenceSpacing;
 	private final int querySpacing;
+	private final Integer maxReferencesStoredPerSequence;
+	private final HashSet<ISequence> sequencesToExclude;
 
 	private final Map<ISequence, Set<O>> sequenceSliceToReferenceAddressMap;
 
@@ -50,7 +55,7 @@ public class SimpleMapper<O> {
 	 * Default Constructor
 	 */
 	public SimpleMapper() {
-		this(DEFAULT_COMPARISON_SEQUENCE_SIZE, DEFAULT_REFERENCE_SPACING, DEFAULT_QUERY_SPACING);
+		this(DEFAULT_COMPARISON_SEQUENCE_SIZE, DEFAULT_REFERENCE_SPACING, DEFAULT_QUERY_SPACING, DEFAULT_MAX_REFERENCES_STORED_PER_SEQUENCE);
 	}
 
 	/**
@@ -65,11 +70,13 @@ public class SimpleMapper<O> {
 	 * @param minHitThreshold
 	 *            min number of hits required to return as a best candidate reference
 	 */
-	private SimpleMapper(int comparisonSequenceSize, int referenceSpacing, int querySpacing) {
+	public SimpleMapper(int comparisonSequenceSize, int referenceSpacing, int querySpacing, Integer maxReferencesStoredPerSequence) {
 		this.comparisonSequenceSize = comparisonSequenceSize;
 		this.referenceSpacing = referenceSpacing;
 		this.querySpacing = querySpacing;
-		sequenceSliceToReferenceAddressMap = new ConcurrentHashMap<ISequence, Set<O>>();
+		this.maxReferencesStoredPerSequence = maxReferencesStoredPerSequence;
+		this.sequenceSliceToReferenceAddressMap = new ConcurrentHashMap<ISequence, Set<O>>();
+		this.sequencesToExclude = new HashSet<ISequence>();
 	}
 
 	/**
@@ -95,7 +102,7 @@ public class SimpleMapper<O> {
 	 * @param referenceSequence
 	 * @param sequenceAddress
 	 */
-	
+
 	public void removeReferenceSequenceByAddress(O sequenceAddress) {
 		for (Entry<ISequence, Set<O>> entry : sequenceSliceToReferenceAddressMap.entrySet()) {
 			Set<O> set = entry.getValue();
@@ -111,12 +118,26 @@ public class SimpleMapper<O> {
 	}
 
 	private void addSliceToReferenceMap(ISequence sequence, O sequenceAddress) {
-		Set<O> sequenceAddresses = sequenceSliceToReferenceAddressMap.get(sequence);
-		if (sequenceAddresses == null) {
-			sequenceAddresses = new HashSet<O>();
+		if (!(sequence instanceof NucleotideCodeSequence)) {
+			sequence = new NucleotideCodeSequence(sequence);
 		}
-		sequenceAddresses.add(sequenceAddress);
-		sequenceSliceToReferenceAddressMap.put(sequence, sequenceAddresses);
+		if (!sequencesToExclude.contains(sequence)) {
+			Set<O> sequenceAddresses = sequenceSliceToReferenceAddressMap.get(sequence);
+			if (sequenceAddresses == null) {
+				sequenceAddresses = new HashSet<O>();
+				sequenceSliceToReferenceAddressMap.put(sequence, sequenceAddresses);
+			}
+			sequenceAddresses.add(sequenceAddress);
+			if (maxReferencesStoredPerSequence != null && sequenceAddresses.size() > maxReferencesStoredPerSequence) {
+				sequenceSliceToReferenceAddressMap.remove(sequence);
+				sequencesToExclude.add(sequence);
+			}
+
+		}
+	}
+
+	public List<O> getBestCandidateReferences(ISequence querySequence, int limit) {
+		return getBestCandidateReferences(querySequence, limit, DEFAULT_MIN_RATIO_OF_HITS_TO_AVAILABLE_HITS);
 	}
 
 	/**
@@ -124,7 +145,10 @@ public class SimpleMapper<O> {
 	 * @return the set of unique identifiers/keys/sequence addresses that best map to the provided query sequence
 	 */
 	@SuppressWarnings("unchecked")
-	public List<O> getBestCandidateReferences(ISequence querySequence, int limit) {
+	public List<O> getBestCandidateReferences(ISequence querySequence, int limit, double minRatioOfHitsToAvailableHits) {
+		double availableHits = (double) (querySequence.size() - comparisonSequenceSize) / (double) querySpacing;
+		double hitLimitBasedOnMinRatio = minRatioOfHitsToAvailableHits * availableHits;
+
 		TallyMap<O> matchTallies = getReferenceTallyMap(querySequence);
 
 		int lastAddedSize = 0;
@@ -132,14 +156,13 @@ public class SimpleMapper<O> {
 		List<O> bestCandidates = new LinkedList<O>();
 		if (matchTallies.getLargestCount() > 0) {
 			entryLoop: for (Entry<O, Integer> entry : matchTallies.getObjectsSortedFromMostTalliesToLeast()) {
-
-				if (bestCandidates.size() >= limit && entry.getValue() < lastAddedSize) {
+				int hits = entry.getValue();
+				if ((bestCandidates.size() >= limit && hits < lastAddedSize) || (hits < hitLimitBasedOnMinRatio)) {
 					break entryLoop;
 				} else {
 					bestCandidates.add(entry.getKey());
-					lastAddedSize = entry.getValue();
+					lastAddedSize = hits;
 				}
-
 			}
 		} else {
 			bestCandidates = (List<O>) Collections.EMPTY_LIST;
@@ -153,10 +176,9 @@ public class SimpleMapper<O> {
 	 * @return the set of unique identifiers/keys/sequence addresses that best map to the provided query sequence
 	 */
 	public List<O> getBestCandidateReferences(ISequence querySequence) {
-		return getBestCandidateReferences(querySequence, DEFAULT_BEST_CANDIDATE_LIMIT);
+		return getBestCandidateReferences(querySequence, DEFAULT_BEST_CANDIDATE_LIMIT, DEFAULT_MIN_RATIO_OF_HITS_TO_AVAILABLE_HITS);
 	}
 
-	
 	public int getOptimalScore(ISequence querySequence) {
 		return querySequence.size() - comparisonSequenceSize;
 	}
@@ -166,6 +188,10 @@ public class SimpleMapper<O> {
 	 * @return the tallyMap associated with hits for this query sequence
 	 */
 	public TallyMap<O> getReferenceTallyMap(ISequence querySequence) {
+		if (!(querySequence instanceof NucleotideCodeSequence)) {
+			querySequence = new NucleotideCodeSequence(querySequence);
+		}
+
 		TallyMap<O> matchTallies = new TallyMap<O>();
 		for (int i = 0; i < querySequence.size() - comparisonSequenceSize; i += querySpacing) {
 			ISequence querySequenceSlice = querySequence.subSequence(i, i + comparisonSequenceSize - 1);
@@ -174,4 +200,5 @@ public class SimpleMapper<O> {
 		}
 		return matchTallies;
 	}
+
 }

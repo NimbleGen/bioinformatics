@@ -1,6 +1,8 @@
 package com.roche.sequencing.bioinformatics.common.genome;
 
 import java.util.Comparator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,9 +15,25 @@ public class GenomicRangedCoordinate implements Comparable<GenomicRangedCoordina
 
 	public final static Comparator<String> CONTAINER_COMPARATOR = new AlphaNumericStringComparator(true);
 
+	private static Pattern pattern = Pattern.compile("([a-zA-Z0-9]+)[:](\\d+)[:](\\d+)");
+
 	private final String container;
 	private final long startLocation;
 	private final long stopLocation;
+
+	public GenomicRangedCoordinate(String locationAsString) {
+		super();
+
+		Matcher matcher = pattern.matcher(locationAsString);
+		if (matcher.find()) {
+			container = matcher.group(1);
+			this.startLocation = Long.valueOf(matcher.group(2));
+			this.stopLocation = Long.valueOf(matcher.group(3));
+		} else {
+			throw new IllegalArgumentException("The provided locationAsString[" + locationAsString
+					+ "] does not match the required format [container:startPosition-endPosition] or [container:startPosition:endPosition] for example: [chr1:1:1000] or [chr1:1-1000]");
+		}
+	}
 
 	public GenomicRangedCoordinate(String container, long startLocation, long stopLocation) {
 		super();

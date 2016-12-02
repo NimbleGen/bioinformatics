@@ -19,10 +19,11 @@ package com.roche.sequencing.bioinformatics.common.alignment;
 import com.roche.sequencing.bioinformatics.common.sequence.ICode;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCode;
+import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class CigarStringUtil {
 	public final static char CIGAR_DELETION_FROM_REFERENCE = 'D';
-	private final static char CIGAR_ALIGNMENT_MATCH = 'M';
+	public final static char CIGAR_ALIGNMENT_MATCH = 'M';
 	public final static char CIGAR_INSERTION_TO_REFERENCE = 'I';
 	public final static char CIGAR_SEQUENCE_MATCH = '=';
 	public final static char CIGAR_SEQUENCE_MISMATCH = 'X';
@@ -229,6 +230,12 @@ public class CigarStringUtil {
 	public static boolean isClip(char cigarSymbol) {
 		boolean isClip = isSoftClip(cigarSymbol) || isHardClip(cigarSymbol);
 		return isClip;
+	}
+
+	public static String reverseCigarString(String summarizedCigarString) {
+		String expandedCigarString = expandCigarString(summarizedCigarString);
+		String reversedCigarString = summarizeCigarString(StringUtil.reverse(expandedCigarString));
+		return reversedCigarString;
 	}
 
 }

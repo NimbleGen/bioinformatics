@@ -17,6 +17,8 @@
 package com.roche.sequencing.bioinformatics.common.utils;
 
 import java.awt.event.KeyEvent;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -28,11 +30,13 @@ public final class StringUtil {
 
 	public static final String TAB = "\t";
 	public static final char CARRIAGE_RETURN = '\r';
-	static final char NEWLINE_SYMBOL = '\n';
+	public static final char NEWLINE_SYMBOL = '\n';
 	// NOTE: WINDOWS_NEWLINE = CARRIAGE_RETURN + LINE_FEED;
 	// NOTE: LINUX_NEWLINE = LINE_FEED;
 	public static final String LINUX_NEWLINE = "" + NEWLINE_SYMBOL;
 	public static final String WINDOWS_NEWLINE = CARRIAGE_RETURN + LINUX_NEWLINE;
+
+	private final static int DEFAULT_MAX_LABEL_LENGTH_FOR_REDUCTION = 20;
 
 	private static Random RANDOM = new Random(System.currentTimeMillis());
 	private static char[] CHARACTERS = new char[] { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2',
@@ -160,6 +164,44 @@ public final class StringUtil {
 		return count;
 	}
 
+	public static String[] splitIntoLines(String string, int maxCharactersInALine) {
+		List<String> lines = new ArrayList<String>();
+		StringBuilder currentLineText = new StringBuilder();
+		int currentIndex = 0;
+		int indexOfLastSpace = 0;
+		int startIndexOfCurrentLine = 0;
+
+		while (currentIndex < string.length()) {
+			char currentChar = string.charAt(currentIndex);
+			if (Character.isSpaceChar(currentChar)) {
+				indexOfLastSpace = currentIndex;
+			}
+			currentLineText.append(currentChar);
+			if ((currentLineText.length() > maxCharactersInALine)) {
+				if (indexOfLastSpace == startIndexOfCurrentLine) {
+					throw new IllegalStateException("The text can not be split on spaces.");
+				}
+
+				lines.add(currentLineText.substring(0, (indexOfLastSpace - startIndexOfCurrentLine)));
+				currentIndex = indexOfLastSpace + 1;
+				startIndexOfCurrentLine = currentIndex;
+				currentLineText = new StringBuilder();
+			} else if (currentIndex == (string.length() - 1)) {
+				lines.add(currentLineText.toString());
+				currentIndex++;
+			} else {
+				currentIndex++;
+			}
+		}
+
+		return lines.toArray(new String[0]);
+	}
+
+	public static void main(String[] args) {
+		String s = "A boy ran very far to get home.  He made it very quickly.";
+		System.out.println(ArraysUtil.toString(splitIntoLines(s, 10)));
+	}
+
 	/**
 	 * insert a string into the base string at intervals of spaces For example: insertStringEveryNSpaces("abcdefghijk","z",2) would return "abzcdzefzghzijzk"
 	 * 
@@ -227,5 +269,17 @@ public final class StringUtil {
 	public static String replace(String originalString, int index, Character charToReplaceWith) {
 		String replacedString = originalString.substring(0, index) + charToReplaceWith + originalString.substring(index + 1);
 		return replacedString;
+	}
+
+	public static String reduceString(String string) {
+		return reduceString(string, DEFAULT_MAX_LABEL_LENGTH_FOR_REDUCTION);
+	}
+
+	public static String reduceString(String string, int length) {
+		String reducedString = string;
+		if (string.length() > length) {
+			reducedString = string.substring(0, length / 2) + "..." + string.substring(string.length() - length / 2);
+		}
+		return reducedString;
 	}
 }

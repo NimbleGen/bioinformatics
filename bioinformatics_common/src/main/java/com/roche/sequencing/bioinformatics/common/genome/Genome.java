@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.SimpleNucleotideCodeSequence;
+import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 public class Genome implements IGenome {
@@ -92,6 +93,18 @@ public class Genome implements IGenome {
 
 	public ISequence getSequence(String containerName) {
 		return getSequence(containerName, 1, getContainerSize(containerName) - 1);
+	}
+
+	public ISequence getSequence(GenomicRangedCoordinate rangedCoordinate) {
+		return getSequence(rangedCoordinate.getContainerName(), rangedCoordinate.getStartLocation(), rangedCoordinate.getStopLocation());
+	}
+
+	public ISequence getSequence(StrandedGenomicRangedCoordinate rangedCoordinate) {
+		ISequence sequence = getSequence(rangedCoordinate.getContainerName(), rangedCoordinate.getStartLocation(), rangedCoordinate.getStopLocation());
+		if (rangedCoordinate.getStrand() == Strand.REVERSE) {
+			sequence = sequence.getReverseCompliment();
+		}
+		return sequence;
 	}
 
 	public synchronized ISequence getSequence(String containerName, long sequenceStart, long sequenceEnd) {

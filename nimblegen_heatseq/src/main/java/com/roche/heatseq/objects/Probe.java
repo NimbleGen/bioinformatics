@@ -82,9 +82,8 @@ public class Probe {
 
 	public ISequence getProbeSequence() {
 		ISequence probeSequence = new NucleotideCodeSequence(extensionPrimerSequence);
-
-		probeSequence.append(captureTargetSequence);
-		probeSequence.append(ligationPrimerSequence);
+		probeSequence.append(new NucleotideCodeSequence(captureTargetSequence));
+		probeSequence.append(new NucleotideCodeSequence(ligationPrimerSequence));
 		return probeSequence;
 	}
 

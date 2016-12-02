@@ -65,7 +65,7 @@
 			<dependency>
 				<groupId>com.github.samtools</groupId>
 				<artifactId>htsjdk</artifactId>
-				<version>1.143</version>
+				<version>2.6.1</version>
 			</dependency>
 			<dependency>
 				<groupId>commons-digester</groupId>
@@ -217,7 +217,7 @@
 	</repositories>
 
 	<prerequisites>
-		<maven>3.0.4</maven>
+		<maven>3.3.9</maven>
 	</prerequisites>
 
 	<inceptionYear>2013</inceptionYear>
@@ -244,18 +244,6 @@
 		</developer>
 
 		<developer>
-			<id>candace.bain</id>
-			<name>Candace Bain</name>
-			<email>candace.bain@roche.com</email>
-			<organization>${project.organization.name}</organization>
-			<organizationUrl>${project.organization.url}</organizationUrl>
-			<roles>
-				<role>Developer</role>
-			</roles>
-			<timezone>-6</timezone>
-		</developer>
-
-		<developer>
 			<id>kurt.heilman</id>
 			<name>Kurt Heilman</name>
 			<email>kurt.heilman@roche.com</email>
@@ -270,7 +258,7 @@
 	</developers>
 
 	<properties>
-		<jdkVersion>1.7</jdkVersion>
+		<jdkVersion>1.8</jdkVersion>
 		<sourceEncoding>ISO-8859-1</sourceEncoding>
 		<product.version>1.0</product.version>
 		<test-groups>unit, smoke</test-groups>

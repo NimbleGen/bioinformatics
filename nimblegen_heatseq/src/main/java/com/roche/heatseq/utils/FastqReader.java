@@ -59,7 +59,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.zip.GZIPInputStream;
 
-import com.roche.sequencing.bioinformatics.common.utils.GZipUtil;
+import com.roche.sequencing.bioinformatics.common.utils.gzip.GZipUtil;
 
 /**
  * Reads a fastq file.
@@ -106,64 +106,68 @@ public class FastqReader implements Iterator<FastqRecord>, Iterable<FastqRecord>
 	}
 
 	private FastqRecord readNextRecord() {
-		FastqRecord record = null;
-		try {
-			// Read sequence header
-			final String seqHeader = reader.readLine();
-			final String seqLine = reader.readLine();
-			final String qualHeader = reader.readLine();
-			final String qualLine = reader.readLine();
+		synchronized (this) {
+			FastqRecord record = null;
+			try {
+				// Read sequence header
+				final String seqHeader = reader.readLine();
+				final String seqLine = reader.readLine();
+				final String qualHeader = reader.readLine();
+				final String qualLine = reader.readLine();
 
-			if (seqHeader != null && qualHeader != null) {
-				record = new FastqRecord(seqHeader.substring(1, seqHeader.length()), seqLine, qualHeader.substring(1, qualHeader.length()), qualLine);
+				if (seqHeader != null && qualHeader != null) {
+					record = new FastqRecord(seqHeader.substring(1, seqHeader.length()), seqLine, qualHeader.substring(1, qualHeader.length()), qualLine);
+				}
+				line += 4;
+			} catch (IOException e) {
+				throw new PicardException(String.format("Error reading '%s'", fileAbsolutePath), e);
 			}
-			line += 4;
-		} catch (IOException e) {
-			throw new PicardException(String.format("Error reading '%s'", fileAbsolutePath), e);
+			return record;
 		}
-		return record;
 	}
 
 	private FastqRecord readNextRecordWithChecks() {
-		try {
+		synchronized (this) {
+			try {
 
-			// Read sequence header
-			final String seqHeader = reader.readLine();
-			if (seqHeader == null)
-				return null;
-			if (StringUtil.isBlank(seqHeader)) {
-				throw new PicardException(error("Missing sequence header"));
+				// Read sequence header
+				final String seqHeader = reader.readLine();
+				if (seqHeader == null)
+					return null;
+				if (StringUtil.isBlank(seqHeader)) {
+					throw new PicardException(error("Missing sequence header"));
+				}
+				if (!seqHeader.startsWith(FastqConstants.SEQUENCE_HEADER)) {
+					throw new PicardException(error("Invalid Fastq file--Fastq Sequence header must start with " + FastqConstants.SEQUENCE_HEADER));
+				}
+
+				// Read sequence line
+				final String seqLine = reader.readLine();
+				checkLine(seqLine, "sequence line");
+
+				// Read quality header
+				final String qualHeader = reader.readLine();
+				checkLine(qualHeader, "quality header");
+				if (!qualHeader.startsWith(FastqConstants.QUALITY_HEADER)) {
+					throw new PicardException(error("Quality header must start with " + FastqConstants.QUALITY_HEADER + ": " + qualHeader));
+				}
+
+				// Read quality line
+				final String qualLine = reader.readLine();
+				checkLine(qualLine, "quality line");
+
+				// Check sequence and quality lines are same length
+				if (seqLine.length() != qualLine.length()) {
+					throw new PicardException(error("Sequence and quality line must be the same length"));
+				}
+
+				final FastqRecord frec = new FastqRecord(seqHeader.substring(1, seqHeader.length()), seqLine, qualHeader.substring(1, qualHeader.length()), qualLine);
+				line += 4;
+				return frec;
+
+			} catch (IOException e) {
+				throw new PicardException(String.format("Error reading '%s'", fileAbsolutePath), e);
 			}
-			if (!seqHeader.startsWith(FastqConstants.SEQUENCE_HEADER)) {
-				throw new PicardException(error("Invalid Fastq file--Fastq Sequence header must start with " + FastqConstants.SEQUENCE_HEADER));
-			}
-
-			// Read sequence line
-			final String seqLine = reader.readLine();
-			checkLine(seqLine, "sequence line");
-
-			// Read quality header
-			final String qualHeader = reader.readLine();
-			checkLine(qualHeader, "quality header");
-			if (!qualHeader.startsWith(FastqConstants.QUALITY_HEADER)) {
-				throw new PicardException(error("Quality header must start with " + FastqConstants.QUALITY_HEADER + ": " + qualHeader));
-			}
-
-			// Read quality line
-			final String qualLine = reader.readLine();
-			checkLine(qualLine, "quality line");
-
-			// Check sequence and quality lines are same length
-			if (seqLine.length() != qualLine.length()) {
-				throw new PicardException(error("Sequence and quality line must be the same length"));
-			}
-
-			final FastqRecord frec = new FastqRecord(seqHeader.substring(1, seqHeader.length()), seqLine, qualHeader.substring(1, qualHeader.length()), qualLine);
-			line += 4;
-			return frec;
-
-		} catch (IOException e) {
-			throw new PicardException(String.format("Error reading '%s'", fileAbsolutePath), e);
 		}
 	}
 
