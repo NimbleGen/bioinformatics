@@ -16,10 +16,13 @@
 
 package com.roche.sequencing.bioinformatics.common.utils;
 
+import java.awt.Dimension;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+import javax.swing.plaf.FontUIResource;
 
 /**
  * Utility class for working with Strings
@@ -162,6 +165,40 @@ public final class StringUtil {
 	public static int countMatches(String reference, String query) {
 		int count = reference.length() - reference.replaceAll(query, "").length();
 		return count;
+	}
+
+	public static String[] splitIntoLines(String string, FontUIResource font, double maxLineWidth) {
+		List<String> lines = new ArrayList<String>();
+		StringBuilder currentLineText = new StringBuilder();
+		int currentIndex = 0;
+		int indexOfLastSpace = 0;
+		int startIndexOfCurrentLine = 0;
+
+		while (currentIndex < string.length()) {
+			char currentChar = string.charAt(currentIndex);
+			if (Character.isSpaceChar(currentChar)) {
+				indexOfLastSpace = currentIndex;
+			}
+			currentLineText.append(currentChar);
+			Dimension stringSize = GraphicsUtil.getStringExtent(font, currentLineText.toString());
+			if ((stringSize.getWidth() > maxLineWidth)) {
+				if (indexOfLastSpace == startIndexOfCurrentLine) {
+					throw new IllegalStateException("The text can not be split on spaces.");
+				}
+
+				lines.add(currentLineText.substring(0, (indexOfLastSpace - startIndexOfCurrentLine)));
+				currentIndex = indexOfLastSpace + 1;
+				startIndexOfCurrentLine = currentIndex;
+				currentLineText = new StringBuilder();
+			} else if (currentIndex == (string.length() - 1)) {
+				lines.add(currentLineText.toString());
+				currentIndex++;
+			} else {
+				currentIndex++;
+			}
+		}
+
+		return lines.toArray(new String[0]);
 	}
 
 	public static String[] splitIntoLines(String string, int maxCharactersInALine) {

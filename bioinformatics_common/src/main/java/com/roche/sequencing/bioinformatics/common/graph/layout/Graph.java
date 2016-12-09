@@ -1,112 +1,172 @@
 package com.roche.sequencing.bioinformatics.common.graph.layout;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class Graph {
 
-	private final List<Node<?>> nodes;
-	private Map<Node<?>, Integer> cachedNodeToIndexMap;
-	private final Map<Integer, Set<Integer>> fromNodeToToNodeMap;
-	private final Map<Integer, Set<Integer>> toNodeToFromNodeMap;
+	private Map<Long, Node<?>> nodeCreationIndexToNodeMap;
+	private final Map<Long, Set<Long>> fromNodeToToNodeMap;
+	private final Map<Long, Set<Long>> toNodeToFromNodeMap;
 
 	public Graph() {
-		fromNodeToToNodeMap = new HashMap<Integer, Set<Integer>>();
-		toNodeToFromNodeMap = new HashMap<Integer, Set<Integer>>();
-		nodes = new ArrayList<Node<?>>();
+		fromNodeToToNodeMap = new HashMap<Long, Set<Long>>();
+		toNodeToFromNodeMap = new HashMap<Long, Set<Long>>();
+		nodeCreationIndexToNodeMap = new HashMap<Long, Node<?>>();
 	}
 
-	public void connectNodes(Node<?> fromNode, Node<?> toNode) {
-		int fromNodeIndex = nodes.indexOf(fromNode);
-		if (fromNodeIndex < 0) {
-			fromNodeIndex = nodes.size();
-			nodes.add(fromNode);
-			cachedNodeToIndexMap = null;
+	private Node<?> getExistingNode(Object object) {
+		Node<?> foundNode = null;
+		nodeLoop: for (Node<?> node : nodeCreationIndexToNodeMap.values()) {
+			// comparing object references
+			if (object == node.getContents()) {
+				foundNode = node;
+				break nodeLoop;
+			}
 		}
+		return foundNode;
+	}
 
-		int toNodeIndex = nodes.indexOf(toNode);
-		if (toNodeIndex < 0) {
-			toNodeIndex = nodes.size();
-			nodes.add(toNode);
-			cachedNodeToIndexMap = null;
+	Node<?> getNode(Object object) {
+		Node<?> node = getExistingNode(object);
+		if (node == null) {
+			node = new Node<Object>(object);
 		}
+		return node;
+	}
 
-		Set<Integer> toNodes = fromNodeToToNodeMap.get(fromNodeIndex);
+	public void connectNodes(Object fromObject, Object toObject) {
+		Node<?> fromNode = getNode(fromObject);
+		Node<?> toNode = getNode(toObject);
+
+		connectNodes(fromNode, toNode);
+	}
+
+	private synchronized void connectNodes(Node<?> fromNode, Node<?> toNode) {
+		nodeCreationIndexToNodeMap.put(fromNode.getCreationIndex(), fromNode);
+		nodeCreationIndexToNodeMap.put(toNode.getCreationIndex(), toNode);
+
+		Set<Long> toNodes = fromNodeToToNodeMap.get(fromNode.getCreationIndex());
 		if (toNodes == null) {
-			toNodes = new HashSet<Integer>();
-			fromNodeToToNodeMap.put(fromNodeIndex, toNodes);
+			toNodes = new HashSet<Long>();
+			fromNodeToToNodeMap.put(fromNode.getCreationIndex(), toNodes);
 		}
-		toNodes.add(toNodeIndex);
+		toNodes.add(toNode.getCreationIndex());
 
-		Set<Integer> fromNodes = toNodeToFromNodeMap.get(toNodeIndex);
+		Set<Long> fromNodes = toNodeToFromNodeMap.get(toNode.getCreationIndex());
 		if (fromNodes == null) {
-			fromNodes = new HashSet<Integer>();
-			toNodeToFromNodeMap.put(toNodeIndex, fromNodes);
+			fromNodes = new HashSet<Long>();
+			toNodeToFromNodeMap.put(toNode.getCreationIndex(), fromNodes);
 		}
-		fromNodes.add(fromNodeIndex);
+		fromNodes.add(fromNode.getCreationIndex());
 	}
 
-	public Set<Node<?>> getConnectedToNodes(Node<?> fromNode) {
+	synchronized Set<Node<?>> getConnectedToNodes(Node<?> fromNode) {
 		Set<Node<?>> toNodes;
-		Integer fromNodeIndex = getAddedIndexOfNode(fromNode);
-		Set<Integer> toNodeIndexes = fromNodeToToNodeMap.get(fromNodeIndex);
+		Set<Long> toNodeIndexes = fromNodeToToNodeMap.get(fromNode.getCreationIndex());
 		if (toNodeIndexes == null) {
 			toNodes = Collections.emptySet();
 		} else {
 			toNodes = new HashSet<Node<?>>();
-			for (Integer index : toNodeIndexes) {
-				toNodes.add(nodes.get(index));
+			for (Long toNodeCreationIndex : toNodeIndexes) {
+				toNodes.add(nodeCreationIndexToNodeMap.get(toNodeCreationIndex));
 			}
 		}
 		return toNodes;
 	}
 
-	public Set<Node<?>> getConnectedFromNodes(Node<?> toNode) {
+	synchronized Set<Node<?>> getConnectedFromNodes(Node<?> toNode) {
 		Set<Node<?>> fromNodes;
-		Integer toNodeIndex = getAddedIndexOfNode(toNode);
-		Set<Integer> fromNodeIndexes = toNodeToFromNodeMap.get(toNodeIndex);
+		Set<Long> fromNodeIndexes = toNodeToFromNodeMap.get(toNode.getCreationIndex());
 		if (fromNodeIndexes == null) {
 			fromNodes = Collections.emptySet();
 		} else {
 			fromNodes = new HashSet<Node<?>>();
-			for (Integer index : fromNodeIndexes) {
-				fromNodes.add(nodes.get(index));
+			for (Long creationIndex : fromNodeIndexes) {
+				fromNodes.add(nodeCreationIndexToNodeMap.get(creationIndex));
 			}
 		}
 		return fromNodes;
 	}
 
-	public Set<Node<?>> getNodes() {
-		return new HashSet<Node<?>>(nodes);
+	synchronized Set<Node<?>> getNodes() {
+		return new HashSet<Node<?>>(nodeCreationIndexToNodeMap.values());
 	}
 
-	private void createCachedNodeToIndexMap() {
-		cachedNodeToIndexMap = new HashMap<Node<?>, Integer>();
-
-		for (int i = 0; i < nodes.size(); i++) {
-			cachedNodeToIndexMap.put(nodes.get(i), i);
-		}
+	public void replaceObject(Object objectToReplace, Object replacementObject) {
+		Node<?> nodeToReplace = getNode(objectToReplace);
+		Node<?> replacementNode = getNode(replacementObject);
+		replaceNode(nodeToReplace, replacementNode);
 	}
 
-	public int getAddedIndexOfNode(Node<?> node) {
-		if (cachedNodeToIndexMap == null) {
-			createCachedNodeToIndexMap();
+	public synchronized void replaceNode(Node<?> nodeToReplace, Node<?> replacementNode) {
+		nodeCreationIndexToNodeMap.put(replacementNode.getCreationIndex(), replacementNode);
+		Set<Long> toNodes = fromNodeToToNodeMap.get(nodeToReplace.getCreationIndex());
+		if (toNodes != null) {
+			for (Long toNodeCreationIndex : toNodes) {
+				connectNodes(replacementNode, nodeCreationIndexToNodeMap.get(toNodeCreationIndex));
+			}
 		}
-		return cachedNodeToIndexMap.get(node);
+
+		Set<Long> fromNodes = toNodeToFromNodeMap.get(nodeToReplace.getCreationIndex());
+		if (fromNodes != null) {
+			for (Long fromNodeCreationIndex : fromNodes) {
+				connectNodes(getNodeByCreatioIndex(fromNodeCreationIndex), replacementNode);
+			}
+		}
+
+		removeNode(nodeToReplace);
 	}
 
-	public void replaceNode(Node<?> nodeToReplace, Node<?> replacementNode) {
-		int nodeIndex = getAddedIndexOfNode(nodeToReplace);
-		if (nodeIndex >= 0) {
-			nodes.set(nodeIndex, replacementNode);
-			cachedNodeToIndexMap.remove(nodeToReplace);
-			cachedNodeToIndexMap.put(replacementNode, nodeIndex);
+	private void removeNode(Node<?> nodeToRemove) {
+		Set<Long> toNodes = fromNodeToToNodeMap.get(nodeToRemove.getCreationIndex());
+		if (toNodes != null) {
+			for (Long toNodeCreationIndex : toNodes) {
+				Set<Long> tosFromNodes = toNodeToFromNodeMap.get(toNodeCreationIndex);
+				tosFromNodes.remove(nodeToRemove.getCreationIndex());
+			}
 		}
+
+		Set<Long> fromNodes = toNodeToFromNodeMap.get(nodeToRemove.getCreationIndex());
+		if (fromNodes != null) {
+			for (Long fromNodeCreationIndex : fromNodes) {
+				Set<Long> fromsToNodes = fromNodeToToNodeMap.get(fromNodeCreationIndex);
+				fromsToNodes.remove(nodeToRemove.getCreationIndex());
+			}
+		}
+
+		nodeCreationIndexToNodeMap.remove(nodeToRemove.getCreationIndex());
+	}
+
+	Node<?> getNodeByCreatioIndex(Long nodeCreationIndex) {
+		return nodeCreationIndexToNodeMap.get(nodeCreationIndex);
+	}
+
+	public static void main(String[] args) {
+		Graph graph = new Graph();
+		String a = "a";
+		String b = "b";
+		String c = "c";
+		String d = "d";
+		String e = "e";
+		String f = "f";
+
+		graph.connectNodes(a, b);
+		graph.connectNodes(b, c);
+		graph.connectNodes(c, d);
+		graph.connectNodes(d, e);
+		graph.connectNodes(d, f);
+
+		Node<?> nodeA = graph.getNode(a);
+		System.out.println(nodeA);
+		System.out.println(graph.getConnectedToNodes(nodeA));
+	}
+
+	public int getNumberOfNodes() {
+		return nodeCreationIndexToNodeMap.size();
 	}
 
 }

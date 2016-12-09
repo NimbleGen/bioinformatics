@@ -1,16 +1,26 @@
 package com.roche.sequencing.bioinformatics.common.graph.layout;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 public class Node<T> {
 
+	private final long creationIndex;
 	private final T contents;
+
+	private final static AtomicLong NODE_CREATION_COUNTER = new AtomicLong(1);
 
 	public Node(T contents) {
 		super();
 		this.contents = contents;
+		this.creationIndex = NODE_CREATION_COUNTER.getAndIncrement();
 	}
 
 	public T getContents() {
 		return contents;
+	}
+
+	public long getCreationIndex() {
+		return creationIndex;
 	}
 
 	@Override

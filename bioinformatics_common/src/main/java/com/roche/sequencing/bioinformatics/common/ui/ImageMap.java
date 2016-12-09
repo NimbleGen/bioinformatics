@@ -137,6 +137,17 @@ public class ImageMap<D> {
 		return areas.get(index);
 	}
 
+	public Rectangle getFirstAreaMatchingData(D data) {
+		Rectangle firstFoundArea = null;
+		areaLoop: for (ImageMapArea<D> area : areas) {
+			if (area.getData().equals(data)) {
+				firstFoundArea = area;
+				break areaLoop;
+			}
+		}
+		return firstFoundArea;
+	}
+
 	/**
 	 * return the number of ImageMapAreas contained within this ImageMap
 	 * 

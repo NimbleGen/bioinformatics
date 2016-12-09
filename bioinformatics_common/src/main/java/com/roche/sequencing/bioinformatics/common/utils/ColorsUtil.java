@@ -21,6 +21,7 @@ import java.util.Random;
 public class ColorsUtil {
 
 	private final static Random random = new Random();
+	private final static float MAX_COLOR_VALUE = 255f;
 
 	private ColorsUtil() {
 		throw new AssertionError();
@@ -82,5 +83,9 @@ public class ColorsUtil {
 				new Color(242, 182, 198), new Color(242, 214, 182), new Color(0, 77, 41), new Color(70, 67, 89), new Color(217, 0, 29), new Color(89, 79, 67), new Color(64, 255, 242),
 				new Color(49, 22, 89), new Color(255, 170, 0), new Color(19, 77, 73), new Color(175, 143, 191), new Color(204, 190, 0), new Color(38, 145, 153), new Color(173, 0, 217) };
 		return displayableColors;
+	}
+
+	public static Color addAlpha(Color color, float alpha) {
+		return new Color(color.getRed() / MAX_COLOR_VALUE, color.getGreen() / MAX_COLOR_VALUE, color.getBlue() / MAX_COLOR_VALUE, alpha);
 	}
 }

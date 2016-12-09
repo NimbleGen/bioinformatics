@@ -9,29 +9,39 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.WeakHashMap;
+
+import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 
 public class GraphLayout {
 
-	private final Map<Node<?>, Cell> nodeToMatrixPositionMap;
+	private final Map<Object, Object> originalToReplacementMap;
+	private final Map<Long, Cell> nodeCreationIndexToMatrixPositionMap;
+	private final TallyMap<Integer> nodeCountByColumnIndex;
 	private final Graph graph;
 
 	private GraphLayout(Graph graph) {
 		this.graph = graph;
-		nodeToMatrixPositionMap = new HashMap<Node<?>, Cell>();
+		nodeCreationIndexToMatrixPositionMap = new HashMap<Long, Cell>();
+		originalToReplacementMap = new WeakHashMap<Object, Object>();
+		nodeCountByColumnIndex = new TallyMap<Integer>();
 	}
 
-	public Cell getNodesPositionInLayoutMatrix(Node<?> node) {
-		return nodeToMatrixPositionMap.get(node);
+	public synchronized Cell getNodesPositionInLayoutMatrix(Node<?> node) {
+		return nodeCreationIndexToMatrixPositionMap.get(node.getCreationIndex());
 	}
 
-	public Graph getGraph() {
+	public synchronized Graph getGraph() {
 		return graph;
 	}
 
-	public Cell getMaxCell() {
+	public synchronized Cell getMaxCell() {
 		int maxRow = 0;
 		int maxColumn = 0;
-		for (Cell cell : nodeToMatrixPositionMap.values()) {
+		for (Cell cell : nodeCreationIndexToMatrixPositionMap.values()) {
+			if (cell == null) {
+				System.out.println("here.");
+			}
 			maxRow = Math.max(cell.getRow(), maxRow);
 			maxColumn = Math.max(cell.getColumn(), maxColumn);
 		}
@@ -44,7 +54,6 @@ public class GraphLayout {
 		// find all the nodes that have no from nodes
 		Set<Node<?>> startingNodes = new HashSet<Node<?>>();
 		for (Node<?> node : graph.getNodes()) {
-			System.out.println(node.getContents());
 			if (graph.getConnectedFromNodes(node).isEmpty()) {
 				startingNodes.add(node);
 			}
@@ -106,7 +115,7 @@ public class GraphLayout {
 			Collections.sort(nodesAtColumn, new Comparator<Node<?>>() {
 				@Override
 				public int compare(Node<?> o1, Node<?> o2) {
-					return Integer.compare(graph.getAddedIndexOfNode(o1), graph.getAddedIndexOfNode(o2));
+					return Long.compare(o1.getCreationIndex(), o2.getCreationIndex());
 				}
 			});
 
@@ -138,17 +147,56 @@ public class GraphLayout {
 
 				}
 
-				graphLayout.nodeToMatrixPositionMap.put(node, new Cell(cellRow, cellColumn));
+				graphLayout.nodeCountByColumnIndex.add(cellColumn);
+				graphLayout.nodeCreationIndexToMatrixPositionMap.put(node.getCreationIndex(), new Cell(cellRow, cellColumn));
 			}
 		}
 
 		return graphLayout;
 	}
 
-	public void replaceNode(Node<?> nodeToReplace, Node<?> replacementNode) {
+	public void replaceObject(Object objectToReplace, Object replacementObject) {
+		Node<?> nodeToReplace = graph.getNode(objectToReplace);
+		Node<?> replacementNode = graph.getNode(replacementObject);
 		graph.replaceNode(nodeToReplace, replacementNode);
-		Cell cell = nodeToMatrixPositionMap.get(nodeToReplace);
-		nodeToMatrixPositionMap.remove(nodeToReplace);
-		nodeToMatrixPositionMap.put(replacementNode, cell);
+		Cell cell = nodeCreationIndexToMatrixPositionMap.get(nodeToReplace.getCreationIndex());
+		nodeCreationIndexToMatrixPositionMap.remove(nodeToReplace.getCreationIndex());
+		if (cell != null) {
+			nodeCreationIndexToMatrixPositionMap.put(replacementNode.getCreationIndex(), cell);
+		}
+
+		originalToReplacementMap.put(objectToReplace, replacementObject);
+	}
+
+	public synchronized List<Object> getNodeObjects(Class<?> contentClass) {
+		List<Object> nodeObjects = new ArrayList<Object>();
+		for (long creationIndex : nodeCreationIndexToMatrixPositionMap.keySet()) {
+			Node<?> node = graph.getNodeByCreatioIndex(creationIndex);
+			if (node.getContents().getClass().equals(contentClass)) {
+				nodeObjects.add(node.getContents());
+			}
+		}
+		return nodeObjects;
+	}
+
+	public synchronized Object getReplacedObjectFromOriginalObject(Object originalObject) {
+		Object replacementObject = originalToReplacementMap.get(originalObject);
+		return replacementObject;
+	}
+
+	public synchronized boolean doesContainingColumnContainManInTheMiddle(Node<?> node) {
+		int columnIndex = getNodesPositionInLayoutMatrix(node).getColumn();
+		int nodesInColumn = nodeCountByColumnIndex.getCount(columnIndex);
+		boolean hasOddNumberOfNodes = (nodesInColumn % 2 == 1);
+		return hasOddNumberOfNodes;
+	}
+
+	public synchronized boolean isAboveCenter(Node<?> node) {
+		Cell nodesCell = getNodesPositionInLayoutMatrix(node);
+		int columnIndex = nodesCell.getColumn();
+		int nodesInColumn = nodeCountByColumnIndex.getCount(columnIndex);
+		int rowIndex = nodesCell.getRow();
+		boolean isAboveCenter = (rowIndex <= (nodesInColumn / 2));
+		return isAboveCenter;
 	}
 }

@@ -3,6 +3,8 @@ package com.roche.sequencing.bioinformatics.common.utils;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.WritableRaster;
 
 /**
  * A class for image utilities.
@@ -23,7 +25,7 @@ public class ImageUtil {
 	 * @param angleInDegrees
 	 * @return buffered image rotated with the values slightly changed due to interpolation
 	 */
-	
+
 	public static BufferedImage rotate(BufferedImage image, double angleInDegrees) {
 		double angleInRadians = Math.toRadians(angleInDegrees);
 		double sin = Math.abs(Math.sin(angleInRadians)), cos = Math.abs(Math.cos(angleInRadians));
@@ -88,5 +90,12 @@ public class ImageUtil {
 		}
 
 		return rotatedImage;
+	}
+
+	public static BufferedImage deepCopy(BufferedImage bufferedImage) {
+		ColorModel cm = bufferedImage.getColorModel();
+		boolean isAlphaPremultiplied = cm.isAlphaPremultiplied();
+		WritableRaster raster = bufferedImage.copyData(null);
+		return new BufferedImage(cm, raster, isAlphaPremultiplied, null);
 	}
 }

@@ -30,12 +30,13 @@ import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCode;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.StartAndStopIndex;
-import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
+import com.roche.sequencing.bioinformatics.common.utils.IProgressListener;
 
 public class ProbeAssigner {
 
 	public final static String UID_DELIMITER = "%";
 	private final static int numberOfThreads = 20;
+	private final static DecimalFormat DF = new DecimalFormat("#,###");
 
 	// this is used when selecting the best of the probe candidates
 	// they must have an edit distance no greater than this number
@@ -56,7 +57,7 @@ public class ProbeAssigner {
 		throw new AssertionError();
 	}
 
-	public static Map<String, ProbeAssignment> getReadNameToProbeAssignmentMap(File mergedFastqFile, File probeFile) {
+	public static Map<String, ProbeAssignment> getReadNameToProbeAssignmentMap(File mergedFastqFile, File probeFile, IProgressListener progressListener) {
 		ParsedProbeFile parsedProbeFile;
 		try {
 			parsedProbeFile = ProbeFileUtil.parseProbeInfoFile(probeFile);
@@ -64,10 +65,10 @@ public class ProbeAssigner {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
 
-		return assignReadsToProbes(mergedFastqFile, parsedProbeFile);
+		return assignReadsToProbes(mergedFastqFile, parsedProbeFile, progressListener);
 	}
 
-	public static Map<String, ProbeAssignment> assignReadsToProbes(File mergedFastqFile, ParsedProbeFile parsedProbeFile) {
+	public static Map<String, ProbeAssignment> assignReadsToProbes(File mergedFastqFile, ParsedProbeFile parsedProbeFile, IProgressListener progressListener) {
 		List<Probe> probes = parsedProbeFile.getProbes();
 
 		Integer maxReferencesPerSequence = null;
@@ -95,7 +96,12 @@ public class ProbeAssigner {
 			}
 		});
 
-		AtomicInteger readsProcessedCount = new AtomicInteger();
+		if (progressListener != null) {
+			progressListener.updateProgress(0, "Starting to assign reads to probes");
+		}
+
+		AtomicInteger readsProcessedCount = new AtomicInteger(0);
+		AtomicInteger lastPercentComplete = new AtomicInteger(0);
 		start.set(System.currentTimeMillis());
 		ReadToProbeAssigner[] readToProbeAssigners = new ReadToProbeAssigner[numberOfThreads];
 		int readsPerThread = (int) Math.ceil((double) numberOfReadPairs / (double) numberOfThreads);
@@ -103,7 +109,7 @@ public class ProbeAssigner {
 			int startingRead = i * readsPerThread;
 			int endingRead = Math.min(numberOfReadPairs - 1, ((i + 1) * readsPerThread) - 1);
 			ReadToProbeAssigner readToProbeAssigner = new ReadToProbeAssigner(mergedFastqFile, probeMapper, startingRead, endingRead, BEST_PROBE_ALIGNMENT_EDIT_DISTANCE_THRESHOLD,
-					SUGGESTED_NUMBER_OF_CANDIDATES_FOR_BEST_PROBE_ALIGNMENT, readsProcessedCount);
+					SUGGESTED_NUMBER_OF_CANDIDATES_FOR_BEST_PROBE_ALIGNMENT, readsProcessedCount, numberOfReadPairs, lastPercentComplete, progressListener);
 			readToProbeAssigners[i] = readToProbeAssigner;
 			executor.submit(readToProbeAssigner);
 		}
@@ -123,6 +129,10 @@ public class ProbeAssigner {
 			} else {
 				System.out.println("Null Read Assignment Error Avoided.");
 			}
+		}
+
+		if (progressListener != null) {
+			progressListener.updateProgress(100, "Done assigning reads to probes(" + DF.format(classificationsFromReadClassifierByReadName.size()) + " reads assigned).");
 		}
 
 		return classificationsFromReadClassifierByReadName;
@@ -146,8 +156,12 @@ public class ProbeAssigner {
 
 		private final AtomicInteger readsProcessedCount;
 
+		private final int numberOfReadPairs;
+		private final AtomicInteger lastPercentComplete;
+		private final IProgressListener progressListener;
+
 		public ReadToProbeAssigner(File fastqFile, SimpleMapper<Probe> probeMapper, int startingRead, int endingRead, int editDistanceThreshold, int suggestedNumberOfCandidatesForAlignment,
-				AtomicInteger readsProcessedCount) {
+				AtomicInteger readsProcessedCount, int numberOfReadPairs, AtomicInteger lastPercentComplete, IProgressListener progressListener) {
 			super();
 			this.fastqFile = fastqFile;
 			this.probeMapper = probeMapper;
@@ -156,6 +170,9 @@ public class ProbeAssigner {
 			this.editDistanceThreshold = editDistanceThreshold;
 			this.suggestedNumberOfCandidatesForAlignment = suggestedNumberOfCandidatesForAlignment;
 			this.readsProcessedCount = readsProcessedCount;
+			this.numberOfReadPairs = numberOfReadPairs;
+			this.lastPercentComplete = lastPercentComplete;
+			this.progressListener = progressListener;
 		}
 
 		public Map<String, ProbeAssignment> getProbeAssignmentsByReadName() {
@@ -165,7 +182,8 @@ public class ProbeAssigner {
 		@Override
 		public void run() {
 			try {
-				probeAssignmentsByReadName = assignReadsToProbes(fastqFile, probeMapper, startingRead, endingRead, editDistanceThreshold, suggestedNumberOfCandidatesForAlignment, readsProcessedCount);
+				probeAssignmentsByReadName = assignReadsToProbes(fastqFile, probeMapper, startingRead, endingRead, editDistanceThreshold, suggestedNumberOfCandidatesForAlignment, readsProcessedCount,
+						numberOfReadPairs, lastPercentComplete, progressListener);
 			} catch (Exception e) {
 				e.printStackTrace();
 				throw new IllegalStateException(e.getMessage(), e);
@@ -174,7 +192,8 @@ public class ProbeAssigner {
 	}
 
 	private static Map<String, ProbeAssignment> assignReadsToProbes(File fastqFile, SimpleMapper<Probe> mapper, int startingRead, int endingRead, int editDistanceThreshold,
-			int suggestedNumberOfCandidatesForAlignment, AtomicInteger readsProcessedCount) throws IOException {
+			int suggestedNumberOfCandidatesForAlignment, AtomicInteger readsProcessedCount, int numberOfReadPairs, AtomicInteger lastPercentComplete, IProgressListener progressListener)
+			throws IOException {
 
 		Map<String, ProbeAssignment> probeAssignmentsByReadName = new LinkedHashMap<String, ProbeAssignment>();
 
@@ -193,11 +212,13 @@ public class ProbeAssigner {
 					probeAssignmentsByReadName.put(readName, probeAssignment);
 					int readsProcessed = readsProcessedCount.getAndIncrement();
 
-					if (readsProcessed % 500000 == 0 && readsProcessed > 0) {
-						long currentTime = System.currentTimeMillis();
-						long elapsedTime = currentTime - start.getAndSet(currentTime);
-						System.out.println("Processed reads: " + readsProcessed + " time:" + DateUtil.convertMillisecondsToHHMMSSMMM(elapsedTime));
+					if (progressListener != null) {
+						int percentComplete = (int) Math.floor(((double) readsProcessed / (double) numberOfReadPairs) * 100);
+						if (percentComplete > lastPercentComplete.getAndSet(percentComplete)) {
+							progressListener.updateProgress(percentComplete, "" + DF.format(readsProcessed) + " of " + DF.format(numberOfReadPairs) + " reads examined.");
+						}
 					}
+
 				}
 				readNumber++;
 			}
@@ -395,7 +416,7 @@ public class ProbeAssigner {
 	public static void main(String[] args) {
 		File mergedFile = new File("D:\\kurts_space\\hsq_with_pete\\4\\merged.fastq");
 		File probeFile = new File("D:\\kurts_space\\hsq_with_pete\\4\\150109_HG38_Filtered_Exome_HSQ_HX1_probe_info.txt");
-		Map<String, ProbeAssignment> result = getReadNameToProbeAssignmentMap(mergedFile, probeFile);
+		Map<String, ProbeAssignment> result = getReadNameToProbeAssignmentMap(mergedFile, probeFile, null);
 
 		double total = result.size();
 

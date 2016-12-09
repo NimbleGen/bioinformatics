@@ -80,24 +80,24 @@ public class RunWorkflow {
 
 		timer.start("merging reads");
 		System.out.println("Merging Reads.");
-		ReadMerger.mergeReads(fastqOneFile, fastqTwoFile, mergedFile, startingRead, numberOfReadsToProcess, 0);
+		ReadMerger.mergeReads(fastqOneFile, fastqTwoFile, mergedFile, startingRead, numberOfReadsToProcess, 0, null);
 		timer.stop("merging reads");
 
 		timer.start("assigning probes to reads");
 		System.out.println("Assigning Reads to Probe.");
-		Map<String, ProbeAssignment> readNameToProbeAssignmentMap = ProbeAssigner.assignReadsToProbes(mergedFile, parsedProbeFile);
+		Map<String, ProbeAssignment> readNameToProbeAssignmentMap = ProbeAssigner.assignReadsToProbes(mergedFile, parsedProbeFile, null);
 		timer.stop("assigning probes to reads");
 
 		timer.start("correcting uids");
 		System.out.println("Correcting Uids");
 		// this will populate the uid group when possible
-		readNameToProbeAssignmentMap = UidCorrector.correctUids(readNameToProbeAssignmentMap);
+		readNameToProbeAssignmentMap = UidCorrector.correctUids(readNameToProbeAssignmentMap, null);
 		timer.stop("correcting uids");
 
 		timer.start("dedup");
 		System.out.println("deduping.");
 		Deduper.dedup(mergedFile, readNameToProbeAssignmentMap, parsedProbeFile, dedupApproach, trimPrimers, outputUnassignedFastq, outputUniqueFastq, outputDuplicateFastq, outputBam,
-				commandLineSignature, programName, programVersion);
+				commandLineSignature, programName, programVersion, null);
 		timer.stop("dedup");
 		timer.stop("whole workflow");
 		System.out.println(timer.getSummary());

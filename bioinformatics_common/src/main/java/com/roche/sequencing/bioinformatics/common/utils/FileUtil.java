@@ -54,9 +54,10 @@ import org.slf4j.LoggerFactory;
 public final class FileUtil {
 
 	private static final DecimalFormat DF = new DecimalFormat("###,###.##");
-	private static final String GB = "Gb";
-	private static final String MB = "Mb";
-	private static final String KB = "Kb";
+	private static final String GB = "GB";
+	private static final String MB = "MB";
+	private static final String KB = "KB";
+	private static final String BYTES = "B";
 
 	public static final int BYTES_PER_KB = 1024;
 	private static final int STRING_BUILDER_INITIAL_SIZE = 1000;
@@ -856,6 +857,7 @@ public final class FileUtil {
 			units = KB;
 		} else {
 			divisor = 1.0;
+			units = BYTES;
 		}
 
 		double relativeSize = (double) sizeInBytes / divisor;

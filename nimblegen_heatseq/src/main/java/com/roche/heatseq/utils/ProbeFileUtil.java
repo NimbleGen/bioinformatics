@@ -38,6 +38,7 @@ import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.DelimitedFileParserUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.IProgressListener;
 import com.roche.sequencing.bioinformatics.common.utils.Md5CheckSumUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
@@ -73,6 +74,10 @@ public final class ProbeFileUtil {
 	 * @throws IOException
 	 */
 	public static ParsedProbeFile parseProbeInfoFile(File probeInfoFile) throws IOException {
+		return parseProbeInfoFile(probeInfoFile, null);
+	}
+
+	public static ParsedProbeFile parseProbeInfoFile(File probeInfoFile, IProgressListener progressListener) throws IOException {
 		long probeParsingStartInMs = System.currentTimeMillis();
 
 		Map<String, List<String>> headerNameToValues = DelimitedFileParserUtil.getHeaderNameToValuesMapFromDelimitedFile(probeInfoFile, PROBE_INFO_HEADER_NAMES, StringUtil.TAB);
@@ -84,7 +89,7 @@ public final class ProbeFileUtil {
 		if (iter.hasNext()) {
 			numberOfEntries = iter.next().size();
 		}
-
+		int lastPercentComplete = 0;
 		for (int i = 0; i < numberOfEntries; i++) {
 			int headerIndex = 0;
 
@@ -116,10 +121,23 @@ public final class ProbeFileUtil {
 						captureTargetStart, captureTargetStop, captureTargetSequence, probeStrand, annotation);
 
 				probeInfo.addProbe(sequenceName, probe);
+
+				if (progressListener != null) {
+					double percentComplete = ((double) i / (double) numberOfEntries) * 100;
+					boolean shouldUpdateProgress = ((int) percentComplete > lastPercentComplete) || (i == (numberOfEntries - 1));
+					if (shouldUpdateProgress) {
+						progressListener.updateProgress(percentComplete, "" + (i + 1) + " of " + numberOfEntries + " probes read into memory.");
+					}
+					lastPercentComplete = (int) percentComplete;
+				}
 			} catch (NumberFormatException e) {
 				throw new IllegalStateException("Unable to parse line[" + (i + 3) + "] of the probe info file[" + probeInfoFile.getAbsolutePath() + "].");
 			}
 
+		}
+
+		if (progressListener != null) {
+			progressListener.updateProgress(100, "Probe Info File is currently in memory(" + numberOfEntries + " probes).");
 		}
 
 		long probeParsingStopInMs = System.currentTimeMillis();

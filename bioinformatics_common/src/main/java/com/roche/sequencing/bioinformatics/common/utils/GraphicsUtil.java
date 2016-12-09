@@ -14,9 +14,11 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.font.FontRenderContext;
 import java.awt.font.GlyphVector;
+import java.awt.font.TextLayout;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.lang.reflect.InvocationTargetException;
+import java.text.AttributedString;
 
 import javax.swing.JComponent;
 import javax.swing.JFrame;
@@ -111,6 +113,23 @@ public class GraphicsUtil {
 
 		return new Dimension(maxWidth, totalHeight);
 
+	}
+
+	/**
+	 * Returns the size of the text (handles new lines)
+	 * 
+	 * @param text
+	 * @param font
+	 * @param component
+	 * @return new Dimension object with the size of the text
+	 */
+	public static Dimension getSizeOfText(AttributedString text, Font font) {
+		JLabel emptyJLabel = getEmptyJLabel();
+		emptyJLabel.setFont(font);
+		FontRenderContext fontRenderedContext = SwingUtilities2.getFontRenderContext(emptyJLabel);
+		TextLayout textLayout = new TextLayout(text.getIterator(), fontRenderedContext);
+		Rectangle2D bounds = textLayout.getBounds();
+		return new Dimension((int) bounds.getWidth(), (int) bounds.getHeight());
 	}
 
 	/**

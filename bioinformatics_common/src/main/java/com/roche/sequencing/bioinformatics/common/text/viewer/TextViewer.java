@@ -62,7 +62,7 @@ import com.roche.sequencing.bioinformatics.common.utils.gzip.RandomAccessFileByt
 
 public class TextViewer extends JFrame {
 
-	private final Logger logger = LoggerFactory.getLogger(TextViewer.class);
+	private final static Logger logger = LoggerFactory.getLogger(TextViewer.class);
 	private static final long serialVersionUID = 1L;
 
 	private final static DecimalFormat DF = new DecimalFormat("###,###");
@@ -287,109 +287,134 @@ public class TextViewer extends JFrame {
 		preferences.put(LAST_VIEW_FRAME_HEIGHT_PROPERTIES_KEY, "" + (int) (getHeight()));
 	}
 
-	public TextViewerPanel readInFile(File file) {
-		TextViewerPanel textViewerPanel = null;
-		RandomAccessFile randomAccessToFile = null;
+	public static boolean isFileIndexed(File file) {
+		boolean isFileIndexed = false;
+
+		if (file.exists()) {
+			// check if there is an index file
+			// prepend a '.' to the file name so it is possibly hidden or at least separates from actual file name when files
+			// are listed
+			File indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + INDEX_EXTENSION);
+			boolean isGzipFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(GZIP_FILE_EXTENSION);
+			boolean isBamFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(BAM_FILE_EXTENSION);
+			if (isGzipFile || isBamFile || GZipUtil.isCompressed(file)) {
+				indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + FileUtil.getFileNameWithoutExtension(file.getName()) + "."
+						+ INDEX_EXTENSION);
+				File gZipIndexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + GZIP_INDEX_EXTENSION);
+				File gZipDictionaryFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + GZIP_DICTIONARY_EXTENSION);
+				if (isBamFile) {
+					File bamBlockIndexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + BAM_BLOCK_INDEX);
+					isFileIndexed = (gZipIndexFile.exists() && gZipDictionaryFile.exists() && bamBlockIndexFile.exists());
+				} else {
+					isFileIndexed = (gZipIndexFile.exists() && gZipDictionaryFile.exists());
+				}
+			} else {
+				isFileIndexed = indexFile.exists();
+			}
+		}
+		return isFileIndexed;
+	}
+
+	public static Indexes indexFile(File file, ITextProgressListener progressListener) {
 		TextFileIndex textFileIndex = null;
 		GZipIndex gZipIndex = null;
 		IBytes gZipDictionaryBytes = null;
 		File bamBlockIndexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + BAM_BLOCK_INDEX);
+
+		// check if there is an index file
+		// prepend a '.' to the file name so it is possibly hidden or at least separates from actual file name when files
+		// are listed
+		File indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + INDEX_EXTENSION);
+		boolean isGzipFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(GZIP_FILE_EXTENSION);
+		boolean isBamFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(BAM_FILE_EXTENSION);
+		if (isGzipFile || isBamFile || GZipUtil.isCompressed(file)) {
+			indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + FileUtil.getFileNameWithoutExtension(file.getName()) + "."
+					+ INDEX_EXTENSION);
+			File gZipIndexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + GZIP_INDEX_EXTENSION);
+			File gZipDictionaryFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + GZIP_DICTIONARY_EXTENSION);
+			if (gZipIndexFile.exists() && gZipDictionaryFile.exists()) {
+				try {
+					gZipIndex = GZipIndexer.loadIndexFile(gZipIndexFile, gZipDictionaryFile);
+					gZipDictionaryBytes = new RandomAccessFileBytes(new RandomAccessFile(gZipDictionaryFile, "r"));
+				} catch (IOException e) {
+					logger.warn(e.getMessage(), e);
+				}
+			}
+
+			if (gZipIndex == null || gZipDictionaryBytes == null || (isBamFile && !bamBlockIndexFile.exists())) {
+				try {
+
+					IByteDecoder byteConverter = null;
+					if (isBamFile) {
+						byteConverter = new BamByteDecoder();
+					}
+
+					GZipIndexPair gZipIndexPair = GZipIndexer.indexGZipBlocks(new InputStreamFactory(file), gZipDictionaryFile, LINES_FOR_EACH_INDEX, progressListener, byteConverter);
+					if (byteConverter != null) {
+						byteConverter.persistToFile(bamBlockIndexFile);
+					}
+
+					gZipIndex = gZipIndexPair.getGzipIndex();
+					textFileIndex = gZipIndexPair.getTextFileIndex();
+					gZipDictionaryBytes = new RandomAccessFileBytes(new RandomAccessFile(gZipDictionaryFile, "r"));
+
+					GZipIndexer.saveGZipIndexToFile(gZipIndex, gZipIndexFile);
+					TextFileIndexer.saveIndexedTextToFile(textFileIndex, indexFile);
+				} catch (IOException e) {
+					logger.warn(e.getMessage(), e);
+				}
+			}
+		}
+
+		if (indexFile.exists()) {// && searcherIndexFile.exists()) {
+			try {
+				textFileIndex = TextFileIndexer.loadIndexFile(indexFile);
+				// textSearcher = new TextSearcher(searcherIndexFile);
+			} catch (IOException e) {
+				logger.warn(e.getMessage(), e);
+			}
+		}
+
+		if (textFileIndex == null) {
+			// TODO if the file is larger than a set size load a sample and display it first before creating the index
+			// assuming that the user would initially want to see the format of the file and maybe doesn't even want
+			// to see the whole file
+
+			try {
+				textFileIndex = TextFileIndexer.indexText(file, LINES_FOR_EACH_INDEX, progressListener);
+				TextFileIndexer.saveIndexedTextToFile(textFileIndex, indexFile);
+			} catch (IOException e) {
+				logger.warn(e.getMessage(), e);
+			}
+		}
+
+		return new Indexes(textFileIndex, gZipIndex, gZipDictionaryBytes, bamBlockIndexFile);
+	}
+
+	public TextViewerPanel readInFile(File file) {
+		TextViewerPanel textViewerPanel = null;
+		RandomAccessFile randomAccessToFile = null;
 
 		// open the file
 		try {
 			randomAccessToFile = new RandomAccessFile(file, "r");
 
 			if (randomAccessToFile != null) {
-				// check if there is an index file
-				// prepend a '.' to the file name so it is possibly hidden or at least separates from actual file name when files
-				// are listed
-				File indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + INDEX_EXTENSION);
-				boolean isGzipFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(GZIP_FILE_EXTENSION);
-				boolean isBamFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(BAM_FILE_EXTENSION);
-				if (isGzipFile || isBamFile || GZipUtil.isCompressed(file)) {
-					indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + FileUtil.getFileNameWithoutExtension(file.getName()) + "."
-							+ INDEX_EXTENSION);
-					File gZipIndexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + GZIP_INDEX_EXTENSION);
-					File gZipDictionaryFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + GZIP_DICTIONARY_EXTENSION);
-					if (gZipIndexFile.exists() && gZipDictionaryFile.exists()) {
-						try {
-							gZipIndex = GZipIndexer.loadIndexFile(gZipIndexFile, gZipDictionaryFile);
-							gZipDictionaryBytes = new RandomAccessFileBytes(new RandomAccessFile(gZipDictionaryFile, "r"));
-						} catch (IOException e) {
-							logger.warn(e.getMessage(), e);
-						}
+				ITextProgressListener progressListener = new ITextProgressListener() {
+
+					@Override
+					public void progressOccurred(ProgressUpdate progressUpdate) {
+						System.out.println(progressUpdate);
+						// TODO create a ui element to display this information
+						// System.out.println(progressUpdate.getPercentComplete() + "% complete  Lines Reads:" + progressUpdate.getLinesRead() + " Estimated Completion:"
+						// + progressUpdate.getEstimatedTimeToCompletionInHHMMSSMMM() + " Estimated Completion Time:" + progressUpdate.getEstimatedCompletionTimeInYYYYMMDDHHMMSS());
 					}
+				};
 
-					if (gZipIndex == null || gZipDictionaryBytes == null || (isBamFile && !bamBlockIndexFile.exists())) {
-						ITextProgressListener progressListener = new ITextProgressListener() {
+				Indexes indexes = indexFile(file, progressListener);
 
-							@Override
-							public void progressOccurred(ProgressUpdate progressUpdate) {
-								System.out.println(progressUpdate);
-								// TODO create a ui element to display this information
-								// System.out.println(progressUpdate.getPercentComplete() + "% complete  Lines Reads:" + progressUpdate.getLinesRead() + " Estimated Completion:"
-								// + progressUpdate.getEstimatedTimeToCompletionInHHMMSSMMM() + " Estimated Completion Time:" + progressUpdate.getEstimatedCompletionTimeInYYYYMMDDHHMMSS());
-							}
-						};
-
-						try {
-
-							IByteDecoder byteConverter = null;
-							if (isBamFile) {
-								byteConverter = new BamByteDecoder();
-							}
-
-							GZipIndexPair gZipIndexPair = GZipIndexer.indexGZipBlocks(new InputStreamFactory(file), gZipDictionaryFile, LINES_FOR_EACH_INDEX, progressListener, byteConverter);
-							if (byteConverter != null) {
-								byteConverter.persistToFile(bamBlockIndexFile);
-							}
-
-							gZipIndex = gZipIndexPair.getGzipIndex();
-							textFileIndex = gZipIndexPair.getTextFileIndex();
-							gZipDictionaryBytes = new RandomAccessFileBytes(new RandomAccessFile(gZipDictionaryFile, "r"));
-
-							GZipIndexer.saveGZipIndexToFile(gZipIndex, gZipIndexFile);
-							TextFileIndexer.saveIndexedTextToFile(textFileIndex, indexFile);
-						} catch (IOException e) {
-							logger.warn(e.getMessage(), e);
-						}
-					}
-				}
-
-				if (indexFile.exists()) {// && searcherIndexFile.exists()) {
-					try {
-						textFileIndex = TextFileIndexer.loadIndexFile(indexFile);
-						// textSearcher = new TextSearcher(searcherIndexFile);
-					} catch (IOException e) {
-						logger.warn(e.getMessage(), e);
-					}
-				}
-
-				if (textFileIndex == null) {
-					// TODO if the file is larger than a set size load a sample and display it first before creating the index
-					// assuming that the user would initially want to see the format of the file and maybe doesn't even want
-					// to see the whole file
-
-					ITextProgressListener progressListener = new ITextProgressListener() {
-
-						@Override
-						public void progressOccurred(ProgressUpdate progressUpdate) {
-							System.out.println(progressUpdate);
-							// TODO create a ui element to display this information
-							// System.out.println(progressUpdate.getPercentComplete() + "% complete  Lines Reads:" + progressUpdate.getLinesRead() + " Estimated Completion:"
-							// + progressUpdate.getEstimatedTimeToCompletionInHHMMSSMMM() + " Estimated Completion Time:" + progressUpdate.getEstimatedCompletionTimeInYYYYMMDDHHMMSS());
-						}
-					};
-
-					try {
-						textFileIndex = TextFileIndexer.indexText(file, LINES_FOR_EACH_INDEX, progressListener);
-						TextFileIndexer.saveIndexedTextToFile(textFileIndex, indexFile);
-					} catch (IOException e) {
-						logger.warn(e.getMessage(), e);
-					}
-				}
-
-				textViewerPanel = new TextViewerPanel(this, file, randomAccessToFile, textFileIndex, gZipIndex, gZipDictionaryBytes, bamBlockIndexFile);
+				textViewerPanel = new TextViewerPanel(this, file, randomAccessToFile, indexes.getTextFileIndex(), indexes.getgZipIndex(), indexes.getgZipDictionaryBytes(),
+						indexes.getBamBlockIndexFile());
 
 				textViewerPanel.setTransferHandler(new DragAndDropFileTransferHandler(this));
 
@@ -403,6 +428,38 @@ public class TextViewer extends JFrame {
 			JOptionPane.showMessageDialog(this, "Unable to open file[" + file.getAbsolutePath() + "].", "Error Opening File", JOptionPane.ERROR_MESSAGE);
 		}
 		return textViewerPanel;
+	}
+
+	public static class Indexes {
+		private final TextFileIndex textFileIndex;
+		private final GZipIndex gZipIndex;
+		private final IBytes gZipDictionaryBytes;
+		private final File bamBlockIndexFile;
+
+		public Indexes(TextFileIndex textFileIndex, GZipIndex gZipIndex, IBytes gZipDictionaryBytes, File bamBlockIndexFile) {
+			super();
+			this.textFileIndex = textFileIndex;
+			this.gZipIndex = gZipIndex;
+			this.gZipDictionaryBytes = gZipDictionaryBytes;
+			this.bamBlockIndexFile = bamBlockIndexFile;
+		}
+
+		public TextFileIndex getTextFileIndex() {
+			return textFileIndex;
+		}
+
+		public GZipIndex getgZipIndex() {
+			return gZipIndex;
+		}
+
+		public IBytes getgZipDictionaryBytes() {
+			return gZipDictionaryBytes;
+		}
+
+		public File getBamBlockIndexFile() {
+			return bamBlockIndexFile;
+		}
+
 	}
 
 	private JPanel createTabLabelPanel(TextViewerPanel textViewerPanel) {
