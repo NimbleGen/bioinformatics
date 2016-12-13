@@ -25,6 +25,18 @@ public class EdgeConnectionPoints {
 		return "EdgeConnectionPoints [toEdgeConnection=" + toEdgeConnection + ", fromEdgeConnection=" + fromEdgeConnection + "]";
 	}
 
+	public EdgeConnectionPoints scale(double scale) {
+		Point2D scaledToEdgeConnection = new Point2D.Double(toEdgeConnection.getX() * scale, toEdgeConnection.getY() * scale);
+		Point2D scaledFromEdgeConnection = new Point2D.Double(fromEdgeConnection.getX() * scale, fromEdgeConnection.getY() * scale);
+		return new EdgeConnectionPoints(scaledToEdgeConnection, scaledFromEdgeConnection);
+	}
+
+	public EdgeConnectionPoints scaleWithOffset(double scale, int xOffset, int yOffset) {
+		Point2D scaledToEdgeConnection = new Point2D.Double((toEdgeConnection.getX() * scale) + xOffset, (toEdgeConnection.getY() * scale) + yOffset);
+		Point2D scaledFromEdgeConnection = new Point2D.Double((fromEdgeConnection.getX() * scale) + xOffset, (fromEdgeConnection.getY() * scale) + yOffset);
+		return new EdgeConnectionPoints(scaledToEdgeConnection, scaledFromEdgeConnection);
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;

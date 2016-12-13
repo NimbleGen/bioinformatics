@@ -21,9 +21,11 @@ public abstract class NodeDrawer<T> {
 		return nodeClass;
 	}
 
-	public abstract Dimension getNodeSize(Node<?> node);
+	public abstract int getMinFontSize();
 
-	public abstract NodeDrawingDetails drawNode(Graphics2D graphics, Rectangle nodeBounds, Node<?> node, Point2D mousePointerLocation);
+	public abstract Dimension getNodeSize(Node<?> node, ResourceSizer resourceSizer);
+
+	public abstract NodeDrawingDetails drawNode(Graphics2D graphics, Rectangle nodeBounds, Node<?> node, Point2D mousePointerLocation, ResourceSizer resourceSizer);
 
 	public static void drawBackgroundAndBorder(Graphics2D graphics, Rectangle nodeBounds, Node<?> node, Point2D mouseLocation, Color backgroundColor, Color highlightBackgroundColor,
 			Color borderColor, Color highlightBorderColor) {

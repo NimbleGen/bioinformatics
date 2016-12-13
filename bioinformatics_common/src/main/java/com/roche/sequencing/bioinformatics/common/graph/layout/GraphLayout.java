@@ -15,16 +15,28 @@ import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 
 public class GraphLayout {
 
+	private final Graph graph;
 	private final Map<Object, Object> originalToReplacementMap;
 	private final Map<Long, Cell> nodeCreationIndexToMatrixPositionMap;
 	private final TallyMap<Integer> nodeCountByColumnIndex;
-	private final Graph graph;
 
 	private GraphLayout(Graph graph) {
 		this.graph = graph;
 		nodeCreationIndexToMatrixPositionMap = new HashMap<Long, Cell>();
 		originalToReplacementMap = new WeakHashMap<Object, Object>();
 		nodeCountByColumnIndex = new TallyMap<Integer>();
+	}
+
+	private GraphLayout(Graph graph, Map<Object, Object> originalToReplacementMap, Map<Long, Cell> nodeCreationIndexToMatrixPositionMap, TallyMap<Integer> nodeCountByColumnIndex) {
+		this.graph = graph.shallowCopy();
+		this.originalToReplacementMap = new WeakHashMap<Object, Object>(originalToReplacementMap);
+		this.nodeCreationIndexToMatrixPositionMap = new HashMap<Long, Cell>(nodeCreationIndexToMatrixPositionMap);
+		this.nodeCountByColumnIndex = new TallyMap<Integer>(nodeCountByColumnIndex);
+	}
+
+	public GraphLayout shallowCopy() {
+		GraphLayout graphLayoutCopy = new GraphLayout(graph, originalToReplacementMap, nodeCreationIndexToMatrixPositionMap, nodeCountByColumnIndex);
+		return graphLayoutCopy;
 	}
 
 	public synchronized Cell getNodesPositionInLayoutMatrix(Node<?> node) {
@@ -198,5 +210,52 @@ public class GraphLayout {
 		int rowIndex = nodesCell.getRow();
 		boolean isAboveCenter = (rowIndex <= (nodesInColumn / 2));
 		return isAboveCenter;
+	}
+
+	public static void main(String[] args) {
+		Map<String, String> one = new HashMap<String, String>();
+		one.put("ab", "cd");
+		one.put("ba", "dc");
+		one.put("zz", "ww");
+		one.put("xx", "yy");
+		Map<String, String> two = new HashMap<String, String>(one);
+
+		one.remove("ab");
+		System.out.println(one.size() + "  " + two.size());
+
+		Graph graph = new Graph();
+		String a = "a";
+		String b = "b";
+		String c = "c";
+		String d = "d";
+		String e = "e";
+		String f = "f";
+		graph.connectNodes(a, b);
+		graph.connectNodes(b, c);
+		graph.connectNodes(c, d);
+		graph.connectNodes(d, e);
+		graph.connectNodes(e, f);
+		GraphLayout layout = GraphLayout.layoutGraph(graph);
+
+		GraphLayout layout2 = layout.shallowCopy();
+		Graph graph2 = layout2.getGraph();
+
+		String g = "g";
+		String h = "h";
+
+		graph.replaceNode(graph.getNode(f), new Node<String>(g));
+		graph.connectNodes(a, h);
+
+		System.out.println("graph2:");
+		Node<?> nodeE = graph2.getNode(e);
+		for (Object object : graph2.getConnectedToNodes(nodeE)) {
+			System.out.println(object);
+		}
+
+		System.out.println("graph:");
+		for (Object object : graph.getConnectedToNodes(graph.getNode(e))) {
+			System.out.println(object);
+		}
+
 	}
 }

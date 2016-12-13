@@ -1,9 +1,12 @@
 package com.roche.sequencing.bioinformatics.common.graph.layout;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 public class Graph {
@@ -16,6 +19,23 @@ public class Graph {
 		fromNodeToToNodeMap = new HashMap<Long, Set<Long>>();
 		toNodeToFromNodeMap = new HashMap<Long, Set<Long>>();
 		nodeCreationIndexToNodeMap = new HashMap<Long, Node<?>>();
+	}
+
+	private Graph(Map<Long, Node<?>> nodeCreationIndexToNodeMap, Map<Long, Set<Long>> fromNodeToToNodeMap, Map<Long, Set<Long>> toNodeToFromNodeMap) {
+		this.fromNodeToToNodeMap = new HashMap<Long, Set<Long>>();
+		for (Entry<Long, Set<Long>> entry : fromNodeToToNodeMap.entrySet()) {
+			this.fromNodeToToNodeMap.put(entry.getKey(), new HashSet<Long>(entry.getValue()));
+		}
+		this.toNodeToFromNodeMap = new HashMap<Long, Set<Long>>();
+		for (Entry<Long, Set<Long>> entry : toNodeToFromNodeMap.entrySet()) {
+			this.toNodeToFromNodeMap.put(entry.getKey(), new HashSet<Long>(entry.getValue()));
+		}
+		this.nodeCreationIndexToNodeMap = new HashMap<Long, Node<?>>(nodeCreationIndexToNodeMap);
+	}
+
+	public Graph shallowCopy() {
+		Graph graphCopy = new Graph(nodeCreationIndexToNodeMap, fromNodeToToNodeMap, toNodeToFromNodeMap);
+		return graphCopy;
 	}
 
 	private Node<?> getExistingNode(Object object) {
@@ -72,7 +92,11 @@ public class Graph {
 		} else {
 			toNodes = new HashSet<Node<?>>();
 			for (Long toNodeCreationIndex : toNodeIndexes) {
-				toNodes.add(nodeCreationIndexToNodeMap.get(toNodeCreationIndex));
+				Node<?> toNode = nodeCreationIndexToNodeMap.get(toNodeCreationIndex);
+				if (toNode == null) {
+					throw new IllegalStateException("Unable to find toNode with creationIndex of [" + toNodeCreationIndex + "].");
+				}
+				toNodes.add(toNode);
 			}
 		}
 		return toNodes;
@@ -93,7 +117,7 @@ public class Graph {
 	}
 
 	synchronized Set<Node<?>> getNodes() {
-		return new HashSet<Node<?>>(nodeCreationIndexToNodeMap.values());
+		return Collections.unmodifiableSet(new HashSet<Node<?>>(nodeCreationIndexToNodeMap.values()));
 	}
 
 	public void replaceObject(Object objectToReplace, Object replacementObject) {
@@ -167,6 +191,16 @@ public class Graph {
 
 	public int getNumberOfNodes() {
 		return nodeCreationIndexToNodeMap.size();
+	}
+
+	public List<Object> getAllNodeObjects() {
+		List<Object> allNodeObjects = new ArrayList<Object>();
+
+		for (Node<?> node : nodeCreationIndexToNodeMap.values()) {
+			allNodeObjects.add(node.getContents());
+		}
+
+		return allNodeObjects;
 	}
 
 }

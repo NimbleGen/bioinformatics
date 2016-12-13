@@ -33,6 +33,13 @@ public class DateUtil {
 	}
 
 	/**
+	 * @return the current date in YYYY_MM_DD format
+	 */
+	public static String getCurrentDateINYYYY_MM_DD() {
+		return convertTimeInMillisecondsToDateInYYY_MM_DD(System.currentTimeMillis());
+	}
+
+	/**
 	 * @return the current date in YYYY_MM_DD_HH_MM_SS format
 	 */
 	public static String getCurrentDateINYYYY_MM_DD_HH_MM_SS() {
@@ -58,6 +65,17 @@ public class DateUtil {
 	 */
 	public static String convertTimeInMillisecondsToDate(long timeInMilliseconds) {
 		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+		Date date = new Date(timeInMilliseconds);
+		return dateFormat.format(date);
+	}
+
+	/**
+	 * 
+	 * @param timeInMilliseconds
+	 * @return the date provided by timeInMilliseconds in YYYY_MM_DD_HH_MM_SS format
+	 */
+	public static String convertTimeInMillisecondsToDateInYYY_MM_DD(long timeInMilliseconds) {
+		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
 		Date date = new Date(timeInMilliseconds);
 		return dateFormat.format(date);
 	}

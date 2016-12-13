@@ -19,6 +19,10 @@ public class ImageMap<D> {
 
 	private List<ImageMapArea<D>> areas;
 
+	private ImageMap(List<ImageMapArea<D>> areas) {
+		this.areas = areas;
+	}
+
 	/**
 	 * default constructor
 	 */
@@ -159,5 +163,26 @@ public class ImageMap<D> {
 
 	public void clear() {
 		areas.clear();
+	}
+
+	public ImageMap<D> createScaleImageMap(double scale) {
+		List<ImageMapArea<D>> scaledAreas = new ArrayList<ImageMapArea<D>>();
+		for (ImageMapArea<D> area : areas) {
+			scaledAreas.add(new ImageMapArea<D>((int) (area.getX() * scale), (int) (area.getY() * scale), (int) (area.getWidth() * scale), (int) (area.getHeight() * scale), area.getData()));
+		}
+		return new ImageMap<D>(scaledAreas);
+	}
+
+	public ImageMap<D> createScaleImageMapWithOffset(double scale, int xOffset, int yOffset) {
+		List<ImageMapArea<D>> scaledAreas = new ArrayList<ImageMapArea<D>>();
+		for (ImageMapArea<D> area : areas) {
+			scaledAreas.add(new ImageMapArea<D>((int) (area.getX() * scale) + xOffset, (int) (area.getY() * scale) + yOffset, (int) (area.getWidth() * scale), (int) (area.getHeight() * scale), area
+					.getData()));
+		}
+		return new ImageMap<D>(scaledAreas);
+	}
+
+	public List<ImageMapArea<D>> getImageMapAreas() {
+		return areas;
 	}
 }

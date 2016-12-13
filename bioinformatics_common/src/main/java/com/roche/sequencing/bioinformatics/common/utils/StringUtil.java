@@ -17,12 +17,11 @@
 package com.roche.sequencing.bioinformatics.common.utils;
 
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-
-import javax.swing.plaf.FontUIResource;
 
 /**
  * Utility class for working with Strings
@@ -167,7 +166,7 @@ public final class StringUtil {
 		return count;
 	}
 
-	public static String[] splitIntoLines(String string, FontUIResource font, double maxLineWidth) {
+	public static String[] splitIntoLines(String string, Font font, double maxLineWidth) {
 		List<String> lines = new ArrayList<String>();
 		StringBuilder currentLineText = new StringBuilder();
 		int currentIndex = 0;

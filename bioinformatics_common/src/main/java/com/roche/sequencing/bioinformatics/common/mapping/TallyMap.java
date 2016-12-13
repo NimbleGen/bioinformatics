@@ -49,6 +49,13 @@ public class TallyMap<O> {
 		objectsWithLargestCount = new HashSet<O>();
 	}
 
+	public TallyMap(TallyMap<O> originalMap) {
+		this.objectCount = new HashMap<O, AtomicInteger>(originalMap.objectCount);
+		this.largestCount = originalMap.largestCount;
+		this.sumOfAllBins = originalMap.sumOfAllBins;
+		this.objectsWithLargestCount = new HashSet<O>(originalMap.objectsWithLargestCount);
+	}
+
 	public void add(O object) {
 		addMultiple(object, 1);
 	}
@@ -61,7 +68,6 @@ public class TallyMap<O> {
 		}
 	}
 
-	
 	public boolean contains(O object) {
 		return objectCount.containsKey(object);
 	}

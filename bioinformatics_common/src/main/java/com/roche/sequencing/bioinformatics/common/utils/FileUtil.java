@@ -868,4 +868,11 @@ public final class FileUtil {
 		return Files.readAllBytes(file.toPath());
 	}
 
+	public static boolean isEmptyDirectory(File workflowDirectory) {
+		boolean isDirectory = workflowDirectory.isDirectory();
+		String[] files = workflowDirectory.list();
+		boolean isEmptyDirectory = isDirectory && (files == null || (files != null && files.length == 0));
+		return isEmptyDirectory;
+	}
+
 }

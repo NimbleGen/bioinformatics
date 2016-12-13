@@ -19,6 +19,7 @@ import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -85,12 +86,22 @@ public final class GZipUtil {
 	}
 
 	public static boolean isCompressed(InputStreamFactory inputStreamFactory) throws FileNotFoundException, IOException {
-		byte[] bytes = new byte[10];
+		boolean isCompressed;
 
-		try (DataInputStream dis = new DataInputStream(inputStreamFactory.createInputStream())) {
-			dis.readFully(bytes);
+		try {
+			byte[] bytes = new byte[10];
+
+			try (DataInputStream dis = new DataInputStream(inputStreamFactory.createInputStream())) {
+				dis.readFully(bytes);
+			}
+			isCompressed = isCompressed(bytes);
+			;
+		} catch (EOFException e) {
+			// there is no way the file can be compressed since it doesn't contain enough bytes to hold the compression magic keys
+			isCompressed = false;
 		}
-		return isCompressed(bytes);
+
+		return isCompressed;
 	}
 
 	/*

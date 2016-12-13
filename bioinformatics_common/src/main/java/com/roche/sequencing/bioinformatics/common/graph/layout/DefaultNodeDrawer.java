@@ -13,7 +13,7 @@ public class DefaultNodeDrawer extends NodeDrawer<String> {
 	}
 
 	@Override
-	public NodeDrawingDetails drawNode(Graphics2D graphics, Rectangle nodeBounds, Node<?> node, Point2D mouseLocation) {
+	public NodeDrawingDetails drawNode(Graphics2D graphics, Rectangle nodeBounds, Node<?> node, Point2D mouseLocation, ResourceSizer resourceSizer) {
 		graphics.setColor(Color.green);
 		graphics.fillRect((int) nodeBounds.getX() + 5, (int) nodeBounds.getY() + 5, (int) nodeBounds.getWidth() - 10, (int) nodeBounds.getHeight() - 10);
 		graphics.setColor(Color.red);
@@ -26,8 +26,13 @@ public class DefaultNodeDrawer extends NodeDrawer<String> {
 	}
 
 	@Override
-	public Dimension getNodeSize(Node<?> node) {
+	public Dimension getNodeSize(Node<?> node, ResourceSizer resourceSizer) {
 		return new Dimension(30, 30);
+	}
+
+	@Override
+	public int getMinFontSize() {
+		return 1;
 	}
 
 }

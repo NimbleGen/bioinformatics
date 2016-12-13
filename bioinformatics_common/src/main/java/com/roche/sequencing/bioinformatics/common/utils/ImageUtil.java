@@ -1,6 +1,7 @@
 package com.roche.sequencing.bioinformatics.common.utils;
 
 import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
@@ -97,5 +98,22 @@ public class ImageUtil {
 		boolean isAlphaPremultiplied = cm.isAlphaPremultiplied();
 		WritableRaster raster = bufferedImage.copyData(null);
 		return new BufferedImage(cm, raster, isAlphaPremultiplied, null);
+	}
+
+	public static BufferedImage scale(Image imageToScale, double scaleFactor) {
+		BufferedImage scaledImage = null;
+		if (imageToScale != null) {
+			int newWidth = (int) (imageToScale.getWidth(null) * scaleFactor);
+			int newHeight = (int) (imageToScale.getHeight(null) * scaleFactor);
+
+			scaledImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
+			Graphics2D graphics2D = scaledImage.createGraphics();
+			graphics2D.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+			graphics2D.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+			graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+			graphics2D.drawImage(imageToScale, 0, 0, newWidth, newHeight, null);
+			graphics2D.dispose();
+		}
+		return scaledImage;
 	}
 }

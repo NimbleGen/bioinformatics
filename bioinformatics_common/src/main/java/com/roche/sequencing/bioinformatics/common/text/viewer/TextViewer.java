@@ -1,6 +1,7 @@
 package com.roche.sequencing.bioinformatics.common.text.viewer;
 
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -113,6 +114,10 @@ public class TextViewer extends JFrame {
 	private final List<TextViewerPanel> textViewerPanels;
 
 	public TextViewer() {
+		this(true);
+	}
+
+	public TextViewer(boolean isStandAlone) {
 
 		setIconImage(APPLICATION_ICON);
 		setMinimumSize(MINIMUM_PANEL_DIMENSION);
@@ -145,14 +150,22 @@ public class TextViewer extends JFrame {
 		quitMenuItem.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				System.exit(0);
+				if (isStandAlone) {
+					System.exit(0);
+				} else {
+					setVisible(false);
+				}
 			}
 		});
 		file.add(quitMenuItem);
 
 		mainMenuBar.add(file);
 
-		setDefaultCloseOperation(EXIT_ON_CLOSE);
+		if (isStandAlone) {
+			setDefaultCloseOperation(EXIT_ON_CLOSE);
+		} else {
+			setDefaultCloseOperation(HIDE_ON_CLOSE);
+		}
 		pack();
 		setTitle(APPLICATION_NAME + " " + APPLICATION_VERSION);
 		setVisible(true);
@@ -217,14 +230,17 @@ public class TextViewer extends JFrame {
 				boolean isMaximized = TextViewer.this.getExtendedState() == JFrame.MAXIMIZED_BOTH;
 				preferences.put(LAST_VIEW_WAS_MAXIMIZED_PROPERTIES_KEY, "" + isMaximized);
 				saveFrameLocationPreferences();
-				List<String> fileNames = new ArrayList<String>();
-				List<String> lineNumbers = new ArrayList<String>();
-				for (TextViewerPanel textViewerPanel : textViewerPanels) {
-					fileNames.add(textViewerPanel.getFile().getAbsolutePath());
-					lineNumbers.add("" + textViewerPanel.getCurrentLineNumber());
+
+				if (isStandAlone) {
+					List<String> fileNames = new ArrayList<String>();
+					List<String> lineNumbers = new ArrayList<String>();
+					for (TextViewerPanel textViewerPanel : textViewerPanels) {
+						fileNames.add(textViewerPanel.getFile().getAbsolutePath());
+						lineNumbers.add("" + textViewerPanel.getCurrentLineNumber());
+					}
+					preferences.put(LAST_VIEW_LAST_OPENED_FILES_PROPERTIES_KEY, ListUtil.toString(fileNames, PROPERTIES_DELIMITER));
+					preferences.put(LAST_VIEW_LAST_OPENED_FILES_POSITIONS_PROPERTIES_KEY, ListUtil.toString(lineNumbers, PROPERTIES_DELIMITER));
 				}
-				preferences.put(LAST_VIEW_LAST_OPENED_FILES_PROPERTIES_KEY, ListUtil.toString(fileNames, PROPERTIES_DELIMITER));
-				preferences.put(LAST_VIEW_LAST_OPENED_FILES_POSITIONS_PROPERTIES_KEY, ListUtil.toString(lineNumbers, PROPERTIES_DELIMITER));
 
 				for (TextViewerPanel textViewerPanel : textViewerPanels) {
 					try {
@@ -393,39 +409,56 @@ public class TextViewer extends JFrame {
 
 	public TextViewerPanel readInFile(File file) {
 		TextViewerPanel textViewerPanel = null;
+
+		boolean fileIsAlreadyOpen = false;
+		tabLoop: for (int tabIndex = 0; tabIndex < tabbedPane.getTabCount(); tabIndex++) {
+			Component component = tabbedPane.getComponentAt(tabIndex);
+			if (component instanceof TextViewerPanel) {
+				textViewerPanel = (TextViewerPanel) component;
+				File panelFile = textViewerPanel.getFile();
+				if (panelFile.equals(file)) {
+					tabbedPane.setSelectedComponent(component);
+					fileIsAlreadyOpen = true;
+					break tabLoop;
+				}
+			}
+		}
+
 		RandomAccessFile randomAccessToFile = null;
 
-		// open the file
-		try {
-			randomAccessToFile = new RandomAccessFile(file, "r");
+		if (!fileIsAlreadyOpen) {
+			// open the file
+			try {
+				randomAccessToFile = new RandomAccessFile(file, "r");
 
-			if (randomAccessToFile != null) {
-				ITextProgressListener progressListener = new ITextProgressListener() {
+				if (randomAccessToFile != null) {
+					ITextProgressListener progressListener = new ITextProgressListener() {
 
-					@Override
-					public void progressOccurred(ProgressUpdate progressUpdate) {
-						System.out.println(progressUpdate);
-						// TODO create a ui element to display this information
-						// System.out.println(progressUpdate.getPercentComplete() + "% complete  Lines Reads:" + progressUpdate.getLinesRead() + " Estimated Completion:"
-						// + progressUpdate.getEstimatedTimeToCompletionInHHMMSSMMM() + " Estimated Completion Time:" + progressUpdate.getEstimatedCompletionTimeInYYYYMMDDHHMMSS());
-					}
-				};
+						@Override
+						public void progressOccurred(ProgressUpdate progressUpdate) {
+							System.out.println(progressUpdate);
+							// TODO create a ui element to display this information
+							// System.out.println(progressUpdate.getPercentComplete() + "% complete  Lines Reads:" + progressUpdate.getLinesRead() + " Estimated Completion:"
+							// + progressUpdate.getEstimatedTimeToCompletionInHHMMSSMMM() + " Estimated Completion Time:" + progressUpdate.getEstimatedCompletionTimeInYYYYMMDDHHMMSS());
+						}
+					};
 
-				Indexes indexes = indexFile(file, progressListener);
+					Indexes indexes = indexFile(file, progressListener);
 
-				textViewerPanel = new TextViewerPanel(this, file, randomAccessToFile, indexes.getTextFileIndex(), indexes.getgZipIndex(), indexes.getgZipDictionaryBytes(),
-						indexes.getBamBlockIndexFile());
+					textViewerPanel = new TextViewerPanel(this, file, randomAccessToFile, indexes.getTextFileIndex(), indexes.getgZipIndex(), indexes.getgZipDictionaryBytes(),
+							indexes.getBamBlockIndexFile());
 
-				textViewerPanel.setTransferHandler(new DragAndDropFileTransferHandler(this));
+					textViewerPanel.setTransferHandler(new DragAndDropFileTransferHandler(this));
 
-				textViewerPanels.add(textViewerPanel);
-				tabbedPane.addTab(file.getName(), textViewerPanel);
-				tabbedPane.setTabComponentAt(tabbedPane.indexOfComponent(textViewerPanel), createTabLabelPanel(textViewerPanel));
+					textViewerPanels.add(textViewerPanel);
+					tabbedPane.addTab(file.getName(), textViewerPanel);
+					tabbedPane.setTabComponentAt(tabbedPane.indexOfComponent(textViewerPanel), createTabLabelPanel(textViewerPanel));
 
-				tabbedPane.setSelectedComponent(textViewerPanel);
+					tabbedPane.setSelectedComponent(textViewerPanel);
+				}
+			} catch (FileNotFoundException e1) {
+				JOptionPane.showMessageDialog(this, "Unable to open file[" + file.getAbsolutePath() + "].", "Error Opening File", JOptionPane.ERROR_MESSAGE);
 			}
-		} catch (FileNotFoundException e1) {
-			JOptionPane.showMessageDialog(this, "Unable to open file[" + file.getAbsolutePath() + "].", "Error Opening File", JOptionPane.ERROR_MESSAGE);
 		}
 		return textViewerPanel;
 	}

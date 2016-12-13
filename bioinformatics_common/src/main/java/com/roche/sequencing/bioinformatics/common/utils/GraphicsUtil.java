@@ -14,6 +14,7 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.font.FontRenderContext;
 import java.awt.font.GlyphVector;
+import java.awt.font.TextAttribute;
 import java.awt.font.TextLayout;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
@@ -54,6 +55,7 @@ public class GraphicsUtil {
 	}
 
 	private static JLabel emptyJLabel = null;
+	private static Object emptyJLabelLock = new Object();
 
 	/**
 	 * If we haven't already, create a JLabel to use for measuring Strings
@@ -88,6 +90,27 @@ public class GraphicsUtil {
 		return emptyJLabel;
 	}
 
+	public static AttributedString getAttributedString(String text, Font font) {
+		AttributedString attributedString = new AttributedString(text);
+
+		if (font.isBold()) {
+			attributedString.addAttribute(TextAttribute.WEIGHT, TextAttribute.WEIGHT_BOLD);
+		} else {
+			attributedString.addAttribute(TextAttribute.WEIGHT, TextAttribute.WEIGHT_REGULAR);
+		}
+
+		if (font.isItalic()) {
+			attributedString.addAttribute(TextAttribute.POSTURE, TextAttribute.POSTURE_OBLIQUE);
+		} else if (font.isPlain()) {
+			attributedString.addAttribute(TextAttribute.POSTURE, TextAttribute.POSTURE_REGULAR);
+		}
+
+		attributedString.addAttribute(TextAttribute.FAMILY, font.getFamily());
+		attributedString.addAttribute(TextAttribute.SIZE, font.getSize());
+
+		return attributedString;
+	}
+
 	/**
 	 * Returns the size of the text (handles new lines)
 	 * 
@@ -98,20 +121,22 @@ public class GraphicsUtil {
 	 */
 	public static Dimension getSizeOfText(String text, Font font) {
 
-		FontMetrics fontMetrics = SwingUtilities2.getFontMetrics(getEmptyJLabel(), font);
-		String[] lines = text.split(NEWLINE_SEPARATOR);
+		synchronized (emptyJLabelLock) {
+			FontMetrics fontMetrics = SwingUtilities2.getFontMetrics(getEmptyJLabel(), font);
+			String[] lines = text.split(NEWLINE_SEPARATOR);
 
-		// count the number of newlines in text
-		int numberOfLines = lines.length;
-		int heightOfOneLine = fontMetrics.getHeight();
-		int totalHeight = numberOfLines * heightOfOneLine;
+			// count the number of newlines in text
+			int numberOfLines = lines.length;
+			int heightOfOneLine = fontMetrics.getHeight();
+			int totalHeight = numberOfLines * heightOfOneLine;
 
-		int maxWidth = 0;
-		for (String line : lines) {
-			maxWidth = Math.max(fontMetrics.stringWidth(line), maxWidth);
+			int maxWidth = 0;
+			for (String line : lines) {
+				maxWidth = Math.max(fontMetrics.stringWidth(line), maxWidth);
+			}
+
+			return new Dimension(maxWidth, totalHeight);
 		}
-
-		return new Dimension(maxWidth, totalHeight);
 
 	}
 
@@ -124,12 +149,14 @@ public class GraphicsUtil {
 	 * @return new Dimension object with the size of the text
 	 */
 	public static Dimension getSizeOfText(AttributedString text, Font font) {
-		JLabel emptyJLabel = getEmptyJLabel();
-		emptyJLabel.setFont(font);
-		FontRenderContext fontRenderedContext = SwingUtilities2.getFontRenderContext(emptyJLabel);
-		TextLayout textLayout = new TextLayout(text.getIterator(), fontRenderedContext);
-		Rectangle2D bounds = textLayout.getBounds();
-		return new Dimension((int) bounds.getWidth(), (int) bounds.getHeight());
+		synchronized (emptyJLabelLock) {
+			JLabel emptyJLabel = getEmptyJLabel();
+			emptyJLabel.setFont(font);
+			FontRenderContext fontRenderedContext = SwingUtilities2.getFontRenderContext(emptyJLabel);
+			TextLayout textLayout = new TextLayout(text.getIterator(), fontRenderedContext);
+			Rectangle2D bounds = textLayout.getBounds();
+			return new Dimension((int) bounds.getWidth(), (int) bounds.getHeight());
+		}
 	}
 
 	/**
@@ -226,6 +253,12 @@ public class GraphicsUtil {
 		int width = fontMetrics.stringWidth(string);
 		int height = fontMetrics.getHeight();
 		return new Dimension(width, height);
+	}
+
+	public static Dimension getStringDimensions(Graphics2D graphics, AttributedString attributedString) {
+		TextLayout textLayout = new TextLayout(attributedString.getIterator(), graphics.getFontRenderContext());
+		Rectangle2D bounds = textLayout.getBounds();
+		return new Dimension((int) bounds.getWidth(), (int) bounds.getHeight());
 	}
 
 	/**
@@ -349,6 +382,6 @@ public class GraphicsUtil {
 	public static void setGraphicsHints(Graphics2D graphics2D) {
 		graphics2D.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 		graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		graphics2D.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 	}
-
 }
