@@ -248,11 +248,35 @@ public class GraphicsUtil {
 		return dimension;
 	}
 
+	public static Dimension getStringDimensions(Graphics2D graphics, Font font, String[] stringsByLine) {
+		FontMetrics fontMetrics = graphics.getFontMetrics(font);
+		int overallWidth = 0;
+		int overallHeight = 0;
+		for (String string : stringsByLine) {
+			int width = fontMetrics.stringWidth(string);
+			int height = fontMetrics.getHeight();
+			overallWidth = Math.max(overallWidth, width);
+			overallHeight += height;
+		}
+		return new Dimension(overallWidth, overallHeight);
+	}
+
 	public static Dimension getStringDimensions(Graphics2D graphics, Font font, String string) {
 		FontMetrics fontMetrics = graphics.getFontMetrics(font);
-		int width = fontMetrics.stringWidth(string);
-		int height = fontMetrics.getHeight();
-		return new Dimension(width, height);
+		String[] lines = string.split(NEWLINE_SEPARATOR);
+
+		// count the number of newlines in text
+		int numberOfLines = lines.length;
+		int heightOfOneLine = fontMetrics.getHeight();
+		int totalHeight = numberOfLines * heightOfOneLine;
+
+		int maxWidth = 0;
+		for (String line : lines) {
+			maxWidth = Math.max(fontMetrics.stringWidth(line), maxWidth);
+		}
+
+		return new Dimension(maxWidth, totalHeight);
+
 	}
 
 	public static Dimension getStringDimensions(Graphics2D graphics, AttributedString attributedString) {

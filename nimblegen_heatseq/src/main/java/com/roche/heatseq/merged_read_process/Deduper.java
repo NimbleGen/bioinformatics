@@ -41,7 +41,7 @@ public class Deduper {
 
 	private final static DecimalFormat DF = new DecimalFormat("#,###");
 	private final static int MAX_NUMBER_OF_MISMATCHES_FOR_MAPPING = 2;
-	private final static int NUMBER_OF_THREADS = 20;
+	private final static int NUMBER_OF_THREADS = 10;
 	private final static boolean INCLUDE_UNMAPPED_READS = false;
 
 	public static void dedup(File mergedFastq, Map<String, ProbeAssignment> readNameToProbeAssignment, ParsedProbeFile parsedProbeFile, DedupApproachEnum dedupApproach, boolean trimPrimers,

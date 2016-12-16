@@ -27,11 +27,13 @@ public class UidCorrector {
 	 * @param readNameToProbeAssignmentMap
 	 * @return the passed in map with a uid group set in the probe assignment where possible
 	 */
-	public static Map<String, ProbeAssignment> correctUids(Map<String, ProbeAssignment> readNameToProbeAssignmentMap, IProgressListener progressListener) {
+	public static UidCorrectorResults correctUids(Map<String, ProbeAssignment> readNameToProbeAssignmentMap, IProgressListener progressListener) {
 		if (progressListener != null) {
 			progressListener.updateProgress(0, "Starting to identify UID errors.");
 		}
 		UidGroupLookup uidGroupLookup = generateUidGroupLookup(readNameToProbeAssignmentMap.values(), DEFAULT_EDIT_DISTANCE_FOR_UID_GROUPING, progressListener);
+
+		int correctedUidCount = 0;
 
 		for (ProbeAssignment probeAssignment : readNameToProbeAssignmentMap.values()) {
 			Probe probe = probeAssignment.getAssignedProbe();
@@ -39,6 +41,9 @@ public class UidCorrector {
 				String uid = probeAssignment.getUid();
 				String probeId = probe.getProbeId();
 				String uidGroup = uidGroupLookup.getUidGroup(probeId, uid);
+				if (!uidGroup.equals(uid)) {
+					correctedUidCount++;
+				}
 				probeAssignment.setUidGroup(uidGroup);
 			}
 		}
@@ -47,7 +52,7 @@ public class UidCorrector {
 			progressListener.updateProgress(100, "Done correcting UID errors.");
 		}
 
-		return readNameToProbeAssignmentMap;
+		return new UidCorrectorResults(readNameToProbeAssignmentMap, correctedUidCount);
 	}
 
 	private static UidGroupLookup generateUidGroupLookup(Collection<ProbeAssignment> allProbeAssignments, int uidEditDistance, IProgressListener progressListener) {

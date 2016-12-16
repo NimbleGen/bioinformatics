@@ -41,10 +41,13 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.roche.sequencing.bioinformatics.common.utils.gzip.GZipUtil;
 
 /**
  * 
@@ -53,6 +56,10 @@ import org.slf4j.LoggerFactory;
  */
 public final class FileUtil {
 
+	// note: I was definately seeing a lot of multithreading issues surrounding the use
+	// of DecimalFormat so any use in this util should be synchronized on the DF object
+	// liked this: synchronized (DF) { DF.fomrat(1.11); }
+	// --Kurt 12/15/2016
 	private static final DecimalFormat DF = new DecimalFormat("###,###.##");
 	private static final String GB = "GB";
 	private static final String MB = "MB";
@@ -348,7 +355,13 @@ public final class FileUtil {
 	public static int countNumberOfLinesInFile(File file) throws IOException {
 		int count = 1;
 		boolean empty = true;
-		try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
+		InputStream inputStream;
+		if (GZipUtil.isCompressed(file)) {
+			inputStream = new GZIPInputStream(new FileInputStream(file));
+		} else {
+			inputStream = new BufferedInputStream(new FileInputStream(file));
+		}
+		try {
 			byte[] character = new byte[1024];
 			int readChars = 0;
 			while ((readChars = inputStream.read(character)) != -1) {
@@ -359,6 +372,8 @@ public final class FileUtil {
 					}
 				}
 			}
+		} finally {
+			inputStream.close();
 		}
 		return (count == 0 && !empty) ? 1 : count;
 	}
@@ -837,12 +852,6 @@ public final class FileUtil {
 
 	}
 
-	public static void main(String[] args) {
-		File inputFile = new File("C:\\kurts_space\\github\\private_bioinformatics\\pete_utils\\target\\classes\\com\\roche\\sequencing\\bioinformatics\\pete\\primer3\\ntthal_win_64.exe");
-		File outputFile = new File("C:\\kurts_space\\github\\private_bioinformatics\\pete_utils\\target\\classes\\com\\roche\\sequencing\\bioinformatics\\pete\\primer3\\ntthal_win_642.exe");
-		partialCopy(inputFile, outputFile, 0.99);
-	}
-
 	public static String getFileSizeLabel(long sizeInBytes) {
 		double divisor;
 		String units = "";
@@ -861,7 +870,13 @@ public final class FileUtil {
 		}
 
 		double relativeSize = (double) sizeInBytes / divisor;
-		return DF.format(relativeSize) + units;
+		String fileSizeLabel = "";
+
+		synchronized (DF) {
+			fileSizeLabel = DF.format(relativeSize) + units;
+		}
+
+		return fileSizeLabel;
 	}
 
 	public static byte[] readFileAsBytes(File file) throws IOException {

@@ -38,6 +38,10 @@ public class ProgressUpdate {
 		return DateUtil.convertMillisecondsToHHMMSSMMM(getEstimatedTimeToCompletionInMilliseconds());
 	}
 
+	public String getEstimatedTimeToCompletionInHHMMSS() {
+		return DateUtil.convertMillisecondsToHHMMSS(getEstimatedTimeToCompletionInMilliseconds());
+	}
+
 	public String getEstimatedCompletionTimeInYYYYMMDDHHMMSS() {
 		long estimatedCompletionTime = System.currentTimeMillis() + getEstimatedTimeToCompletionInMilliseconds();
 		return DateUtil.convertTimeInMillisecondsToDate(estimatedCompletionTime);

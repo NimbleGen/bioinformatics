@@ -1,10 +1,11 @@
 package com.roche.sequencing.bioinformatics.common.text.viewer;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
@@ -25,7 +26,9 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.AbstractAction;
@@ -42,12 +45,12 @@ import javax.swing.JTextArea;
 import javax.swing.JTextPane;
 import javax.swing.JViewport;
 import javax.swing.KeyStroke;
+import javax.swing.SwingWorker;
 import javax.swing.TransferHandler;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.text.DefaultCaret;
@@ -62,7 +65,9 @@ import com.roche.sequencing.bioinformatics.common.text.ITextProgressListener;
 import com.roche.sequencing.bioinformatics.common.text.ProgressUpdate;
 import com.roche.sequencing.bioinformatics.common.text.TextFileIndex;
 import com.roche.sequencing.bioinformatics.common.text.TextPosition;
+import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.GraphicsUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 import com.roche.sequencing.bioinformatics.common.utils.gzip.BamByteDecoder;
 import com.roche.sequencing.bioinformatics.common.utils.gzip.GZipBlock;
@@ -101,6 +106,7 @@ public class TextViewerPanel extends JPanel {
 	private final JPanel statusPanel;
 
 	private final JLabel currentPositionLabel;
+	private final JLabel generalStatusLabel;
 	private final JLabel fileInfoLabel;
 
 	private JScrollBar verticalScrollBar;
@@ -120,12 +126,17 @@ public class TextViewerPanel extends JPanel {
 
 	private boolean showLineNumbers;
 
-	// TODO incorporate this into the panel
-	private boolean showTableView = false;
+	private boolean isShowDataView = false;
+
+	private Map<Integer, Integer> maxLengthPerColum;
+
+	private int headerLineNumber;
+	private String headerText;
 
 	public TextViewerPanel(TextViewer parentTextViewer, File file, RandomAccessFile randomAccessToFile, TextFileIndex textFileIndex, GZipIndex gZipIndex, IBytes gZipDictionaryBytes,
 			File bamBlockIndexFile) throws FileNotFoundException {
 		super();
+		setOpaque(false);
 
 		this.parentTextViewer = parentTextViewer;
 		this.file = file;
@@ -169,7 +180,43 @@ public class TextViewerPanel extends JPanel {
 		lineNumberArea.setBackground(new Color(225, 225, 225));
 		add(lineNumberArea);
 
-		textArea = new JTextArea();
+		textArea = new JTextArea() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			protected void paintComponent(Graphics g) {
+				super.paintComponent(g);
+				if (isShowDataView && maxLengthPerColum != null) {
+					g.setColor(Color.black);
+					Dimension letterSize = GraphicsUtil.getSizeOfText("W", parentTextViewer.getTextFont());
+					int rowHeight = (int) letterSize.getHeight();
+					int letterWidth = (int) letterSize.getWidth();
+
+					int numberOfLines = getHeight() / rowHeight;
+
+					int[] columnXStart = new int[maxLengthPerColum.size()];
+					int sum = 0;
+					for (int columnIndex = 0; columnIndex < maxLengthPerColum.size(); columnIndex++) {
+						columnXStart[columnIndex] = sum;
+						sum += ((maxLengthPerColum.get(columnIndex) + 1) * letterWidth);
+					}
+
+					int y = 0;
+					for (int lineIndex = 0; lineIndex < numberOfLines; lineIndex++) {
+						for (int columnIndex = 0; columnIndex < maxLengthPerColum.size(); columnIndex++) {
+							int x = columnXStart[columnIndex];
+							int width = ((maxLengthPerColum.get(columnIndex) + 1) * letterWidth);
+							g.drawRect(x, y, width, rowHeight);
+						}
+						y += rowHeight;
+					}
+
+				}
+
+			}
+
+		};
 		textArea.setEditable(false);
 		textArea.setLineWrap(false);
 		textArea.getCaret().setBlinkRate(250);
@@ -186,7 +233,6 @@ public class TextViewerPanel extends JPanel {
 		setCaretColor(DEFAULT_CARET_COLOR);
 		setCaretWidth(DEFAULT_CARET_WIDTH);
 
-		textArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
 		textArea.setCursor(TEXT_CURSOR);
 		textArea.addCaretListener(new CaretListener() {
 			@Override
@@ -226,11 +272,7 @@ public class TextViewerPanel extends JPanel {
 		tableArea.setCellSelectionEnabled(true);
 
 		viewPort = new JViewport();
-		if (showTableView) {
-			viewPort.setView(tableArea);
-		} else {
-			viewPort.setView(textArea);
-		}
+		viewPort.setView(textArea);
 		add(viewPort);
 
 		setLayout(null);
@@ -270,12 +312,14 @@ public class TextViewerPanel extends JPanel {
 		});
 
 		statusPanel = new JPanel();
-		statusPanel.setLayout(new BorderLayout());
+		statusPanel.setLayout(new ThreeInARowLayoutManager());
 		statusPanel.setBackground(Color.LIGHT_GRAY);
 		currentPositionLabel = new JLabel();
+		generalStatusLabel = new JLabel();
 		fileInfoLabel = new JLabel();
-		statusPanel.add(currentPositionLabel, BorderLayout.LINE_START);
-		statusPanel.add(fileInfoLabel, BorderLayout.LINE_END);
+		statusPanel.add(currentPositionLabel);
+		statusPanel.add(generalStatusLabel);
+		statusPanel.add(fileInfoLabel);
 		statusPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.black));
 		add(statusPanel);
 
@@ -291,7 +335,46 @@ public class TextViewerPanel extends JPanel {
 		updateScrollBar();
 
 		bindKeys();
+	}
 
+	public int getHeaderLineNumber() {
+		return headerLineNumber;
+	}
+
+	private boolean doesHeaderExist() {
+		return headerLineNumber > 0;
+	}
+
+	public void setHeaderLineNumber(int headerLineNumber) {
+		this.headerLineNumber = headerLineNumber;
+		if (doesHeaderExist()) {
+			this.headerText = document.getText(headerLineNumber - 1, headerLineNumber - 1)[0];
+		}
+	}
+
+	/**
+	 * @return the first non comment line
+	 */
+	public int getDefaultHeaderLineNumber() {
+		int defaultLineNumber = 1;
+		String[] allText = document.getText(0, 100);
+		lineLoop: for (int i = 0; i < allText.length; i++) {
+			String lineText = allText[i];
+			if (!lineText.startsWith("#")) {
+				defaultLineNumber = i + 1;
+				break lineLoop;
+			}
+		}
+		return defaultLineNumber;
+	}
+
+	public int getTabSize() {
+		return textArea.getTabSize();
+	}
+
+	public void setTabSize(int tabSize) {
+		textArea.setTabSize(tabSize);
+		updateTextInViewer();
 	}
 
 	public void setCaretColor(Color color) {
@@ -460,34 +543,47 @@ public class TextViewerPanel extends JPanel {
 			public void actionPerformed(ActionEvent event) {
 				if (document != null) {
 					String searchString = (String) JOptionPane.showInputDialog(parentTextViewer, "Enter Text to Find:", "Search", JOptionPane.PLAIN_MESSAGE, null, null, lastEnteredString);
-					boolean isSearchCaseSensitive = false;
-					TextPosition textPosition = getCaretTextPosition();
-					int currentLineNumber = textPosition.getLineNumber();
-					int currentPositionInLine = textPosition.getColumnIndex();
 
-					if (searchString != null && searchString.length() > 0) {
-						ITextProgressListener progressListener = new ITextProgressListener() {
-							@Override
-							public void progressOccurred(ProgressUpdate progressUpdate) {
-								System.out.println(progressUpdate.getPercentComplete() + "%  Time Left:" + progressUpdate.getEstimatedTimeToCompletionInHHMMSSMMM());
+					SwingWorker<Integer, String> searchWorker = new SwingWorker<Integer, String>() {
+						@Override
+						protected Integer doInBackground() throws Exception {
+							boolean isSearchCaseSensitive = false;
+							TextPosition textPosition = getCaretTextPosition();
+							int currentLineNumber = textPosition.getLineNumber();
+							int currentPositionInLine = textPosition.getColumnIndex();
+							// TODO do not do this on the event dispatch thread!!!!!
+							if (searchString != null && searchString.length() > 0) {
+								ITextProgressListener progressListener = new ITextProgressListener() {
+									@Override
+									public void progressOccurred(ProgressUpdate progressUpdate) {
+										generalStatusLabel.setText("Searching for '" + searchString + "'.  " + progressUpdate.getPercentComplete() + "%  Searched.  Time Left:"
+												+ progressUpdate.getEstimatedTimeToCompletionInHHMMSSMMM());
+									}
+								};
+								TextPosition foundTextPosition = document.search(currentLineNumber, currentPositionInLine + 1, isSearchCaseSensitive, searchString, progressListener);
+
+								String message;
+								if (foundTextPosition != null) {
+									setLineNumber(foundTextPosition.getLineNumber() + 1);
+									textArea.setCaretPosition(foundTextPosition.getColumnIndex());
+									message = "Search for:" + searchString + " resulted in the following line:" + (foundTextPosition.getLineNumber() + 1) + " column:"
+											+ foundTextPosition.getColumnIndex();
+								} else {
+									message = "Search for:" + searchString + " resulted in NO RESULTS.";
+								}
+
+								JOptionPane.showMessageDialog(parentTextViewer, message, "Search Results", JOptionPane.INFORMATION_MESSAGE);
+								generalStatusLabel.setText("");
+
+								lastEnteredString = searchString;
+								lastSearchWasCaseSensitive = isSearchCaseSensitive;
 							}
-						};
-						TextPosition foundTextPosition = document.search(currentLineNumber, currentPositionInLine + 1, isSearchCaseSensitive, searchString, progressListener);
-
-						String message;
-						if (foundTextPosition != null) {
-							setLineNumber(foundTextPosition.getLineNumber() + 1);
-							textArea.setCaretPosition(foundTextPosition.getColumnIndex());
-							message = "Search for:" + searchString + " resulted in the following line:" + (foundTextPosition.getLineNumber() + 1) + " column:" + foundTextPosition.getColumnIndex();
-						} else {
-							message = "Search for:" + searchString + " resulted in NO RESULTS.";
+							return null;
 						}
 
-						JOptionPane.showMessageDialog(parentTextViewer, message, "Search Results", JOptionPane.INFORMATION_MESSAGE);
+					};
+					searchWorker.execute();
 
-						lastEnteredString = searchString;
-						lastSearchWasCaseSensitive = isSearchCaseSensitive;
-					}
 				}
 			}
 		});
@@ -499,47 +595,17 @@ public class TextViewerPanel extends JPanel {
 			@Override
 			public void actionPerformed(ActionEvent event) {
 				if (document != null) {
-					if (showTableView) {
-						copyTableSelectionToClipboard();
-					} else {
-						String selectedText = textArea.getSelectedText();
-						if (selectedText != null && !selectedText.isEmpty()) {
-							StringSelection stringSelection = new StringSelection(selectedText);
-							Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-							clipboard.setContents(stringSelection, null);
-						}
+					// TODO handle the case where data is selected and there are a bunch of extra spaces instead of tabs
+					String selectedText = textArea.getSelectedText();
+					if (selectedText != null && !selectedText.isEmpty()) {
+						StringSelection stringSelection = new StringSelection(selectedText);
+						Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+						clipboard.setContents(stringSelection, null);
 					}
+
 				}
 			}
 		});
-	}
-
-	private void copyTableSelectionToClipboard() {
-		int numCols = tableArea.getSelectedColumnCount();
-		int numRows = tableArea.getSelectedRowCount();
-		int[] rowsSelected = tableArea.getSelectedRows();
-		int[] colsSelected = tableArea.getSelectedColumns();
-		if (numRows != rowsSelected[rowsSelected.length - 1] - rowsSelected[0] + 1 || numRows != rowsSelected.length || numCols != colsSelected[colsSelected.length - 1] - colsSelected[0] + 1
-				|| numCols != colsSelected.length) {
-
-			JOptionPane.showMessageDialog(null, "Invalid Copy Selection", "Invalid Copy Selection", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-
-		StringBuffer excelStr = new StringBuffer();
-		for (int i = 0; i < numRows; i++) {
-			for (int j = 0; j < numCols; j++) {
-				excelStr.append(tableArea.getValueAt(rowsSelected[i], colsSelected[j]));
-				if (j < numCols - 1) {
-					excelStr.append(StringUtil.TAB);
-				}
-			}
-			excelStr.append(StringUtil.NEWLINE);
-		}
-
-		StringSelection stringSelection = new StringSelection(excelStr.toString());
-		Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-		clipboard.setContents(stringSelection, null);
 	}
 
 	@Override
@@ -549,7 +615,7 @@ public class TextViewerPanel extends JPanel {
 		tableArea.setTransferHandler(newHandler);
 	}
 
-	void setLineNumber(int lineNumber) {
+	synchronized void setLineNumber(int lineNumber) {
 		if (lineNumber >= 1 && lineNumber <= document.getNumberOfLines()) {
 			int maxValue = verticalScrollBar.getMaximum() - verticalScrollBar.getVisibleAmount();
 			if (lineNumber > maxValue) {
@@ -565,7 +631,7 @@ public class TextViewerPanel extends JPanel {
 	private void updateViewPort() {
 		if (!horizontalScrollBarIsBeingSet.get()) {
 			int characterPosition = horizontalScrollBar.getValue();
-			int textWidth = textArea.getFontMetrics(textArea.getFont()).stringWidth("W");
+			int textWidth = textArea.getFontMetrics(parentTextViewer.getTextFont()).stringWidth("W");
 			int pixelXPosition = characterPosition * textWidth;
 			viewPortIsBeingSet.set(true);
 			viewPort.setViewPosition(new Point(pixelXPosition, 0));
@@ -576,7 +642,7 @@ public class TextViewerPanel extends JPanel {
 	private void updateHorizontalScrollBar() {
 		if (!viewPortIsBeingSet.get()) {
 			double pixelXPosition = viewPort.getViewPosition().getX();
-			int textWidth = textArea.getFontMetrics(textArea.getFont()).stringWidth("W");
+			int textWidth = textArea.getFontMetrics(parentTextViewer.getTextFont()).stringWidth("W");
 			int characterPosition = (int) (pixelXPosition / textWidth);
 			horizontalScrollBarIsBeingSet.set(true);
 			horizontalScrollBar.setValue(characterPosition);
@@ -584,7 +650,7 @@ public class TextViewerPanel extends JPanel {
 		}
 	}
 
-	private void moveVerticalScrollBar(int linesToMove) {
+	private synchronized void moveVerticalScrollBar(int linesToMove) {
 		int currentLineNumber = verticalScrollBar.getValue();
 		int maxLineNumber = verticalScrollBar.getMaximum();
 		int newLineNumber = currentLineNumber + linesToMove;
@@ -616,17 +682,13 @@ public class TextViewerPanel extends JPanel {
 		int lineNumberAreaWidth = 0;
 		if (showLineNumbers) {
 			int lineNumbers = document.getNumberOfLines();
-			lineNumberAreaWidth = lineNumberArea.getFontMetrics(lineNumberArea.getFont()).stringWidth(lineNumbers + "W");
+			lineNumberAreaWidth = lineNumberArea.getFontMetrics(parentTextViewer.getTextFont()).stringWidth(lineNumbers + "W");
 			lineNumberArea.setBounds(0, 0, lineNumberAreaWidth, getHeight() - HORIZONTAL_SCROLLL_BAR_HEIGHT - STATUS_PANEL_HEIGHT);
 		} else {
 			lineNumberArea.setVisible(false);
 		}
 
-		if (showTableView) {
-			viewPort.setBounds(lineNumberAreaWidth, 5, getWidth() - VERTICAL_SCROLLL_BAR_WIDTH - lineNumberAreaWidth, getHeight() - HORIZONTAL_SCROLLL_BAR_HEIGHT - STATUS_PANEL_HEIGHT);
-		} else {
-			viewPort.setBounds(lineNumberAreaWidth, 2, getWidth() - VERTICAL_SCROLLL_BAR_WIDTH - lineNumberAreaWidth, getHeight() - HORIZONTAL_SCROLLL_BAR_HEIGHT - STATUS_PANEL_HEIGHT);
-		}
+		viewPort.setBounds(lineNumberAreaWidth, 2, getWidth() - VERTICAL_SCROLLL_BAR_WIDTH - lineNumberAreaWidth, getHeight() - HORIZONTAL_SCROLLL_BAR_HEIGHT - STATUS_PANEL_HEIGHT);
 
 		int xStart = (int) (getWidth() - VERTICAL_SCROLLL_BAR_WIDTH);
 		verticalScrollBar.setBounds(xStart, 0, VERTICAL_SCROLLL_BAR_WIDTH, getHeight() - HORIZONTAL_SCROLLL_BAR_HEIGHT - STATUS_PANEL_HEIGHT);
@@ -638,16 +700,19 @@ public class TextViewerPanel extends JPanel {
 		statusPanel.setBounds(0, yStart, getWidth(), STATUS_PANEL_HEIGHT);
 	}
 
-	private void refreshScreen() {
-		updateComponentsLayout();
+	void refreshScreen() {
 
+		updateComponentsLayout();
+		System.out.println("pre:" + verticalScrollBar.getValue());
 		updateScrollBar();
+		System.out.println("post:" + verticalScrollBar.getValue());
 		updateTextInViewer();
+
 	}
 
 	private int getNumberOfLinesThatCanFitInViewer() {
 		int height = viewPort.getHeight();
-		int textHeight = textArea.getFontMetrics(textArea.getFont()).getHeight();
+		int textHeight = textArea.getFontMetrics(parentTextViewer.getTextFont()).getHeight();
 		int numberOfLinesThatCanFitInViewer = height / textHeight;
 		return Math.max(0, numberOfLinesThatCanFitInViewer - 1);
 
@@ -657,13 +722,17 @@ public class TextViewerPanel extends JPanel {
 		double width = viewPort.getWidth();
 		// We are trying to limit the display to monospaced fonts so which letter
 		// is used here for measuring width shouldn't matter.
-		double textWidth = textArea.getFontMetrics(textArea.getFont()).stringWidth("W");
+		double textWidth = textArea.getFontMetrics(parentTextViewer.getTextFont()).stringWidth("W");
 		int numberOfCharactersThatCanFitInViewer = (int) Math.ceil(width / textWidth);
 		return numberOfCharactersThatCanFitInViewer;
 	}
 
-	private synchronized void updateTextInViewer() {
+	public synchronized void updateTextInViewer() {
 		int longestLine = 0;
+		textArea.setFont(parentTextViewer.getTextFont());
+		lineNumberArea.setFont(parentTextViewer.getTextFont());
+		textArea.setBackground(parentTextViewer.getBackgroundTextPanelColor());
+		textArea.setForeground(parentTextViewer.getTextColor());
 
 		TextPosition caretTextPositionBeforeNewText = getCaretTextPosition();
 		Integer newCaretPosition = null;
@@ -678,14 +747,25 @@ public class TextViewerPanel extends JPanel {
 		StringBuilder lineNumberText = new StringBuilder();
 
 		int endingLineNumber = startingLineNumber + numberOfLinesThatCanFitInView;
+		boolean headerExists = doesHeaderExist();
 		StringBuilder text = new StringBuilder();
 		if (document != null && numberOfLinesThatCanFitInView > 0) {
 
 			int lineNumbersInFile = document.getNumberOfLines();
-
 			String[] allText = document.getText(startingLineNumber, endingLineNumber);
+			if (headerExists) {
+				allText = ArraysUtil.concatenate(new String[] { headerText }, allText);
+			}
 			for (int currentLine = startingLineNumber; currentLine <= endingLineNumber; currentLine++) {
 				int index = currentLine - startingLineNumber;
+				int currentLineNumber = currentLine + 1;
+				if (headerExists) {
+					if (currentLine == startingLineNumber) {
+						currentLineNumber = headerLineNumber;
+					} else {
+						currentLineNumber--;
+					}
+				}
 				String textForLine = allText[index];
 				if (currentLine < lineNumbersInFile) {
 					if (currentLine >= startingLineNumber) {
@@ -698,7 +778,7 @@ public class TextViewerPanel extends JPanel {
 						text.append(textForLine + StringUtil.NEWLINE);
 						lineStartPositionCharacterIndexesInView.add(text.length());
 
-						lineNumberText.append((currentLine + 1) + StringUtil.NEWLINE);
+						lineNumberText.append((currentLineNumber) + StringUtil.NEWLINE);
 					}
 				} else {
 					text.append(StringUtil.NEWLINE);
@@ -712,64 +792,80 @@ public class TextViewerPanel extends JPanel {
 				textToAdd = text.substring(0, text.length() - 1).toString();
 			}
 
-			if (showTableView) {
-				String[] lines = textToAdd.split(StringUtil.NEWLINE);
-				int columns = document.getMostTabsFoundInALine() + 2;
-				String[][] data = new String[lines.length][columns];
-				String[] columnNames = new String[columns];
-				for (int i = 0; i < lines.length; i++) {
-					String line = lines[i];
-					int j = 0;
-					for (String value : line.split(StringUtil.TAB)) {
-						data[i][j] = value + " ";
-						j++;
-					}
-					data[i][j] = StringUtil.repeatString(" ", document.getNumberOfCharactersInLongestLine(0) - line.length());
-				}
-				tableArea.setModel(new DefaultTableModel(data, columnNames) {
-					private static final long serialVersionUID = 1L;
-
-					@Override
-					public boolean isCellEditable(int row, int column) {
-						return false;
-					}
-				});
-			} else {
-				textArea.setText(textToAdd);
-				if (newCaretPosition != null) {
-					textArea.setCaretPosition(newCaretPosition);
-				} else if (caretTextPositionBeforeNewText != null && (caretTextPositionBeforeNewText.getLineNumber() > currentStartingLineNumber)) {
-					if (caretTextPositionBeforeNewText != null) {
-						int lastPosition = text.length() - 1;
-						int startOfLastLine = lineStartPositionCharacterIndexesInView.get(lineStartPositionCharacterIndexesInView.size() - 1);
-
-						// move the caret position but attempt to keep the same column
-						int newPosition = Math.min(lastPosition, startOfLastLine + caretTextPositionBeforeNewText.getColumnIndex());
-						textArea.setCaretPosition(newPosition);
-					}
-				} else {
-					if (caretTextPositionBeforeNewText != null) {
-						int positionForColumn = caretTextPositionBeforeNewText.getColumnIndex();
-						int endOfFirstLine;
-
-						if (lineStartPositionCharacterIndexesInView.size() > 1) {
-							endOfFirstLine = lineStartPositionCharacterIndexesInView.get(1) - 1;
-						} else {
-							endOfFirstLine = textArea.getText().length() - 1;
+			if (isShowDataView) {
+				maxLengthPerColum = new HashMap<Integer, Integer>();
+				for (String line : textToAdd.split("" + StringUtil.NEWLINE_SYMBOL)) {
+					int columnIndex = 0;
+					for (String columnText : line.split(StringUtil.TAB)) {
+						Integer previousMax = maxLengthPerColum.get(columnIndex);
+						if (previousMax == null) {
+							previousMax = 0;
 						}
-
-						int newPosition = Math.min(endOfFirstLine, positionForColumn);
-						textArea.setCaretPosition(newPosition);
+						int max = Math.max(previousMax, columnText.length());
+						maxLengthPerColum.put(columnIndex, max);
+						columnIndex++;
 					}
+				}
+
+				// reset these to take into account the new spaces
+				lineStartPositionCharacterIndexesInView.clear();
+				lineStartPositionCharacterIndexesInView.add(0);
+				StringBuilder newTextBuilder = new StringBuilder();
+				int lineNumber = startingLineNumber;
+				for (String line : textToAdd.split("" + StringUtil.NEWLINE_SYMBOL)) {
+					int columnIndex = 0;
+					StringBuilder newLineBuilder = new StringBuilder();
+					for (String columnText : line.split(StringUtil.TAB)) {
+						int max = maxLengthPerColum.get(columnIndex);
+						newLineBuilder.append(columnText + StringUtil.repeatString(" ", ((max + 1) - columnText.length())));
+						columnIndex++;
+					}
+					newTextBuilder.append(newLineBuilder.toString() + StringUtil.NEWLINE);
+
+					if ((caretTextPositionBeforeNewText != null) && (lineNumber == caretTextPositionBeforeNewText.getLineNumber() - 1)) {
+						newCaretPosition = newTextBuilder.length() + Math.min(caretTextPositionBeforeNewText.getColumnIndex(), newLineBuilder.length());
+					}
+
+					lineStartPositionCharacterIndexesInView.add(newTextBuilder.length());
+					lineNumber++;
+				}
+				textToAdd = newTextBuilder.toString();
+			}
+
+			textArea.setText(textToAdd);
+			if (newCaretPosition != null) {
+				System.out.println("a");
+				textArea.setCaretPosition(newCaretPosition);
+			} else if (caretTextPositionBeforeNewText != null && (caretTextPositionBeforeNewText.getLineNumber() > currentStartingLineNumber)) {
+				if (caretTextPositionBeforeNewText != null) {
+					int lastPosition = text.length() - 1;
+					int startOfLastLine = lineStartPositionCharacterIndexesInView.get(lineStartPositionCharacterIndexesInView.size() - 2);
+
+					// move the caret position but attempt to keep the same column
+					int newPosition = Math.min(lastPosition, startOfLastLine + caretTextPositionBeforeNewText.getColumnIndex());
+					System.out.println("b");
+					textArea.setCaretPosition(newPosition);
+				}
+			} else {
+				if (caretTextPositionBeforeNewText != null) {
+					int positionForColumn = caretTextPositionBeforeNewText.getColumnIndex();
+					int endOfFirstLine;
+
+					if (lineStartPositionCharacterIndexesInView.size() > 1) {
+						endOfFirstLine = lineStartPositionCharacterIndexesInView.get(1) - 1;
+					} else {
+						endOfFirstLine = textArea.getText().length() - 1;
+					}
+
+					int newPosition = Math.min(endOfFirstLine, positionForColumn);
+					System.out.println("c");
+					textArea.setCaretPosition(newPosition);
 				}
 			}
 
 		} else {
-			if (showTableView) {
-				// tableArea.setModel(new DefaultTableModel(new String[0][0], null));
-			} else {
-				textArea.setText("");
-			}
+			textArea.setText("");
+
 		}
 
 		lineNumberArea.setText(lineNumberText.toString());
@@ -781,13 +877,23 @@ public class TextViewerPanel extends JPanel {
 
 	}
 
+	public boolean isShowDataView() {
+		return isShowDataView;
+	}
+
+	public void setShowDataView(boolean isShowDataView) {
+		if (this.isShowDataView != isShowDataView) {
+			this.isShowDataView = isShowDataView;
+			updateTextInViewer();
+		}
+	}
+
 	private void updateScrollBar() {
 		if (document != null) {
 			int numberOfLinesThatCanFitInView = getNumberOfLinesThatCanFitInViewer();
 			verticalScrollBar.setMinimum(0);
 			int lineNumbersInFile = document.getNumberOfLines();
 			verticalScrollBar.setMaximum(lineNumbersInFile - 1);
-			verticalScrollBar.setValue(0);
 			verticalScrollBar.setUnitIncrement(1);
 			verticalScrollBar.setVisibleAmount(numberOfLinesThatCanFitInView);
 			verticalScrollBar.repaint();
@@ -797,7 +903,6 @@ public class TextViewerPanel extends JPanel {
 			int numberOfCharactersThatCanFitInView = getNumberOfCharactersThatCanFitInViewer();
 			horizontalScrollBar.setMinimum(0);
 			horizontalScrollBar.setMaximum(longestLine);
-			horizontalScrollBar.setValue(0);
 			horizontalScrollBar.setUnitIncrement(1);
 			horizontalScrollBar.setVisibleAmount(numberOfCharactersThatCanFitInView);
 			horizontalScrollBar.repaint();
@@ -815,6 +920,10 @@ public class TextViewerPanel extends JPanel {
 
 	public int getCurrentLineNumber() {
 		return currentStartingLineNumber;
+	}
+
+	public void setGeneralStatusText(String text) {
+		generalStatusLabel.setText(text);
 	}
 
 }

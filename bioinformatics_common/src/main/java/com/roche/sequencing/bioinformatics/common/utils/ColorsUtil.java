@@ -88,4 +88,8 @@ public class ColorsUtil {
 	public static Color addAlpha(Color color, float alpha) {
 		return new Color(color.getRed() / MAX_COLOR_VALUE, color.getGreen() / MAX_COLOR_VALUE, color.getBlue() / MAX_COLOR_VALUE, alpha);
 	}
+
+	public static Color addAlpha(Color color, int alpha) {
+		return addAlpha(color, (float) alpha / 255f);
+	}
 }

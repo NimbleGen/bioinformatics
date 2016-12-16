@@ -91,7 +91,7 @@ public class RunWorkflow {
 		timer.start("correcting uids");
 		System.out.println("Correcting Uids");
 		// this will populate the uid group when possible
-		readNameToProbeAssignmentMap = UidCorrector.correctUids(readNameToProbeAssignmentMap, null);
+		readNameToProbeAssignmentMap = UidCorrector.correctUids(readNameToProbeAssignmentMap, null).getProbeIdToReadNamesMap();
 		timer.stop("correcting uids");
 
 		timer.start("dedup");
