@@ -13,6 +13,8 @@ public interface IDocument {
 
 	String[] getText(int startingLineNumber, int endingLineNumberInclusive);
 
+	String[] getText(int startingLineNumber, Integer startingCharacterIndexInLine, int endingLineNumberInclusive, Integer endingCharacterIndexInLine);
+
 	int getMostTabsFoundInALine();
 
 	void close() throws IOException;

@@ -10,6 +10,7 @@ import java.awt.image.BufferedImage;
 import java.io.Serializable;
 
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JColorChooser;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
@@ -26,20 +27,16 @@ public class ColorChooserHelper {
 	private final static int DEFAULT_WIDTH = 16;
 	private final static int DEFAULT_HEIGHT = 16;
 
-	public static ActionListener createActionListener(JFrame parentFrame, String title, boolean isTextColor, TextViewer textViewer) {
+	public static ActionListener createActionListener(JFrame parentFrame, String title, TextViewerColor textViewerColor, TextViewer textViewer) {
 		ActionListener actionListener = new ActionListener() {
 			private Color startingColor;
 
 			@SuppressWarnings("deprecation")
 			@Override
 			public void actionPerformed(ActionEvent event) {
-				JMenuItem menuItem = (JMenuItem) event.getSource();
+				Object menuObject = event.getSource();
 
-				if (isTextColor) {
-					startingColor = textViewer.getTextColor();
-				} else {
-					startingColor = textViewer.getBackgroundTextPanelColor();
-				}
+				startingColor = getColor(textViewer, textViewerColor);
 
 				MenuSelectionManager.defaultManager().clearSelectedPath();
 				JColorChooser colorChooser = new JColorChooser(startingColor);
@@ -52,11 +49,7 @@ public class ColorChooserHelper {
 					public void stateChanged(ChangeEvent evt) {
 						ColorSelectionModel model = (ColorSelectionModel) evt.getSource();
 						previewPanel.curColor = model.getSelectedColor();
-						if (isTextColor) {
-							textViewer.setTextColor(previewPanel.curColor);
-						} else {
-							textViewer.setBackgroundTextPanelColor(previewPanel.curColor);
-						}
+						setColor(textViewer, textViewerColor, previewPanel.curColor);
 						textViewer.updateCurrentTextViewerPanel();
 					}
 				});
@@ -65,17 +58,12 @@ public class ColorChooserHelper {
 				AbstractColorChooserPanel rgbPanel = colorChooser.getChooserPanels()[3];
 				colorChooser.setChooserPanels(new AbstractColorChooserPanel[] { commonColorsPanel, rgbPanel });
 
-				ColorTracker okColorTracker = new ColorTracker(colorChooser, menuItem);
+				ColorTracker okColorTracker = new ColorTracker(colorChooser, menuObject);
 				ActionListener cancelActionListener = new ActionListener() {
 
 					@Override
 					public void actionPerformed(ActionEvent e) {
-						System.out.println("cancel");
-						if (isTextColor) {
-							textViewer.setTextColor(startingColor);
-						} else {
-							textViewer.setBackgroundTextPanelColor(startingColor);
-						}
+						setColor(textViewer, textViewerColor, startingColor);
 						textViewer.updateCurrentTextViewerPanel();
 					}
 				};
@@ -85,6 +73,50 @@ public class ColorChooserHelper {
 			}
 		};
 		return actionListener;
+	}
+
+	private static void setColor(TextViewer textViewer, TextViewerColor colorType, Color color) {
+		switch (colorType) {
+		case BACKGROUND:
+			textViewer.setBackgroundTextPanelColor(color);
+			break;
+		case HEADER_BACKGROUND:
+			textViewer.setDataHeaderBackgroundColor(color);
+			break;
+		case LINES:
+			textViewer.setDataLineColor(color);
+			break;
+		case FONT:
+			textViewer.setTextColor(color);
+			break;
+		default:
+			throw new AssertionError();
+		}
+	}
+
+	private static Color getColor(TextViewer textViewer, TextViewerColor colorType) {
+		Color color = null;
+		switch (colorType) {
+		case BACKGROUND:
+			color = textViewer.getBackgroundTextPanelColor();
+			break;
+		case HEADER_BACKGROUND:
+			color = textViewer.getDataHeaderBackgroundColor();
+			break;
+		case LINES:
+			color = textViewer.getDataLineColor();
+			break;
+		case FONT:
+			color = textViewer.getTextColor();
+			break;
+		default:
+			throw new AssertionError();
+		}
+		return color;
+	}
+
+	public static enum TextViewerColor {
+		BACKGROUND, HEADER_BACKGROUND, LINES, FONT
 	}
 
 	static class MyPreviewPanel extends JComponent {
@@ -107,18 +139,32 @@ public class ColorChooserHelper {
 		private static final long serialVersionUID = 1L;
 		private JColorChooser colorChooser;
 		private Color color;
-		private JMenuItem menuItem;
+		private final JMenuItem menuItem;
+		private final JButton button;
 
-		public ColorTracker(JColorChooser colorChooser, JMenuItem menuItem) {
+		public ColorTracker(JColorChooser colorChooser, Object menuObject) {
 			this.colorChooser = colorChooser;
-			this.menuItem = menuItem;
+			if (menuObject instanceof JMenuItem) {
+				this.menuItem = (JMenuItem) menuObject;
+				this.button = null;
+			} else if (menuObject instanceof JButton) {
+				this.button = (JButton) menuObject;
+				this.menuItem = null;
+			} else {
+				throw new AssertionError();
+			}
 			color = colorChooser.getColor();
 		}
 
 		public void actionPerformed(ActionEvent e) {
 			System.out.println("ok");
 			color = colorChooser.getColor();
-			menuItem.setIcon(createIcon(color));
+			if (button != null) {
+				button.setIcon(createIcon(color));
+			} else if (menuItem != null) {
+				menuItem.setIcon(createIcon(color));
+			}
+
 		}
 	}
 

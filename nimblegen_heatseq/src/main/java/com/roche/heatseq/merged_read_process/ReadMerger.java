@@ -186,13 +186,14 @@ public class ReadMerger {
 			try (FastqWriter unmergedFastqOneWriter = new FastqWriter(unmergedFastqOneFile)) {
 				try (FastqWriter unmergedFastqTwoWriter = new FastqWriter(unmergedFastqTwoFile)) {
 
-					AtomicInteger readNumber = new AtomicInteger(0);
+					AtomicInteger readNumber = new AtomicInteger(-1);
+					AtomicInteger currentWriteReadNumber = new AtomicInteger(startingRead);
 					try (FastqReader fastQOneReader = new FastqReader(fastqOneFile)) {
 						try (FastqReader fastQTwoReader = new FastqReader(fastqTwoFile)) {
 							for (int i = 0; i < NUMBER_OF_THREADS; i++) {
 								executor.submit(new MergeRecordsHelper(fastQOneReader, fastQTwoReader, startingRead, numberOfReadsToProcess, processedReadsCount, readNumber, mergedReadCount,
 										executor, maxNumberOfConflictsPerReadPair, mergedFastqWriter, unmergedFastqOneWriter, unmergedFastqTwoWriter, progressListener, mergedFastqWriterQueue,
-										fastqOneWriterQueue, fastqTwoWriterQueue));
+										fastqOneWriterQueue, fastqTwoWriterQueue, currentWriteReadNumber));
 							}
 
 							try {
@@ -235,15 +236,18 @@ public class ReadMerger {
 		private final IProgressListener progressListener;
 
 		private final Map<Integer, FastqRecord> mergedFastqWriterQueue;
+
 		private final Map<Integer, FastqRecord> fastqOneWriterQueue;
 		private final Map<Integer, FastqRecord> fastqTwoWriterQueue;
+
+		private final AtomicInteger currentWriteReadNumber;
 
 		private static AtomicInteger activeHelpers = new AtomicInteger(0);
 
 		public MergeRecordsHelper(FastqReader fastQOneReader, FastqReader fastQTwoReader, int startingRead, Integer numberOfReadsToProcess, AtomicInteger processedReadsCount,
 				AtomicInteger readNumber, AtomicInteger mergedReadCount, PausableFixedThreadPoolExecutor executor, int maxNumberOfConflictsPerReadPair, FastqWriter mergedFastqWriter,
 				FastqWriter unmergedFastqOneWriter, FastqWriter unmergedFastqTwoWriter, IProgressListener progressListener, Map<Integer, FastqRecord> mergedFastqWriterQueue,
-				Map<Integer, FastqRecord> fastqOneWriterQueue, Map<Integer, FastqRecord> fastqTwoWriterQueue) {
+				Map<Integer, FastqRecord> fastqOneWriterQueue, Map<Integer, FastqRecord> fastqTwoWriterQueue, AtomicInteger currentWriteReadNumber) {
 			super();
 			this.fastQOneReader = fastQOneReader;
 			this.fastQTwoReader = fastQTwoReader;
@@ -263,6 +267,7 @@ public class ReadMerger {
 			this.mergedFastqWriterQueue = mergedFastqWriterQueue;
 			this.fastqOneWriterQueue = fastqOneWriterQueue;
 			this.fastqTwoWriterQueue = fastqTwoWriterQueue;
+			this.currentWriteReadNumber = currentWriteReadNumber;
 		}
 
 		@Override
@@ -271,7 +276,7 @@ public class ReadMerger {
 			while (!allRecordsRead && (numberOfReadsToProcess == null || (processedReadsCount.get() < numberOfReadsToProcess))) {
 				FastqRecord recordOne = null;
 				FastqRecord recordTwo = null;
-				int currentReadNumber = 0;
+				Integer currentReadNumber = null;
 				synchronized (fastQOneReader) {
 					if (fastQOneReader.hasNext() && fastQTwoReader.hasNext()) {
 						recordOne = fastQOneReader.next();
@@ -330,20 +335,31 @@ public class ReadMerger {
 			}
 
 			if (activeHelpers.decrementAndGet() == 0) {
+				if (mergedFastqWriterQueue.size() > 0 || fastqOneWriterQueue.size() > 0 || fastqTwoWriterQueue.size() > 0) {
+					throw new IllegalStateException("Queue were not emptied: mergedQueue_size[" + mergedFastqWriterQueue.size() + "] fastq1Queue_size[" + fastqOneWriterQueue.size()
+							+ "] fastq2Queue_size[" + fastqTwoWriterQueue.size() + "].  Waiting for read[" + currentWriteReadNumber.get() + "].");
+				}
+				// purge the queues
 				System.out.println("shutdown.");
 				executor.shutdown();
 			}
 		}
 
-		private void writeMergedRead(int readNumber, FastqRecord mergedRead) {
-			// TODO utilize queue so fastq record order is maintained
-			mergedFastqWriter.write(mergedRead);
+		private synchronized void writeMergedRead(int readNumber, FastqRecord mergedRead) {
+			mergedFastqWriterQueue.put(readNumber, mergedRead);
+			while (mergedFastqWriterQueue.containsKey(currentWriteReadNumber.get())) {
+				mergedFastqWriter.write(mergedFastqWriterQueue.remove(currentWriteReadNumber.getAndIncrement()));
+			}
 		}
 
-		private void writeUnmergedRead(int readNumber, FastqRecord recordOne, FastqRecord recordTwo) {
-			// TODO utilize queue so fastq record order is maintained
-			unmergedFastqOneWriter.write(recordOne);
-			unmergedFastqTwoWriter.write(recordTwo);
+		private synchronized void writeUnmergedRead(int readNumber, FastqRecord recordOne, FastqRecord recordTwo) {
+			fastqOneWriterQueue.put(readNumber, recordOne);
+			fastqTwoWriterQueue.put(readNumber, recordTwo);
+			while (fastqOneWriterQueue.containsKey(currentWriteReadNumber.get()) && fastqTwoWriterQueue.containsKey(currentWriteReadNumber.get())) {
+				int readNumberToWrite = currentWriteReadNumber.getAndIncrement();
+				unmergedFastqOneWriter.write(fastqOneWriterQueue.remove(readNumberToWrite));
+				unmergedFastqTwoWriter.write(fastqTwoWriterQueue.remove(readNumberToWrite));
+			}
 		}
 	}
 

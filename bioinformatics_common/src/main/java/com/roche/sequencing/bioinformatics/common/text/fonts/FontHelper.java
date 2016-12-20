@@ -2,11 +2,19 @@ package com.roche.sequencing.bioinformatics.common.text.fonts;
 
 import java.awt.Font;
 import java.awt.FontFormatException;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.GraphicsEnvironment;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,8 +26,8 @@ public class FontHelper {
 	// see internalGetFontNames and main method to see where these names came from
 	private final static String[] FONT_FILE_NAMES = new String[] { "Bitstream Vera Sans Mono Bold Oblique.ttf", "Bitstream Vera Sans Mono Bold.ttf", "Bitstream Vera Sans Mono Oblique.ttf",
 			"Bitstream Vera Sans Mono Roman.ttf", "BPmonoBold.ttf", "BPmonoItalics.ttf", "Cella.ttf", "CutiveMono-Regular.ttf", "kongtext.ttf", "Lekton-Bold.ttf", "Lekton-Italic.ttf",
-			"Lekton-Regular.ttf", "LiberationMono-Bold.ttf", "LiberationMono-BoldItalic.ttf", "LiberationMono-Italic.ttf", "LiberationMono-Regular.ttf", "origap__.ttf", "origa___.ttf", "PTM55FT.ttf",
-			"UbuntuMono-B.ttf", "UbuntuMono-BI.ttf", "UbuntuMono-R.ttf", "UbuntuMono-RI.ttf" };
+			"Lekton-Regular.ttf", "LiberationMono-Bold.ttf", "LiberationMono-BoldItalic.ttf", "LiberationMono-Italic.ttf", "LiberationMono-Regular.ttf", "PTM55FT.ttf", "UbuntuMono-B.ttf",
+			"UbuntuMono-BI.ttf", "UbuntuMono-R.ttf", "UbuntuMono-RI.ttf" };
 
 	private static final float DEFAULT_FONT_SIZE = 12f;
 
@@ -28,6 +36,18 @@ public class FontHelper {
 	}
 
 	public static List<Font> getAvailableMonoSpacedFonts() {
+		List<Font> monoSpacedFonts = getJavaPackagedMonoSpacedFonts();
+		monoSpacedFonts.addAll(getAllAvaiableSystemMonoSpacedFonts());
+		Collections.sort(monoSpacedFonts, new Comparator<Font>() {
+			@Override
+			public int compare(Font o1, Font o2) {
+				return o1.getName().compareTo(o2.getName());
+			}
+		});
+		return monoSpacedFonts;
+	}
+
+	public static List<Font> getJavaPackagedMonoSpacedFonts() {
 		List<Font> monoSpacedFonts = new ArrayList<Font>();
 
 		for (String fontFileName : FONT_FILE_NAMES) {
@@ -62,6 +82,53 @@ public class FontHelper {
 			}
 		}
 		return sb.substring(0, sb.length() - 1);
+	}
+
+	private static Set<Font> getAllAvaiableSystemMonoSpacedFonts() {
+		Set<Font> monospacedFonts = new HashSet<Font>();
+
+		GraphicsEnvironment graphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment();
+		String[] fontFamilyNames = graphicsEnvironment.getAvailableFontFamilyNames();
+
+		BufferedImage bufferedImage = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+		Graphics graphics = bufferedImage.createGraphics();
+
+		for (String fontFamilyName : fontFamilyNames) {
+			boolean isMonospaced = true;
+
+			int fontStyle = Font.PLAIN;
+			Font font = new Font(fontFamilyName, fontStyle, (int) DEFAULT_FONT_SIZE);
+			FontMetrics fontMetrics = graphics.getFontMetrics(font);
+
+			if (font.canDisplay('a')) {
+				int firstCharacterWidth = 0;
+				boolean hasFirstCharacterWidth = false;
+				for (int codePoint = 0; codePoint < 128; codePoint++) {
+					if (Character.isValidCodePoint(codePoint) && (Character.isLetter(codePoint) || Character.isDigit(codePoint))) {
+						char character = (char) codePoint;
+						int characterWidth = fontMetrics.charWidth(character);
+						if (hasFirstCharacterWidth) {
+							if (characterWidth != firstCharacterWidth) {
+								isMonospaced = false;
+								break;
+							}
+						} else {
+							firstCharacterWidth = characterWidth;
+							hasFirstCharacterWidth = true;
+						}
+					}
+				}
+
+				if (isMonospaced) {
+					monospacedFonts.add(font.deriveFont(Font.PLAIN));
+					monospacedFonts.add(font.deriveFont(Font.BOLD));
+					monospacedFonts.add(font.deriveFont(Font.ITALIC));
+				}
+			}
+		}
+
+		graphics.dispose();
+		return monospacedFonts;
 	}
 
 	public static void main(String[] args) {

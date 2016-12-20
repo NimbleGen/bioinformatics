@@ -156,6 +156,11 @@ public class Document implements IDocument {
 
 	@Override
 	public synchronized String[] getText(int startingLineNumber, int endingLineNumberInclusive) {
+		return getText(startingLineNumber, null, endingLineNumberInclusive, null);
+	}
+
+	@Override
+	public synchronized String[] getText(int startingLineNumber, Integer startingCharacterIndexInLine, int endingLineNumberInclusive, Integer endingCharacterIndexInLine) {
 		String[] text;
 		if (lastStartingLineNumber == startingLineNumber && lastEndingLineNumber == endingLineNumberInclusive && lastRetreivedText != null) {
 			text = lastRetreivedText;
@@ -259,7 +264,17 @@ public class Document implements IDocument {
 						if (textForLine == null) {
 							textForLine = "";
 						}
-						if (currentLine >= startingLineNumber) {
+						if (currentLine == startingLineNumber) {
+							if (startingCharacterIndexInLine != null && startingCharacterIndexInLine <= textForLine.length()) {
+								textForLine = textForLine.substring(startingCharacterIndexInLine, textForLine.length());
+							}
+							text[index] = textForLine;
+						} else if (currentLine == endingLineNumberInclusive) {
+							if (endingCharacterIndexInLine != null && endingCharacterIndexInLine <= textForLine.length()) {
+								textForLine = textForLine.substring(0, endingCharacterIndexInLine);
+							}
+							text[index] = textForLine;
+						} else if (currentLine > startingLineNumber) {
 							text[index] = textForLine;
 						}
 					}
@@ -388,4 +403,5 @@ public class Document implements IDocument {
 	public int getMostTabsFoundInALine() {
 		return textFileIndex.getMostTabsFoundInALine();
 	}
+
 }

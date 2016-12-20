@@ -67,6 +67,8 @@ import com.roche.sequencing.bioinformatics.common.text.ProgressUpdate;
 import com.roche.sequencing.bioinformatics.common.text.TextFileIndex;
 import com.roche.sequencing.bioinformatics.common.text.TextFileIndexer;
 import com.roche.sequencing.bioinformatics.common.text.fonts.FontHelper;
+import com.roche.sequencing.bioinformatics.common.text.fonts.MenuScroller;
+import com.roche.sequencing.bioinformatics.common.text.viewer.ColorChooserHelper.TextViewerColor;
 import com.roche.sequencing.bioinformatics.common.utils.ColorsUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.InputStreamFactory;
@@ -108,18 +110,26 @@ public class TextViewer extends JFrame {
 	private final static String LAST_VIEW_DIRECTORY_PROPERTIES_KEY = "lastview.lastdirectory";
 	private final static String LAST_VIEW_LAST_OPENED_FILES_PROPERTIES_KEY = "lastview.lastopenedfiles";
 	private final static String LAST_VIEW_LAST_OPENED_FILES_POSITIONS_PROPERTIES_KEY = "lastview.lastopenedfilespositions";
+	private final static String LAST_VIEW_LAST_OPENED_FILES_IS_DATA_VIEW_PROPERTIES_KEY = "lastview.lastopenedfiles.isdataview";
+	private final static String LAST_VIEW_LAST_OPENED_FILES_HEADER_LINE_NUMBERS_PROPERTIES_KEY = "last_data_header_line_numbers";
+	private final static String LAST_VIEW_LAST_OPENED_FILES_TAB_SIZE_PROPERTIES_KEY = "last_data_tab_sizes";
 	private final static String LAST_VIEW_FRAME_X_PROPERTIES_KEY = "lastview.x";
 	private final static String LAST_VIEW_FRAME_Y_PROPERTIES_KEY = "lastview.y";
 	private final static String LAST_VIEW_FRAME_WIDTH_PROPERTIES_KEY = "lastview.framewidth";
 	private final static String LAST_VIEW_FRAME_HEIGHT_PROPERTIES_KEY = "lastview.frameheight";
 	private final static String LAST_VIEW_WAS_MAXIMIZED_PROPERTIES_KEY = "lastview.wasmaximized";
 
+	private final static String LAST_SELECTED_TAB_PROPERTIES_KEY = "last_selected_tab";
 	private final static String LAST_FONT_NAME_PROPERTIES_KEY = "last_font_name";
 	private final static String LAST_FONT_SIZE_PROPERTIES_KEY = "last_font_size";
 	private final static String LAST_FONT_COLOR_PROPERTIES_KEY = "last_font_color";
 	private final static String LAST_FONT_COLOR_OPACITY_PROPERTIES_KEY = "last_font_color_opacity";
 	private final static String LAST_FONT_BACKGROUND_COLOR_PROPERTIES_KEY = "last_background_color";
 	private final static String LAST_FONT_BACKGROUND_COLOR_OPACITY_PROPERTIES_KEY = "last_background_color_opacity";
+	private final static String LAST_DATA_HEADER_BACKGROUND_COLOR_PROPERTIES_KEY = "last_data_header_background_color";
+	private final static String LAST_DATA_HEADER_BACKGROUND_COLOR_OPACITY_PROPERTIES_KEY = "last_data_header_background_color_opacity";
+	private final static String LAST_DATA_LINE_COLOR_PROPERTIES_KEY = "last_data_line_color";
+	private final static String LAST_DATA_LINE_COLOR_OPACITY_PROPERTIES_KEY = "last_data_line_color_opacity";
 
 	private final static Color BACKGROUND_COLOR = new Color(0.80f, 0.80f, 0.80f, 1.0f);
 	private final static Image BACKGROUND_LOGO = new ImageIcon(TextViewer.class.getResource("backgroundLogo.png")).getImage();
@@ -145,19 +155,20 @@ public class TextViewer extends JFrame {
 	private final JTabbedPane tabbedPane;
 	private final List<TextViewerPanel> textViewerPanels;
 
+	private JMenuItem menuItemCloseAllFiles;
 	private JRadioButtonMenuItem viewAsDataRadioButtonMenuItem;
 	private JRadioButtonMenuItem viewAsTextRadioButtonMenuItem;
 	private JSpinner fontSizeSpinner;
 	private JSpinner headerLineSpinner;
 	private JSpinner tabSizeSpinner;
-	private ColorChooserHelper fontColorButton;
-	private ColorChooserHelper backgroundColorButton;
 
 	private final boolean isStandAlone;
 
 	private Font textFont;
 	private Color textColor;
 	private Color backgroundTextPanelColor;
+	private Color dataHeaderBackgroundColor;
+	private Color dataLineColor;
 
 	private JPanel dataOptionsPanel;
 	private JPanel textOptionsPanel;
@@ -189,10 +200,11 @@ public class TextViewer extends JFrame {
 
 		JavaUiUtil.setUIFont(DEFAULT_DISPLAY_FONT);
 
-		// TODO pull from preferences
 		this.textFont = monoSpacedFonts.get(0);
 		this.textColor = Color.BLACK;
 		this.backgroundTextPanelColor = Color.WHITE;
+		this.dataHeaderBackgroundColor = new Color(0f, 0f, 1f, 0.25f);
+		this.dataLineColor = Color.BLACK;
 
 		if (isStandAlone) {
 			setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -201,7 +213,6 @@ public class TextViewer extends JFrame {
 		}
 		pack();
 		setTitle(APPLICATION_NAME + " " + APPLICATION_VERSION);
-		setVisible(true);
 
 		textViewerPanels = new ArrayList<TextViewerPanel>();
 		tabbedPane = new JTabbedPane() {
@@ -218,34 +229,7 @@ public class TextViewer extends JFrame {
 		tabbedPane.setOpaque(false);
 		tabbedPane.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
-				TextViewerPanel selectedPanel = (TextViewerPanel) tabbedPane.getSelectedComponent();
-				if (selectedPanel != null) {
-					setTitle(APPLICATION_NAME + " " + APPLICATION_VERSION + " | " + selectedPanel.getFile().getName());
-
-					if (selectedPanel.isShowDataView()) {
-						viewAsDataRadioButtonMenuItem.setSelected(true);
-						dataOptionsPanel.setVisible(true);
-						textOptionsPanel.setVisible(false);
-					} else {
-						viewAsTextRadioButtonMenuItem.setSelected(true);
-						dataOptionsPanel.setVisible(false);
-						textOptionsPanel.setVisible(true);
-					}
-					tabSizeSpinner.setValue(selectedPanel.getTabSize());
-					boolean headerExists = selectedPanel.getHeaderLineNumber() > 0;
-					headerExistsCheckBox.setSelected(headerExists);
-					headerLineLabel.setEnabled(headerExists);
-					headerLineSpinner.setEnabled(headerExists);
-					if (!headerExists) {
-						selectedPanel.setHeaderLineNumber(0);
-					}
-
-					updateCurrentTextViewerPanel();
-
-				} else {
-					setTitle(APPLICATION_NAME + " " + APPLICATION_VERSION);
-				}
-
+				updateMenu();
 			}
 		});
 		tabbedPane.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
@@ -337,6 +321,46 @@ public class TextViewer extends JFrame {
 			}
 		}
 
+		String dataBackgroundColorAsString = preferences.get(LAST_DATA_HEADER_BACKGROUND_COLOR_PROPERTIES_KEY, null);
+		if (dataBackgroundColorAsString != null) {
+			try {
+				int backgroundColorRgb = Integer.parseInt(dataBackgroundColorAsString);
+				dataHeaderBackgroundColor = new Color(backgroundColorRgb);
+			} catch (NumberFormatException e) {
+				logger.warn(e.getMessage(), e);
+			}
+		}
+
+		String dataBackgroundOpacityColorAsString = preferences.get(LAST_DATA_HEADER_BACKGROUND_COLOR_OPACITY_PROPERTIES_KEY, null);
+		if (dataBackgroundOpacityColorAsString != null) {
+			try {
+				int backgroundColorAlpha = Integer.parseInt(dataBackgroundOpacityColorAsString);
+				dataHeaderBackgroundColor = ColorsUtil.addAlpha(dataHeaderBackgroundColor, backgroundColorAlpha);
+			} catch (NumberFormatException e) {
+				logger.warn(e.getMessage(), e);
+			}
+		}
+
+		String dataLineColorAsString = preferences.get(LAST_DATA_LINE_COLOR_PROPERTIES_KEY, null);
+		if (dataLineColorAsString != null) {
+			try {
+				int backgroundColorRgb = Integer.parseInt(dataLineColorAsString);
+				dataLineColor = new Color(backgroundColorRgb);
+			} catch (NumberFormatException e) {
+				logger.warn(e.getMessage(), e);
+			}
+		}
+
+		String dataLineOpacityColorAsString = preferences.get(LAST_DATA_LINE_COLOR_OPACITY_PROPERTIES_KEY, null);
+		if (dataLineOpacityColorAsString != null) {
+			try {
+				int lineColorAlpha = Integer.parseInt(dataLineOpacityColorAsString);
+				dataLineColor = ColorsUtil.addAlpha(dataLineColor, lineColorAlpha);
+			} catch (NumberFormatException e) {
+				logger.warn(e.getMessage(), e);
+			}
+		}
+
 		tabbedPane.setTransferHandler(new DragAndDropFileTransferHandler(this));
 		setTransferHandler(new DragAndDropFileTransferHandler(this));
 
@@ -350,12 +374,26 @@ public class TextViewer extends JFrame {
 				if (isStandAlone) {
 					List<String> fileNames = new ArrayList<String>();
 					List<String> lineNumbers = new ArrayList<String>();
+					List<String> isDataView = new ArrayList<String>();
+					List<String> headerLineNumbers = new ArrayList<String>();
+					List<String> tabSizes = new ArrayList<String>();
 					for (TextViewerPanel textViewerPanel : textViewerPanels) {
 						fileNames.add(textViewerPanel.getFile().getAbsolutePath());
-						lineNumbers.add("" + textViewerPanel.getCurrentLineNumber());
+						lineNumbers.add("" + (textViewerPanel.getCurrentLineNumber() + 1));
+						isDataView.add("" + textViewerPanel.isShowDataView());
+						if (textViewerPanel.isShowHeader()) {
+							headerLineNumbers.add("" + textViewerPanel.getHeaderLineNumber());
+						} else {
+							headerLineNumbers.add("" + 0);
+						}
+						tabSizes.add("" + textViewerPanel.getTabSize());
 					}
 					preferences.put(LAST_VIEW_LAST_OPENED_FILES_PROPERTIES_KEY, ListUtil.toString(fileNames, PROPERTIES_DELIMITER));
 					preferences.put(LAST_VIEW_LAST_OPENED_FILES_POSITIONS_PROPERTIES_KEY, ListUtil.toString(lineNumbers, PROPERTIES_DELIMITER));
+					preferences.put(LAST_VIEW_LAST_OPENED_FILES_IS_DATA_VIEW_PROPERTIES_KEY, ListUtil.toString(isDataView, PROPERTIES_DELIMITER));
+					preferences.put(LAST_VIEW_LAST_OPENED_FILES_HEADER_LINE_NUMBERS_PROPERTIES_KEY, ListUtil.toString(headerLineNumbers, PROPERTIES_DELIMITER));
+					preferences.put(LAST_VIEW_LAST_OPENED_FILES_TAB_SIZE_PROPERTIES_KEY, ListUtil.toString(tabSizes, PROPERTIES_DELIMITER));
+					preferences.put(LAST_SELECTED_TAB_PROPERTIES_KEY, "" + tabbedPane.getSelectedIndex());
 				}
 
 				preferences.put(LAST_FONT_NAME_PROPERTIES_KEY, textFont.getFontName());
@@ -364,6 +402,10 @@ public class TextViewer extends JFrame {
 				preferences.put(LAST_FONT_COLOR_OPACITY_PROPERTIES_KEY, "" + textColor.getAlpha());
 				preferences.put(LAST_FONT_BACKGROUND_COLOR_PROPERTIES_KEY, "" + backgroundTextPanelColor.getRGB());
 				preferences.put(LAST_FONT_BACKGROUND_COLOR_OPACITY_PROPERTIES_KEY, "" + backgroundTextPanelColor.getAlpha());
+				preferences.put(LAST_DATA_HEADER_BACKGROUND_COLOR_PROPERTIES_KEY, "" + dataHeaderBackgroundColor.getRGB());
+				preferences.put(LAST_DATA_HEADER_BACKGROUND_COLOR_OPACITY_PROPERTIES_KEY, "" + dataHeaderBackgroundColor.getAlpha());
+				preferences.put(LAST_DATA_LINE_COLOR_PROPERTIES_KEY, "" + dataLineColor.getRGB());
+				preferences.put(LAST_DATA_LINE_COLOR_OPACITY_PROPERTIES_KEY, "" + dataLineColor.getAlpha());
 
 				for (TextViewerPanel textViewerPanel : textViewerPanels) {
 					try {
@@ -397,6 +439,54 @@ public class TextViewer extends JFrame {
 
 				}
 
+				List<Boolean> lastOpenededShowAsDataList = new ArrayList<Boolean>();
+				String lastOpenedShowAsDataForAll = preferences.get(LAST_VIEW_LAST_OPENED_FILES_IS_DATA_VIEW_PROPERTIES_KEY, null);
+				if (lastOpenedShowAsDataForAll != null) {
+					String[] split = lastOpenedShowAsDataForAll.split(PROPERTIES_DELIMITER);
+
+					for (int i = 0; i < split.length; i++) {
+						String lastOpenedShowAsDataAsString = split[i];
+						if (!lastOpenedShowAsDataAsString.isEmpty()) {
+							boolean showAsData = Boolean.parseBoolean(lastOpenedShowAsDataAsString);
+							lastOpenededShowAsDataList.add(showAsData);
+						}
+					}
+				}
+
+				List<Integer> lastOpenededHeaderLineNumbersList = new ArrayList<Integer>();
+				String lastOpenedHeaderLineNumbersForAll = preferences.get(LAST_VIEW_LAST_OPENED_FILES_HEADER_LINE_NUMBERS_PROPERTIES_KEY, null);
+				if (lastOpenedHeaderLineNumbersForAll != null) {
+					String[] split = lastOpenedHeaderLineNumbersForAll.split(PROPERTIES_DELIMITER);
+
+					for (int i = 0; i < split.length; i++) {
+						String lastOpenedHeaderLineNumberAsString = split[i];
+						if (!lastOpenedHeaderLineNumberAsString.isEmpty()) {
+							int headerLineNumber = Integer.parseInt(lastOpenedHeaderLineNumberAsString);
+							lastOpenededHeaderLineNumbersList.add(headerLineNumber);
+						}
+					}
+				}
+
+				List<Integer> lastOpenededTabSizesList = new ArrayList<Integer>();
+				String lastOpenededTabSizesListForAll = preferences.get(LAST_VIEW_LAST_OPENED_FILES_TAB_SIZE_PROPERTIES_KEY, null);
+				if (lastOpenededTabSizesListForAll != null) {
+					String[] split = lastOpenededTabSizesListForAll.split(PROPERTIES_DELIMITER);
+
+					for (int i = 0; i < split.length; i++) {
+						String lastOpenedTabSizeAsString = split[i];
+						if (!lastOpenedTabSizeAsString.isEmpty()) {
+							int tabSize = Integer.parseInt(lastOpenedTabSizeAsString);
+							lastOpenededTabSizesList.add(tabSize);
+						}
+					}
+				}
+
+				int selectedTab = 0;
+				String selectedTabAsString = preferences.get(LAST_SELECTED_TAB_PROPERTIES_KEY, null);
+				if (selectedTabAsString != null) {
+					selectedTab = Integer.parseInt(selectedTabAsString);
+				}
+
 				String lastOpenedFileNames = preferences.get(LAST_VIEW_LAST_OPENED_FILES_PROPERTIES_KEY, null);
 				if (lastOpenedFileNames != null) {
 					String[] split = lastOpenedFileNames.split(PROPERTIES_DELIMITER);
@@ -412,15 +502,31 @@ public class TextViewer extends JFrame {
 									int lineNumber = lastOpenedFilePositions.get(i);
 									textViewerPanel.setLineNumber(lineNumber);
 								}
+								if (i < lastOpenededShowAsDataList.size()) {
+									boolean showAsData = lastOpenededShowAsDataList.get(i);
+									textViewerPanel.setShowDataView(showAsData);
+								}
+								if (i < lastOpenededHeaderLineNumbersList.size()) {
+									int headerLineNumber = lastOpenededHeaderLineNumbersList.get(i);
+									textViewerPanel.setHeaderLineNumber(headerLineNumber);
+								}
+								if (i < lastOpenededTabSizesList.size()) {
+									int tabSize = lastOpenededTabSizesList.get(i);
+									textViewerPanel.setTabSize(tabSize);
+								}
 							}
 						}
 					}
+					tabbedPane.setSelectedIndex(selectedTab);
+					updateMenu();
 				}
+
 			} catch (Exception e) {
 				logger.warn("Unable to reinitialize all files.", e);
 			}
 		}
-
+		updateCloseAllMenuItem();
+		setVisible(true);
 	}
 
 	private void initMenu() {
@@ -443,15 +549,15 @@ public class TextViewer extends JFrame {
 		});
 		menuFile.add(openMenuItem);
 
-		JMenuItem menuItemCloseAllLanes = new JMenuItem("Close All", CLOSE_ALL_ICON);
-		menuItemCloseAllLanes.addActionListener(new ActionListener() {
+		menuItemCloseAllFiles = new JMenuItem("Close All", CLOSE_ALL_ICON);
+		menuItemCloseAllFiles.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				closeAllFiles();
 			}
 		});
-		menuItemCloseAllLanes.setFont(MENU_FONT);
-		menuFile.add(menuItemCloseAllLanes);
+		menuItemCloseAllFiles.setFont(MENU_FONT);
+		menuFile.add(menuItemCloseAllFiles);
 
 		JMenuItem quitMenuItem = new JMenuItem("Quit", EXIT_ICON);
 		quitMenuItem.setFont(MENU_FONT);
@@ -468,12 +574,41 @@ public class TextViewer extends JFrame {
 		menuFile.add(quitMenuItem);
 		mainMenuBar.add(menuFile);
 
+		JMenu menuEdit = new JMenu("Edit");
+		menuEdit.setFont(MENU_FONT);
+		JMenuItem copyToClipBoardMenuItem = new JMenuItem("Copy Selection to ClipBoard", IMPORT_DATA_ICON);
+		copyToClipBoardMenuItem.setFont(MENU_FONT);
+		copyToClipBoardMenuItem.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				TextViewerPanel selectedPanel = (TextViewerPanel) tabbedPane.getSelectedComponent();
+				if (selectedPanel != null) {
+					selectedPanel.copySelectedTextToClipboard(false);
+				}
+			}
+		});
+		menuEdit.add(copyToClipBoardMenuItem);
+
+		JMenuItem saveSelectionToFileMenuItem = new JMenuItem("Save Selection to File", IMPORT_DATA_ICON);
+		saveSelectionToFileMenuItem.setFont(MENU_FONT);
+		saveSelectionToFileMenuItem.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				TextViewerPanel selectedPanel = (TextViewerPanel) tabbedPane.getSelectedComponent();
+				if (selectedPanel != null) {
+					selectedPanel.copySelectedTextToClipboard(true);
+				}
+			}
+		});
+		menuEdit.add(saveSelectionToFileMenuItem);
+		mainMenuBar.add(menuEdit);
+
 		JMenu menuView = new JMenu("View");
 		menuView.setFont(MENU_FONT);
 		ButtonGroup group = new ButtonGroup();
 		menuView.addSeparator();
 
-		dataOptionsPanel = new JPanel(new GridLayout(2, 1));
+		dataOptionsPanel = new JPanel(new GridLayout(4, 1));
 		textOptionsPanel = new JPanel();
 
 		viewAsTextRadioButtonMenuItem = new StayOpenRadioButtonMenuItem("View as Text");
@@ -482,15 +617,16 @@ public class TextViewer extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				TextViewerPanel selectedPanel = (TextViewerPanel) tabbedPane.getSelectedComponent();
-				selectedPanel.setShowDataView(false);
-				dataOptionsPanel.setVisible(false);
-				textOptionsPanel.setVisible(true);
+				if (selectedPanel != null) {
+					selectedPanel.setShowDataView(false);
+					dataOptionsPanel.setVisible(false);
+					textOptionsPanel.setVisible(true);
+				}
 			}
 		});
 		group.add(viewAsTextRadioButtonMenuItem);
 
-		viewAsTextRadioButtonMenuItem.setSelected(true);
-
+		headerExistsCheckBox = new JCheckBox("Include Header");
 		viewAsDataRadioButtonMenuItem = new StayOpenRadioButtonMenuItem("View as Data");
 		viewAsDataRadioButtonMenuItem.setFont(MENU_FONT);
 		viewAsDataRadioButtonMenuItem.addActionListener(new ActionListener() {
@@ -500,6 +636,7 @@ public class TextViewer extends JFrame {
 				selectedPanel.setShowDataView(true);
 				dataOptionsPanel.setVisible(true);
 				textOptionsPanel.setVisible(false);
+				headerExistsCheckBox.setSelected(true);
 			}
 		});
 		group.add(viewAsDataRadioButtonMenuItem);
@@ -508,7 +645,6 @@ public class TextViewer extends JFrame {
 
 		JMenu fontSubMenu = new JMenu("Font:");
 		fontSubMenu.setFont(MENU_FONT);
-		menuView.add(fontSubMenu);
 		ButtonGroup fontGroup = new ButtonGroup();
 		List<JRadioButtonMenuItem> fontRadioItems = new ArrayList<JRadioButtonMenuItem>();
 		for (Font font : monoSpacedFonts) {
@@ -517,6 +653,7 @@ public class TextViewer extends JFrame {
 				fontItem.setSelected(true);
 			}
 			fontRadioItems.add(fontItem);
+			fontItem.setFont(font);
 			fontGroup.add(fontItem);
 			fontSubMenu.add(fontItem);
 			fontItem.addActionListener(new ActionListener() {
@@ -528,6 +665,8 @@ public class TextViewer extends JFrame {
 				}
 			});
 		}
+		MenuScroller menuScroller = new MenuScroller(fontSubMenu);
+		menuView.add(fontSubMenu);
 
 		JMenuItem fontSizeMenuItem = new JMenuItem("Font Size:");
 		fontSizeMenuItem.setFont(MENU_FONT);
@@ -546,12 +685,12 @@ public class TextViewer extends JFrame {
 
 		JMenuItem fontColorMenuItem = new JMenuItem("Font Color", ColorChooserHelper.createIcon(textColor));
 		fontColorMenuItem.setFont(MENU_FONT);
-		fontColorMenuItem.addActionListener(ColorChooserHelper.createActionListener(this, "Select Font Color", true, this));
+		fontColorMenuItem.addActionListener(ColorChooserHelper.createActionListener(this, "Select Font Color", TextViewerColor.FONT, this));
 		menuView.add(fontColorMenuItem);
 
 		JMenuItem backgroundColorMenuItem = new JMenuItem("Background Color", ColorChooserHelper.createIcon(backgroundTextPanelColor));
 		backgroundColorMenuItem.setFont(MENU_FONT);
-		backgroundColorMenuItem.addActionListener(ColorChooserHelper.createActionListener(this, "Select Background Color", false, this));
+		backgroundColorMenuItem.addActionListener(ColorChooserHelper.createActionListener(this, "Select Background Color", TextViewerColor.BACKGROUND, this));
 		menuView.add(backgroundColorMenuItem);
 
 		menuView.addSeparator();
@@ -580,7 +719,6 @@ public class TextViewer extends JFrame {
 			}
 		});
 		tabSizeSpinner.addFocusListener(new FocusListener() {
-
 			@Override
 			public void focusLost(FocusEvent e) {
 				try {
@@ -601,7 +739,16 @@ public class TextViewer extends JFrame {
 		dataOptionsPanel
 				.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.black), "Data Settings", TitledBorder.LEADING, TitledBorder.DEFAULT_POSITION, SMALL_MENU_FONT));
 
-		headerExistsCheckBox = new JCheckBox("Include Header");
+		JButton headerColorMenuItem = new JButton("Header Color", ColorChooserHelper.createIcon(dataHeaderBackgroundColor));
+		headerColorMenuItem.setFont(MENU_FONT);
+		headerColorMenuItem.addActionListener(ColorChooserHelper.createActionListener(this, "Select Header Color", TextViewerColor.HEADER_BACKGROUND, this));
+		dataOptionsPanel.add(headerColorMenuItem);
+
+		JButton lineColorMenuItem = new JButton("Data Lines Color", ColorChooserHelper.createIcon(dataLineColor));
+		lineColorMenuItem.setFont(MENU_FONT);
+		lineColorMenuItem.addActionListener(ColorChooserHelper.createActionListener(this, "Select Data Lines Color", TextViewerColor.LINES, this));
+		dataOptionsPanel.add(lineColorMenuItem);
+
 		headerExistsCheckBox.setFont(SMALL_MENU_FONT);
 		dataOptionsPanel.add(headerExistsCheckBox);
 
@@ -632,14 +779,17 @@ public class TextViewer extends JFrame {
 				headerLineSpinner.setEnabled(headerExists);
 				TextViewerPanel selectedPanel = (TextViewerPanel) tabbedPane.getSelectedComponent();
 				if (selectedPanel != null) {
+					selectedPanel.setShowHeader(headerExists);
 					if (headerExists) {
-						int defaultHeaderLineNumber = selectedPanel.getDefaultHeaderLineNumber();
-						headerLineSpinner.setValue(defaultHeaderLineNumber);
-					} else {
-						headerLineSpinner.setValue(0);
-						selectedPanel.setHeaderLineNumber(0);
-						updateCurrentTextViewerPanel();
+						if (selectedPanel.getHeaderLineNumber() == 0) {
+							int defaultHeaderLineNumber = selectedPanel.getDefaultHeaderLineNumber();
+							selectedPanel.setHeaderLineNumber(defaultHeaderLineNumber);
+							headerLineSpinner.setValue(defaultHeaderLineNumber);
+						} else {
+							headerLineSpinner.setValue(selectedPanel.getHeaderLineNumber());
+						}
 					}
+					updateCurrentTextViewerPanel();
 				}
 			}
 		});
@@ -672,16 +822,52 @@ public class TextViewer extends JFrame {
 		mainMenuBar.add(menuHelp);
 	}
 
+	private void updateMenu() {
+		TextViewerPanel selectedPanel = (TextViewerPanel) tabbedPane.getSelectedComponent();
+		if (selectedPanel != null) {
+			setTitle(APPLICATION_NAME + " " + APPLICATION_VERSION + " | " + selectedPanel.getFile().getName());
+
+			if (selectedPanel.isShowDataView()) {
+				viewAsDataRadioButtonMenuItem.setSelected(true);
+				dataOptionsPanel.setVisible(true);
+				textOptionsPanel.setVisible(false);
+			} else {
+				viewAsTextRadioButtonMenuItem.setSelected(true);
+				dataOptionsPanel.setVisible(false);
+				textOptionsPanel.setVisible(true);
+			}
+			tabSizeSpinner.setValue(selectedPanel.getTabSize());
+			boolean headerExists = selectedPanel.isShowHeader();
+			headerExistsCheckBox.setSelected(headerExists);
+			headerLineLabel.setEnabled(headerExists);
+			headerLineSpinner.setEnabled(headerExists);
+			selectedPanel.setHeaderLineNumber(selectedPanel.getHeaderLineNumber());
+
+			if (selectedPanel.isShowDataView()) {
+				viewAsDataRadioButtonMenuItem.setSelected(true);
+			} else {
+				viewAsTextRadioButtonMenuItem.setSelected(true);
+			}
+
+			updateCurrentTextViewerPanel();
+
+		} else {
+			setTitle(APPLICATION_NAME + " " + APPLICATION_VERSION);
+		}
+
+	}
+
 	private void closeAllFiles() {
 		for (TextViewerPanel panel : textViewerPanels) {
+			tabbedPane.remove(panel);
 			try {
 				panel.close();
 			} catch (IOException e1) {
 				e1.printStackTrace();
 			}
-			tabbedPane.remove(panel);
 		}
 		textViewerPanels.clear();
+
 	}
 
 	public void updateCurrentTextViewerPanel() {
@@ -689,6 +875,22 @@ public class TextViewer extends JFrame {
 		if (selectedPanel != null) {
 			selectedPanel.updateTextInViewer();
 		}
+	}
+
+	public Color getDataHeaderBackgroundColor() {
+		return dataHeaderBackgroundColor;
+	}
+
+	public void setDataHeaderBackgroundColor(Color dataHeaderBackgroundColor) {
+		this.dataHeaderBackgroundColor = dataHeaderBackgroundColor;
+	}
+
+	public Color getDataLineColor() {
+		return dataLineColor;
+	}
+
+	public void setDataLineColor(Color dataLineColor) {
+		this.dataLineColor = dataLineColor;
 	}
 
 	public Font getTextFont() {
@@ -915,6 +1117,7 @@ public class TextViewer extends JFrame {
 				JOptionPane.showMessageDialog(this, "Unable to open file[" + file.getAbsolutePath() + "].", "Error Opening File", JOptionPane.ERROR_MESSAGE);
 			}
 		}
+		updateCloseAllMenuItem();
 		return textViewerPanel;
 	}
 
@@ -1053,6 +1256,10 @@ public class TextViewer extends JFrame {
 				textViewer.readInFile(file);
 			}
 		}
+	}
+
+	public void updateCloseAllMenuItem() {
+		menuItemCloseAllFiles.setEnabled(tabbedPane.getTabCount() > 0);
 	}
 
 }

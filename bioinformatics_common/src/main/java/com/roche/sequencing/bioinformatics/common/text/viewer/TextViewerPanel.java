@@ -1,10 +1,8 @@
 package com.roche.sequencing.bioinformatics.common.text.viewer;
 
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Toolkit;
@@ -26,6 +24,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +39,6 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
-import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextPane;
 import javax.swing.JViewport;
@@ -51,8 +49,7 @@ import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableColumn;
+import javax.swing.text.Caret;
 import javax.swing.text.DefaultCaret;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
@@ -93,15 +90,27 @@ public class TextViewerPanel extends JPanel {
 	private final static String ACTION_MAP_KEY_FOR_PAGE_UP = "page-up";
 	private final static String ACTION_MAP_KEY_FOR_PAGE_DOWN = "page-down";
 
+	private final static String ACTION_MAP_KEY_FOR_UP_WITH_SHIFT = "selection-up";
+	private final static String ACTION_MAP_KEY_FOR_DOWN_WITH_SHIFT = "selection-down";
+
+	private final static String ACTION_MAP_KEY_FOR_PAGE_UP_WITH_SHIFT = "selection-page-up";
+	private final static String ACTION_MAP_KEY_FOR_PAGE_DOWN_WITH_SHIFT = "selection-page-down";
+
 	// HOT PINK
 	private final static Color DEFAULT_CARET_COLOR = new Color(255, 20, 147);
 	private final static int DEFAULT_CARET_WIDTH = 3;
 
 	private final static boolean DEFAULT_SHOW_LINE_NUMBERS = true;
 
+	private final static Color LINE_NUMBER_AREA_BACKGROUND = new Color(225, 225, 225);
+
+	// this needs to be a minimum of 2 because of the way data copying to clipboard is handled
+	private final static int DATA_COLUMN_SPACING_IN_CHARACTERS = 2;
+
+	private final static int MAX_LINES_TO_COPY_TO_CLIPBOARD = 1000;
+
 	private final JTextPane lineNumberArea;
 	private final JTextArea textArea;
-	private JTable tableArea;
 	private final JViewport viewPort;
 	private final JPanel statusPanel;
 
@@ -122,24 +131,33 @@ public class TextViewerPanel extends JPanel {
 
 	private TextViewer parentTextViewer;
 
-	private Integer currentStartingLineNumber;
+	private Integer currentZeroBasedStartingLineNumber;
 
 	private boolean showLineNumbers;
 
-	private boolean isShowDataView = false;
+	private boolean isShowDataView;
 
 	private Map<Integer, Integer> maxLengthPerColum;
 
 	private int headerLineNumber;
+	private boolean showHeader;
 	private String headerText;
+	private boolean initIsDone;
+	private BitSet dataPositionMapsToTextPosition;
+
+	private TextPosition markInDocument;
+	private AtomicBoolean selectedTextIsOffScreen;
 
 	public TextViewerPanel(TextViewer parentTextViewer, File file, RandomAccessFile randomAccessToFile, TextFileIndex textFileIndex, GZipIndex gZipIndex, IBytes gZipDictionaryBytes,
 			File bamBlockIndexFile) throws FileNotFoundException {
 		super();
+		this.initIsDone = false;
 		setOpaque(false);
 
 		this.parentTextViewer = parentTextViewer;
 		this.file = file;
+		this.isShowDataView = false;
+		this.dataPositionMapsToTextPosition = new BitSet();
 
 		boolean isBamFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(TextViewer.BAM_FILE_EXTENSION);
 
@@ -166,6 +184,8 @@ public class TextViewerPanel extends JPanel {
 		viewPortIsBeingSet = new AtomicBoolean(false);
 		horizontalScrollBarIsBeingSet = new AtomicBoolean(false);
 
+		selectedTextIsOffScreen = new AtomicBoolean(false);
+
 		showLineNumbers = DEFAULT_SHOW_LINE_NUMBERS;
 
 		lineNumberArea = new JTextPane();
@@ -177,7 +197,7 @@ public class TextViewerPanel extends JPanel {
 		doc.setParagraphAttributes(0, doc.getLength(), center, false);
 		lineNumberArea.setForeground(Color.DARK_GRAY);
 
-		lineNumberArea.setBackground(new Color(225, 225, 225));
+		lineNumberArea.setBackground(LINE_NUMBER_AREA_BACKGROUND);
 		add(lineNumberArea);
 
 		textArea = new JTextArea() {
@@ -186,37 +206,65 @@ public class TextViewerPanel extends JPanel {
 
 			@Override
 			protected void paintComponent(Graphics g) {
-				super.paintComponent(g);
+
+				Dimension letterSize = GraphicsUtil.getSizeOfText("W", parentTextViewer.getTextFont());
+				int rowHeight = (int) letterSize.getHeight();
+				int numberOfLines = (int) Math.floor(getHeight() / rowHeight);
+
 				if (isShowDataView && maxLengthPerColum != null) {
-					g.setColor(Color.black);
-					Dimension letterSize = GraphicsUtil.getSizeOfText("W", parentTextViewer.getTextFont());
-					int rowHeight = (int) letterSize.getHeight();
+					numberOfLines--;
+					boolean headerLineIsShown = showHeader && (headerLineNumber > 0);
+
 					int letterWidth = (int) letterSize.getWidth();
 
-					int numberOfLines = getHeight() / rowHeight;
+					if (headerLineIsShown) {
+						g.setColor(parentTextViewer.getDataHeaderBackgroundColor());
+						g.fillRect(0, 0, getWidth(), rowHeight);
+
+						g.setColor(parentTextViewer.getBackgroundTextPanelColor());
+						g.fillRect(0, rowHeight, getWidth(), getHeight() - rowHeight);
+					} else {
+						g.setColor(parentTextViewer.getBackgroundTextPanelColor());
+						g.fillRect(0, 0, getWidth(), getHeight());
+					}
 
 					int[] columnXStart = new int[maxLengthPerColum.size()];
 					int sum = 0;
 					for (int columnIndex = 0; columnIndex < maxLengthPerColum.size(); columnIndex++) {
 						columnXStart[columnIndex] = sum;
-						sum += ((maxLengthPerColum.get(columnIndex) + 1) * letterWidth);
+						sum += ((maxLengthPerColum.get(columnIndex) + DATA_COLUMN_SPACING_IN_CHARACTERS) * letterWidth);
 					}
 
 					int y = 0;
 					for (int lineIndex = 0; lineIndex < numberOfLines; lineIndex++) {
 						for (int columnIndex = 0; columnIndex < maxLengthPerColum.size(); columnIndex++) {
 							int x = columnXStart[columnIndex];
-							int width = ((maxLengthPerColum.get(columnIndex) + 1) * letterWidth);
+							int width = ((maxLengthPerColum.get(columnIndex) + DATA_COLUMN_SPACING_IN_CHARACTERS) * letterWidth);
+
+							g.setColor(parentTextViewer.getDataLineColor());
 							g.drawRect(x, y, width, rowHeight);
 						}
 						y += rowHeight;
 					}
 
+					g.setColor(LINE_NUMBER_AREA_BACKGROUND);
+					int leftOverWidth = (getWidth() - sum) - 1;
+					g.fillRect(getWidth() - leftOverWidth, 0, leftOverWidth, getHeight());
+				} else {
+					g.setColor(parentTextViewer.getBackgroundTextPanelColor());
+					g.fillRect(0, 0, getWidth(), getHeight());
 				}
+
+				g.setColor(LINE_NUMBER_AREA_BACKGROUND);
+				int leftOverHeight = getHeight() - (numberOfLines * rowHeight);
+				g.fillRect(0, getHeight() - leftOverHeight, getWidth(), leftOverHeight);
+
+				super.paintComponent(g);
 
 			}
 
 		};
+		textArea.setOpaque(false);
 		textArea.setEditable(false);
 		textArea.setLineWrap(false);
 		textArea.getCaret().setBlinkRate(250);
@@ -235,12 +283,68 @@ public class TextViewerPanel extends JPanel {
 
 		textArea.setCursor(TEXT_CURSOR);
 		textArea.addCaretListener(new CaretListener() {
+			private int lastCaretPosition;
+
 			@Override
 			public void caretUpdate(CaretEvent e) {
 				TextPosition textPosition = getCaretTextPosition();
 				if (textPosition != null) {
-					currentPositionLabel.setText("  Line:" + DF.format(textPosition.getLineNumber()) + " Column:" + DF.format(textPosition.getColumnIndex() + 1));
+					currentPositionLabel.setText("  Line:" + DF.format(textPosition.getLineNumber() + 1) + " Column:" + DF.format(textPosition.getColumnIndex() + 1));
 				}
+				if (isShowDataView && dataPositionMapsToTextPosition != null) {
+					Caret caret = textArea.getCaret();
+					int dotPosition = caret.getDot();
+					int markPosition = caret.getMark();
+					if (dotPosition == markPosition) {
+						boolean isRightArrow = (dotPosition == (lastCaretPosition + 1));
+
+						boolean doesMapToTextPosition = dataPositionMapsToTextPosition.get(dotPosition);
+						while (!doesMapToTextPosition && dotPosition >= 0 && dotPosition < textArea.getText().length()) {
+							if (isRightArrow) {
+								dotPosition++;
+							} else {
+								dotPosition--;
+							}
+							doesMapToTextPosition = dataPositionMapsToTextPosition.get(dotPosition);
+						}
+						// this if statement is important as it is to avoid a stack overflow error due to infinite recursion.
+						if (dotPosition != textArea.getCaretPosition()) {
+							caret.setDot(dotPosition);
+						}
+					} else {
+						boolean isDotLeftOfMark = (dotPosition < markPosition);
+
+						boolean doesDotMapToTextPosition = dataPositionMapsToTextPosition.get(dotPosition);
+						while (!doesDotMapToTextPosition && dotPosition >= 0 && dotPosition < textArea.getText().length()) {
+							if (isDotLeftOfMark) {
+								dotPosition++;
+							} else {
+								dotPosition--;
+							}
+							doesDotMapToTextPosition = dataPositionMapsToTextPosition.get(dotPosition);
+						}
+
+						boolean doesMarkMapToTextPosition = dataPositionMapsToTextPosition.get(markPosition);
+						while (!doesMarkMapToTextPosition && markPosition >= 0 && markPosition < textArea.getText().length()) {
+							if (isDotLeftOfMark) {
+								markPosition--;
+							} else {
+								markPosition++;
+							}
+							doesMarkMapToTextPosition = dataPositionMapsToTextPosition.get(markPosition);
+						}
+
+						// this if statement is important as it is to avoid a stack overflow error due to infinite recursion.
+						if (dotPosition != caret.getDot() || markPosition != caret.getMark()) {
+							// this will set the mark
+							caret.setDot(markPosition);
+							caret.moveDot(dotPosition);
+
+						}
+
+					}
+				}
+				lastCaretPosition = textArea.getCaretPosition();
 			}
 		});
 
@@ -251,27 +355,8 @@ public class TextViewerPanel extends JPanel {
 		DefaultCaret caret = (DefaultCaret) textArea.getCaret();
 		caret.setUpdatePolicy(DefaultCaret.NEVER_UPDATE);
 
-		tableArea = new JTable() {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
-				Component component = super.prepareRenderer(renderer, row, column);
-				int rendererWidth = component.getPreferredSize().width;
-				TableColumn tableColumn = getColumnModel().getColumn(column);
-				tableColumn.setPreferredWidth(Math.max(rendererWidth + getIntercellSpacing().width, tableColumn.getPreferredWidth()));
-				return component;
-			}
-		};
-		tableArea.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-		tableArea.setTableHeader(null);
-		tableArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
-		// TODO make this dynamic so it does not rely on a specific font and size
-		tableArea.setRowHeight(17);
-		tableArea.setRowSelectionAllowed(false);
-		tableArea.setCellSelectionEnabled(true);
-
 		viewPort = new JViewport();
+		viewPort.setOpaque(false);
 		viewPort.setView(textArea);
 		add(viewPort);
 
@@ -335,6 +420,7 @@ public class TextViewerPanel extends JPanel {
 		updateScrollBar();
 
 		bindKeys();
+		this.initIsDone = true;
 	}
 
 	public int getHeaderLineNumber() {
@@ -342,14 +428,23 @@ public class TextViewerPanel extends JPanel {
 	}
 
 	private boolean doesHeaderExist() {
-		return headerLineNumber > 0;
+		return (headerLineNumber > 0) && showHeader && isShowDataView;
 	}
 
 	public void setHeaderLineNumber(int headerLineNumber) {
 		this.headerLineNumber = headerLineNumber;
-		if (doesHeaderExist()) {
+		if (headerLineNumber > 0) {
 			this.headerText = document.getText(headerLineNumber - 1, headerLineNumber - 1)[0];
 		}
+		setShowHeader(headerLineNumber > 0);
+	}
+
+	public boolean isShowHeader() {
+		return showHeader;
+	}
+
+	public void setShowHeader(boolean showHeader) {
+		this.showHeader = showHeader;
 	}
 
 	/**
@@ -386,25 +481,45 @@ public class TextViewerPanel extends JPanel {
 	}
 
 	private TextPosition getCaretTextPosition() {
-		TextPosition textPosition = null;
+		return getZeroBasedTextPosition(textArea.getCaretPosition());
+	}
+
+	private TextPosition getZeroBasedTextPosition(int position) {
+		TextPosition zeroBasedTextPosition = null;
 		int lineNumber = -1;
 		int column = -1;
 
-		int caretPosition = textArea.getCaretPosition();
-
 		int lastLineCharIndex = 0;
-
+		// TODO possibly take data view into account here and utilize dataPositionMapsToTextPosition
+		// to select the first selectable location
 		lineLoop: for (int i = 0; i < lineStartPositionCharacterIndexesInView.size(); i++) {
 			int curLineCharIndex = lineStartPositionCharacterIndexesInView.get(i);
-			if (caretPosition >= lastLineCharIndex && caretPosition < curLineCharIndex) {
-				lineNumber = currentStartingLineNumber + i;
-				column = caretPosition - lastLineCharIndex;
-				textPosition = new TextPosition(lineNumber, column);
+			if (position >= lastLineCharIndex && position < curLineCharIndex) {
+				lineNumber = currentZeroBasedStartingLineNumber + i - 1;
+				column = position - lastLineCharIndex;
+				zeroBasedTextPosition = new TextPosition(lineNumber, column);
 				break lineLoop;
 			}
 			lastLineCharIndex = curLineCharIndex;
 		}
-		return textPosition;
+		return zeroBasedTextPosition;
+	}
+
+	private Integer getTextAreaPosition(TextPosition textPosition) {
+		Integer currentPosition = null;
+		if (isTextPositionOnScreen(textPosition)) {
+			int zeroBasedLineNumber = textPosition.getLineNumber();
+			int lineIndexInTextArea = zeroBasedLineNumber - currentZeroBasedStartingLineNumber;
+			int currentPositionFromLine = lineStartPositionCharacterIndexesInView.get(lineIndexInTextArea);
+			currentPosition = currentPositionFromLine + textPosition.getColumnIndex();
+		}
+		return currentPosition;
+	}
+
+	private boolean isTextPositionOnScreen(TextPosition textPosition) {
+		int lineNumber = textPosition.getLineNumber();
+		boolean isOnScreen = (lineNumber >= currentZeroBasedStartingLineNumber) && (lineNumber < (currentZeroBasedStartingLineNumber + lineStartPositionCharacterIndexesInView.size() - 1));
+		return isOnScreen;
 	}
 
 	public File getFile() {
@@ -414,10 +529,6 @@ public class TextViewerPanel extends JPanel {
 	private void bindKeys() {
 		InputMap inputMap = textArea.getInputMap(JPanel.WHEN_FOCUSED);
 		ActionMap actionMap = textArea.getActionMap();
-		bindKeys(inputMap, actionMap);
-
-		inputMap = tableArea.getInputMap(JPanel.WHEN_FOCUSED);
-		actionMap = tableArea.getActionMap();
 		bindKeys(inputMap, actionMap);
 	}
 
@@ -430,6 +541,12 @@ public class TextViewerPanel extends JPanel {
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_KP_DOWN, 0), "down");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP, 0), "page_up");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN, 0), "page_down");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_KP_UP, KeyEvent.SHIFT_DOWN_MASK), "up_w_shift");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_KP_DOWN, KeyEvent.SHIFT_DOWN_MASK), "down_w_shift");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, KeyEvent.SHIFT_DOWN_MASK), "up_w_shift");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, KeyEvent.SHIFT_DOWN_MASK), "down_w_shift");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP, KeyEvent.SHIFT_DOWN_MASK), "page_up_w_shift");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN, KeyEvent.SHIFT_DOWN_MASK), "page_down_w_shift");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_G, KeyEvent.CTRL_DOWN_MASK), "goto");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_DOWN_MASK), "find");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, KeyEvent.CTRL_DOWN_MASK), "copy");
@@ -437,15 +554,21 @@ public class TextViewerPanel extends JPanel {
 		Action originalUpAction = actionMap.get(ACTION_MAP_KEY_FOR_UP);
 		Action originalDownAction = actionMap.get(ACTION_MAP_KEY_FOR_DOWN);
 
+		Action originalUpWithShiftAction = actionMap.get(ACTION_MAP_KEY_FOR_UP_WITH_SHIFT);
+		Action originalDownWithShiftAction = actionMap.get(ACTION_MAP_KEY_FOR_DOWN_WITH_SHIFT);
+
 		Action originalPageUpAction = actionMap.get(ACTION_MAP_KEY_FOR_PAGE_UP);
 		Action originalPageDownAction = actionMap.get(ACTION_MAP_KEY_FOR_PAGE_DOWN);
+
+		Action originalPageUpWithShiftAction = actionMap.get(ACTION_MAP_KEY_FOR_PAGE_UP_WITH_SHIFT);
+		Action originalPageDownWithShiftAction = actionMap.get(ACTION_MAP_KEY_FOR_PAGE_DOWN_WITH_SHIFT);
 
 		actionMap.put("page_up", new AbstractAction() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				boolean isAtTopOfPage = getCaretTextPosition().getLineNumber() == (currentStartingLineNumber + 1);
+				boolean isAtTopOfPage = (getCaretTextPosition().getLineNumber() == currentZeroBasedStartingLineNumber);
 				if (isAtTopOfPage) {
 					moveVerticalScrollBar(-verticalScrollBar.getVisibleAmount());
 				}
@@ -455,12 +578,28 @@ public class TextViewerPanel extends JPanel {
 			}
 		});
 
+		actionMap.put("page_up_w_shift", new AbstractAction() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				boolean isAtTopOfPage = (getCaretTextPosition().getLineNumber() == currentZeroBasedStartingLineNumber);
+				if (isAtTopOfPage) {
+					moveVerticalScrollBar(-verticalScrollBar.getVisibleAmount());
+				}
+				if (originalPageUpWithShiftAction != null) {
+					originalPageUpWithShiftAction.actionPerformed(e);
+				}
+			}
+		});
+
 		actionMap.put("page_down", new AbstractAction() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				boolean isAtBottomOfPage = (currentStartingLineNumber + lineStartPositionCharacterIndexesInView.size() - 1) == getCaretTextPosition().getLineNumber();
+				int lastLineOnPage = currentZeroBasedStartingLineNumber + lineStartPositionCharacterIndexesInView.size() - 1;
+				boolean isAtBottomOfPage = lastLineOnPage == getCaretTextPosition().getLineNumber() + 1;
 				if (isAtBottomOfPage) {
 					moveVerticalScrollBar(verticalScrollBar.getVisibleAmount());
 				}
@@ -470,20 +609,48 @@ public class TextViewerPanel extends JPanel {
 			}
 		});
 
+		actionMap.put("page_down_w_shift", new AbstractAction() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				int lastLineOnPage = currentZeroBasedStartingLineNumber + lineStartPositionCharacterIndexesInView.size() - 1;
+				boolean isAtBottomOfPage = (lastLineOnPage == (getCaretTextPosition().getLineNumber() + 1));
+				if (isAtBottomOfPage) {
+					moveVerticalScrollBar(verticalScrollBar.getVisibleAmount());
+				}
+				if (originalPageDownWithShiftAction != null) {
+					originalPageDownWithShiftAction.actionPerformed(e);
+				}
+			}
+		});
+
 		actionMap.put("up", new AbstractAction() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				boolean isAtTopOfPage = getCaretTextPosition().getLineNumber() == (currentStartingLineNumber + 1);
+				boolean isAtTopOfPage = (getCaretTextPosition().getLineNumber() == currentZeroBasedStartingLineNumber);
 				if (isAtTopOfPage) {
 					moveVerticalScrollBar(-1);
-					if (originalUpAction != null) {
-						originalUpAction.actionPerformed(e);
-					}
 				}
 				if (originalUpAction != null) {
 					originalUpAction.actionPerformed(e);
+				}
+			}
+		});
+
+		actionMap.put("up_w_shift", new AbstractAction() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				boolean isAtTopOfPage = (getCaretTextPosition().getLineNumber() == currentZeroBasedStartingLineNumber);
+				if (isAtTopOfPage) {
+					moveVerticalScrollBar(-1);
+				}
+				if (originalUpWithShiftAction != null) {
+					originalUpWithShiftAction.actionPerformed(e);
 				}
 			}
 		});
@@ -492,12 +659,28 @@ public class TextViewerPanel extends JPanel {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				boolean isAtBottomOfPage = (currentStartingLineNumber + lineStartPositionCharacterIndexesInView.size() - 1) == getCaretTextPosition().getLineNumber();
+				int lastLineOnPage = currentZeroBasedStartingLineNumber + lineStartPositionCharacterIndexesInView.size() - 1;
+				boolean isAtBottomOfPage = (lastLineOnPage == (getCaretTextPosition().getLineNumber() + 1));
 				if (isAtBottomOfPage) {
 					moveVerticalScrollBar(1);
 				}
 				if (originalDownAction != null) {
 					originalDownAction.actionPerformed(e);
+				}
+			}
+		});
+		actionMap.put("down_w_shift", new AbstractAction() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				int lastLineOnPage = currentZeroBasedStartingLineNumber + lineStartPositionCharacterIndexesInView.size() - 1;
+				boolean isAtBottomOfPage = (lastLineOnPage == (getCaretTextPosition().getLineNumber() + 1));
+				if (isAtBottomOfPage) {
+					moveVerticalScrollBar(1);
+				}
+				if (originalDownWithShiftAction != null) {
+					originalDownWithShiftAction.actionPerformed(e);
 				}
 			}
 		});
@@ -537,13 +720,12 @@ public class TextViewerPanel extends JPanel {
 
 			private static final long serialVersionUID = 1L;
 			private String lastEnteredString;
-			private Boolean lastSearchWasCaseSensitive;
 
 			@Override
 			public void actionPerformed(ActionEvent event) {
 				if (document != null) {
 					String searchString = (String) JOptionPane.showInputDialog(parentTextViewer, "Enter Text to Find:", "Search", JOptionPane.PLAIN_MESSAGE, null, null, lastEnteredString);
-
+					// TODO allow this to be cancelled
 					SwingWorker<Integer, String> searchWorker = new SwingWorker<Integer, String>() {
 						@Override
 						protected Integer doInBackground() throws Exception {
@@ -551,7 +733,6 @@ public class TextViewerPanel extends JPanel {
 							TextPosition textPosition = getCaretTextPosition();
 							int currentLineNumber = textPosition.getLineNumber();
 							int currentPositionInLine = textPosition.getColumnIndex();
-							// TODO do not do this on the event dispatch thread!!!!!
 							if (searchString != null && searchString.length() > 0) {
 								ITextProgressListener progressListener = new ITextProgressListener() {
 									@Override
@@ -565,7 +746,11 @@ public class TextViewerPanel extends JPanel {
 								String message;
 								if (foundTextPosition != null) {
 									setLineNumber(foundTextPosition.getLineNumber() + 1);
-									textArea.setCaretPosition(foundTextPosition.getColumnIndex());
+									Caret caret = textArea.getCaret();
+									// this will be the mark
+									caret.setDot(foundTextPosition.getColumnIndex());
+									// this will be the dot thus highlighting the searched for text
+									caret.moveDot(foundTextPosition.getColumnIndex() + searchString.length());
 									message = "Search for:" + searchString + " resulted in the following line:" + (foundTextPosition.getLineNumber() + 1) + " column:"
 											+ foundTextPosition.getColumnIndex();
 								} else {
@@ -576,7 +761,6 @@ public class TextViewerPanel extends JPanel {
 								generalStatusLabel.setText("");
 
 								lastEnteredString = searchString;
-								lastSearchWasCaseSensitive = isSearchCaseSensitive;
 							}
 							return null;
 						}
@@ -594,25 +778,77 @@ public class TextViewerPanel extends JPanel {
 
 			@Override
 			public void actionPerformed(ActionEvent event) {
-				if (document != null) {
-					// TODO handle the case where data is selected and there are a bunch of extra spaces instead of tabs
-					String selectedText = textArea.getSelectedText();
-					if (selectedText != null && !selectedText.isEmpty()) {
-						StringSelection stringSelection = new StringSelection(selectedText);
-						Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-						clipboard.setContents(stringSelection, null);
-					}
-
-				}
+				copySelectedTextToClipboard(false);
 			}
 		});
+	}
+
+	public void copySelectedTextToClipboard(boolean alwaysSaveToFile) {
+		if (document != null) {
+
+			TextPosition markToUse = null;
+
+			Caret caret = textArea.getCaret();
+			int mark = caret.getMark();
+			int dot = caret.getDot();
+
+			if (markInDocument != null) {
+				markToUse = markInDocument;
+			} else {
+				if (mark != dot) {
+					markToUse = getZeroBasedTextPosition(mark);
+				}
+			}
+
+			if (markToUse != null) {
+				TextPosition dotToUse = getZeroBasedTextPosition(dot);
+				int numberOfLines = Math.abs(markToUse.getLineNumber() - dotToUse.getLineNumber());
+				TextPosition start;
+				TextPosition end;
+				if (markToUse.isBefore(dotToUse)) {
+					start = markToUse;
+					end = dotToUse;
+				} else {
+					start = dotToUse;
+					end = markToUse;
+				}
+
+				// TODO do not do this on the event dispatch thread!!!!!
+				if (alwaysSaveToFile || (numberOfLines > MAX_LINES_TO_COPY_TO_CLIPBOARD)) {
+					boolean saveToFile = true;
+					if (!alwaysSaveToFile) {
+						int result = JOptionPane.showConfirmDialog(parentTextViewer, "The selected text is too large for the clipboard.\nWould you like to save it to a file?",
+								"Copied Text Too Large for Clipboard", JOptionPane.YES_NO_OPTION);
+						saveToFile = (result == JOptionPane.OK_OPTION);
+					}
+					if (saveToFile) {
+						File file = DialogHelper.getFileForSavingClipBoardContents(TextViewerPanel.this);
+						try {
+							// TODO show progress and allow to be cancelled
+							document.copyTextToFile(file, start.getLineNumber(), start.getColumnIndex(), end.getLineNumber(), end.getColumnIndex());
+						} catch (IOException e) {
+							JOptionPane.showMessageDialog(parentTextViewer, "Unable to save text to file.  " + e.getMessage(), "Unable to Write Selected Text to File", JOptionPane.WARNING_MESSAGE);
+						}
+					}
+				} else {
+					String[] text = document.getText(start.getLineNumber(), start.getColumnIndex(), end.getLineNumber(), end.getColumnIndex());
+					String selectedText = ArraysUtil.toString(text, StringUtil.NEWLINE);
+					StringSelection stringSelection = new StringSelection(selectedText);
+					Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+
+					clipboard.setContents(stringSelection, null);
+				}
+
+			} else {
+				JOptionPane.showMessageDialog(parentTextViewer, "Unable to copy text to clipboard when no text is selected.", "No Text Selected", JOptionPane.WARNING_MESSAGE);
+			}
+		}
 	}
 
 	@Override
 	public void setTransferHandler(TransferHandler newHandler) {
 		super.setTransferHandler(newHandler);
 		textArea.setTransferHandler(newHandler);
-		tableArea.setTransferHandler(newHandler);
 	}
 
 	synchronized void setLineNumber(int lineNumber) {
@@ -701,12 +937,11 @@ public class TextViewerPanel extends JPanel {
 	}
 
 	void refreshScreen() {
-
-		updateComponentsLayout();
-		System.out.println("pre:" + verticalScrollBar.getValue());
-		updateScrollBar();
-		System.out.println("post:" + verticalScrollBar.getValue());
-		updateTextInViewer();
+		if (this.initIsDone) {
+			updateComponentsLayout();
+			updateScrollBar();
+			updateTextInViewer();
+		}
 
 	}
 
@@ -728,152 +963,225 @@ public class TextViewerPanel extends JPanel {
 	}
 
 	public synchronized void updateTextInViewer() {
-		int longestLine = 0;
-		textArea.setFont(parentTextViewer.getTextFont());
-		lineNumberArea.setFont(parentTextViewer.getTextFont());
-		textArea.setBackground(parentTextViewer.getBackgroundTextPanelColor());
-		textArea.setForeground(parentTextViewer.getTextColor());
+		if (initIsDone) {
+			int longestLine = 0;
+			textArea.setFont(parentTextViewer.getTextFont());
+			lineNumberArea.setFont(parentTextViewer.getTextFont());
+			// note this is now done in the textViewers override paintComponent found in the constructor of this
+			// class
+			// textArea.setBackground(parentTextViewer.getBackgroundTextPanelColor());
+			textArea.setForeground(parentTextViewer.getTextColor());
 
-		TextPosition caretTextPositionBeforeNewText = getCaretTextPosition();
-		Integer newCaretPosition = null;
+			TextPosition caretTextPositionBeforeNewText = getCaretTextPosition();
+			Integer newCaretPosition = null;
 
-		lineStartPositionCharacterIndexesInView.clear();
-		lineStartPositionCharacterIndexesInView.add(0);
-
-		int startingLineNumber = verticalScrollBar.getValue();
-		currentStartingLineNumber = startingLineNumber;
-		int numberOfLinesThatCanFitInView = getNumberOfLinesThatCanFitInViewer();
-
-		StringBuilder lineNumberText = new StringBuilder();
-
-		int endingLineNumber = startingLineNumber + numberOfLinesThatCanFitInView;
-		boolean headerExists = doesHeaderExist();
-		StringBuilder text = new StringBuilder();
-		if (document != null && numberOfLinesThatCanFitInView > 0) {
-
-			int lineNumbersInFile = document.getNumberOfLines();
-			String[] allText = document.getText(startingLineNumber, endingLineNumber);
-			if (headerExists) {
-				allText = ArraysUtil.concatenate(new String[] { headerText }, allText);
+			Caret caret = textArea.getCaret();
+			int caretDot = caret.getDot();
+			int caretMark = caret.getMark();
+			TextPosition newMarkInDocument = getZeroBasedTextPosition(caretMark);
+			if (caretDot == caretMark) {
+				markInDocument = null;
+				selectedTextIsOffScreen.set(false);
+			} else if (newMarkInDocument != null && !newMarkInDocument.equals(markInDocument) && !selectedTextIsOffScreen.get()) {
+				markInDocument = newMarkInDocument;
 			}
-			for (int currentLine = startingLineNumber; currentLine <= endingLineNumber; currentLine++) {
-				int index = currentLine - startingLineNumber;
-				int currentLineNumber = currentLine + 1;
+
+			int startingLineNumber = verticalScrollBar.getValue();
+			currentZeroBasedStartingLineNumber = startingLineNumber;
+
+			lineStartPositionCharacterIndexesInView.clear();
+			lineStartPositionCharacterIndexesInView.add(0);
+
+			int numberOfLinesThatCanFitInView = getNumberOfLinesThatCanFitInViewer();
+
+			StringBuilder lineNumberText = new StringBuilder();
+
+			int endingLineNumber = startingLineNumber + numberOfLinesThatCanFitInView;
+			boolean headerExists = doesHeaderExist();
+			StringBuilder text = new StringBuilder();
+			if (document != null && numberOfLinesThatCanFitInView > 0) {
+
+				int lineNumbersInFile = document.getNumberOfLines();
+				endingLineNumber = Math.min(lineNumbersInFile, endingLineNumber);
+				String[] allText = document.getText(startingLineNumber, endingLineNumber);
 				if (headerExists) {
-					if (currentLine == startingLineNumber) {
-						currentLineNumber = headerLineNumber;
-					} else {
-						currentLineNumber--;
+					allText = ArraysUtil.concatenate(new String[] { headerText }, allText);
+				}
+				for (int currentLine = startingLineNumber; currentLine <= endingLineNumber; currentLine++) {
+					int index = currentLine - startingLineNumber;
+					int currentLineNumber = currentLine + 1;
+					if (headerExists) {
+						if (currentLine == startingLineNumber) {
+							currentLineNumber = headerLineNumber;
+						} else {
+							currentLineNumber--;
+						}
+					}
+					String textForLine = allText[index];
+					if (textForLine != null) {
+						if (currentLine < lineNumbersInFile) {
+							if (currentLine >= startingLineNumber) {
+								longestLine = Math.max(longestLine, textForLine.length());
+
+								boolean lineInWhichCaretWasLocated = (caretTextPositionBeforeNewText != null) && (currentLine == caretTextPositionBeforeNewText.getLineNumber());
+								if (lineInWhichCaretWasLocated) {
+									newCaretPosition = text.length() + Math.min(caretTextPositionBeforeNewText.getColumnIndex(), textForLine.length());
+								}
+
+								text.append(textForLine + StringUtil.NEWLINE);
+								lineStartPositionCharacterIndexesInView.add(text.length());
+
+								lineNumberText.append((currentLineNumber) + StringUtil.NEWLINE);
+							}
+						} else {
+							text.append(StringUtil.NEWLINE);
+							lineStartPositionCharacterIndexesInView.add(text.length());
+						}
 					}
 				}
-				String textForLine = allText[index];
-				if (currentLine < lineNumbersInFile) {
-					if (currentLine >= startingLineNumber) {
-						longestLine = Math.max(longestLine, textForLine.length());
 
-						if ((caretTextPositionBeforeNewText != null) && (currentLine == caretTextPositionBeforeNewText.getLineNumber() - 1)) {
-							newCaretPosition = text.length() + Math.min(caretTextPositionBeforeNewText.getColumnIndex(), textForLine.length());
+				String textToAdd = "";
+				// remove the last newline
+				if (text.length() > 0) {
+					textToAdd = text.substring(0, text.length() - 1).toString();
+				}
+
+				if (isShowDataView) {
+					maxLengthPerColum = new HashMap<Integer, Integer>();
+					for (String line : textToAdd.split("" + StringUtil.NEWLINE_SYMBOL)) {
+						int columnIndex = 0;
+						for (String columnText : line.split(StringUtil.TAB)) {
+							Integer previousMax = maxLengthPerColum.get(columnIndex);
+							if (previousMax == null) {
+								previousMax = 0;
+							}
+							int max = Math.max(previousMax, columnText.length());
+							maxLengthPerColum.put(columnIndex, max);
+							columnIndex++;
+						}
+					}
+
+					int dataPosition = 0;
+
+					// reset these to take into account the new spaces
+					lineStartPositionCharacterIndexesInView.clear();
+					lineStartPositionCharacterIndexesInView.add(0);
+					StringBuilder newTextBuilder = new StringBuilder();
+					int lineNumber = startingLineNumber;
+					for (String line : textToAdd.split("" + StringUtil.NEWLINE_SYMBOL)) {
+						line = line.replaceAll("" + StringUtil.CARRIAGE_RETURN, "");
+						int columnIndex = 0;
+						StringBuilder newLineBuilder = new StringBuilder();
+						for (String columnText : line.split(StringUtil.TAB)) {
+							int max = maxLengthPerColum.get(columnIndex);
+							int spacesToAdd = ((max + DATA_COLUMN_SPACING_IN_CHARACTERS) - columnText.length());
+							newLineBuilder.append(columnText + StringUtil.repeatString(" ", spacesToAdd));
+							columnIndex++;
+
+							for (int i = 0; i <= columnText.length(); i++) {
+								dataPositionMapsToTextPosition.set(dataPosition, true);
+								dataPosition++;
+							}
+							for (int i = 0; i < spacesToAdd - 1; i++) {
+								dataPositionMapsToTextPosition.set(dataPosition, false);
+								dataPosition++;
+							}
 						}
 
-						text.append(textForLine + StringUtil.NEWLINE);
-						lineStartPositionCharacterIndexesInView.add(text.length());
+						boolean lineInWhichCaretWasLocated = (caretTextPositionBeforeNewText != null) && (lineNumber == caretTextPositionBeforeNewText.getLineNumber());
+						if (lineInWhichCaretWasLocated) {
+							newCaretPosition = newTextBuilder.length() + Math.min(caretTextPositionBeforeNewText.getColumnIndex(), newLineBuilder.length());
+						}
 
-						lineNumberText.append((currentLineNumber) + StringUtil.NEWLINE);
+						newLineBuilder.append(StringUtil.NEWLINE_SYMBOL);
+						newTextBuilder.append(newLineBuilder.toString());
+
+						dataPositionMapsToTextPosition.set(dataPosition, true);
+						dataPosition++;
+
+						lineStartPositionCharacterIndexesInView.add(newTextBuilder.length());
+						lineNumber++;
+
+					}
+					textToAdd = newTextBuilder.toString();
+				}
+
+				textArea.setText(textToAdd);
+
+				Integer markPosition = null;
+				if (markInDocument != null) {
+					markPosition = getTextAreaPosition(markInDocument);
+					if (markPosition == null) {
+						selectedTextIsOffScreen.set(true);
+						if (markInDocument.getLineNumber() < currentZeroBasedStartingLineNumber) {
+							markPosition = 0;
+						} else {
+							markPosition = textArea.getText().length() - 1;
+						}
+					} else {
+						selectedTextIsOffScreen.set(false);
 					}
 				} else {
-					text.append(StringUtil.NEWLINE);
-					lineStartPositionCharacterIndexesInView.add(text.length());
-				}
-			}
-
-			String textToAdd = "";
-			// remove the last newline
-			if (text.length() > 0) {
-				textToAdd = text.substring(0, text.length() - 1).toString();
-			}
-
-			if (isShowDataView) {
-				maxLengthPerColum = new HashMap<Integer, Integer>();
-				for (String line : textToAdd.split("" + StringUtil.NEWLINE_SYMBOL)) {
-					int columnIndex = 0;
-					for (String columnText : line.split(StringUtil.TAB)) {
-						Integer previousMax = maxLengthPerColum.get(columnIndex);
-						if (previousMax == null) {
-							previousMax = 0;
-						}
-						int max = Math.max(previousMax, columnText.length());
-						maxLengthPerColum.put(columnIndex, max);
-						columnIndex++;
-					}
+					selectedTextIsOffScreen.set(false);
 				}
 
-				// reset these to take into account the new spaces
-				lineStartPositionCharacterIndexesInView.clear();
-				lineStartPositionCharacterIndexesInView.add(0);
-				StringBuilder newTextBuilder = new StringBuilder();
-				int lineNumber = startingLineNumber;
-				for (String line : textToAdd.split("" + StringUtil.NEWLINE_SYMBOL)) {
-					int columnIndex = 0;
-					StringBuilder newLineBuilder = new StringBuilder();
-					for (String columnText : line.split(StringUtil.TAB)) {
-						int max = maxLengthPerColum.get(columnIndex);
-						newLineBuilder.append(columnText + StringUtil.repeatString(" ", ((max + 1) - columnText.length())));
-						columnIndex++;
+				if (newCaretPosition != null) {
+					if (markPosition != null) {
+						caret.setDot(markPosition);
+						caret.moveDot(newCaretPosition);
+					} else {
+						textArea.setCaretPosition(newCaretPosition);
 					}
-					newTextBuilder.append(newLineBuilder.toString() + StringUtil.NEWLINE);
-
-					if ((caretTextPositionBeforeNewText != null) && (lineNumber == caretTextPositionBeforeNewText.getLineNumber() - 1)) {
-						newCaretPosition = newTextBuilder.length() + Math.min(caretTextPositionBeforeNewText.getColumnIndex(), newLineBuilder.length());
+				} else if (caretTextPositionBeforeNewText != null && (caretTextPositionBeforeNewText.getLineNumber() >= currentZeroBasedStartingLineNumber)) {
+					int lastPosition = textToAdd.length() - 1;
+					int startOfLastLine;
+					if (isShowDataView) {
+						startOfLastLine = lineStartPositionCharacterIndexesInView.get(lineStartPositionCharacterIndexesInView.size() - 2);
+					} else {
+						startOfLastLine = lineStartPositionCharacterIndexesInView.get(lineStartPositionCharacterIndexesInView.size() - 2);
 					}
-
-					lineStartPositionCharacterIndexesInView.add(newTextBuilder.length());
-					lineNumber++;
-				}
-				textToAdd = newTextBuilder.toString();
-			}
-
-			textArea.setText(textToAdd);
-			if (newCaretPosition != null) {
-				System.out.println("a");
-				textArea.setCaretPosition(newCaretPosition);
-			} else if (caretTextPositionBeforeNewText != null && (caretTextPositionBeforeNewText.getLineNumber() > currentStartingLineNumber)) {
-				if (caretTextPositionBeforeNewText != null) {
-					int lastPosition = text.length() - 1;
-					int startOfLastLine = lineStartPositionCharacterIndexesInView.get(lineStartPositionCharacterIndexesInView.size() - 2);
 
 					// move the caret position but attempt to keep the same column
 					int newPosition = Math.min(lastPosition, startOfLastLine + caretTextPositionBeforeNewText.getColumnIndex());
-					System.out.println("b");
-					textArea.setCaretPosition(newPosition);
-				}
-			} else {
-				if (caretTextPositionBeforeNewText != null) {
-					int positionForColumn = caretTextPositionBeforeNewText.getColumnIndex();
-					int endOfFirstLine;
-
-					if (lineStartPositionCharacterIndexesInView.size() > 1) {
-						endOfFirstLine = lineStartPositionCharacterIndexesInView.get(1) - 1;
+					if (markPosition != null) {
+						caret.setDot(markPosition);
+						caret.moveDot(newPosition);
 					} else {
-						endOfFirstLine = textArea.getText().length() - 1;
+						textArea.setCaretPosition(newPosition);
 					}
+				} else {
+					if (caretTextPositionBeforeNewText != null) {
+						int positionForColumn = caretTextPositionBeforeNewText.getColumnIndex();
+						int endOfFirstLine;
 
-					int newPosition = Math.min(endOfFirstLine, positionForColumn);
-					System.out.println("c");
-					textArea.setCaretPosition(newPosition);
+						if (lineStartPositionCharacterIndexesInView.size() > 1) {
+							endOfFirstLine = lineStartPositionCharacterIndexesInView.get(1) - 1;
+						} else {
+							endOfFirstLine = textArea.getText().length() - 1;
+						}
+
+						int newPosition = Math.min(endOfFirstLine, positionForColumn);
+						textArea.setCaretPosition(newPosition);
+						if (markPosition != null) {
+							caret.setDot(markPosition);
+							caret.moveDot(newPosition);
+						} else {
+							textArea.setCaretPosition(newPosition);
+						}
+					}
 				}
+
+			} else {
+				textArea.setText("");
 			}
 
-		} else {
-			textArea.setText("");
+			lineNumberArea.setText(lineNumberText.toString());
 
+			updateViewPort();
+
+			revalidate();
+			repaint();
 		}
-
-		lineNumberArea.setText(lineNumberText.toString());
-
-		updateViewPort();
-
-		revalidate();
-		repaint();
 
 	}
 
@@ -884,6 +1192,9 @@ public class TextViewerPanel extends JPanel {
 	public void setShowDataView(boolean isShowDataView) {
 		if (this.isShowDataView != isShowDataView) {
 			this.isShowDataView = isShowDataView;
+			if (headerLineNumber > 0) {
+				setShowHeader(true);
+			}
 			updateTextInViewer();
 		}
 	}
@@ -916,14 +1227,19 @@ public class TextViewerPanel extends JPanel {
 
 	public void close() throws IOException {
 		document.close();
+		parentTextViewer.updateCloseAllMenuItem();
 	}
 
 	public int getCurrentLineNumber() {
-		return currentStartingLineNumber;
+		return currentZeroBasedStartingLineNumber;
 	}
 
 	public void setGeneralStatusText(String text) {
 		generalStatusLabel.setText(text);
+	}
+
+	public TextViewer getTextViewer() {
+		return parentTextViewer;
 	}
 
 }

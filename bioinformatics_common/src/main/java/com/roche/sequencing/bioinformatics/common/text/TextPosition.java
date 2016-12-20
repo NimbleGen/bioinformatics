@@ -48,4 +48,22 @@ public class TextPosition {
 		return "TextIndex [lineNumber=" + lineNumber + ", startingCharacterIndexInLine=" + columnIndex + "]";
 	}
 
+	public int compare(TextPosition textPosition) {
+		int result = Integer.compare(lineNumber, textPosition.lineNumber);
+		if (result == 0) {
+			result = Integer.compare(columnIndex, textPosition.columnIndex);
+		}
+		return result;
+	}
+
+	public boolean isBefore(TextPosition textPosition) {
+		boolean isBefore = compare(textPosition) < 0;
+		return isBefore;
+	}
+
+	public boolean isAfter(TextPosition textPosition) {
+		boolean isAfter = compare(textPosition) > 0;
+		return isAfter;
+	}
+
 }
