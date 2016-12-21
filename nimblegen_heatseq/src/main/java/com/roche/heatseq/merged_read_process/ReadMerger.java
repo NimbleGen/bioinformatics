@@ -13,7 +13,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.roche.heatseq.utils.FastqReader;
 import com.roche.heatseq.utils.FastqWriter;
 import com.roche.sequencing.bioinformatics.common.alignment.AlignmentPair;
+import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
+import com.roche.sequencing.bioinformatics.common.alignment.SimpleAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.multithreading.IExceptionListener;
 import com.roche.sequencing.bioinformatics.common.multithreading.PausableFixedThreadPoolExecutor;
 import com.roche.sequencing.bioinformatics.common.sequence.ICode;
@@ -30,6 +32,7 @@ public class ReadMerger {
 	private final static DecimalFormat DF2 = new DecimalFormat("###.00");
 	private final static int NUMBER_OF_THREADS = 20;
 	private final static int FASTQ_LINES_PER_READ = 4;
+	private final static IAlignmentScorer MERGE_ALIGNMENT_SCORER = new SimpleAlignmentScorer(1, -1000, -100, -100, false, false);
 
 	private ReadMerger() {
 		throw new AssertionError();
@@ -39,24 +42,60 @@ public class ReadMerger {
 		private final FastqRecord mergedRecord;
 		private final int numberOfBasesCorrected;
 		private final boolean mismatchingBaseWithSameQualityScoreOccurred;
+		private final int amountOfOverlap;
 
 		public MergedReadsResults(FastqRecord mergedRecord, int numberOfBasesCorrected, int amountOfOverlap, boolean mismatchingBaseWithSameQualityScoreOccurred) {
 			super();
 			this.mergedRecord = mergedRecord;
 			this.numberOfBasesCorrected = numberOfBasesCorrected;
+			this.amountOfOverlap = amountOfOverlap;
 			this.mismatchingBaseWithSameQualityScoreOccurred = mismatchingBaseWithSameQualityScoreOccurred;
 		}
 
 	}
 
+	private static int countGaps(ISequence sequence) {
+		int gapCount = 0;
+		for (int i = 0; i < sequence.size(); i++) {
+			if (sequence.getCodeAt(i).matches(IupacNucleotideCode.GAP)) {
+				gapCount++;
+			}
+		}
+		return gapCount;
+	}
+
 	private static MergedReadsResults mergeReads(FastqRecord recordOne, FastqRecord recordTwo) {
 		ISequence readOne = new IupacNucleotideCodeSequence(recordOne.getReadString());
-		ISequence readTwo = new IupacNucleotideCodeSequence(recordTwo.getReadString());
-		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(readOne, readTwo.getReverseCompliment());
+		ISequence readTwo = new IupacNucleotideCodeSequence(recordTwo.getReadString()).getReverseCompliment();
 
+		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(readTwo, readOne, MERGE_ALIGNMENT_SCORER);
 		AlignmentPair alignmentPair = alignment.getAlignmentPair();
-		ISequence reference = alignmentPair.getReferenceAlignment();
-		ISequence query = alignmentPair.getQueryAlignment();
+		ISequence readTwoAlignment = alignmentPair.getReferenceAlignment();
+		ISequence readOneAlignment = alignmentPair.getQueryAlignment();
+
+		int estimatedOverlap = readOne.size() - countGaps(readTwoAlignment);
+		boolean readOneStartsWithGap = (readOneAlignment.getCodeAt(0).matches(IupacNucleotideCode.GAP));
+		if ((estimatedOverlap <= 4) && (readOneStartsWithGap)) {
+			int newOverlap = 0;
+			if (readOne.getCodeAt(readOne.size() - 1).matches(readTwo.getCodeAt(0))) {
+				newOverlap = 1;
+			} else if ((readOne.getCodeAt(readOne.size() - 2).matches(readTwo.getCodeAt(0))) && (readOne.getCodeAt(readOne.size() - 1).matches(readTwo.getCodeAt(1)))) {
+				newOverlap = 2;
+			} else if ((readOne.getCodeAt(readOne.size() - 3).matches(readTwo.getCodeAt(0))) && (readOne.getCodeAt(readOne.size() - 2).matches(readTwo.getCodeAt(1)))
+					&& (readOne.getCodeAt(readOne.size() - 1).matches(readTwo.getCodeAt(2)))) {
+				newOverlap = 3;
+			} else if ((readOne.getCodeAt(readOne.size() - 4).matches(readTwo.getCodeAt(0))) && (readOne.getCodeAt(readOne.size() - 3).matches(readTwo.getCodeAt(1)))
+					&& (readOne.getCodeAt(readOne.size() - 2).matches(readTwo.getCodeAt(2))) && (readOne.getCodeAt(readOne.size() - 1).matches(readTwo.getCodeAt(3)))) {
+				newOverlap = 4;
+			}
+
+			// just create an alignment where the two reads are pasted together
+			readOneAlignment = new IupacNucleotideCodeSequence(readOne.toString());
+			readOneAlignment.append(new IupacNucleotideCodeSequence(StringUtil.repeatString(IupacNucleotideCode.GAP.toString(), readTwo.size() - newOverlap)));
+
+			readTwoAlignment = new IupacNucleotideCodeSequence(StringUtil.repeatString(IupacNucleotideCode.GAP.toString(), readOne.size() - newOverlap));
+			readTwoAlignment.append(new IupacNucleotideCodeSequence(readTwo.toString()));
+		}
 
 		StringBuilder mergedSequence = new StringBuilder();
 		StringBuilder mergedQuality = new StringBuilder();
@@ -72,9 +111,9 @@ public class ReadMerger {
 
 		boolean mismatchingBaseWithSameQualityScoreOccurred = false;
 
-		for (int i = 0; i < reference.size(); i++) {
-			ICode readOneCode = reference.getCodeAt(i);
-			ICode readTwoCode = query.getCodeAt(i);
+		for (int i = 0; i < readOneAlignment.size(); i++) {
+			ICode readOneCode = readOneAlignment.getCodeAt(i);
+			ICode readTwoCode = readTwoAlignment.getCodeAt(i);
 
 			boolean isReadOneAGap = readOneCode.matches(IupacNucleotideCode.GAP);
 			boolean isReadTwoAGap = readTwoCode.matches(IupacNucleotideCode.GAP);
@@ -302,7 +341,7 @@ public class ReadMerger {
 
 						FastqRecord mergedRead = results.mergedRecord;
 						if (mergedRead != null) {
-							if (results.numberOfBasesCorrected <= maxNumberOfConflictsPerReadPair && !results.mismatchingBaseWithSameQualityScoreOccurred) {
+							if ((results.numberOfBasesCorrected <= maxNumberOfConflictsPerReadPair) && (!results.mismatchingBaseWithSameQualityScoreOccurred)) {
 								processedReadsCount.incrementAndGet();
 								mergedReadCount.incrementAndGet();
 								writeMergedRead(currentReadNumber, mergedRead);
@@ -345,20 +384,50 @@ public class ReadMerger {
 			}
 		}
 
-		private synchronized void writeMergedRead(int readNumber, FastqRecord mergedRead) {
-			mergedFastqWriterQueue.put(readNumber, mergedRead);
-			while (mergedFastqWriterQueue.containsKey(currentWriteReadNumber.get())) {
-				mergedFastqWriter.write(mergedFastqWriterQueue.remove(currentWriteReadNumber.getAndIncrement()));
+		private void writeMergedRead(int readNumber, FastqRecord mergedRead) {
+			synchronized (currentWriteReadNumber) {
+				mergedFastqWriterQueue.put(readNumber, mergedRead);
+				processMergedQueue();
+				processUnmegedQueue();
 			}
 		}
 
-		private synchronized void writeUnmergedRead(int readNumber, FastqRecord recordOne, FastqRecord recordTwo) {
-			fastqOneWriterQueue.put(readNumber, recordOne);
-			fastqTwoWriterQueue.put(readNumber, recordTwo);
-			while (fastqOneWriterQueue.containsKey(currentWriteReadNumber.get()) && fastqTwoWriterQueue.containsKey(currentWriteReadNumber.get())) {
-				int readNumberToWrite = currentWriteReadNumber.getAndIncrement();
-				unmergedFastqOneWriter.write(fastqOneWriterQueue.remove(readNumberToWrite));
-				unmergedFastqTwoWriter.write(fastqTwoWriterQueue.remove(readNumberToWrite));
+		private void processMergedQueue() {
+			synchronized (currentWriteReadNumber) {
+				while (mergedFastqWriterQueue.containsKey(currentWriteReadNumber.get())) {
+					int readNumberToWrite = currentWriteReadNumber.getAndIncrement();
+					FastqRecord record = mergedFastqWriterQueue.remove(readNumberToWrite);
+					if (record != null) {
+						mergedFastqWriter.write(record);
+					} else {
+						System.out.println("Could not find record for " + readNumberToWrite + ".");
+					}
+				}
+			}
+		}
+
+		private void writeUnmergedRead(int readNumber, FastqRecord recordOne, FastqRecord recordTwo) {
+			synchronized (currentWriteReadNumber) {
+				fastqOneWriterQueue.put(readNumber, recordOne);
+				fastqTwoWriterQueue.put(readNumber, recordTwo);
+				processUnmegedQueue();
+				processMergedQueue();
+			}
+		}
+
+		private void processUnmegedQueue() {
+			synchronized (currentWriteReadNumber) {
+				while (fastqOneWriterQueue.containsKey(currentWriteReadNumber.get()) && fastqTwoWriterQueue.containsKey(currentWriteReadNumber.get())) {
+					int readNumberToWrite = currentWriteReadNumber.getAndIncrement();
+					FastqRecord recordToWriteOne = fastqOneWriterQueue.remove(readNumberToWrite);
+					FastqRecord recordToWriteTwo = fastqTwoWriterQueue.remove(readNumberToWrite);
+					if ((recordToWriteOne != null) && (recordToWriteTwo != null)) {
+						unmergedFastqOneWriter.write(recordToWriteOne);
+						unmergedFastqTwoWriter.write(recordToWriteTwo);
+					} else {
+						System.out.println("Could not find record for " + readNumberToWrite + ".");
+					}
+				}
 			}
 		}
 	}

@@ -55,6 +55,8 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
+import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
+import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.text.Document;
 import com.roche.sequencing.bioinformatics.common.text.GZipIndex;
 import com.roche.sequencing.bioinformatics.common.text.IDocument;
@@ -550,6 +552,7 @@ public class TextViewerPanel extends JPanel {
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_G, KeyEvent.CTRL_DOWN_MASK), "goto");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_DOWN_MASK), "find");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, KeyEvent.CTRL_DOWN_MASK), "copy");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_Q, KeyEvent.CTRL_DOWN_MASK), "sequence");
 
 		Action originalUpAction = actionMap.get(ACTION_MAP_KEY_FOR_UP);
 		Action originalDownAction = actionMap.get(ACTION_MAP_KEY_FOR_DOWN);
@@ -781,6 +784,17 @@ public class TextViewerPanel extends JPanel {
 				copySelectedTextToClipboard(false);
 			}
 		});
+
+		actionMap.put("sequence", new AbstractAction() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				System.out.println("sequence");
+				copySequenceDetailsToClipboard();
+			}
+		});
 	}
 
 	public void copySelectedTextToClipboard(boolean alwaysSaveToFile) {
@@ -802,7 +816,7 @@ public class TextViewerPanel extends JPanel {
 
 			if (markToUse != null) {
 				TextPosition dotToUse = getZeroBasedTextPosition(dot);
-				int numberOfLines = Math.abs(markToUse.getLineNumber() - dotToUse.getLineNumber());
+				int numberOfLines = Math.abs(markToUse.getLineNumber() - dotToUse.getLineNumber()) + 1;
 				TextPosition start;
 				TextPosition end;
 				if (markToUse.isBefore(dotToUse)) {
@@ -841,6 +855,51 @@ public class TextViewerPanel extends JPanel {
 
 			} else {
 				JOptionPane.showMessageDialog(parentTextViewer, "Unable to copy text to clipboard when no text is selected.", "No Text Selected", JOptionPane.WARNING_MESSAGE);
+			}
+		}
+	}
+
+	public void copySequenceDetailsToClipboard() {
+		if (document != null) {
+			TextPosition markToUse = null;
+
+			Caret caret = textArea.getCaret();
+			int mark = caret.getMark();
+			int dot = caret.getDot();
+
+			if (markInDocument != null) {
+				markToUse = markInDocument;
+			} else {
+				if (mark != dot) {
+					markToUse = getZeroBasedTextPosition(mark);
+				}
+			}
+
+			if (markToUse != null) {
+				TextPosition dotToUse = getZeroBasedTextPosition(dot);
+				int numberOfLines = Math.abs(markToUse.getLineNumber() - dotToUse.getLineNumber()) + 1;
+				if (numberOfLines == 1) {
+					TextPosition start;
+					TextPosition end;
+					if (markToUse.isBefore(dotToUse)) {
+						start = markToUse;
+						end = dotToUse;
+					} else {
+						start = dotToUse;
+						end = markToUse;
+					}
+					String[] text = document.getText(start.getLineNumber(), start.getColumnIndex(), end.getLineNumber(), end.getColumnIndex());
+					ISequence sequence = new IupacNucleotideCodeSequence(text[0]);
+					StringBuilder contents = new StringBuilder();
+					contents.append("seq:" + sequence + StringUtil.NEWLINE);
+					contents.append("rev:" + sequence.getReverse() + StringUtil.NEWLINE);
+					contents.append("cmp:" + sequence.getCompliment() + StringUtil.NEWLINE);
+					contents.append(" rc:" + sequence.getReverseCompliment() + StringUtil.NEWLINE);
+					Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+					StringSelection stringSelection = new StringSelection(contents.toString());
+					clipboard.setContents(stringSelection, null);
+				}
+
 			}
 		}
 	}

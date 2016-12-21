@@ -162,7 +162,8 @@ public class Document implements IDocument {
 	@Override
 	public synchronized String[] getText(int startingLineNumber, Integer startingCharacterIndexInLine, int endingLineNumberInclusive, Integer endingCharacterIndexInLine) {
 		String[] text;
-		if (lastStartingLineNumber == startingLineNumber && lastEndingLineNumber == endingLineNumberInclusive && lastRetreivedText != null) {
+		if (lastStartingLineNumber == startingLineNumber && lastEndingLineNumber == endingLineNumberInclusive && lastRetreivedText != null && startingCharacterIndexInLine == null
+				&& endingCharacterIndexInLine == null) {
 			text = lastRetreivedText;
 		} else {
 			int lineIncrements = textFileIndex.getRecordedLineIncrements();
@@ -264,17 +265,16 @@ public class Document implements IDocument {
 						if (textForLine == null) {
 							textForLine = "";
 						}
-						if (currentLine == startingLineNumber) {
-							if (startingCharacterIndexInLine != null && startingCharacterIndexInLine <= textForLine.length()) {
-								textForLine = textForLine.substring(startingCharacterIndexInLine, textForLine.length());
-							}
-							text[index] = textForLine;
-						} else if (currentLine == endingLineNumberInclusive) {
-							if (endingCharacterIndexInLine != null && endingCharacterIndexInLine <= textForLine.length()) {
-								textForLine = textForLine.substring(0, endingCharacterIndexInLine);
-							}
-							text[index] = textForLine;
-						} else if (currentLine > startingLineNumber) {
+						if ((currentLine == startingLineNumber) && (startingCharacterIndexInLine != null) && (startingCharacterIndexInLine <= textForLine.length())
+								&& (currentLine == endingLineNumberInclusive) && (endingCharacterIndexInLine != null) && (endingCharacterIndexInLine <= textForLine.length())) {
+							textForLine = textForLine.substring(startingCharacterIndexInLine, endingCharacterIndexInLine);
+						} else if ((currentLine == startingLineNumber) && (startingCharacterIndexInLine != null) && (startingCharacterIndexInLine <= textForLine.length())) {
+							textForLine = textForLine.substring(startingCharacterIndexInLine, textForLine.length());
+						} else if ((currentLine == endingLineNumberInclusive) && (endingCharacterIndexInLine != null) && (endingCharacterIndexInLine <= textForLine.length())) {
+							textForLine = textForLine.substring(0, endingCharacterIndexInLine);
+						}
+
+						if (currentLine >= startingLineNumber) {
 							text[index] = textForLine;
 						}
 					}

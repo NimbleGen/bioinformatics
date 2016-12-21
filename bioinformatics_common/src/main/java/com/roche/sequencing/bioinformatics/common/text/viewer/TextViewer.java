@@ -18,8 +18,8 @@ import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -525,6 +525,7 @@ public class TextViewer extends JFrame {
 				logger.warn("Unable to reinitialize all files.", e);
 			}
 		}
+
 		updateCloseAllMenuItem();
 		setVisible(true);
 	}
@@ -1189,23 +1190,7 @@ public class TextViewer extends JFrame {
 			}
 		});
 
-		labelTitle.addMouseListener(new MouseListener() {
-			@Override
-			public void mouseReleased(MouseEvent e) {
-			}
-
-			@Override
-			public void mousePressed(MouseEvent e) {
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e) {
-			}
-
-			@Override
-			public void mouseEntered(MouseEvent e) {
-			}
-
+		labelTitle.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				tabbedPane.setSelectedComponent(textViewerPanel);
