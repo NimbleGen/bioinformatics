@@ -48,14 +48,15 @@ public class PausableFixedThreadPoolExecutor extends ThreadPoolExecutor {
 	}
 
 	@Override
-	protected void beforeExecute(Thread t, Runnable r) {
-		super.beforeExecute(t, r);
+	protected void beforeExecute(Thread thread, Runnable runnable) {
+		super.beforeExecute(thread, runnable);
 		pauseLock.lock();
 		try {
-			while (isPaused)
+			while (isPaused) {
 				unpaused.await();
+			}
 		} catch (InterruptedException ie) {
-			t.interrupt();
+			thread.interrupt();
 		} finally {
 			pauseLock.unlock();
 		}
@@ -80,7 +81,7 @@ public class PausableFixedThreadPoolExecutor extends ThreadPoolExecutor {
 		}
 		if (throwable != null) {
 			for (IExceptionListener exceptionListener : exceptionListeners) {
-				exceptionListener.exceptionOccurred(throwable);
+				exceptionListener.exceptionOccurred(runnable, throwable);
 			}
 		}
 	}
@@ -126,5 +127,9 @@ public class PausableFixedThreadPoolExecutor extends ThreadPoolExecutor {
 
 	public boolean isPaused() {
 		return isPaused;
+	}
+
+	public void removeExceptionListener(IExceptionListener exceptionListener) {
+		exceptionListeners.remove(exceptionListener);
 	}
 }

@@ -28,7 +28,6 @@ import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.multithreading.IExceptionListener;
 import com.roche.sequencing.bioinformatics.common.multithreading.PausableFixedThreadPoolExecutor;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
-import com.roche.sequencing.bioinformatics.common.sequence.NucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.SequenceUtil;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.statistics.RunningStats;
@@ -164,7 +163,7 @@ public class GenomeSequenceSearcher {
 		PausableFixedThreadPoolExecutor executor = new PausableFixedThreadPoolExecutor(THREADS_FOR_PROCESSING_SEQUENCES, "SEQUENCE_PROCESSING_");
 		executor.addExceptionListener(new IExceptionListener() {
 			@Override
-			public void exceptionOccurred(Throwable throwable) {
+			public void exceptionOccurred(Runnable runnable, Throwable throwable) {
 				throw new RuntimeException(throwable.getMessage(), throwable);
 			}
 		});
@@ -743,39 +742,6 @@ public class GenomeSequenceSearcher {
 		public int size() {
 			return size;
 		}
-	}
-
-	public static void main(String[] args) throws IOException {
-		int maxHitsPerSequence = 1000;
-		File genomeFile = new File("D:\\kurts_space\\sequence\\hg19_genome.gnm");
-		File genomeSequenceSearcherFileOne = new File("D:\\kurts_space\\sequence\\hg19_genome_11_1000.gss");
-		File genomeSequenceSearcherFileTwo = new File("D:\\kurts_space\\sequence\\hg19_genome_11_2000.gss");
-
-		File outputOne = new File("D:\\kurts_space\\sequence\\1000_output.txt");
-		File outputTwo = new File("D:\\kurts_space\\sequence\\2000_output.txt");
-
-		Genome genome;
-		try {
-			genome = new Genome(genomeFile);
-		} catch (IOException e) {
-			throw new IllegalStateException(e.getMessage(), e);
-		}
-
-		// ISequence sequence = new NucleotideCodeSequence("ACTAGACTTTGACAGATGGGCTGGATTTGGGCAAAAGAAACTGGGAAGGGAGCTCCAGACAAGAGAAATAGCAGCAAGTGCCTGGAGGCTGGAAGGCAGCTGGC");
-		ISequence sequence = new NucleotideCodeSequence("ACTAGACTTTGACATGCTCTAGAAAACAACACAGAGTAACTGGTGTAAAATGTAAACTATTAAACTAGAACATATCTACAAAAATAAGATGTG");
-
-		// GenomeSequenceSearcher gss = createGenomeSearcherFromGenome(genome);
-		// gss.saveGenomeSearcherToFile(genomeSequenceSearcherFile);
-		// System.out.println("Saved gss file to [" + genomeSequenceSearcherFile.getAbsolutePath() + "].");
-
-		// profileGenome(gss);
-
-		GenomeSequenceSearcher gss1 = createFileBasedGenomeSequenceSearcherFromFile(genomeSequenceSearcherFileOne, genome);
-		GenomeSequenceSearcher gss2 = createFileBasedGenomeSequenceSearcherFromFile(genomeSequenceSearcherFileTwo, genome);
-
-		// profileGenome(gss2);
-		profileEfficacyOfSearcher(genome, gss1, gss2, outputOne, outputTwo);
-
 	}
 
 	public static void profileGenome(GenomeSequenceSearcher gss, int maxHitsPerSequence) {

@@ -83,6 +83,9 @@ public class ColorChooserHelper {
 		case HEADER_BACKGROUND:
 			textViewer.setDataHeaderBackgroundColor(color);
 			break;
+		case ABOVE_HEADER_BACKGROUND:
+			textViewer.setAboveDataHeaderBackgroundColor(color);
+			break;
 		case LINES:
 			textViewer.setDataLineColor(color);
 			break;
@@ -100,6 +103,9 @@ public class ColorChooserHelper {
 		case BACKGROUND:
 			color = textViewer.getBackgroundTextPanelColor();
 			break;
+		case ABOVE_HEADER_BACKGROUND:
+			color = textViewer.getAboveDataHeaderBackgroundColor();
+			break;
 		case HEADER_BACKGROUND:
 			color = textViewer.getDataHeaderBackgroundColor();
 			break;
@@ -116,7 +122,7 @@ public class ColorChooserHelper {
 	}
 
 	public static enum TextViewerColor {
-		BACKGROUND, HEADER_BACKGROUND, LINES, FONT
+		BACKGROUND, ABOVE_HEADER_BACKGROUND, HEADER_BACKGROUND, LINES, FONT
 	}
 
 	static class MyPreviewPanel extends JComponent {

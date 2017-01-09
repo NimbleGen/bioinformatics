@@ -17,6 +17,6 @@ package com.roche.sequencing.bioinformatics.common.multithreading;
 
 public interface IExceptionListener {
 
-	public void exceptionOccurred(Throwable throwable);
+	public void exceptionOccurred(Runnable runnable, Throwable throwable);
 
 }

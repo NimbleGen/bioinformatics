@@ -25,10 +25,15 @@ public class BamByteDecoder implements IByteDecoder {
 	private final static boolean IS_SIGNED = true;
 	private final static int PHRED_OFFSET = 33;
 
+	private final static String BAM_HEADER = "Query Name" + StringUtil.TAB + "Flag" + StringUtil.TAB + "Reference Name" + StringUtil.TAB + "Position" + StringUtil.TAB + "Map Quality" + StringUtil.TAB
+			+ "Cigar" + StringUtil.TAB + "Mate Reference" + StringUtil.TAB + "Mate Position" + StringUtil.TAB + "Template Length" + StringUtil.TAB + "Read Sequence" + StringUtil.TAB + "Read Quality"
+			+ StringUtil.TAB + "Tags" + StringUtil.NEWLINE;
+
 	private String[] referenceNames;
 	private Map<Long, byte[]> leftOverBytesByBlockEndingUncompressedStartPosition;
 
 	private boolean shouldSetMap;
+	private int headerLineNumber;
 
 	public BamByteDecoder() {
 		leftOverBytesByBlockEndingUncompressedStartPosition = new HashMap<Long, byte[]>();
@@ -73,12 +78,15 @@ public class BamByteDecoder implements IByteDecoder {
 				String plainHeaderText = new String(ByteUtil.copyOf(bytes, byteIndex, headerLength));
 				byteIndex += headerLength;
 
+				int numberOfLinesInPlainHeaderText = plainHeaderText.split(StringUtil.LINUX_NEWLINE).length;
+
 				bamStringBuilder.append(plainHeaderText);
 
 				int numberOfReferenceSequences = ByteUtil.convertBytesToInt(ByteUtil.copyOf(bytes, byteIndex, 4), BYTE_ORDER, IS_SIGNED);
 				byteIndex += 4;
 
 				referenceNames = new String[numberOfReferenceSequences];
+				headerLineNumber = numberOfLinesInPlainHeaderText + numberOfReferenceSequences + 1;
 
 				for (int i = 0; i < numberOfReferenceSequences; i++) {
 					int referenceSequenceNameLengthPlusOne = ByteUtil.convertBytesToInt(ByteUtil.copyOf(bytes, byteIndex, 4), BYTE_ORDER, IS_SIGNED);
@@ -95,6 +103,8 @@ public class BamByteDecoder implements IByteDecoder {
 					bamStringBuilder.append(referenceSequenceName + StringUtil.TAB + referenceSequenceLength + StringUtil.NEWLINE);
 					referenceNames[i] = referenceSequenceName;
 				}
+
+				bamStringBuilder.append(BAM_HEADER);
 			} else {
 				byteIndex = 0;
 			}
@@ -130,7 +140,8 @@ public class BamByteDecoder implements IByteDecoder {
 				int mapQuality = ByteUtil.convertBytesToInt(ByteUtil.copyOf(bytes, byteIndex, 1), BYTE_ORDER, false);
 				byteIndex += 1;
 
-				int bin = ByteUtil.convertBytesToInt(ByteUtil.copyOf(bytes, byteIndex, 2), BYTE_ORDER, false);
+				// int bin =
+				ByteUtil.convertBytesToInt(ByteUtil.copyOf(bytes, byteIndex, 2), BYTE_ORDER, false);
 				byteIndex += 2;
 
 				int numberOfCigarOperations = ByteUtil.convertBytesToInt(ByteUtil.copyOf(bytes, byteIndex, 2), BYTE_ORDER, false);
@@ -306,6 +317,10 @@ public class BamByteDecoder implements IByteDecoder {
 		}
 
 		return bamBytes;
+	}
+
+	public int getHeaderLineNumber() {
+		return headerLineNumber;
 	}
 
 	@Override

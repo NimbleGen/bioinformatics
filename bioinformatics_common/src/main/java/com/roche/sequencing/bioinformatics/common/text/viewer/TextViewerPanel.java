@@ -1,14 +1,17 @@
 package com.roche.sequencing.bioinformatics.common.text.viewer;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.ComponentEvent;
@@ -35,20 +38,24 @@ import javax.swing.Action;
 import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
 import javax.swing.InputMap;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollBar;
 import javax.swing.JTextArea;
 import javax.swing.JTextPane;
 import javax.swing.JViewport;
 import javax.swing.KeyStroke;
+import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.TransferHandler;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.plaf.FontUIResource;
 import javax.swing.text.Caret;
 import javax.swing.text.DefaultCaret;
 import javax.swing.text.SimpleAttributeSet;
@@ -64,6 +71,7 @@ import com.roche.sequencing.bioinformatics.common.text.ITextProgressListener;
 import com.roche.sequencing.bioinformatics.common.text.ProgressUpdate;
 import com.roche.sequencing.bioinformatics.common.text.TextFileIndex;
 import com.roche.sequencing.bioinformatics.common.text.TextPosition;
+import com.roche.sequencing.bioinformatics.common.text.viewer.TextViewerUtil.Indexes;
 import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.GraphicsUtil;
@@ -79,6 +87,12 @@ public class TextViewerPanel extends JPanel {
 	private static final long serialVersionUID = 1L;
 
 	private final static DecimalFormat DF = new DecimalFormat("###,###");
+
+	private final static Color DISABLED_COLOR = new Color(0.4f, 0.4f, 0.4f, 0.8f);
+
+	private final static int INDEXING_PANEL_WIDTH = 300;
+	private final static int INDEXING_PANEL_HEIGHT = 100;
+	public final static FontUIResource INDEXING_FONT = new FontUIResource("Serif", Font.PLAIN, 16);
 
 	private final static int VERTICAL_SCROLLL_BAR_WIDTH = 20;
 	private final static int HORIZONTAL_SCROLLL_BAR_HEIGHT = 20;
@@ -123,8 +137,8 @@ public class TextViewerPanel extends JPanel {
 	private JScrollBar verticalScrollBar;
 	private JScrollBar horizontalScrollBar;
 
-	private final File file;
-	private final IDocument document;
+	private File file;
+	private IDocument document;
 
 	private final AtomicBoolean viewPortIsBeingSet;
 	private final AtomicBoolean horizontalScrollBarIsBeingSet;
@@ -150,37 +164,35 @@ public class TextViewerPanel extends JPanel {
 	private TextPosition markInDocument;
 	private AtomicBoolean selectedTextIsOffScreen;
 
-	public TextViewerPanel(TextViewer parentTextViewer, File file, RandomAccessFile randomAccessToFile, TextFileIndex textFileIndex, GZipIndex gZipIndex, IBytes gZipDictionaryBytes,
-			File bamBlockIndexFile) throws FileNotFoundException {
+	private final JLabel indexingLabel;
+	private final JPanel indexingPanel;
+	private final JProgressBar indexingProgressBar;
+	private final JButton indexingCancelButton;
+	SwingWorker<String, String> indexingSwingWorker;
+
+	private final JLabel findingLabel;
+	private final JPanel findingPanel;
+	private final JProgressBar findingProgressBar;
+	private final JButton findingCancelButton;
+	private SwingWorker<String, String> findingSwingWorker;
+
+	private String lastEnteredFindString;
+	private int lastEnteredGoToLineNumber = 1;
+
+	private boolean isIndexing;
+
+	public TextViewerPanel(TextViewer parentTextViewer, File file) {
 		super();
 		this.initIsDone = false;
+		this.isIndexing = false;
+
+		this.file = file;
 		setOpaque(false);
 
 		this.parentTextViewer = parentTextViewer;
-		this.file = file;
+
 		this.isShowDataView = false;
 		this.dataPositionMapsToTextPosition = new BitSet();
-
-		boolean isBamFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(TextViewer.BAM_FILE_EXTENSION);
-
-		IByteDecoder byteConverter = null;
-		if (isBamFile) {
-			try {
-				GZipBlock firstBlock = GZipUtil.getFirstBlock(gZipIndex, file);
-				if (firstBlock == null) {
-					throw new IllegalStateException("Unable to extract the reference information in the provided bam file[" + file.getAbsolutePath() + "].");
-				}
-				byteConverter = new BamByteDecoder(firstBlock.getUncompressedData(), bamBlockIndexFile);
-			} catch (IOException e1) {
-				throw new IllegalStateException(e1.getMessage(), e1);
-			}
-		}
-
-		if (gZipIndex != null) {
-			this.document = new Document(textFileIndex, gZipIndex, gZipDictionaryBytes, file, byteConverter);
-		} else {
-			this.document = new Document(textFileIndex, file, byteConverter);
-		}
 
 		lineStartPositionCharacterIndexesInView = new ArrayList<Integer>();
 		viewPortIsBeingSet = new AtomicBoolean(false);
@@ -202,6 +214,49 @@ public class TextViewerPanel extends JPanel {
 		lineNumberArea.setBackground(LINE_NUMBER_AREA_BACKGROUND);
 		add(lineNumberArea);
 
+		indexingLabel = new JLabel();
+		indexingLabel.setFont(INDEXING_FONT);
+		indexingLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		indexingProgressBar = new JProgressBar(0, 100);
+		indexingProgressBar.setStringPainted(true);
+		indexingCancelButton = new JButton("Cancel");
+		indexingCancelButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (indexingSwingWorker != null) {
+					indexingSwingWorker.cancel(true);
+					parentTextViewer.closePanel(TextViewerPanel.this);
+				}
+			}
+		});
+		indexingPanel = new JPanel(new BorderLayout());
+		indexingPanel.setBorder(BorderFactory.createLineBorder(Color.black));
+		indexingPanel.setBackground(Color.white);
+		indexingPanel.add(indexingLabel, BorderLayout.PAGE_START);
+		indexingPanel.add(indexingProgressBar, BorderLayout.CENTER);
+		indexingPanel.add(indexingCancelButton, BorderLayout.PAGE_END);
+
+		findingLabel = new JLabel();
+		findingLabel.setFont(INDEXING_FONT);
+		findingLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		findingProgressBar = new JProgressBar(0, 100);
+		findingProgressBar.setStringPainted(true);
+		findingCancelButton = new JButton("Cancel");
+		findingCancelButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (findingSwingWorker != null) {
+					findingSwingWorker.cancel(true);
+				}
+			}
+		});
+		findingPanel = new JPanel(new BorderLayout());
+		findingPanel.setBorder(BorderFactory.createLineBorder(Color.black));
+		findingPanel.setBackground(Color.white);
+		findingPanel.add(findingLabel, BorderLayout.PAGE_START);
+		findingPanel.add(findingProgressBar, BorderLayout.CENTER);
+		findingPanel.add(findingCancelButton, BorderLayout.PAGE_END);
+
 		textArea = new JTextArea() {
 
 			private static final long serialVersionUID = 1L;
@@ -215,16 +270,24 @@ public class TextViewerPanel extends JPanel {
 
 				if (isShowDataView && maxLengthPerColum != null) {
 					numberOfLines--;
-					boolean headerLineIsShown = showHeader && (headerLineNumber > 0);
+					int startingLineNumber = verticalScrollBar.getValue();
+					boolean headerLineIsShown = showHeader && (headerLineNumber > 0);// && (startingLineNumber >= headerLineNumber);
 
 					int letterWidth = (int) letterSize.getWidth();
 
 					if (headerLineIsShown) {
-						g.setColor(parentTextViewer.getDataHeaderBackgroundColor());
-						g.fillRect(0, 0, getWidth(), rowHeight);
+						int y = (headerLineNumber - startingLineNumber - 1) * rowHeight;
+						if (startingLineNumber >= headerLineNumber) {
+							y = 0;
+						}
 
+						g.setColor(parentTextViewer.getDataHeaderBackgroundColor());
+						g.fillRect(0, y, getWidth(), rowHeight);
+
+						g.setColor(parentTextViewer.getAboveDataHeaderBackgroundColor());
+						g.fillRect(0, 0, getWidth(), y);
 						g.setColor(parentTextViewer.getBackgroundTextPanelColor());
-						g.fillRect(0, rowHeight, getWidth(), getHeight() - rowHeight);
+						g.fillRect(0, y + rowHeight, getWidth(), getHeight() - (y + rowHeight));
 					} else {
 						g.setColor(parentTextViewer.getBackgroundTextPanelColor());
 						g.fillRect(0, 0, getWidth(), getHeight());
@@ -260,6 +323,11 @@ public class TextViewerPanel extends JPanel {
 				g.setColor(LINE_NUMBER_AREA_BACKGROUND);
 				int leftOverHeight = getHeight() - (numberOfLines * rowHeight);
 				g.fillRect(0, getHeight() - leftOverHeight, getWidth(), leftOverHeight);
+
+				if (isIndexing) {
+					g.setColor(DISABLED_COLOR);
+					// g.fillRect(0, 0, getWidth(), getHeight());
+				}
 
 				super.paintComponent(g);
 
@@ -410,7 +478,75 @@ public class TextViewerPanel extends JPanel {
 		statusPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.black));
 		add(statusPanel);
 
+		add(indexingPanel);
+		setComponentZOrder(indexingPanel, 0);
+		indexingPanel.setVisible(false);
+
+		add(findingPanel);
+		setComponentZOrder(findingPanel, 1);
+		findingPanel.setVisible(false);
+
 		addComponentListener(new PanelResizeListener());
+
+		bindKeys();
+		this.initIsDone = true;
+	}
+
+	public void loadFile() throws FileNotFoundException {
+		RandomAccessFile randomAccessToFile = new RandomAccessFile(file, "r");
+
+		if (randomAccessToFile != null) {
+			ITextProgressListener progressListener = new ITextProgressListener() {
+				@Override
+				public void progressOccurred(ProgressUpdate progressUpdate) {
+					indexingLabel.setText("<html><div style='text-align: center;'>INDEXING<br>Time Left:" + progressUpdate.getEstimatedTimeToCompletionInHHMMSS() + "(HH:MM:SS)</div><html>");
+					indexingProgressBar.setValue((int) progressUpdate.getPercentComplete());
+				}
+			};
+
+			try {
+				isIndexing = true;
+				indexingLabel.setText("<html><div style='text-align: center;'>INDEXING<br>Time Left:  Calculating...</div><html>");
+				indexingProgressBar.setValue(0);
+				indexingPanel.setVisible(true);
+				Indexes indexes = TextViewerUtil.indexFile(file, progressListener);
+				loadDocument(file, randomAccessToFile, indexes.getTextFileIndex(), indexes.getgZipIndex(), indexes.getgZipDictionaryBytes(), indexes.getBamBlockIndexFile());
+				indexingPanel.setVisible(false);
+				isIndexing = false;
+			} catch (Exception e) {
+				JOptionPane.showMessageDialog(this, "Unable to open " + file.getAbsolutePath() + ".  " + e.getMessage(), "Error Opening File", JOptionPane.ERROR_MESSAGE);
+			}
+
+		}
+	}
+
+	private void loadDocument(File file, RandomAccessFile randomAccessToFile, TextFileIndex textFileIndex, GZipIndex gZipIndex, IBytes gZipDictionaryBytes, File bamBlockIndexFile)
+			throws FileNotFoundException {
+		boolean isBamFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(TextViewerUtil.BAM_FILE_EXTENSION);
+
+		IByteDecoder byteConverter = null;
+		if (isBamFile) {
+			try {
+				GZipBlock firstBlock = GZipUtil.getFirstBlock(gZipIndex, file);
+				if (firstBlock == null) {
+					throw new IllegalStateException("Unable to extract the reference information in the provided bam file[" + file.getAbsolutePath() + "].");
+				}
+				BamByteDecoder bamByteDecoder = new BamByteDecoder(firstBlock.getUncompressedData(), bamBlockIndexFile);
+
+				byteConverter = bamByteDecoder;
+				this.isShowDataView = true;
+				this.showHeader = true;
+				this.headerLineNumber = bamByteDecoder.getHeaderLineNumber();
+			} catch (IOException e1) {
+				throw new IllegalStateException(e1.getMessage(), e1);
+			}
+		}
+
+		if (gZipIndex != null) {
+			this.document = new Document(textFileIndex, gZipIndex, gZipDictionaryBytes, file, byteConverter);
+		} else {
+			this.document = new Document(textFileIndex, file, byteConverter);
+		}
 
 		int numberOfLinesThatCanFitInView = getNumberOfLinesThatCanFitInViewer();
 		textArea.setRows(numberOfLinesThatCanFitInView);
@@ -420,9 +556,14 @@ public class TextViewerPanel extends JPanel {
 
 		fileInfoLabel.setText("File Size:" + FileUtil.getFileSizeLabel(this.file.length()) + "   File Length:" + DF.format(textFileIndex.getNumberOfLines()) + " Lines  ");
 		updateScrollBar();
+		updateComponentsLayout();
+	}
 
-		bindKeys();
-		this.initIsDone = true;
+	public void showLineNumbers(boolean shouldShowLineNumbers) {
+		if (showLineNumbers != shouldShowLineNumbers) {
+			showLineNumbers = shouldShowLineNumbers;
+			updateComponentsLayout();
+		}
 	}
 
 	public int getHeaderLineNumber() {
@@ -471,6 +612,7 @@ public class TextViewerPanel extends JPanel {
 
 	public void setTabSize(int tabSize) {
 		textArea.setTabSize(tabSize);
+		refreshScreen();
 		updateTextInViewer();
 	}
 
@@ -553,6 +695,7 @@ public class TextViewerPanel extends JPanel {
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_DOWN_MASK), "find");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, KeyEvent.CTRL_DOWN_MASK), "copy");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_Q, KeyEvent.CTRL_DOWN_MASK), "sequence");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, KeyEvent.CTRL_DOWN_MASK), "loading");
 
 		Action originalUpAction = actionMap.get(ACTION_MAP_KEY_FOR_UP);
 		Action originalDownAction = actionMap.get(ACTION_MAP_KEY_FOR_DOWN);
@@ -691,87 +834,20 @@ public class TextViewerPanel extends JPanel {
 		actionMap.put("goto", new AbstractAction() {
 
 			private static final long serialVersionUID = 1L;
-			private int lastEnteredLineNumber = 1;
 
 			@Override
 			public void actionPerformed(ActionEvent event) {
-				if (document != null) {
-					String lineNumberAsString = (String) JOptionPane.showInputDialog(parentTextViewer, "Enter Line Number (Min:1 Max:" + DF.format(document.getNumberOfLines()) + "):",
-							"Go To Line Number", JOptionPane.PLAIN_MESSAGE, null, null, lastEnteredLineNumber);
-					if (lineNumberAsString != null && lineNumberAsString.length() > 0) {
-						lineNumberAsString.replaceAll(",", "");
-						int lineNumber = -1;
-						try {
-							lineNumber = Integer.parseInt(lineNumberAsString);
-						} catch (NumberFormatException e) {
-						}
-
-						if (lineNumber >= 1 && lineNumber <= document.getNumberOfLines()) {
-							lastEnteredLineNumber = lineNumber;
-							setLineNumber(lineNumber);
-						} else {
-							JOptionPane.showMessageDialog(parentTextViewer, "The provided line number[" + DF.format(lineNumber)
-									+ "] in invalid.  Acceptable line numbers are within the range of 1 and " + DF.format(document.getNumberOfLines()) + "(inclusive).", "Invalid Line Number",
-									JOptionPane.ERROR_MESSAGE);
-						}
-					}
-				}
+				haveUserGoToLineNumber();
 			}
 		});
 
 		actionMap.put("find", new AbstractAction() {
 
 			private static final long serialVersionUID = 1L;
-			private String lastEnteredString;
 
 			@Override
 			public void actionPerformed(ActionEvent event) {
-				if (document != null) {
-					String searchString = (String) JOptionPane.showInputDialog(parentTextViewer, "Enter Text to Find:", "Search", JOptionPane.PLAIN_MESSAGE, null, null, lastEnteredString);
-					// TODO allow this to be cancelled
-					SwingWorker<Integer, String> searchWorker = new SwingWorker<Integer, String>() {
-						@Override
-						protected Integer doInBackground() throws Exception {
-							boolean isSearchCaseSensitive = false;
-							TextPosition textPosition = getCaretTextPosition();
-							int currentLineNumber = textPosition.getLineNumber();
-							int currentPositionInLine = textPosition.getColumnIndex();
-							if (searchString != null && searchString.length() > 0) {
-								ITextProgressListener progressListener = new ITextProgressListener() {
-									@Override
-									public void progressOccurred(ProgressUpdate progressUpdate) {
-										generalStatusLabel.setText("Searching for '" + searchString + "'.  " + progressUpdate.getPercentComplete() + "%  Searched.  Time Left:"
-												+ progressUpdate.getEstimatedTimeToCompletionInHHMMSSMMM());
-									}
-								};
-								TextPosition foundTextPosition = document.search(currentLineNumber, currentPositionInLine + 1, isSearchCaseSensitive, searchString, progressListener);
-
-								String message;
-								if (foundTextPosition != null) {
-									setLineNumber(foundTextPosition.getLineNumber() + 1);
-									Caret caret = textArea.getCaret();
-									// this will be the mark
-									caret.setDot(foundTextPosition.getColumnIndex());
-									// this will be the dot thus highlighting the searched for text
-									caret.moveDot(foundTextPosition.getColumnIndex() + searchString.length());
-									message = "Search for:" + searchString + " resulted in the following line:" + (foundTextPosition.getLineNumber() + 1) + " column:"
-											+ foundTextPosition.getColumnIndex();
-								} else {
-									message = "Search for:" + searchString + " resulted in NO RESULTS.";
-								}
-
-								JOptionPane.showMessageDialog(parentTextViewer, message, "Search Results", JOptionPane.INFORMATION_MESSAGE);
-								generalStatusLabel.setText("");
-
-								lastEnteredString = searchString;
-							}
-							return null;
-						}
-
-					};
-					searchWorker.execute();
-
-				}
+				haveUserFindText();
 			}
 		});
 
@@ -795,6 +871,87 @@ public class TextViewerPanel extends JPanel {
 				copySequenceDetailsToClipboard();
 			}
 		});
+	}
+
+	public void haveUserGoToLineNumber() {
+		if (document != null) {
+			String lineNumberAsString = (String) JOptionPane.showInputDialog(parentTextViewer, "Enter Line Number (Min:1 Max:" + DF.format(document.getNumberOfLines()) + "):", "Go To Line Number",
+					JOptionPane.PLAIN_MESSAGE, null, null, lastEnteredGoToLineNumber);
+			if (lineNumberAsString != null && lineNumberAsString.length() > 0) {
+				lineNumberAsString = lineNumberAsString.replaceAll(",", "");
+				int lineNumber = -1;
+				try {
+					lineNumber = Integer.parseInt(lineNumberAsString);
+				} catch (NumberFormatException e) {
+				}
+
+				if (lineNumber >= 1 && lineNumber <= document.getNumberOfLines()) {
+					lastEnteredGoToLineNumber = lineNumber;
+					setLineNumber(lineNumber);
+				} else {
+					JOptionPane.showMessageDialog(parentTextViewer,
+							"The provided line number[" + DF.format(lineNumber) + "] in invalid.  Acceptable line numbers are within the range of 1 and " + DF.format(document.getNumberOfLines())
+									+ "(inclusive).", "Invalid Line Number", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+		}
+	}
+
+	public void haveUserFindText() {
+		if (document != null) {
+			String searchString = (String) JOptionPane.showInputDialog(parentTextViewer, "Enter Text to Find:", "Search", JOptionPane.PLAIN_MESSAGE, null, null, lastEnteredFindString);
+			findingSwingWorker = new SwingWorker<String, String>() {
+				@Override
+				protected String doInBackground() throws Exception {
+					findingLabel.setText("<html><div style='text-align: center;'>Seaching<br>Time Left: Calculating...</div><html>");
+					findingProgressBar.setValue(0);
+					findingPanel.setVisible(true);
+					try {
+						boolean isSearchCaseSensitive = false;
+						TextPosition textPosition = getCaretTextPosition();
+						int currentLineNumber = textPosition.getLineNumber();
+						int currentPositionInLine = textPosition.getColumnIndex();
+						if (searchString != null && searchString.length() > 0) {
+							ITextProgressListener progressListener = new ITextProgressListener() {
+								@Override
+								public void progressOccurred(ProgressUpdate progressUpdate) {
+									findingLabel.setText("<html><div style='text-align: center;'>Seaching<br>Time Left:" + progressUpdate.getEstimatedTimeToCompletionInHHMMSS()
+											+ "(HH:MM:SS)</div><html>");
+									findingProgressBar.setValue((int) progressUpdate.getPercentComplete());
+									generalStatusLabel.setText("Searching for '" + searchString + "'.  " + progressUpdate.getPercentComplete() + "%  Searched.  Time Left:"
+											+ progressUpdate.getEstimatedTimeToCompletionInHHMMSSMMM());
+								}
+							};
+							TextPosition foundTextPosition = document.search(currentLineNumber, currentPositionInLine + 1, isSearchCaseSensitive, searchString, progressListener);
+
+							String message;
+							if (foundTextPosition != null) {
+								setLineNumber(foundTextPosition.getLineNumber() + 1);
+								Caret caret = textArea.getCaret();
+								// this will be the mark
+								caret.setDot(foundTextPosition.getColumnIndex());
+								// this will be the dot thus highlighting the searched for text
+								caret.moveDot(foundTextPosition.getColumnIndex() + searchString.length());
+								message = "Search for:" + searchString + " resulted in the following line:" + (foundTextPosition.getLineNumber() + 1) + " column:" + foundTextPosition.getColumnIndex();
+							} else {
+								message = "Search for:" + searchString + " resulted in NO RESULTS.";
+							}
+							JOptionPane.showMessageDialog(parentTextViewer, message, "Search Results", JOptionPane.INFORMATION_MESSAGE);
+							generalStatusLabel.setText("");
+
+							lastEnteredFindString = searchString;
+						}
+					} finally {
+						findingPanel.setVisible(false);
+						generalStatusLabel.setText("");
+					}
+					return null;
+				}
+
+			};
+			findingSwingWorker.execute();
+
+		}
 	}
 
 	public void copySelectedTextToClipboard(boolean alwaysSaveToFile) {
@@ -976,7 +1133,11 @@ public class TextViewerPanel extends JPanel {
 	private void updateComponentsLayout() {
 		int lineNumberAreaWidth = 0;
 		if (showLineNumbers) {
-			int lineNumbers = document.getNumberOfLines();
+			lineNumberArea.setVisible(true);
+			int lineNumbers = 0;
+			if (document != null) {
+				lineNumbers = document.getNumberOfLines();
+			}
 			lineNumberAreaWidth = lineNumberArea.getFontMetrics(parentTextViewer.getTextFont()).stringWidth(lineNumbers + "W");
 			lineNumberArea.setBounds(0, 0, lineNumberAreaWidth, getHeight() - HORIZONTAL_SCROLLL_BAR_HEIGHT - STATUS_PANEL_HEIGHT);
 		} else {
@@ -993,6 +1154,12 @@ public class TextViewerPanel extends JPanel {
 
 		yStart = (int) (getHeight() - STATUS_PANEL_HEIGHT);
 		statusPanel.setBounds(0, yStart, getWidth(), STATUS_PANEL_HEIGHT);
+
+		// TODO set indexingJLabel bounds
+		xStart = (int) (getWidth() - INDEXING_PANEL_WIDTH) / 2;
+		yStart = (int) (getHeight() - INDEXING_PANEL_HEIGHT) / 2;
+		indexingPanel.setBounds(xStart, yStart, INDEXING_PANEL_WIDTH, INDEXING_PANEL_HEIGHT);
+		findingPanel.setBounds(xStart, yStart, INDEXING_PANEL_WIDTH, INDEXING_PANEL_HEIGHT);
 	}
 
 	void refreshScreen() {
@@ -1056,7 +1223,7 @@ public class TextViewerPanel extends JPanel {
 			StringBuilder lineNumberText = new StringBuilder();
 
 			int endingLineNumber = startingLineNumber + numberOfLinesThatCanFitInView;
-			boolean headerExists = doesHeaderExist();
+			boolean headerExists = doesHeaderExist() && (startingLineNumber >= headerLineNumber);
 			StringBuilder text = new StringBuilder();
 			if (document != null && numberOfLinesThatCanFitInView > 0) {
 
@@ -1118,6 +1285,17 @@ public class TextViewerPanel extends JPanel {
 							maxLengthPerColum.put(columnIndex, max);
 							columnIndex++;
 						}
+					}
+
+					int dataLongestLine = DATA_COLUMN_SPACING_IN_CHARACTERS * maxLengthPerColum.size();
+					for (Integer columnWidth : maxLengthPerColum.values()) {
+						dataLongestLine += columnWidth;
+					}
+					if (horizontalScrollBar.getMaximum() < dataLongestLine) {
+						int oldValue = horizontalScrollBar.getValue();
+						horizontalScrollBar.setMaximum(dataLongestLine);
+						horizontalScrollBar.setValue(oldValue);
+						horizontalScrollBar.repaint();
 					}
 
 					int dataPosition = 0;
@@ -1285,7 +1463,9 @@ public class TextViewerPanel extends JPanel {
 	}
 
 	public void close() throws IOException {
-		document.close();
+		if (document != null) {
+			document.close();
+		}
 		parentTextViewer.updateCloseAllMenuItem();
 	}
 

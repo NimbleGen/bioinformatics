@@ -15,8 +15,6 @@ import com.roche.sequencing.bioinformatics.common.utils.gzip.RandomAccessFileByt
 public class GZipIndex {
 
 	private final TreeMap<Long, GZipBlockIndex> blockIndexesByUncompressedStartInBytes;
-	private final IBytes blockDictionaries;
-	private final byte[] dictionaryBytes = null;
 
 	public GZipIndex(List<GZipBlockIndex> blockIndexes, File blockDictionariesFile) throws FileNotFoundException {
 		this(blockIndexes, new RandomAccessFileBytes(new RandomAccessFile(blockDictionariesFile, "r")));
@@ -31,7 +29,6 @@ public class GZipIndex {
 		for (GZipBlockIndex blockIndex : blockIndexes) {
 			blockIndexesByUncompressedStartInBytes.put(blockIndex.getUncompressedDecodedStartInBytes(), blockIndex);
 		}
-		this.blockDictionaries = blockDictionaries;
 	}
 
 	public GZipBlockIndex getBlockIndex(long positionInUncompressedBytes) {

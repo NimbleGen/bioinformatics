@@ -1,7 +1,6 @@
 package com.roche.heatseq.merged_read_process;
 
 import java.text.DecimalFormat;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -151,15 +150,6 @@ public class UidCorrector {
 			}
 			return groupUid;
 		}
-
-		public List<String> getProbeIds() {
-			return new ArrayList<String>(uidToMainUidByProbeIdMap.keySet());
-		}
-
-		public Map<String, String> getUidToMainUidMap(String probeId) {
-			return uidToMainUidByProbeIdMap.get(probeId);
-		}
-
 	}
 
 }

@@ -15,7 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -41,12 +42,11 @@ public class Deduper {
 
 	private final static DecimalFormat DF = new DecimalFormat("#,###");
 	private final static int MAX_NUMBER_OF_MISMATCHES_FOR_MAPPING = 2;
-	private final static int NUMBER_OF_THREADS = 10;
 	private final static boolean INCLUDE_UNMAPPED_READS = false;
 
-	public static void dedup(File mergedFastq, Map<String, ProbeAssignment> readNameToProbeAssignment, ParsedProbeFile parsedProbeFile, DedupApproachEnum dedupApproach, boolean trimPrimers,
-			File outputUnassignableFastqFile, File outputUniqueFastqFile, File outputDuplicateFastqFile, File outputBam, String commandLineSignature, String programName, String programVersion,
-			IProgressListener progressListener) {
+	public static void dedup(PausableFixedThreadPoolExecutor executor, File mergedFastq, Map<String, ProbeAssignment> readNameToProbeAssignment, ParsedProbeFile parsedProbeFile,
+			DedupApproachEnum dedupApproach, boolean trimPrimers, File outputUnassignableFastqFile, File outputUniqueFastqFile, File outputDuplicateFastqFile, File outputBam,
+			String commandLineSignature, String programName, String programVersion, IProgressListener progressListener) {
 
 		try {
 			FileUtil.createNewFile(outputUnassignableFastqFile);
@@ -88,28 +88,13 @@ public class Deduper {
 		try (FastqWriter uniqueFastqWriter = new FastqWriter(outputUniqueFastqFile)) {
 			try (FastqWriter duplicateFastqWriter = new FastqWriter(outputDuplicateFastqFile)) {
 				try (FastqWriter unassignableFastqWriter = new FastqWriter(outputUnassignableFastqFile)) {
-					multithreadedDedup(probeIdToReadNamesMap, readNameToRecord, readNameToProbeAssignment, parsedProbeFile, dedupApproach, trimPrimers, unassignableFastqWriter, uniqueFastqWriter,
-							duplicateFastqWriter, samWriter, progressListener);
+					multithreadedDedup(executor, probeIdToReadNamesMap, readNameToRecord, readNameToProbeAssignment, parsedProbeFile, dedupApproach, trimPrimers, unassignableFastqWriter,
+							uniqueFastqWriter, duplicateFastqWriter, samWriter, progressListener);
 				}
 			}
 		} finally {
 			samWriter.close();
 		}
-
-	}
-
-	private static void dedup(Map<String, List<String>> probeIdToReadNamesMap, Map<String, FastqRecord> readNameToRecord, Map<String, ProbeAssignment> readNameToProbeAssignment,
-			ParsedProbeFile parsedProbeFile, DedupApproachEnum dedupApproach, boolean trimPrimers, FastqWriter unassignableFastqWriter, FastqWriter uniqueFastqWriter,
-			FastqWriter duplicateFastqWriter, SAMFileWriter samWriter) {
-
-		for (Probe probe : parsedProbeFile.getProbes()) {
-			dedupOnProbe(probeIdToReadNamesMap, readNameToRecord, readNameToProbeAssignment, probe.getProbeId(), dedupApproach, trimPrimers, unassignableFastqWriter, uniqueFastqWriter,
-					duplicateFastqWriter, samWriter);
-		}
-
-		String noProbeAssigned = null;
-		dedupOnProbe(probeIdToReadNamesMap, readNameToRecord, readNameToProbeAssignment, noProbeAssigned, dedupApproach, trimPrimers, unassignableFastqWriter, uniqueFastqWriter, duplicateFastqWriter,
-				samWriter);
 
 	}
 
@@ -329,53 +314,66 @@ public class Deduper {
 					throw new AssertionError();
 				}
 
+				if (Thread.currentThread().isInterrupted()) {
+					throw new RuntimeException("Dedup was stopped.");
+				}
 			}
 		}
 
 	}
 
-	private static void multithreadedDedup(Map<String, List<String>> probeIdToReadNamesMap, Map<String, FastqRecord> readNameToRecord, Map<String, ProbeAssignment> readNameToProbeAssignment,
-			ParsedProbeFile parsedProbeFile, DedupApproachEnum dedupApproach, boolean trimPrimers, FastqWriter unassignableFastqWriter, FastqWriter uniqueFastqWriter,
-			FastqWriter duplicateFastqWriter, SAMFileWriter samWriter, IProgressListener progressListener) {
+	private static void multithreadedDedup(PausableFixedThreadPoolExecutor executor, Map<String, List<String>> probeIdToReadNamesMap, Map<String, FastqRecord> readNameToRecord,
+			Map<String, ProbeAssignment> readNameToProbeAssignment, ParsedProbeFile parsedProbeFile, DedupApproachEnum dedupApproach, boolean trimPrimers, FastqWriter unassignableFastqWriter,
+			FastqWriter uniqueFastqWriter, FastqWriter duplicateFastqWriter, SAMFileWriter samWriter, IProgressListener progressListener) {
 
 		List<Throwable> exceptions = new ArrayList<Throwable>();
 
-		PausableFixedThreadPoolExecutor executor = new PausableFixedThreadPoolExecutor(NUMBER_OF_THREADS, "DEDUP_");
-		executor.addExceptionListener(new IExceptionListener() {
-			@Override
-			public void exceptionOccurred(Throwable throwable) {
-				exceptions.add(throwable);
-			}
-		});
+		List<Callable<Object>> tasks = new ArrayList<Callable<Object>>();
 
 		AtomicInteger completedCount = new AtomicInteger(0);
-		// +1 because we all look at the case where no probe is assigned
+		// +1 because we also look at the case where no probe is assigned
 		int totalProbes = parsedProbeFile.getProbes().size() + 1;
 
 		for (Probe probe : parsedProbeFile.getProbes()) {
 			DedupOnProbeRunnable runnable = new DedupOnProbeRunnable(probeIdToReadNamesMap, readNameToRecord, readNameToProbeAssignment, probe.getProbeId(), dedupApproach, trimPrimers,
 					unassignableFastqWriter, uniqueFastqWriter, duplicateFastqWriter, samWriter, progressListener, completedCount, totalProbes);
-			executor.submit(runnable);
+			tasks.add(runnable);
 		}
 
 		String noProbeAssigned = null;
 		DedupOnProbeRunnable runnable = new DedupOnProbeRunnable(probeIdToReadNamesMap, readNameToRecord, readNameToProbeAssignment, noProbeAssigned, dedupApproach, trimPrimers,
 				unassignableFastqWriter, uniqueFastqWriter, duplicateFastqWriter, samWriter, progressListener, completedCount, totalProbes);
-		executor.submit(runnable);
+		tasks.add(runnable);
 
-		executor.shutdown();
+		IExceptionListener exceptionListener = new IExceptionListener() {
+			@Override
+			public void exceptionOccurred(Runnable runnable, Throwable throwable) {
+				throw new RuntimeException(throwable);
+			}
+		};
+		executor.addExceptionListener(exceptionListener);
+
 		try {
-			executor.awaitTermination(1, TimeUnit.DAYS);
+			List<Future<Object>> futures = executor.invokeAll(tasks);
+			for (Future<Object> future : futures) {
+				try {
+					future.get();
+				} catch (Exception e) {
+					exceptions.add(e);
+				}
+			}
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
+
+		executor.removeExceptionListener(exceptionListener);
 
 		if (exceptions.size() > 0) {
 			throw new RuntimeException(exceptions.get(0));
 		}
 	}
 
-	private static class DedupOnProbeRunnable implements Runnable {
+	private static class DedupOnProbeRunnable implements Callable<Object> {
 
 		private final Map<String, List<String>> probeIdToReadNamesMap;
 		private final Map<String, FastqRecord> readNameToRecord;
@@ -411,7 +409,7 @@ public class Deduper {
 		}
 
 		@Override
-		public void run() {
+		public Object call() throws Exception {
 			dedupOnProbe(probeIdToReadNamesMap, readNameToRecord, readNameToProbeAssignment, probeId, dedupApproach, trimPrimers, unassignableFastqWriter, uniqueFastqWriter, duplicateFastqWriter,
 					samWriter);
 			int probesCompleted = completedCount.incrementAndGet();
@@ -419,6 +417,7 @@ public class Deduper {
 				int percentComplete = (int) Math.floor(((double) probesCompleted / totalProbes) * 100);
 				progressListener.updateProgress(percentComplete, "Done deduping the reads for " + DF.format(probesCompleted) + " of " + DF.format(totalProbes) + " probes.");
 			}
+			return null;
 		}
 
 	}

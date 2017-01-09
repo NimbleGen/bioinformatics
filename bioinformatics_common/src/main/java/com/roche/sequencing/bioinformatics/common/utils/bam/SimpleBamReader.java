@@ -4,14 +4,12 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.ByteOrder;
 import java.util.Arrays;
 
 import com.roche.sequencing.bioinformatics.common.utils.ByteUtil;
 
 public class SimpleBamReader {
 
-	private final static ByteOrder BAM_BYTE_ORDER = ByteOrder.LITTLE_ENDIAN;
 	private final static String BAM_MAGIC_NUMBER_AS_STRING = "BAM\1";
 	public final static byte[] BAM_MAGIC_NUMBER_BYTES = BAM_MAGIC_NUMBER_AS_STRING.getBytes();
 

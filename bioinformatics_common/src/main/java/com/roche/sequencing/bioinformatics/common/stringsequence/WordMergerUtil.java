@@ -41,7 +41,7 @@ public class WordMergerUtil {
 
 		executor.addExceptionListener(new IExceptionListener() {
 			@Override
-			public void exceptionOccurred(Throwable throwable) {
+			public void exceptionOccurred(Runnable runnable, Throwable throwable) {
 				throw new RuntimeException(throwable);
 			}
 		});

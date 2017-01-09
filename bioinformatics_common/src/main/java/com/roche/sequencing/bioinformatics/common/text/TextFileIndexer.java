@@ -160,6 +160,10 @@ public class TextFileIndexer {
 						currentLineLength++;
 					}
 
+					if (Thread.currentThread().isInterrupted()) {
+						throw new RuntimeException("Indexing was stopped.");
+					}
+
 				}
 			}
 		} catch (IOException e) {
@@ -172,7 +176,7 @@ public class TextFileIndexer {
 			optionalProgressListener.progressOccurred(new ProgressUpdate((linesRead - 1), percentComplete, currentProcessTimeInMs));
 		}
 
-		return new TextFileIndex(recordedLineIncrement, ArraysUtil.convertToLongArray(linePositionsInBytes), linesRead, maxCharsByTabCount);
+		return new TextFileIndex(fileSizeInBytes, recordedLineIncrement, ArraysUtil.convertToLongArray(linePositionsInBytes), linesRead, maxCharsByTabCount);
 	}
 
 	public static TextFileIndex indexText(InputStreamFactory inputStreamFactory, int recordedLineIncrement, GZipIndex gZipIndex, IBytes gZipDictionaryBytes,
@@ -285,6 +289,9 @@ public class TextFileIndexer {
 						currentLineLength++;
 					}
 
+					if (Thread.currentThread().isInterrupted()) {
+						throw new RuntimeException("Indexing was stopped.");
+					}
 				}
 			}
 		} catch (IOException e) {
@@ -297,7 +304,7 @@ public class TextFileIndexer {
 			optionalProgressListener.progressOccurred(new ProgressUpdate((linesRead - 1), percentComplete, currentProcessTimeInMs));
 		}
 
-		return new TextFileIndex(recordedLineIncrement, ArraysUtil.convertToLongArray(linePositionsInBytes), linesRead, maxCharsByTabCount);
+		return new TextFileIndex(fileSizeInBytes, recordedLineIncrement, ArraysUtil.convertToLongArray(linePositionsInBytes), linesRead, maxCharsByTabCount);
 	}
 
 	public static TextFileIndex loadIndexFile(File indexFile) throws IOException {
@@ -323,6 +330,11 @@ public class TextFileIndexer {
 		i++;
 		// int version = integersFromFile.get(i);
 		i++;
+		int fileSizeAsIntOne = integersFromFile.get(i);
+		i++;
+		int fileSizeAsIntTwo = integersFromFile.get(i);
+		i++;
+		long fileSizeInBytes = convertTwoIntsToLong(fileSizeAsIntOne, fileSizeAsIntTwo);
 		int bitsPerEntry = integersFromFile.get(i);
 		i++;
 		int lineNumberModulus = integersFromFile.get(i);
@@ -349,7 +361,18 @@ public class TextFileIndexer {
 
 		} while (lastLinePosition == null || linePosition > lastLinePosition);
 
-		return new TextFileIndex(lineNumberModulus, ArraysUtil.convertToLongArray(linePositions.subList(0, linePositions.size() - 1)), numberOfLines, maxCharactersInALineByTabCount);
+		return new TextFileIndex(fileSizeInBytes, lineNumberModulus, ArraysUtil.convertToLongArray(linePositions.subList(0, linePositions.size() - 1)), numberOfLines, maxCharactersInALineByTabCount);
+	}
+
+	private static int[] convertLongToTwoInts(long longValue) {
+		int intOne = (int) (longValue >> 32);
+		int intTwo = (int) longValue;
+		return new int[] { intOne, intTwo };
+	}
+
+	private static long convertTwoIntsToLong(int intOne, int intTwo) {
+		long longValue = (((long) intOne) << 32) | (intTwo & 0xffffffffL);
+		return longValue;
 	}
 
 	public static void saveIndexedTextToFile(TextFileIndex textFileIndex, File indexFile) throws IOException {
@@ -361,10 +384,16 @@ public class TextFileIndexer {
 		int bitsPerEntry = BitSetUtil.getBitsRequiredToStoreUnsignedLong(maxIndexValue);
 		int lineNumberModulus = textFileIndex.getRecordedLineIncrements();
 		int numberOfLines = textFileIndex.getNumberOfLines();
+		long fileSizeInBytes = textFileIndex.getFileSizeInBytes();
+		int[] fileSizeAsTwoInts = convertLongToTwoInts(fileSizeInBytes);
+		int fileSizeAsIntOne = fileSizeAsTwoInts[0];
+		int fileSizeAsIntTwo = fileSizeAsTwoInts[1];
 
 		List<Integer> integersToWrite = new ArrayList<Integer>();
 		integersToWrite.add(MAGIC_NUMBER);
 		integersToWrite.add(VERSION);
+		integersToWrite.add(fileSizeAsIntOne);
+		integersToWrite.add(fileSizeAsIntTwo);
 		integersToWrite.add(bitsPerEntry);
 		integersToWrite.add(lineNumberModulus);
 		integersToWrite.add(numberOfLines);
@@ -383,55 +412,5 @@ public class TextFileIndexer {
 		}
 
 		BitSetUtil.writeBitSetToFile(bitSet, indexFile);
-	}
-
-	// public static void main2(String[] args) {
-	// // File file = new File("D:\\kurts_space\\hsq_with_pete\\4\\607387-750ng-6hr_merged_TGATAT_L001_R1_001.fastq");
-	// File file = new File("D:\\kurts_space\\hsq_with_pete\\4\\150109_HG38_Filtered_Exome_HSQ_HX1_probe_info.txt");
-	// File indexFile = new File(file.getParent(), file.getName() + ".idx");
-	//
-	// try {
-	// TextFileIndex linePositions = indexText(file, 1);
-	// saveIndexedTextToFile(linePositions, indexFile);
-	// TextFileIndex linePositionsFromIndex;
-	//
-	// linePositionsFromIndex = loadIndexFile(indexFile);
-	//
-	// if (!Arrays.equals(linePositions.getBytePositionOfLines(), linePositionsFromIndex.getBytePositionOfLines())) {
-	// throw new IllegalStateException("indexes are not equal");
-	// } else {
-	// System.out.println("looks good.");
-	// }
-	// } catch (IOException e) {
-	// e.printStackTrace();
-	// }
-	//
-	// }
-
-	public static void main(String[] args) {
-		// File file = new File("D:\\kurts_space\\hsq_with_pete\\4\\607387-750ng-6hr_merged_TGATAT_L001_R1_001.fastq");
-		File fileOne = new File("D:\\kurts_space\\hsq_with_pete\\1\\.Batch1_Capture1_NA12878_L001_R2_001.fastq.gz.idx");
-		File fileTwo = new File("D:\\kurts_space\\hsq_with_pete\\1\\.Batch1_Capture1_NA12878_L001_R2_001.fastq.idx");
-
-		try {
-			TextFileIndex one = loadIndexFile(fileOne);
-			TextFileIndex two = loadIndexFile(fileTwo);
-
-			System.out.println(one);
-			System.out.println(two);
-
-			long[] onep = one.getBytePositionOfLines();
-			long[] twop = two.getBytePositionOfLines();
-
-			for (int i = 0; i < onep.length; i++) {
-				if (onep[i] != twop[i]) {
-					System.out.println("reg:" + onep[i] + " zip:" + twop[i]);
-				}
-			}
-
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
 	}
 }

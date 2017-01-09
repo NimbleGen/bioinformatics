@@ -236,7 +236,8 @@ public class GZipIndexer {
 
 		dictionariesBytesOutputStream.close();
 
-		TextFileIndex fileIndex = new TextFileIndex(recordedLineIncrement, ArraysUtil.convertToLongArray(linePositionsInBytes), (int) parser.totalLinesReadInFile, maxCharsByTabCount);
+		TextFileIndex fileIndex = new TextFileIndex(inputStreamFactory.getSizeInBytes(), recordedLineIncrement, ArraysUtil.convertToLongArray(linePositionsInBytes), (int) parser.totalLinesReadInFile,
+				maxCharsByTabCount);
 
 		return new GZipIndexPair(gZipIndex, fileIndex);
 	}
@@ -326,32 +327,6 @@ public class GZipIndexer {
 				output.write(currentBytes);
 			}
 		}
-	}
-
-	public static void main(String[] args) {
-		// File file = new File("D:\\kurts_space\\hsq_with_pete\\4\\607387-750ng-6hr_merged_TGATAT_L001_R1_001.fastq");
-		File file = new File("D:\\kurts_space\\hsq_with_pete\\1\\Batch1_Capture1_NA12878_L001_R2_001.fastq.gz");
-		File indexFile = new File(file.getParent(), "." + file.getName() + ".gzx");
-		File dictionaryFile = new File(file.getParent(), "." + file.getName() + ".gzdict");
-		File textIndexFile = new File(file.getParent(), "." + file.getName() + ".idx");
-
-		// try {
-		// GZipIndexPair pair = indexText(file, dictionaryFile, 10);
-		// GZipIndex index = pair.getGzipIndex();
-		//
-		// TextFileIndexer.saveIndexedTextToFile(pair.getTextFileIndex(), textIndexFile);
-		//
-		// saveGZipIndexToFile(index, indexFile);
-		// GZipIndex index2 = loadIndexFile(indexFile, dictionaryFile);
-		// if (!index.equals(index2)) {
-		// throw new IllegalStateException("indexes are not equal");
-		// } else {
-		// System.out.println("looks good.");
-		// }
-		// } catch (IOException e) {
-		// e.printStackTrace();
-		// }
-
 	}
 
 }

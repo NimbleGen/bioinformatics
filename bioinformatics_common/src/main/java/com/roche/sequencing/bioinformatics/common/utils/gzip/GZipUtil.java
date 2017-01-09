@@ -366,6 +366,10 @@ public final class GZipUtil {
 					compressedBytePosition += compressedByteIndex;
 
 					currentBitPositionInByte = (int) ((block.getCompressedSizeInBits() + currentBitPositionInByte) % BITS_PER_BYTE);
+
+					if (Thread.currentThread().isInterrupted()) {
+						throw new RuntimeException("Decoding was stopped.");
+					}
 				}
 
 				// need to read crc and and ISize

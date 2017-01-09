@@ -12,6 +12,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Image;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
@@ -21,10 +22,7 @@ import java.awt.event.ItemListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +34,7 @@ import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -47,8 +46,10 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
+import javax.swing.KeyStroke;
 import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingWorker;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.border.TitledBorder;
@@ -59,34 +60,17 @@ import javax.swing.plaf.FontUIResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.roche.sequencing.bioinformatics.common.text.GZipIndex;
-import com.roche.sequencing.bioinformatics.common.text.GZipIndexer;
-import com.roche.sequencing.bioinformatics.common.text.GZipIndexer.GZipIndexPair;
-import com.roche.sequencing.bioinformatics.common.text.ITextProgressListener;
-import com.roche.sequencing.bioinformatics.common.text.ProgressUpdate;
-import com.roche.sequencing.bioinformatics.common.text.TextFileIndex;
-import com.roche.sequencing.bioinformatics.common.text.TextFileIndexer;
 import com.roche.sequencing.bioinformatics.common.text.fonts.FontHelper;
-import com.roche.sequencing.bioinformatics.common.text.fonts.MenuScroller;
 import com.roche.sequencing.bioinformatics.common.text.viewer.ColorChooserHelper.TextViewerColor;
 import com.roche.sequencing.bioinformatics.common.utils.ColorsUtil;
-import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
-import com.roche.sequencing.bioinformatics.common.utils.InputStreamFactory;
 import com.roche.sequencing.bioinformatics.common.utils.JavaUiUtil;
 import com.roche.sequencing.bioinformatics.common.utils.ListUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
-import com.roche.sequencing.bioinformatics.common.utils.gzip.BamByteDecoder;
-import com.roche.sequencing.bioinformatics.common.utils.gzip.GZipUtil;
-import com.roche.sequencing.bioinformatics.common.utils.gzip.IByteDecoder;
-import com.roche.sequencing.bioinformatics.common.utils.gzip.IBytes;
-import com.roche.sequencing.bioinformatics.common.utils.gzip.RandomAccessFileBytes;
 
 public class TextViewer extends JFrame {
 
 	private final static Logger logger = LoggerFactory.getLogger(TextViewer.class);
 	private static final long serialVersionUID = 1L;
-
-	private final static DecimalFormat DF = new DecimalFormat("###,###");
 
 	private final static Font MONOSPACED_FONT = new Font("Monospaced", Font.PLAIN, 12);
 
@@ -101,6 +85,10 @@ public class TextViewer extends JFrame {
 	public final static FontUIResource MENU_FONT = new FontUIResource("Serif", Font.PLAIN, 16);
 	public final static FontUIResource SMALL_MENU_FONT = new FontUIResource("Serif", Font.PLAIN, 14);
 
+	private final static ImageIcon GOTO_ICON = new ImageIcon(TextViewer.class.getResource("goto.png"));
+	private final static ImageIcon CLIPBOARD_ICON = new ImageIcon(TextViewer.class.getResource("clipboard.png"));
+	private final static ImageIcon SAVE_ICON = new ImageIcon(TextViewer.class.getResource("save.png"));
+	private final static ImageIcon SEARCH_ICON = new ImageIcon(TextViewer.class.getResource("find.png"));
 	private final static ImageIcon CLOSE_ICON = new ImageIcon(TextViewer.class.getResource("close.png"));
 	private final static ImageIcon CLOSE_HOVER_ICON = new ImageIcon(TextViewer.class.getResource("close_hover.png"));
 	private final static ImageIcon EXIT_ICON = new ImageIcon(TextViewer.class.getResource("exit.png"));
@@ -126,8 +114,11 @@ public class TextViewer extends JFrame {
 	private final static String LAST_FONT_COLOR_OPACITY_PROPERTIES_KEY = "last_font_color_opacity";
 	private final static String LAST_FONT_BACKGROUND_COLOR_PROPERTIES_KEY = "last_background_color";
 	private final static String LAST_FONT_BACKGROUND_COLOR_OPACITY_PROPERTIES_KEY = "last_background_color_opacity";
+	private final static String LAST_SHOW_LINE_NUMBERS_PROPERTIES_KEY = "last_show_line_numbers";
 	private final static String LAST_DATA_HEADER_BACKGROUND_COLOR_PROPERTIES_KEY = "last_data_header_background_color";
 	private final static String LAST_DATA_HEADER_BACKGROUND_COLOR_OPACITY_PROPERTIES_KEY = "last_data_header_background_color_opacity";
+	private final static String LAST_ABOVE_DATA_HEADER_BACKGROUND_COLOR_PROPERTIES_KEY = "last_above_data_header_background_color";
+	private final static String LAST_ABOVE_DATA_HEADER_BACKGROUND_COLOR_OPACITY_PROPERTIES_KEY = "last_above_data_header_background_color_opacity";
 	private final static String LAST_DATA_LINE_COLOR_PROPERTIES_KEY = "last_data_line_color";
 	private final static String LAST_DATA_LINE_COLOR_OPACITY_PROPERTIES_KEY = "last_data_line_color_opacity";
 
@@ -142,16 +133,6 @@ public class TextViewer extends JFrame {
 
 	public final static Cursor TEXT_CURSOR = new Cursor(Cursor.TEXT_CURSOR);
 
-	private final static int LINES_FOR_EACH_INDEX = 100;
-
-	private final static String INDEX_EXTENSION = "idx";
-	private final static String GZIP_DICTIONARY_EXTENSION = "gzdict";
-	private final static String GZIP_INDEX_EXTENSION = "gzx";
-	private final static String GZIP_FILE_EXTENSION = "gz";
-	final static String BAM_FILE_EXTENSION = "bam";
-	private final static String BAM_BLOCK_INDEX = "bamblockindex";
-	private final static String INDEX_DIR = "text_viewer_indexes";
-
 	private final JTabbedPane tabbedPane;
 	private final List<TextViewerPanel> textViewerPanels;
 
@@ -164,10 +145,12 @@ public class TextViewer extends JFrame {
 
 	private final boolean isStandAlone;
 
+	private boolean showLineNumbers;
 	private Font textFont;
 	private Color textColor;
 	private Color backgroundTextPanelColor;
 	private Color dataHeaderBackgroundColor;
+	private Color aboveDataHeaderBackgroundColor;
 	private Color dataLineColor;
 
 	private JPanel dataOptionsPanel;
@@ -200,10 +183,12 @@ public class TextViewer extends JFrame {
 
 		JavaUiUtil.setUIFont(DEFAULT_DISPLAY_FONT);
 
+		this.showLineNumbers = true;
 		this.textFont = monoSpacedFonts.get(0);
 		this.textColor = Color.BLACK;
 		this.backgroundTextPanelColor = Color.WHITE;
 		this.dataHeaderBackgroundColor = new Color(0f, 0f, 1f, 0.25f);
+		this.aboveDataHeaderBackgroundColor = Color.LIGHT_GRAY;
 		this.dataLineColor = Color.BLACK;
 
 		if (isStandAlone) {
@@ -321,6 +306,15 @@ public class TextViewer extends JFrame {
 			}
 		}
 
+		String showLineNumbersAsString = preferences.get(LAST_SHOW_LINE_NUMBERS_PROPERTIES_KEY, null);
+		if (showLineNumbersAsString != null) {
+			try {
+				showLineNumbers = Boolean.parseBoolean(showLineNumbersAsString);
+			} catch (NumberFormatException e) {
+				logger.warn(e.getMessage(), e);
+			}
+		}
+
 		String dataBackgroundColorAsString = preferences.get(LAST_DATA_HEADER_BACKGROUND_COLOR_PROPERTIES_KEY, null);
 		if (dataBackgroundColorAsString != null) {
 			try {
@@ -336,6 +330,26 @@ public class TextViewer extends JFrame {
 			try {
 				int backgroundColorAlpha = Integer.parseInt(dataBackgroundOpacityColorAsString);
 				dataHeaderBackgroundColor = ColorsUtil.addAlpha(dataHeaderBackgroundColor, backgroundColorAlpha);
+			} catch (NumberFormatException e) {
+				logger.warn(e.getMessage(), e);
+			}
+		}
+
+		String aboveDataBackgroundColorAsString = preferences.get(LAST_ABOVE_DATA_HEADER_BACKGROUND_COLOR_PROPERTIES_KEY, null);
+		if (aboveDataBackgroundColorAsString != null) {
+			try {
+				int aboveDataBackgroundColorRgb = Integer.parseInt(aboveDataBackgroundColorAsString);
+				aboveDataHeaderBackgroundColor = new Color(aboveDataBackgroundColorRgb);
+			} catch (NumberFormatException e) {
+				logger.warn(e.getMessage(), e);
+			}
+		}
+
+		String aboveDataBackgroundOpacityColorAsString = preferences.get(LAST_ABOVE_DATA_HEADER_BACKGROUND_COLOR_OPACITY_PROPERTIES_KEY, null);
+		if (aboveDataBackgroundOpacityColorAsString != null) {
+			try {
+				int aboveDataBackgroundColorAlpha = Integer.parseInt(aboveDataBackgroundOpacityColorAsString);
+				aboveDataHeaderBackgroundColor = ColorsUtil.addAlpha(aboveDataHeaderBackgroundColor, aboveDataBackgroundColorAlpha);
 			} catch (NumberFormatException e) {
 				logger.warn(e.getMessage(), e);
 			}
@@ -402,8 +416,11 @@ public class TextViewer extends JFrame {
 				preferences.put(LAST_FONT_COLOR_OPACITY_PROPERTIES_KEY, "" + textColor.getAlpha());
 				preferences.put(LAST_FONT_BACKGROUND_COLOR_PROPERTIES_KEY, "" + backgroundTextPanelColor.getRGB());
 				preferences.put(LAST_FONT_BACKGROUND_COLOR_OPACITY_PROPERTIES_KEY, "" + backgroundTextPanelColor.getAlpha());
+				preferences.put(LAST_SHOW_LINE_NUMBERS_PROPERTIES_KEY, "" + showLineNumbers);
 				preferences.put(LAST_DATA_HEADER_BACKGROUND_COLOR_PROPERTIES_KEY, "" + dataHeaderBackgroundColor.getRGB());
 				preferences.put(LAST_DATA_HEADER_BACKGROUND_COLOR_OPACITY_PROPERTIES_KEY, "" + dataHeaderBackgroundColor.getAlpha());
+				preferences.put(LAST_ABOVE_DATA_HEADER_BACKGROUND_COLOR_PROPERTIES_KEY, "" + aboveDataHeaderBackgroundColor.getRGB());
+				preferences.put(LAST_ABOVE_DATA_HEADER_BACKGROUND_COLOR_OPACITY_PROPERTIES_KEY, "" + aboveDataHeaderBackgroundColor.getAlpha());
 				preferences.put(LAST_DATA_LINE_COLOR_PROPERTIES_KEY, "" + dataLineColor.getRGB());
 				preferences.put(LAST_DATA_LINE_COLOR_OPACITY_PROPERTIES_KEY, "" + dataLineColor.getAlpha());
 
@@ -495,26 +512,35 @@ public class TextViewer extends JFrame {
 						String lastOpenedFileName = split[i];
 						if (!lastOpenedFileName.isEmpty()) {
 							File lastOpenedFile = new File(lastOpenedFileName);
-							TextViewerPanel textViewerPanel = readInFile(lastOpenedFile);
 
-							if (textViewerPanel != null) {
-								if (i < lastOpenedFilePositions.size()) {
-									int lineNumber = lastOpenedFilePositions.get(i);
-									textViewerPanel.setLineNumber(lineNumber);
+							final int index = i;
+
+							IStuffToDoAfterFileIsLoaded stuffToDoAfterFileIsLoaded = new IStuffToDoAfterFileIsLoaded() {
+
+								@Override
+								public void doAfterFileIsLoaded(TextViewerPanel textViewerPanel) {
+									if (textViewerPanel != null) {
+										if (index < lastOpenedFilePositions.size()) {
+											int lineNumber = lastOpenedFilePositions.get(index);
+											textViewerPanel.setLineNumber(lineNumber);
+										}
+										if (index < lastOpenededShowAsDataList.size()) {
+											boolean showAsData = lastOpenededShowAsDataList.get(index);
+											textViewerPanel.setShowDataView(showAsData);
+										}
+										if (index < lastOpenededHeaderLineNumbersList.size()) {
+											int headerLineNumber = lastOpenededHeaderLineNumbersList.get(index);
+											textViewerPanel.setHeaderLineNumber(headerLineNumber);
+										}
+										if (index < lastOpenededTabSizesList.size()) {
+											int tabSize = lastOpenededTabSizesList.get(index);
+											textViewerPanel.setTabSize(tabSize);
+										}
+									}
 								}
-								if (i < lastOpenededShowAsDataList.size()) {
-									boolean showAsData = lastOpenededShowAsDataList.get(i);
-									textViewerPanel.setShowDataView(showAsData);
-								}
-								if (i < lastOpenededHeaderLineNumbersList.size()) {
-									int headerLineNumber = lastOpenededHeaderLineNumbersList.get(i);
-									textViewerPanel.setHeaderLineNumber(headerLineNumber);
-								}
-								if (i < lastOpenededTabSizesList.size()) {
-									int tabSize = lastOpenededTabSizesList.get(i);
-									textViewerPanel.setTabSize(tabSize);
-								}
-							}
+							};
+							readInFile(lastOpenedFile, stuffToDoAfterFileIsLoaded);
+
 						}
 					}
 					tabbedPane.setSelectedIndex(selectedTab);
@@ -548,6 +574,7 @@ public class TextViewer extends JFrame {
 				}
 			}
 		});
+		openMenuItem.setAccelerator(KeyStroke.getKeyStroke('O', Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		menuFile.add(openMenuItem);
 
 		menuItemCloseAllFiles = new JMenuItem("Close All", CLOSE_ALL_ICON);
@@ -560,7 +587,7 @@ public class TextViewer extends JFrame {
 		menuItemCloseAllFiles.setFont(MENU_FONT);
 		menuFile.add(menuItemCloseAllFiles);
 
-		JMenuItem quitMenuItem = new JMenuItem("Quit", EXIT_ICON);
+		JMenuItem quitMenuItem = new JMenuItem("Exit", EXIT_ICON);
 		quitMenuItem.setFont(MENU_FONT);
 		quitMenuItem.addActionListener(new ActionListener() {
 			@Override
@@ -572,12 +599,13 @@ public class TextViewer extends JFrame {
 				}
 			}
 		});
+		quitMenuItem.setAccelerator(KeyStroke.getKeyStroke('X', Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		menuFile.add(quitMenuItem);
 		mainMenuBar.add(menuFile);
 
 		JMenu menuEdit = new JMenu("Edit");
 		menuEdit.setFont(MENU_FONT);
-		JMenuItem copyToClipBoardMenuItem = new JMenuItem("Copy Selection to ClipBoard", IMPORT_DATA_ICON);
+		JMenuItem copyToClipBoardMenuItem = new JMenuItem("Copy Selection to ClipBoard", CLIPBOARD_ICON);
 		copyToClipBoardMenuItem.setFont(MENU_FONT);
 		copyToClipBoardMenuItem.addActionListener(new ActionListener() {
 			@Override
@@ -588,9 +616,10 @@ public class TextViewer extends JFrame {
 				}
 			}
 		});
+		copyToClipBoardMenuItem.setAccelerator(KeyStroke.getKeyStroke('C', Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		menuEdit.add(copyToClipBoardMenuItem);
 
-		JMenuItem saveSelectionToFileMenuItem = new JMenuItem("Save Selection to File", IMPORT_DATA_ICON);
+		JMenuItem saveSelectionToFileMenuItem = new JMenuItem("Save Selection to File", SAVE_ICON);
 		saveSelectionToFileMenuItem.setFont(MENU_FONT);
 		saveSelectionToFileMenuItem.addActionListener(new ActionListener() {
 			@Override
@@ -601,15 +630,45 @@ public class TextViewer extends JFrame {
 				}
 			}
 		});
+		saveSelectionToFileMenuItem.setAccelerator(KeyStroke.getKeyStroke('S', Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 		menuEdit.add(saveSelectionToFileMenuItem);
+
+		JMenuItem gotoLineNumberMenuItem = new JMenuItem("Go To Line Number", GOTO_ICON);
+		gotoLineNumberMenuItem.setFont(MENU_FONT);
+		gotoLineNumberMenuItem.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				TextViewerPanel selectedPanel = (TextViewerPanel) tabbedPane.getSelectedComponent();
+				if (selectedPanel != null) {
+					selectedPanel.haveUserGoToLineNumber();
+				}
+			}
+		});
+		gotoLineNumberMenuItem.setAccelerator(KeyStroke.getKeyStroke('G', Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+		menuEdit.add(gotoLineNumberMenuItem);
+
+		JMenuItem findTextMenuItem = new JMenuItem("Find Text", SEARCH_ICON);
+		findTextMenuItem.setFont(MENU_FONT);
+		findTextMenuItem.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				TextViewerPanel selectedPanel = (TextViewerPanel) tabbedPane.getSelectedComponent();
+				if (selectedPanel != null) {
+					selectedPanel.haveUserFindText();
+				}
+			}
+		});
+		findTextMenuItem.setAccelerator(KeyStroke.getKeyStroke('F', Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+		menuEdit.add(findTextMenuItem);
+
 		mainMenuBar.add(menuEdit);
 
 		JMenu menuView = new JMenu("View");
 		menuView.setFont(MENU_FONT);
-		ButtonGroup group = new ButtonGroup();
+		ButtonGroup textOrDataGroup = new ButtonGroup();
 		menuView.addSeparator();
 
-		dataOptionsPanel = new JPanel(new GridLayout(4, 1));
+		dataOptionsPanel = new JPanel(new GridLayout(5, 1));
 		textOptionsPanel = new JPanel();
 
 		viewAsTextRadioButtonMenuItem = new StayOpenRadioButtonMenuItem("View as Text");
@@ -625,7 +684,7 @@ public class TextViewer extends JFrame {
 				}
 			}
 		});
-		group.add(viewAsTextRadioButtonMenuItem);
+		textOrDataGroup.add(viewAsTextRadioButtonMenuItem);
 
 		headerExistsCheckBox = new JCheckBox("Include Header");
 		viewAsDataRadioButtonMenuItem = new StayOpenRadioButtonMenuItem("View as Data");
@@ -640,7 +699,7 @@ public class TextViewer extends JFrame {
 				headerExistsCheckBox.setSelected(true);
 			}
 		});
-		group.add(viewAsDataRadioButtonMenuItem);
+		textOrDataGroup.add(viewAsDataRadioButtonMenuItem);
 
 		// general view items
 
@@ -666,7 +725,6 @@ public class TextViewer extends JFrame {
 				}
 			});
 		}
-		MenuScroller menuScroller = new MenuScroller(fontSubMenu);
 		menuView.add(fontSubMenu);
 
 		JMenuItem fontSizeMenuItem = new JMenuItem("Font Size:");
@@ -693,6 +751,20 @@ public class TextViewer extends JFrame {
 		backgroundColorMenuItem.setFont(MENU_FONT);
 		backgroundColorMenuItem.addActionListener(ColorChooserHelper.createActionListener(this, "Select Background Color", TextViewerColor.BACKGROUND, this));
 		menuView.add(backgroundColorMenuItem);
+
+		JCheckBoxMenuItem showLineNumbersCheckBox = new JCheckBoxMenuItem("Show Line Numbers");
+		showLineNumbersCheckBox.setFont(MENU_FONT);
+		showLineNumbersCheckBox.setSelected(showLineNumbers);
+		showLineNumbersCheckBox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println("checked.");
+				TextViewerPanel selectedPanel = (TextViewerPanel) tabbedPane.getSelectedComponent();
+				showLineNumbers = showLineNumbersCheckBox.isSelected();
+				selectedPanel.showLineNumbers(showLineNumbers);
+			}
+		});
+		menuView.add(showLineNumbersCheckBox);
 
 		menuView.addSeparator();
 		// end general view items
@@ -739,6 +811,11 @@ public class TextViewer extends JFrame {
 
 		dataOptionsPanel
 				.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.black), "Data Settings", TitledBorder.LEADING, TitledBorder.DEFAULT_POSITION, SMALL_MENU_FONT));
+
+		JButton aboveHeaderColorMenuItem = new JButton("Above Header Color", ColorChooserHelper.createIcon(aboveDataHeaderBackgroundColor));
+		aboveHeaderColorMenuItem.setFont(MENU_FONT);
+		aboveHeaderColorMenuItem.addActionListener(ColorChooserHelper.createActionListener(this, "Select Above Header Color", TextViewerColor.ABOVE_HEADER_BACKGROUND, this));
+		dataOptionsPanel.add(aboveHeaderColorMenuItem);
 
 		JButton headerColorMenuItem = new JButton("Header Color", ColorChooserHelper.createIcon(dataHeaderBackgroundColor));
 		headerColorMenuItem.setFont(MENU_FONT);
@@ -882,8 +959,16 @@ public class TextViewer extends JFrame {
 		return dataHeaderBackgroundColor;
 	}
 
+	public Color getAboveDataHeaderBackgroundColor() {
+		return aboveDataHeaderBackgroundColor;
+	}
+
 	public void setDataHeaderBackgroundColor(Color dataHeaderBackgroundColor) {
 		this.dataHeaderBackgroundColor = dataHeaderBackgroundColor;
+	}
+
+	public void setAboveDataHeaderBackgroundColor(Color aboveDataHeaderBackgroundColor) {
+		this.aboveDataHeaderBackgroundColor = aboveDataHeaderBackgroundColor;
 	}
 
 	public Color getDataLineColor() {
@@ -921,140 +1006,15 @@ public class TextViewer extends JFrame {
 		preferences.put(LAST_VIEW_FRAME_HEIGHT_PROPERTIES_KEY, "" + (int) (getHeight()));
 	}
 
-	public static boolean isFileIndexed(File file) {
-		boolean isFileIndexed = false;
-
-		if (file.exists()) {
-			// check if there is an index file
-			// prepend a '.' to the file name so it is possibly hidden or at least separates from actual file name when files
-			// are listed
-			File indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + INDEX_EXTENSION);
-			boolean isGzipFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(GZIP_FILE_EXTENSION);
-			boolean isBamFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(BAM_FILE_EXTENSION);
-			if (isGzipFile || isBamFile || GZipUtil.isCompressed(file)) {
-				indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + FileUtil.getFileNameWithoutExtension(file.getName()) + "."
-						+ INDEX_EXTENSION);
-				File gZipIndexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + GZIP_INDEX_EXTENSION);
-				File gZipDictionaryFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + GZIP_DICTIONARY_EXTENSION);
-				if (isBamFile) {
-					File bamBlockIndexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + BAM_BLOCK_INDEX);
-					isFileIndexed = (gZipIndexFile.exists() && gZipDictionaryFile.exists() && bamBlockIndexFile.exists());
-				} else {
-					isFileIndexed = (gZipIndexFile.exists() && gZipDictionaryFile.exists());
-				}
-			} else {
-				isFileIndexed = indexFile.exists();
-			}
-		}
-		return isFileIndexed;
-	}
-
-	public static int getNumberOfLinesFromIndex(File file) {
-		int numberOfLines = 0;
-
-		if (file.exists()) {
-			// check if there is an index file
-			// prepend a '.' to the file name so it is possibly hidden or at least separates from actual file name when files
-			// are listed
-
-			File indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + INDEX_EXTENSION);
-			boolean isGzipFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(GZIP_FILE_EXTENSION);
-			boolean isBamFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(BAM_FILE_EXTENSION);
-			if (isGzipFile || isBamFile || GZipUtil.isCompressed(file)) {
-				indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + FileUtil.getFileNameWithoutExtension(file.getName()) + "."
-						+ INDEX_EXTENSION);
-			}
-
-			if (indexFile.exists()) {// && searcherIndexFile.exists()) {
-				try {
-					TextFileIndex textFileIndex = TextFileIndexer.loadIndexFile(indexFile);
-					numberOfLines = textFileIndex.getNumberOfLines();
-					// textSearcher = new TextSearcher(searcherIndexFile);
-				} catch (IOException e) {
-					logger.warn(e.getMessage(), e);
-				}
-			}
-		}
-		return numberOfLines;
-	}
-
-	public static Indexes indexFile(File file, ITextProgressListener progressListener) {
-		TextFileIndex textFileIndex = null;
-		GZipIndex gZipIndex = null;
-		IBytes gZipDictionaryBytes = null;
-		File bamBlockIndexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + BAM_BLOCK_INDEX);
-
-		// check if there is an index file
-		// prepend a '.' to the file name so it is possibly hidden or at least separates from actual file name when files
-		// are listed
-		File indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + INDEX_EXTENSION);
-		boolean isGzipFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(GZIP_FILE_EXTENSION);
-		boolean isBamFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(BAM_FILE_EXTENSION);
-		if (isGzipFile || isBamFile || GZipUtil.isCompressed(file)) {
-			indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + FileUtil.getFileNameWithoutExtension(file.getName()) + "."
-					+ INDEX_EXTENSION);
-			File gZipIndexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + GZIP_INDEX_EXTENSION);
-			File gZipDictionaryFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + GZIP_DICTIONARY_EXTENSION);
-			if (gZipIndexFile.exists() && gZipDictionaryFile.exists()) {
-				try {
-					gZipIndex = GZipIndexer.loadIndexFile(gZipIndexFile, gZipDictionaryFile);
-					gZipDictionaryBytes = new RandomAccessFileBytes(new RandomAccessFile(gZipDictionaryFile, "r"));
-				} catch (IOException e) {
-					logger.warn(e.getMessage(), e);
-				}
-			}
-
-			if (gZipIndex == null || gZipDictionaryBytes == null || (isBamFile && !bamBlockIndexFile.exists())) {
-				try {
-
-					IByteDecoder byteConverter = null;
-					if (isBamFile) {
-						byteConverter = new BamByteDecoder();
-					}
-
-					GZipIndexPair gZipIndexPair = GZipIndexer.indexGZipBlocks(new InputStreamFactory(file), gZipDictionaryFile, LINES_FOR_EACH_INDEX, progressListener, byteConverter);
-					if (byteConverter != null) {
-						byteConverter.persistToFile(bamBlockIndexFile);
-					}
-
-					gZipIndex = gZipIndexPair.getGzipIndex();
-					textFileIndex = gZipIndexPair.getTextFileIndex();
-					gZipDictionaryBytes = new RandomAccessFileBytes(new RandomAccessFile(gZipDictionaryFile, "r"));
-
-					GZipIndexer.saveGZipIndexToFile(gZipIndex, gZipIndexFile);
-					TextFileIndexer.saveIndexedTextToFile(textFileIndex, indexFile);
-				} catch (IOException e) {
-					logger.warn(e.getMessage(), e);
-				}
-			}
-		}
-
-		if (indexFile.exists()) {// && searcherIndexFile.exists()) {
-			try {
-				textFileIndex = TextFileIndexer.loadIndexFile(indexFile);
-				// textSearcher = new TextSearcher(searcherIndexFile);
-			} catch (IOException e) {
-				logger.warn(e.getMessage(), e);
-			}
-		}
-
-		if (textFileIndex == null) {
-			// TODO if the file is larger than a set size load a sample and display it first before creating the index
-			// assuming that the user would initially want to see the format of the file and maybe doesn't even want
-			// to see the whole file
-
-			try {
-				textFileIndex = TextFileIndexer.indexText(file, LINES_FOR_EACH_INDEX, progressListener);
-				TextFileIndexer.saveIndexedTextToFile(textFileIndex, indexFile);
-			} catch (IOException e) {
-				logger.warn(e.getMessage(), e);
-			}
-		}
-
-		return new Indexes(textFileIndex, gZipIndex, gZipDictionaryBytes, bamBlockIndexFile);
-	}
-
 	public TextViewerPanel readInFile(File file) {
+		return readInFile(file, null);
+	}
+
+	private static interface IStuffToDoAfterFileIsLoaded {
+		void doAfterFileIsLoaded(TextViewerPanel textViewerPanel);
+	}
+
+	public TextViewerPanel readInFile(File file, IStuffToDoAfterFileIsLoaded runAfterFileIsLoaded) {
 		TextViewerPanel textViewerPanel = null;
 
 		boolean fileIsAlreadyOpen = false;
@@ -1071,87 +1031,39 @@ public class TextViewer extends JFrame {
 			}
 		}
 
-		RandomAccessFile randomAccessToFile = null;
-
 		if (!fileIsAlreadyOpen) {
-			// open the file
-			try {
-				randomAccessToFile = new RandomAccessFile(file, "r");
 
-				if (randomAccessToFile != null) {
-					ITextProgressListener progressListener = new ITextProgressListener() {
-
-						@Override
-						public void progressOccurred(ProgressUpdate progressUpdate) {
-							TextViewerPanel selectedPanel = (TextViewerPanel) tabbedPane.getSelectedComponent();
-							if (selectedPanel != null) {
-								selectedPanel.setGeneralStatusText("Indexing " + file.getAbsolutePath() + ".  " + progressUpdate.getPercentComplete() + "%  Indexed.  Time Left:"
-										+ progressUpdate.getEstimatedTimeToCompletionInHHMMSS() + "(HH:MM:SS)");
-							} else {
-								// TODO put the status in the main text viewer background
-							}
-						}
-					};
-
-					try {
-						Indexes indexes = indexFile(file, progressListener);
-
-						textViewerPanel = new TextViewerPanel(this, file, randomAccessToFile, indexes.getTextFileIndex(), indexes.getgZipIndex(), indexes.getgZipDictionaryBytes(),
-								indexes.getBamBlockIndexFile());
-					} catch (Exception e) {
-						JOptionPane.showMessageDialog(this, "Unable to open " + file.getAbsolutePath() + ".  " + e.getMessage(), "Error Opening File", JOptionPane.ERROR_MESSAGE);
-					}
-					TextViewerPanel selectedPanel = (TextViewerPanel) tabbedPane.getSelectedComponent();
-					if (selectedPanel != null) {
-						selectedPanel.setGeneralStatusText("");
-					}
-
-					textViewerPanel.setTransferHandler(new DragAndDropFileTransferHandler(this));
-
-					textViewerPanels.add(textViewerPanel);
-					tabbedPane.addTab(file.getName(), textViewerPanel);
-					tabbedPane.setTabComponentAt(tabbedPane.indexOfComponent(textViewerPanel), createTabLabelPanel(textViewerPanel));
-
-					tabbedPane.setSelectedComponent(textViewerPanel);
-				}
-			} catch (FileNotFoundException e1) {
-				JOptionPane.showMessageDialog(this, "Unable to open file[" + file.getAbsolutePath() + "].", "Error Opening File", JOptionPane.ERROR_MESSAGE);
+			textViewerPanel = new TextViewerPanel(this, file);
+			TextViewerPanel selectedPanel = (TextViewerPanel) tabbedPane.getSelectedComponent();
+			if (selectedPanel != null) {
+				selectedPanel.setGeneralStatusText("");
 			}
+
+			textViewerPanel.setTransferHandler(new DragAndDropFileTransferHandler(this));
+
+			textViewerPanels.add(textViewerPanel);
+			tabbedPane.addTab(file.getName(), textViewerPanel);
+			tabbedPane.setTabComponentAt(tabbedPane.indexOfComponent(textViewerPanel), createTabLabelPanel(textViewerPanel));
+
+			tabbedPane.setSelectedComponent(textViewerPanel);
+
+			final TextViewerPanel finalTextViewerPanel = textViewerPanel;
+			textViewerPanel.indexingSwingWorker = new SwingWorker<String, String>() {
+				@Override
+				protected String doInBackground() throws Exception {
+					finalTextViewerPanel.loadFile();
+					if (runAfterFileIsLoaded != null) {
+						runAfterFileIsLoaded.doAfterFileIsLoaded(finalTextViewerPanel);
+					}
+					return null;
+				}
+			};
+			textViewerPanel.indexingSwingWorker.execute();
+			// open the file
+
 		}
 		updateCloseAllMenuItem();
 		return textViewerPanel;
-	}
-
-	public static class Indexes {
-		private final TextFileIndex textFileIndex;
-		private final GZipIndex gZipIndex;
-		private final IBytes gZipDictionaryBytes;
-		private final File bamBlockIndexFile;
-
-		public Indexes(TextFileIndex textFileIndex, GZipIndex gZipIndex, IBytes gZipDictionaryBytes, File bamBlockIndexFile) {
-			super();
-			this.textFileIndex = textFileIndex;
-			this.gZipIndex = gZipIndex;
-			this.gZipDictionaryBytes = gZipDictionaryBytes;
-			this.bamBlockIndexFile = bamBlockIndexFile;
-		}
-
-		public TextFileIndex getTextFileIndex() {
-			return textFileIndex;
-		}
-
-		public GZipIndex getgZipIndex() {
-			return gZipIndex;
-		}
-
-		public IBytes getgZipDictionaryBytes() {
-			return gZipDictionaryBytes;
-		}
-
-		public File getBamBlockIndexFile() {
-			return bamBlockIndexFile;
-		}
-
 	}
 
 	private JPanel createTabLabelPanel(TextViewerPanel textViewerPanel) {
@@ -1179,14 +1091,7 @@ public class TextViewer extends JFrame {
 		buttonClose.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				try {
-					textViewerPanel.close();
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
-
-				textViewerPanels.remove(textViewerPanel);
-				tabbedPane.remove(textViewerPanel);
+				closePanel(textViewerPanel);
 			}
 		});
 
@@ -1198,6 +1103,16 @@ public class TextViewer extends JFrame {
 		});
 
 		return panelTabLabel;
+	}
+
+	public void closePanel(TextViewerPanel textViewerPanel) {
+		try {
+			textViewerPanel.close();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		textViewerPanels.remove(textViewerPanel);
+		tabbedPane.remove(textViewerPanel);
 	}
 
 	public static File getViewFileForLoadingFromUser(JFrame parentFrame) {

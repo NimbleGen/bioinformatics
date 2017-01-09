@@ -6,14 +6,17 @@ import java.util.Map;
 
 import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.utils.ProbeFileUtil;
+import com.roche.sequencing.bioinformatics.common.multithreading.PausableFixedThreadPoolExecutor;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.Timer;
 
 public class RunWorkflow {
 
+	private final static int NUMBER_OF_THREADS = 20;
+
 	public static void main(String[] args) {
-		run1();
-		// run4();
+		// run1();
+		run4();
 
 	}
 
@@ -44,6 +47,8 @@ public class RunWorkflow {
 	}
 
 	public static void runWorkflow(int startingRead, Integer numberOfReadsToProcess, File fastqOneFile, File fastqTwoFile, File probeFile, File outputDir) {
+
+		PausableFixedThreadPoolExecutor executor = new PausableFixedThreadPoolExecutor(NUMBER_OF_THREADS, "Workflow_");
 
 		String programName = "program_name";
 		String programVersion = "program_version";
@@ -80,12 +85,12 @@ public class RunWorkflow {
 
 		timer.start("merging reads");
 		System.out.println("Merging Reads.");
-		ReadMerger.mergeReads(fastqOneFile, fastqTwoFile, mergedFile, startingRead, numberOfReadsToProcess, 0, null);
+		ReadMerger.mergeReads(executor, fastqOneFile, fastqTwoFile, mergedFile, startingRead, numberOfReadsToProcess, 0, null);
 		timer.stop("merging reads");
 
 		timer.start("assigning probes to reads");
 		System.out.println("Assigning Reads to Probe.");
-		Map<String, ProbeAssignment> readNameToProbeAssignmentMap = ProbeAssigner.assignReadsToProbes(mergedFile, parsedProbeFile, null);
+		Map<String, ProbeAssignment> readNameToProbeAssignmentMap = ProbeAssigner.assignReadsToProbes(executor, mergedFile, parsedProbeFile, null);
 		timer.stop("assigning probes to reads");
 
 		timer.start("correcting uids");
@@ -96,7 +101,7 @@ public class RunWorkflow {
 
 		timer.start("dedup");
 		System.out.println("deduping.");
-		Deduper.dedup(mergedFile, readNameToProbeAssignmentMap, parsedProbeFile, dedupApproach, trimPrimers, outputUnassignedFastq, outputUniqueFastq, outputDuplicateFastq, outputBam,
+		Deduper.dedup(executor, mergedFile, readNameToProbeAssignmentMap, parsedProbeFile, dedupApproach, trimPrimers, outputUnassignedFastq, outputUniqueFastq, outputDuplicateFastq, outputBam,
 				commandLineSignature, programName, programVersion, null);
 		timer.stop("dedup");
 		timer.stop("whole workflow");

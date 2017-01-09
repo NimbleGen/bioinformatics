@@ -7,13 +7,15 @@ import java.util.Map.Entry;
 
 public class TextFileIndex {
 
+	private final long fileSizeInBytes;
 	private final int recordedLineIncrement;
 	private final long[] bytePositionOfLines;
 	private final int numberOfLines;
 	private final Map<Integer, Integer> maxCharsByTabCount;
 
-	public TextFileIndex(int recordedLineIncrement, long[] bytePositionOfLines, int numberOfLines, Map<Integer, Integer> maxCharsByTabCount) {
+	public TextFileIndex(long fileSizeInBytes, int recordedLineIncrement, long[] bytePositionOfLines, int numberOfLines, Map<Integer, Integer> maxCharsByTabCount) {
 		super();
+		this.fileSizeInBytes = fileSizeInBytes;
 		this.recordedLineIncrement = recordedLineIncrement;
 		this.bytePositionOfLines = bytePositionOfLines;
 		this.numberOfLines = numberOfLines;
@@ -30,6 +32,10 @@ public class TextFileIndex {
 
 	public int getNumberOfLines() {
 		return numberOfLines;
+	}
+
+	public long getFileSizeInBytes() {
+		return fileSizeInBytes;
 	}
 
 	public Map<Integer, Integer> getMaxCharactersInALineByTabCount() {
@@ -56,7 +62,8 @@ public class TextFileIndex {
 
 	@Override
 	public String toString() {
-		return "TextFileIndex [recordedLineIncrement=" + recordedLineIncrement + ", numberOfLines=" + numberOfLines + ", maxCharsByTabCount=" + maxCharsByTabCount + "]";
+		return "TextFileIndex [fileSizeInBytes=" + fileSizeInBytes + ", recordedLineIncrement=" + recordedLineIncrement + ", bytePositionOfLines=" + Arrays.toString(bytePositionOfLines)
+				+ ", numberOfLines=" + numberOfLines + ", maxCharsByTabCount=" + maxCharsByTabCount + "]";
 	}
 
 	@Override
@@ -64,9 +71,10 @@ public class TextFileIndex {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + Arrays.hashCode(bytePositionOfLines);
-		result = prime * result + recordedLineIncrement;
+		result = prime * result + (int) (fileSizeInBytes ^ (fileSizeInBytes >>> 32));
 		result = prime * result + ((maxCharsByTabCount == null) ? 0 : maxCharsByTabCount.hashCode());
 		result = prime * result + numberOfLines;
+		result = prime * result + recordedLineIncrement;
 		return result;
 	}
 
@@ -81,7 +89,7 @@ public class TextFileIndex {
 		TextFileIndex other = (TextFileIndex) obj;
 		if (!Arrays.equals(bytePositionOfLines, other.bytePositionOfLines))
 			return false;
-		if (recordedLineIncrement != other.recordedLineIncrement)
+		if (fileSizeInBytes != other.fileSizeInBytes)
 			return false;
 		if (maxCharsByTabCount == null) {
 			if (other.maxCharsByTabCount != null)
@@ -89,6 +97,8 @@ public class TextFileIndex {
 		} else if (!maxCharsByTabCount.equals(other.maxCharsByTabCount))
 			return false;
 		if (numberOfLines != other.numberOfLines)
+			return false;
+		if (recordedLineIncrement != other.recordedLineIncrement)
 			return false;
 		return true;
 	}

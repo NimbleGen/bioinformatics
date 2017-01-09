@@ -674,7 +674,7 @@ public class ByteUtil {
 				bytes = increaseNumberOfBytes(bytes, BYTES_IN_A_LONG, byteOrder, isSigned);
 			}
 			throw new NumberOverflowException("The number of bytes required [" + BYTES_IN_A_LONG
-					+ "] to sufficiently store the value provided by the passed in arguments is too large to fit in a long datatype is not equal to the number of bytes found [" + bytes.length + "] .");
+					+ "] to sufficiently store the value provided by the passed in arguments is too large to fit in a long datatype[" + bytes.length + "] .");
 		}
 
 		long value = bytesToLong(bytes, byteOrder, isSigned);
@@ -746,7 +746,7 @@ public class ByteUtil {
 	 * @param bytes
 	 * @return A string containing 1s and 0s with a space for byte delimitation.
 	 */
-	private static String convertBytesToBinaryString(byte[] bytes) {
+	public static String convertBytesToBinaryString(byte[] bytes) {
 		StringBuilder stringBuilder = new StringBuilder();
 		for (byte aByte : bytes) {
 			String string = String.format("%8s", Integer.toBinaryString(aByte & 0xFF)).replace(' ', '0');
@@ -761,7 +761,7 @@ public class ByteUtil {
 	 * @param binaryString
 	 * @return A byte[] representation of the provided binary string.
 	 */
-	private static byte[] convertBinaryStringToBytes(String binaryString) {
+	public static byte[] convertBinaryStringToBytes(String binaryString) {
 		binaryString = binaryString.replaceAll(" ", "");
 		int length = binaryString.length();
 

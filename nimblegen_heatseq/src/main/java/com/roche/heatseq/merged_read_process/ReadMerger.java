@@ -5,9 +5,12 @@ import htsjdk.samtools.fastq.FastqRecord;
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.roche.heatseq.utils.FastqReader;
@@ -30,7 +33,6 @@ public class ReadMerger {
 
 	private final static DecimalFormat DF = new DecimalFormat("#,###");
 	private final static DecimalFormat DF2 = new DecimalFormat("###.00");
-	private final static int NUMBER_OF_THREADS = 20;
 	private final static int FASTQ_LINES_PER_READ = 4;
 	private final static IAlignmentScorer MERGE_ALIGNMENT_SCORER = new SimpleAlignmentScorer(1, -1000, -100, -100, false, false);
 
@@ -42,13 +44,11 @@ public class ReadMerger {
 		private final FastqRecord mergedRecord;
 		private final int numberOfBasesCorrected;
 		private final boolean mismatchingBaseWithSameQualityScoreOccurred;
-		private final int amountOfOverlap;
 
 		public MergedReadsResults(FastqRecord mergedRecord, int numberOfBasesCorrected, int amountOfOverlap, boolean mismatchingBaseWithSameQualityScoreOccurred) {
 			super();
 			this.mergedRecord = mergedRecord;
 			this.numberOfBasesCorrected = numberOfBasesCorrected;
-			this.amountOfOverlap = amountOfOverlap;
 			this.mismatchingBaseWithSameQualityScoreOccurred = mismatchingBaseWithSameQualityScoreOccurred;
 		}
 
@@ -161,8 +161,8 @@ public class ReadMerger {
 		return new MergedReadsResults(mergedRecord, numberOfBasesCorrected, amountOfOverlap, mismatchingBaseWithSameQualityScoreOccurred);
 	}
 
-	public static ReadMergerDetails mergeReads(File fastqOneFile, File fastqTwoFile, File outputFastqFile, int maxNumberOfReplacementsPerReadPair) {
-		return mergeReads(fastqOneFile, fastqTwoFile, outputFastqFile, 0, null, maxNumberOfReplacementsPerReadPair, null);
+	public static ReadMergerDetails mergeReads(PausableFixedThreadPoolExecutor executor, File fastqOneFile, File fastqTwoFile, File outputFastqFile, int maxNumberOfReplacementsPerReadPair) {
+		return mergeReads(executor, fastqOneFile, fastqTwoFile, outputFastqFile, 0, null, maxNumberOfReplacementsPerReadPair, null);
 	}
 
 	public static String getUnmergedFastqName(File fastqFile) {
@@ -173,19 +173,19 @@ public class ReadMerger {
 		return fastqName;
 	}
 
-	public static ReadMergerDetails mergeReads(File fastqOneFile, File fastqTwoFile, File outputFastqFile, int startingRead, Integer numberOfReadsToProcess, int maxNumberOfConflictsPerReadPair,
-			IProgressListener progressListener) {
+	public static ReadMergerDetails mergeReads(PausableFixedThreadPoolExecutor executor, File fastqOneFile, File fastqTwoFile, File outputFastqFile, int startingRead, Integer numberOfReadsToProcess,
+			int maxNumberOfConflictsPerReadPair, IProgressListener progressListener) {
 		int numberOfLinesInEachFile = 0;
 		try {
 			numberOfLinesInEachFile = FileUtil.countNumberOfLinesInFile(fastqOneFile);
 		} catch (IOException e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
-		return mergeReads(fastqOneFile, fastqTwoFile, numberOfLinesInEachFile, outputFastqFile, startingRead, numberOfReadsToProcess, maxNumberOfConflictsPerReadPair, progressListener);
+		return mergeReads(executor, fastqOneFile, fastqTwoFile, numberOfLinesInEachFile, outputFastqFile, startingRead, numberOfReadsToProcess, maxNumberOfConflictsPerReadPair, progressListener);
 	}
 
-	public static ReadMergerDetails mergeReads(File fastqOneFile, File fastqTwoFile, int numberOfLinesInEachFile, File outputFastqFile, int startingRead, Integer numberOfReadsToProcess,
-			int maxNumberOfConflictsPerReadPair, IProgressListener progressListener) {
+	public static ReadMergerDetails mergeReads(PausableFixedThreadPoolExecutor executor, File fastqOneFile, File fastqTwoFile, int numberOfLinesInEachFile, File outputFastqFile, int startingRead,
+			Integer numberOfReadsToProcess, int maxNumberOfConflictsPerReadPair, IProgressListener progressListener) {
 
 		if (progressListener != null) {
 			progressListener.updateProgress(0, "Starting to merge reads.");
@@ -203,14 +203,6 @@ public class ReadMerger {
 			numberOfReadsToProcess = Math.min(numberOfReadsInFile, numberOfReadsToProcess);
 		}
 
-		PausableFixedThreadPoolExecutor executor = new PausableFixedThreadPoolExecutor(NUMBER_OF_THREADS, "DEDUP_");
-		executor.addExceptionListener(new IExceptionListener() {
-			@Override
-			public void exceptionOccurred(Throwable throwable) {
-				throw new RuntimeException(throwable);
-			}
-		});
-
 		Map<Integer, FastqRecord> mergedFastqWriterQueue = new HashMap<Integer, FastqRecord>();
 		Map<Integer, FastqRecord> fastqOneWriterQueue = new HashMap<Integer, FastqRecord>();
 		Map<Integer, FastqRecord> fastqTwoWriterQueue = new HashMap<Integer, FastqRecord>();
@@ -221,6 +213,10 @@ public class ReadMerger {
 		AtomicInteger processedReadsCount = new AtomicInteger(0);
 		AtomicInteger mergedReadCount = new AtomicInteger(0);
 
+		List<Callable<Object>> tasks = new ArrayList<Callable<Object>>();
+
+		List<Throwable> exceptions = new ArrayList<Throwable>();
+
 		try (FastqWriter mergedFastqWriter = new FastqWriter(outputFastqFile)) {
 			try (FastqWriter unmergedFastqOneWriter = new FastqWriter(unmergedFastqOneFile)) {
 				try (FastqWriter unmergedFastqTwoWriter = new FastqWriter(unmergedFastqTwoFile)) {
@@ -229,17 +225,35 @@ public class ReadMerger {
 					AtomicInteger currentWriteReadNumber = new AtomicInteger(startingRead);
 					try (FastqReader fastQOneReader = new FastqReader(fastqOneFile)) {
 						try (FastqReader fastQTwoReader = new FastqReader(fastqTwoFile)) {
-							for (int i = 0; i < NUMBER_OF_THREADS; i++) {
-								executor.submit(new MergeRecordsHelper(fastQOneReader, fastQTwoReader, startingRead, numberOfReadsToProcess, processedReadsCount, readNumber, mergedReadCount,
-										executor, maxNumberOfConflictsPerReadPair, mergedFastqWriter, unmergedFastqOneWriter, unmergedFastqTwoWriter, progressListener, mergedFastqWriterQueue,
+							int poolSize = executor.getMaximumPoolSize();
+							for (int i = 0; i < poolSize; i++) {
+								tasks.add(new MergeRecordsHelper(fastQOneReader, fastQTwoReader, startingRead, numberOfReadsToProcess, processedReadsCount, readNumber, mergedReadCount,
+										maxNumberOfConflictsPerReadPair, mergedFastqWriter, unmergedFastqOneWriter, unmergedFastqTwoWriter, progressListener, mergedFastqWriterQueue,
 										fastqOneWriterQueue, fastqTwoWriterQueue, currentWriteReadNumber));
 							}
 
+							IExceptionListener exceptionListener = new IExceptionListener() {
+								@Override
+								public void exceptionOccurred(Runnable runnable, Throwable throwable) {
+									exceptions.add(throwable);
+								}
+							};
+							executor.addExceptionListener(exceptionListener);
+
 							try {
-								executor.awaitTermination(1, TimeUnit.DAYS);
+								List<Future<Object>> futures = executor.invokeAll(tasks);
+								for (Future<Object> future : futures) {
+									try {
+										future.get();
+									} catch (Exception e) {
+										exceptions.add(e);
+									}
+								}
 							} catch (InterruptedException e) {
-								e.printStackTrace();
+								exceptions.add(e);
 							}
+
+							executor.removeExceptionListener(exceptionListener);
 
 						}
 					}
@@ -251,11 +265,15 @@ public class ReadMerger {
 		if (progressListener != null) {
 			progressListener.updateProgress(100, "Merged " + DF.format(numberOfReadsInFile) + " Fastq reads.");
 		}
+		System.out.println("exceptions size:" + exceptions.size());
+		for (Throwable throwable : exceptions) {
+			System.out.println(throwable.getMessage());
+		}
 
-		return new ReadMergerDetails(mergedReadCount.get(), processedReadsCount.get());
+		return new ReadMergerDetails(mergedReadCount.get(), processedReadsCount.get(), exceptions.size() == 0, exceptions);
 	}
 
-	private static class MergeRecordsHelper implements Runnable {
+	private static class MergeRecordsHelper implements Callable<Object> {
 
 		private final FastqReader fastQOneReader;
 		private final FastqReader fastQTwoReader;
@@ -266,7 +284,6 @@ public class ReadMerger {
 		private final AtomicInteger readNumber;
 		private final AtomicInteger mergedReadCount;
 		private final AtomicInteger lastPercentComplete;
-		private final PausableFixedThreadPoolExecutor executor;
 
 		private final int maxNumberOfConflictsPerReadPair;
 		private final FastqWriter mergedFastqWriter;
@@ -284,9 +301,9 @@ public class ReadMerger {
 		private static AtomicInteger activeHelpers = new AtomicInteger(0);
 
 		public MergeRecordsHelper(FastqReader fastQOneReader, FastqReader fastQTwoReader, int startingRead, Integer numberOfReadsToProcess, AtomicInteger processedReadsCount,
-				AtomicInteger readNumber, AtomicInteger mergedReadCount, PausableFixedThreadPoolExecutor executor, int maxNumberOfConflictsPerReadPair, FastqWriter mergedFastqWriter,
-				FastqWriter unmergedFastqOneWriter, FastqWriter unmergedFastqTwoWriter, IProgressListener progressListener, Map<Integer, FastqRecord> mergedFastqWriterQueue,
-				Map<Integer, FastqRecord> fastqOneWriterQueue, Map<Integer, FastqRecord> fastqTwoWriterQueue, AtomicInteger currentWriteReadNumber) {
+				AtomicInteger readNumber, AtomicInteger mergedReadCount, int maxNumberOfConflictsPerReadPair, FastqWriter mergedFastqWriter, FastqWriter unmergedFastqOneWriter,
+				FastqWriter unmergedFastqTwoWriter, IProgressListener progressListener, Map<Integer, FastqRecord> mergedFastqWriterQueue, Map<Integer, FastqRecord> fastqOneWriterQueue,
+				Map<Integer, FastqRecord> fastqTwoWriterQueue, AtomicInteger currentWriteReadNumber) {
 			super();
 			this.fastQOneReader = fastQOneReader;
 			this.fastQTwoReader = fastQTwoReader;
@@ -295,7 +312,6 @@ public class ReadMerger {
 			this.processedReadsCount = processedReadsCount;
 			this.readNumber = readNumber;
 			this.mergedReadCount = mergedReadCount;
-			this.executor = executor;
 			this.maxNumberOfConflictsPerReadPair = maxNumberOfConflictsPerReadPair;
 			this.mergedFastqWriter = mergedFastqWriter;
 			this.unmergedFastqOneWriter = unmergedFastqOneWriter;
@@ -310,7 +326,7 @@ public class ReadMerger {
 		}
 
 		@Override
-		public void run() {
+		public Object call() {
 			boolean allRecordsRead = false;
 			while (!allRecordsRead && (numberOfReadsToProcess == null || (processedReadsCount.get() < numberOfReadsToProcess))) {
 				FastqRecord recordOne = null;
@@ -371,6 +387,10 @@ public class ReadMerger {
 				} else {
 					allRecordsRead = true;
 				}
+
+				if (Thread.currentThread().isInterrupted()) {
+					throw new RuntimeException("Read Merging was stopped.");
+				}
 			}
 
 			if (activeHelpers.decrementAndGet() == 0) {
@@ -378,10 +398,8 @@ public class ReadMerger {
 					throw new IllegalStateException("Queue were not emptied: mergedQueue_size[" + mergedFastqWriterQueue.size() + "] fastq1Queue_size[" + fastqOneWriterQueue.size()
 							+ "] fastq2Queue_size[" + fastqTwoWriterQueue.size() + "].  Waiting for read[" + currentWriteReadNumber.get() + "].");
 				}
-				// purge the queues
-				System.out.println("shutdown.");
-				executor.shutdown();
 			}
+			return null;
 		}
 
 		private void writeMergedRead(int readNumber, FastqRecord mergedRead) {

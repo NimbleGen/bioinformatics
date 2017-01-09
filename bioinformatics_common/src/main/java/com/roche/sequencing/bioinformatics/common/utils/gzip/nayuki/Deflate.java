@@ -12,8 +12,6 @@ import com.roche.sequencing.bioinformatics.common.utils.gzip.IInput;
 
 public class Deflate {
 
-	private final static int BITS_PER_BYTE = 8;
-
 	/* Code trees for static Huffman codes (btype = 1) */
 	private static final CodeTree FIXED_LITERAL_LENGTH_CODE;
 	private static final CodeTree FIXED_DISTANCE_CODE;

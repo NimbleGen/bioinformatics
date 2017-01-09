@@ -370,6 +370,10 @@ public class Document implements IDocument {
 
 				text = getText(currentStartingLine, currentEndingLine);
 			}
+
+			if (Thread.currentThread().isInterrupted()) {
+				throw new RuntimeException("Searching was stopped.");
+			}
 		}
 
 		if (optionalTextProgressListener != null) {
@@ -386,17 +390,6 @@ public class Document implements IDocument {
 		if (dictionaryBytes != null) {
 			dictionaryBytes.close();
 		}
-	}
-
-	public static void main(String[] args) throws FileNotFoundException, IOException {
-		File file = new File("D:\\kurts_space\\hsq_with_pete\\4\\607387-750ng-6hr_merged_TGATAT_L001_R1_001.fastq");
-		File indexFile = new File("D:\\kurts_space\\hsq_with_pete\\4\\.607387-750ng-6hr_merged_TGATAT_L001_R1_001.fastq.idx");
-		File outputFile = new File("D:\\kurts_space\\hsq_with_pete\\4\\clipboard.txt");
-		// TextCache tc = new TextCache(TextFileIndexer.loadIndexFile(indexFile), file);
-		// tc.copyTextToFile(outputFile, 83534952, 93535052);
-
-		File gzipFile = new File("D:\\kurts_space\\hsq_with_pete\\4\\clipboard.txt.gz");
-		GZipUtil.compressFile(outputFile, gzipFile);
 	}
 
 	@Override
