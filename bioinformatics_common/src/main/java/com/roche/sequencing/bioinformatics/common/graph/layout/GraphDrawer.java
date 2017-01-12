@@ -157,13 +157,13 @@ public class GraphDrawer {
 				for (Node<?> toNode : graph.getConnectedToNodes(fromNode)) {
 					EdgeConnectionPoints fromNodeEdgeConnectionPoints = edgeConnectionPointsByNodeCreationIndex.get(fromNode.getCreationIndex());
 					if (fromNodeEdgeConnectionPoints == null) {
-						throw new IllegalStateException("Could not find edge connection points for from node:" + fromNode);
+						throw new IllegalStateException("Could not find edge connection points for from node:" + fromNode + " to node is[" + toNode + "].");
 					}
 					Point2D fromPoint = edgeConnectionPointsByNodeCreationIndex.get(fromNode.getCreationIndex()).getFromEdgeConnection();
 
 					EdgeConnectionPoints toNodeEdgeConnectionPoints = edgeConnectionPointsByNodeCreationIndex.get(toNode.getCreationIndex());
 					if (toNodeEdgeConnectionPoints == null) {
-						throw new IllegalStateException("Could not find edge connection points for to node:" + toNode);
+						throw new IllegalStateException("Could not find edge connection points for to node:" + toNode + " from node is[" + fromNode + "].");
 					}
 					Point2D toPoint = toNodeEdgeConnectionPoints.getToEdgeConnection();
 

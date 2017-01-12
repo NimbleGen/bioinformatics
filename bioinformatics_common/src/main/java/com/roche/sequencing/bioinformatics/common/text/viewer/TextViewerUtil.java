@@ -30,6 +30,7 @@ public class TextViewerUtil {
 	private final static String GZIP_INDEX_EXTENSION = "gzx";
 	private final static String GZIP_FILE_EXTENSION = "gz";
 	final static String BAM_FILE_EXTENSION = "bam";
+	final static String PROBE_INFO_FILE_ENDING_TEXT = "probe_info.txt";
 	private final static String BAM_BLOCK_INDEX = "bamblockindex";
 	private final static String INDEX_DIR = "text_viewer_indexes";
 
@@ -93,7 +94,7 @@ public class TextViewerUtil {
 		if (indexFile.exists()) {// && searcherIndexFile.exists()) {
 			try {
 				textFileIndex = TextFileIndexer.loadIndexFile(indexFile);
-				if (textFileIndex.getFileSizeInBytes() != file.length()) {
+				if (textFileIndex.getFileSizeInBytes() != file.length() || textFileIndex.getVersion() != TextFileIndexer.VERSION) {
 					System.out.println("wiping out index.");
 					textFileIndex = null;
 				}

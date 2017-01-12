@@ -237,7 +237,7 @@ public class GZipIndexer {
 		dictionariesBytesOutputStream.close();
 
 		TextFileIndex fileIndex = new TextFileIndex(inputStreamFactory.getSizeInBytes(), recordedLineIncrement, ArraysUtil.convertToLongArray(linePositionsInBytes), (int) parser.totalLinesReadInFile,
-				maxCharsByTabCount);
+				maxCharsByTabCount, TextFileIndexer.VERSION);
 
 		return new GZipIndexPair(gZipIndex, fileIndex);
 	}

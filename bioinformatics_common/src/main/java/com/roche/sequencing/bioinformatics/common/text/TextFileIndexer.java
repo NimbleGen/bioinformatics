@@ -34,7 +34,7 @@ public class TextFileIndexer {
 	private final static boolean IS_SIGNED = false;
 
 	private final static int MAGIC_NUMBER = 901020304;
-	private final static int VERSION = 1;
+	public final static int VERSION = 2;
 	private final static int MAP_TERMINATION_CODE = 909090909;
 
 	private TextFileIndexer() {
@@ -176,7 +176,7 @@ public class TextFileIndexer {
 			optionalProgressListener.progressOccurred(new ProgressUpdate((linesRead - 1), percentComplete, currentProcessTimeInMs));
 		}
 
-		return new TextFileIndex(fileSizeInBytes, recordedLineIncrement, ArraysUtil.convertToLongArray(linePositionsInBytes), linesRead, maxCharsByTabCount);
+		return new TextFileIndex(fileSizeInBytes, recordedLineIncrement, ArraysUtil.convertToLongArray(linePositionsInBytes), linesRead, maxCharsByTabCount, VERSION);
 	}
 
 	public static TextFileIndex indexText(InputStreamFactory inputStreamFactory, int recordedLineIncrement, GZipIndex gZipIndex, IBytes gZipDictionaryBytes,
@@ -304,7 +304,7 @@ public class TextFileIndexer {
 			optionalProgressListener.progressOccurred(new ProgressUpdate((linesRead - 1), percentComplete, currentProcessTimeInMs));
 		}
 
-		return new TextFileIndex(fileSizeInBytes, recordedLineIncrement, ArraysUtil.convertToLongArray(linePositionsInBytes), linesRead, maxCharsByTabCount);
+		return new TextFileIndex(fileSizeInBytes, recordedLineIncrement, ArraysUtil.convertToLongArray(linePositionsInBytes), linesRead, maxCharsByTabCount, VERSION);
 	}
 
 	public static TextFileIndex loadIndexFile(File indexFile) throws IOException {
@@ -328,7 +328,7 @@ public class TextFileIndexer {
 					+ "].");
 		}
 		i++;
-		// int version = integersFromFile.get(i);
+		int version = integersFromFile.get(i);
 		i++;
 		int fileSizeAsIntOne = integersFromFile.get(i);
 		i++;
@@ -361,7 +361,8 @@ public class TextFileIndexer {
 
 		} while (lastLinePosition == null || linePosition > lastLinePosition);
 
-		return new TextFileIndex(fileSizeInBytes, lineNumberModulus, ArraysUtil.convertToLongArray(linePositions.subList(0, linePositions.size() - 1)), numberOfLines, maxCharactersInALineByTabCount);
+		return new TextFileIndex(fileSizeInBytes, lineNumberModulus, ArraysUtil.convertToLongArray(linePositions.subList(0, linePositions.size() - 1)), numberOfLines, maxCharactersInALineByTabCount,
+				version);
 	}
 
 	private static int[] convertLongToTwoInts(long longValue) {

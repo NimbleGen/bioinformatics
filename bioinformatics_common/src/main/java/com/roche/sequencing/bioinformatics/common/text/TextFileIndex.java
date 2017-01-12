@@ -12,14 +12,20 @@ public class TextFileIndex {
 	private final long[] bytePositionOfLines;
 	private final int numberOfLines;
 	private final Map<Integer, Integer> maxCharsByTabCount;
+	private final int version;
 
-	public TextFileIndex(long fileSizeInBytes, int recordedLineIncrement, long[] bytePositionOfLines, int numberOfLines, Map<Integer, Integer> maxCharsByTabCount) {
+	public TextFileIndex(long fileSizeInBytes, int recordedLineIncrement, long[] bytePositionOfLines, int numberOfLines, Map<Integer, Integer> maxCharsByTabCount, int version) {
 		super();
 		this.fileSizeInBytes = fileSizeInBytes;
 		this.recordedLineIncrement = recordedLineIncrement;
 		this.bytePositionOfLines = bytePositionOfLines;
 		this.numberOfLines = numberOfLines;
 		this.maxCharsByTabCount = maxCharsByTabCount;
+		this.version = version;
+	}
+
+	public int getVersion() {
+		return version;
 	}
 
 	public int getRecordedLineIncrements() {

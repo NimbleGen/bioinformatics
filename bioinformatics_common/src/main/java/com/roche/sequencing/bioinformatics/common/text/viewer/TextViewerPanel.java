@@ -522,7 +522,9 @@ public class TextViewerPanel extends JPanel {
 
 	private void loadDocument(File file, RandomAccessFile randomAccessToFile, TextFileIndex textFileIndex, GZipIndex gZipIndex, IBytes gZipDictionaryBytes, File bamBlockIndexFile)
 			throws FileNotFoundException {
-		boolean isBamFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(TextViewerUtil.BAM_FILE_EXTENSION);
+		String fileExtension = FileUtil.getFileExtension(file).toLowerCase();
+		boolean isBamFile = fileExtension.endsWith(TextViewerUtil.BAM_FILE_EXTENSION);
+		boolean isProbeInfoFile = file.getName().toLowerCase().endsWith(TextViewerUtil.PROBE_INFO_FILE_ENDING_TEXT);
 
 		IByteDecoder byteConverter = null;
 		if (isBamFile) {
@@ -540,6 +542,9 @@ public class TextViewerPanel extends JPanel {
 			} catch (IOException e1) {
 				throw new IllegalStateException(e1.getMessage(), e1);
 			}
+		} else if (isProbeInfoFile) {
+			this.isShowDataView = true;
+			this.showHeader = true;
 		}
 
 		if (gZipIndex != null) {
@@ -557,6 +562,7 @@ public class TextViewerPanel extends JPanel {
 		fileInfoLabel.setText("File Size:" + FileUtil.getFileSizeLabel(this.file.length()) + "   File Length:" + DF.format(textFileIndex.getNumberOfLines()) + " Lines  ");
 		updateScrollBar();
 		updateComponentsLayout();
+		parentTextViewer.updateMenu();
 	}
 
 	public void showLineNumbers(boolean shouldShowLineNumbers) {
@@ -994,11 +1000,14 @@ public class TextViewerPanel extends JPanel {
 					}
 					if (saveToFile) {
 						File file = DialogHelper.getFileForSavingClipBoardContents(TextViewerPanel.this);
-						try {
-							// TODO show progress and allow to be cancelled
-							document.copyTextToFile(file, start.getLineNumber(), start.getColumnIndex(), end.getLineNumber(), end.getColumnIndex());
-						} catch (IOException e) {
-							JOptionPane.showMessageDialog(parentTextViewer, "Unable to save text to file.  " + e.getMessage(), "Unable to Write Selected Text to File", JOptionPane.WARNING_MESSAGE);
+						if (file != null) {
+							try {
+								// TODO show progress and allow to be cancelled
+								document.copyTextToFile(file, start.getLineNumber(), start.getColumnIndex(), end.getLineNumber(), end.getColumnIndex());
+							} catch (IOException e) {
+								JOptionPane
+										.showMessageDialog(parentTextViewer, "Unable to save text to file.  " + e.getMessage(), "Unable to Write Selected Text to File", JOptionPane.WARNING_MESSAGE);
+							}
 						}
 					}
 				} else {

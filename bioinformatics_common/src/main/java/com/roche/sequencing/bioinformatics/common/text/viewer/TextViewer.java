@@ -900,7 +900,7 @@ public class TextViewer extends JFrame {
 		mainMenuBar.add(menuHelp);
 	}
 
-	private void updateMenu() {
+	void updateMenu() {
 		TextViewerPanel selectedPanel = (TextViewerPanel) tabbedPane.getSelectedComponent();
 		if (selectedPanel != null) {
 			setTitle(APPLICATION_NAME + " " + APPLICATION_VERSION + " | " + selectedPanel.getFile().getName());

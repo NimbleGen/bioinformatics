@@ -309,6 +309,7 @@ public class Deduper {
 						}
 					}
 				} else if (dedupApproach == DedupApproachEnum.CONSENSUS) {
+					// TODO
 					throw new IllegalStateException("The consensus dedup approach is not implemented yet.");
 				} else {
 					throw new AssertionError();
