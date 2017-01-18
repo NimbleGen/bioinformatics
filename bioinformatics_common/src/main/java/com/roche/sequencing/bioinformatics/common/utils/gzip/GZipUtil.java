@@ -509,14 +509,10 @@ public final class GZipUtil {
 
 			@Override
 			public void datasetStarted(GZipMemberData datasetMemberData, long datasetStartInBytes) {
-				// TODO Auto-generated method stub
-
 			}
 
 			@Override
 			public void datasetCompleted(GZipMemberData datasetMemberData, long datasetEndInBytes, Long crc32, Long iSize) {
-				// TODO Auto-generated method stub
-
 			}
 
 			@Override

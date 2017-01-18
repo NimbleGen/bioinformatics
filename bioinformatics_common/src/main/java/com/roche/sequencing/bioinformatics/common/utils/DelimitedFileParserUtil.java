@@ -72,30 +72,6 @@ public final class DelimitedFileParserUtil {
 		throw new AssertionError();
 	}
 
-	public static void main(String[] args) throws IOException {
-		String[] headers = new String[] { "CONTAINER", "SEQ_ID" };
-		parseFile(new InputStreamFactory(new File("C:\\Users\\heilmank\\Desktop\\UniProt_simple.ndf")), headers, new IDelimitedLineParser() {
-
-			@Override
-			public void threadInterrupted() {
-				// TODO Auto-generated method stub
-
-			}
-
-			@Override
-			public void parseDelimitedLine(Map<String, String> headerNameToValue) {
-				// TODO Auto-generated method stub
-
-			}
-
-			@Override
-			public void doneParsing(int linesOfData, String[] headerNames) {
-				// TODO Auto-generated method stub
-
-			}
-		}, StringUtil.TAB, false);
-	}
-
 	public static Map<String, String> parseNameDelimiterValueNewLineFile(File nameDelimiterValueNewLineFile, String nameValueDelimiter, Charset charset) throws IOException {
 		Map<String, String> parsedNameValues = new HashMap<String, String>();
 
