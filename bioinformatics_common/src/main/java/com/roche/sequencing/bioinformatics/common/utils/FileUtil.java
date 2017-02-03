@@ -814,8 +814,8 @@ public final class FileUtil {
 				if (matchingFiles.size() == 1) {
 					currentDirectory = matchingFiles.get(0);
 				} else if (matchingFiles.size() == 0) {
-					throw new IllegalStateException("Unable to locate a sub folder matching the regular expression[" + regularExpressionForNextFolder + "] in the directory["
-							+ currentDirectory.getAbsolutePath() + "].");
+					throw new IllegalStateException(
+							"Unable to locate a sub folder matching the regular expression[" + regularExpressionForNextFolder + "] in the directory[" + currentDirectory.getAbsolutePath() + "].");
 				} else {
 					throw new IllegalStateException("The regular expression[" + regularExpressionForNextFolder + "] matches more than one file (" + matchingFiles.size()
 							+ " matches found) in the directory[" + currentDirectory.getAbsolutePath() + "].");
@@ -849,7 +849,6 @@ public final class FileUtil {
 			tempDirectory = new File(tempDirectoryAsString);
 		}
 		return tempDirectory;
-
 	}
 
 	public static String getFileSizeLabel(long sizeInBytes) {

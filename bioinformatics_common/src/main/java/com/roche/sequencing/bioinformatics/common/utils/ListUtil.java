@@ -18,7 +18,7 @@ public class ListUtil {
 			stringBuilder.append(list.get(0));
 		} else if (list.size() == 2) {
 			stringBuilder.append(list.get(0) + " and " + list.get(1));
-		} else {
+		} else if (list.size() > 0) {
 			stringBuilder.append(list.get(0));
 			for (int i = 1; i < list.size() - 1; i++) {
 				stringBuilder.append(", " + list.get(i));

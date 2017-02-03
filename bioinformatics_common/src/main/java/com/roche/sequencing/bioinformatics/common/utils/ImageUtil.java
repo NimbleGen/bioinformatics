@@ -116,4 +116,18 @@ public class ImageUtil {
 		}
 		return scaledImage;
 	}
+
+	public static BufferedImage createBufferedImage(Image image) {
+		BufferedImage bufferedImage = null;
+		if (image instanceof BufferedImage) {
+			bufferedImage = (BufferedImage) image;
+		} else {
+			bufferedImage = new BufferedImage(image.getWidth(null), image.getHeight(null), BufferedImage.TYPE_INT_ARGB);
+			Graphics2D graphics = bufferedImage.createGraphics();
+			graphics.drawImage(image, 0, 0, null);
+			graphics.dispose();
+		}
+
+		return bufferedImage;
+	}
 }

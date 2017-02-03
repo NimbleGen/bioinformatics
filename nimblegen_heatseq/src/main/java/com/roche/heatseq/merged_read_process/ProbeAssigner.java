@@ -1,7 +1,5 @@
 package com.roche.heatseq.merged_read_process;
 
-import htsjdk.samtools.fastq.FastqRecord;
-
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -33,6 +31,8 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
 import com.roche.sequencing.bioinformatics.common.sequence.StartAndStopIndex;
 import com.roche.sequencing.bioinformatics.common.utils.IProgressListener;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
+
+import htsjdk.samtools.fastq.FastqRecord;
 
 public class ProbeAssigner {
 
@@ -71,7 +71,8 @@ public class ProbeAssigner {
 		return assignReadsToProbes(executor, mergedFastqFile, parsedProbeFile, progressListener);
 	}
 
-	public static Map<String, ProbeAssignment> assignReadsToProbes(PausableFixedThreadPoolExecutor executor, File mergedFastqFile, ParsedProbeFile parsedProbeFile, IProgressListener progressListener) {
+	public static Map<String, ProbeAssignment> assignReadsToProbes(PausableFixedThreadPoolExecutor executor, File mergedFastqFile, ParsedProbeFile parsedProbeFile,
+			IProgressListener progressListener) {
 		List<Probe> probes = parsedProbeFile.getProbes();
 
 		Integer maxReferencesPerSequence = null;
@@ -116,7 +117,6 @@ public class ProbeAssigner {
 		IExceptionListener exceptionListener = new IExceptionListener() {
 			@Override
 			public void exceptionOccurred(Runnable runnable, Throwable throwable) {
-				System.out.println("adding exception b:" + throwable.getMessage());
 				exceptions.add(throwable);
 			}
 		};
@@ -128,7 +128,7 @@ public class ProbeAssigner {
 				try {
 					future.get();
 				} catch (Exception e) {
-					System.out.println("adding exception a.");
+
 					exceptions.add(e);
 				}
 			}

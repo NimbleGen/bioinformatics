@@ -39,12 +39,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.roche.sequencing.bioinformatics.common.multithreading.PausableFixedThreadPoolExecutor;
+import com.roche.sequencing.bioinformatics.common.text.ITextProgressListener;
+import com.roche.sequencing.bioinformatics.common.text.ProgressUpdate;
 
 /**
  * 
@@ -57,7 +64,7 @@ public final class DelimitedFileParserUtil {
 
 	private static final String CARRIAGE_RETURN = "" + StringUtil.CARRIAGE_RETURN;
 
-	private final static int BYTES_IN_100MB = 100000000;
+	private final static int BYTES_IN_25MB = 25000000;
 
 	// NOTE: WINDOWS_NEWLINE = CARRIAGE_RETURN + LINE_FEED;
 	// NOTE: LINUX_NEWLINE = LINE_FEED;
@@ -372,7 +379,8 @@ public final class DelimitedFileParserUtil {
 	 * @return a list of row entries for each provided header name
 	 * @throws IOException
 	 */
-	public static Map<String, List<String>> getHeaderNameToValuesMapFromDelimitedFile(File delimitedFile, String[] headerNames, String columnDelimiter) throws UnableToFindHeaderException, IOException {
+	public static Map<String, List<String>> getHeaderNameToValuesMapFromDelimitedFile(File delimitedFile, String[] headerNames, String columnDelimiter)
+			throws UnableToFindHeaderException, IOException {
 		return getHeaderNameToValuesMapFromDelimitedFile(delimitedFile, headerNames, columnDelimiter, false);
 	}
 
@@ -477,6 +485,18 @@ public final class DelimitedFileParserUtil {
 	 */
 	public static void parseFile(IInputStreamFactory delimitedInputStreamFactory, String[] headerNames, IDelimitedLineParser lineParser, String columnDelimiter, boolean extractAdditionalHeaderNames)
 			throws IOException {
+		parseFile(delimitedInputStreamFactory, headerNames, lineParser, columnDelimiter, extractAdditionalHeaderNames, null);
+	}
+
+	/**
+	 * @param delimitedFile
+	 * @param headerNames
+	 * @param columnDelimiter
+	 * @return a list of row entries for each provided header name
+	 * @throws IOException
+	 */
+	public static void parseFile(IInputStreamFactory delimitedInputStreamFactory, String[] headerNames, IDelimitedLineParser lineParser, String columnDelimiter, boolean extractAdditionalHeaderNames,
+			ITextProgressListener progressListener) throws IOException {
 
 		Header header = findHeaderLine(headerNames, columnDelimiter, delimitedInputStreamFactory);
 		boolean headerFound = header != null;
@@ -511,11 +531,13 @@ public final class DelimitedFileParserUtil {
 						wasInterrupted.set(true);
 						break rowLoop;
 					}
+
+					// TODO update text progress listener accordingly
 				}
 			}
 		} else {
-			throw new UnableToFindHeaderException("Could not find header containing header names[" + ArraysUtil.toString(headerNames, ", ") + "] in file[" + delimitedInputStreamFactory.getName()
-					+ "].");
+			throw new UnableToFindHeaderException(
+					"Could not find header containing header names[" + ArraysUtil.toString(headerNames, ", ") + "] in file[" + delimitedInputStreamFactory.getName() + "].");
 		}
 
 		if (wasInterrupted.get()) {
@@ -533,10 +555,17 @@ public final class DelimitedFileParserUtil {
 	 * @throws IOException
 	 */
 	public static void parseFileMultiThreaded(IInputStreamFactory delimitedInputStreamFactory, String[] headerNames, IDelimitedLineParser lineParser, String columnDelimiter,
-			boolean extractAdditionalHeaderNames) throws IOException {
+			boolean extractAdditionalHeaderNames, ITextProgressListener textProgressListener) throws IOException {
 		int numberOfProcessors = Runtime.getRuntime().availableProcessors();
 		int numberOfThreadsToUse = Math.max(1, numberOfProcessors - 2);
-		parseFileMultiThreaded(delimitedInputStreamFactory, headerNames, lineParser, columnDelimiter, extractAdditionalHeaderNames, numberOfThreadsToUse);
+		PausableFixedThreadPoolExecutor executor = new PausableFixedThreadPoolExecutor(numberOfThreadsToUse, "FILE_PARSER_");
+		parseFileMultiThreaded(delimitedInputStreamFactory, headerNames, lineParser, columnDelimiter, extractAdditionalHeaderNames, executor, textProgressListener);
+		executor.shutdown();
+		try {
+			executor.awaitTermination(1, TimeUnit.DAYS);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -546,8 +575,8 @@ public final class DelimitedFileParserUtil {
 	 * @return a list of row entries for each provided header name
 	 * @throws IOException
 	 */
-	private static void parseFileMultiThreaded(IInputStreamFactory delimitedInputStreamFactory, String[] headerNames, IDelimitedLineParser lineParser, String columnDelimiter,
-			boolean extractAdditionalHeaderNames, int numberOfThreads) throws IOException {
+	public static void parseFileMultiThreaded(IInputStreamFactory delimitedInputStreamFactory, String[] headerNames, IDelimitedLineParser lineParser, String columnDelimiter,
+			boolean extractAdditionalHeaderNames, ThreadPoolExecutor executor, ITextProgressListener textProgressListener) throws IOException {
 
 		Header header = findHeaderLine(headerNames, columnDelimiter, delimitedInputStreamFactory);
 		boolean headerFound = header != null;
@@ -560,27 +589,52 @@ public final class DelimitedFileParserUtil {
 
 			Map<Integer, String> columnToHeaderNameMap = getColumnIndexToHeaderNameMapping(headerNames, parsedHeaderRow, extractAdditionalHeaderNames);
 
-			PausableFixedThreadPoolExecutor executor = new PausableFixedThreadPoolExecutor(numberOfThreads, "FILE_PARSER_");
+			int numberOfRunnables = (int) Math.max(1, Math.ceil(delimitedInputStreamFactory.getSizeInBytes() / BYTES_IN_25MB));
 
-			if (delimitedInputStreamFactory.getSizeInBytes() < BYTES_IN_100MB) {
-				numberOfThreads = 1;
+			List<Callable<Object>> tasks = new ArrayList<Callable<Object>>();
+
+			AtomicLong totalBytesRead = new AtomicLong(0);
+			AtomicInteger lastPercentComplete = new AtomicInteger(0);
+			long startTimeInMs = System.currentTimeMillis();
+			AtomicInteger totalLinesRead = new AtomicInteger(0);
+
+			for (int i = 0; i < numberOfRunnables; i++) {
+				tasks.add(new FileParser(i, numberOfRunnables, delimitedInputStreamFactory, lineParser, header, columnToHeaderNameMap, linesOfData, wasInterrupted, columnDelimiter,
+						positionInBytesOfLinesReadByEachFileParser, totalBytesRead, lastPercentComplete, startTimeInMs, totalLinesRead, textProgressListener, executor));
 			}
 
-			for (int i = 0; i < numberOfThreads; i++) {
-				executor.submit(new FileParser(i, numberOfThreads, delimitedInputStreamFactory, lineParser, header, columnToHeaderNameMap, linesOfData, wasInterrupted, columnDelimiter,
-						positionInBytesOfLinesReadByEachFileParser));
-			}
-
-			executor.shutdown();
+			List<Throwable> exceptions = new ArrayList<Throwable>();
 			try {
-				executor.awaitTermination(1, TimeUnit.DAYS);
+				List<Future<Object>> futures = executor.invokeAll(tasks);
+				for (Future<Object> future : futures) {
+					try {
+						future.get();
+					} catch (Exception e) {
+						exceptions.add(e);
+					}
+				}
 			} catch (InterruptedException e) {
-				e.printStackTrace();
+				exceptions.add(e);
+			}
+
+			if (exceptions.size() > 0) {
+				Throwable throwable = exceptions.get(0);
+				throw new RuntimeException(throwable.getMessage(), throwable);
+			}
+
+			if (textProgressListener != null) {
+				long currentProcessTimeInMilliseconds = System.currentTimeMillis() - startTimeInMs;
+				executor.execute(new Runnable() {
+					@Override
+					public void run() {
+						textProgressListener.progressOccurred(new ProgressUpdate(totalLinesRead.get(), 100, currentProcessTimeInMilliseconds));
+					}
+				});
 			}
 
 		} else {
-			throw new UnableToFindHeaderException("Could not find header containing header names[" + ArraysUtil.toString(headerNames, ", ") + "] in file[" + delimitedInputStreamFactory.getName()
-					+ "].");
+			throw new UnableToFindHeaderException(
+					"Could not find header containing header names[" + ArraysUtil.toString(headerNames, ", ") + "] in file[" + delimitedInputStreamFactory.getName() + "].");
 		}
 
 		if (wasInterrupted.get()) {
@@ -590,7 +644,7 @@ public final class DelimitedFileParserUtil {
 		}
 	}
 
-	private static class FileParser implements Runnable {
+	private static class FileParser implements Callable<Object> {
 
 		private final int readSectionIndex;
 		private final int totalReadSections;
@@ -604,9 +658,19 @@ public final class DelimitedFileParserUtil {
 		private final String columnDelimiter;
 		private final ConcurrentHashMap<Long, Boolean> positionInBytesOfLinesReadByEachFileParser;
 
+		private final AtomicLong totalBytesRead;
+		private final AtomicInteger lastPercentComplete;
+		private final long startTimeInMs;
+		private final AtomicInteger totalLinesRead;
+
+		private final ITextProgressListener textProgressListener;
+
+		private final Executor executor;
+
 		public FileParser(int readSectionIndex, int totalReadSections, IInputStreamFactory delimitedInputStreamFactory, IDelimitedLineParser lineParser, Header header,
 				Map<Integer, String> columnToHeaderNameMap, AtomicInteger linesOfData, AtomicBoolean wasInterrupted, String columnDelimiter,
-				ConcurrentHashMap<Long, Boolean> positionInBytesOfFirstLinesReadByEachFileParser) {
+				ConcurrentHashMap<Long, Boolean> positionInBytesOfFirstLinesReadByEachFileParser, AtomicLong totalBytesRead, AtomicInteger lastPercentComplete, long startTimeInMs,
+				AtomicInteger totalLinesRead, ITextProgressListener textProgressListener, Executor executor) {
 			super();
 			this.readSectionIndex = readSectionIndex;
 			this.totalReadSections = totalReadSections;
@@ -618,11 +682,16 @@ public final class DelimitedFileParserUtil {
 			this.wasInterrupted = wasInterrupted;
 			this.columnDelimiter = columnDelimiter;
 			this.positionInBytesOfLinesReadByEachFileParser = positionInBytesOfFirstLinesReadByEachFileParser;
+			this.totalBytesRead = totalBytesRead;
+			this.lastPercentComplete = lastPercentComplete;
+			this.textProgressListener = textProgressListener;
+			this.startTimeInMs = startTimeInMs;
+			this.totalLinesRead = totalLinesRead;
+			this.executor = executor;
 		}
 
 		@Override
-		public void run() {
-
+		public Object call() throws Exception {
 			long sizeInBytes = delimitedInputStreamFactory.getSizeInBytes();
 
 			Map<String, String> headerNameToValueMapFromRow = new HashMap<String, String>();
@@ -642,15 +711,26 @@ public final class DelimitedFileParserUtil {
 
 				long startPositionInBytes = (long) Math.floor((sizeInBytes * readSectionIndex) / totalReadSections);
 				long stopPositionInBytes = (long) Math.floor((sizeInBytes * (readSectionIndex + 1)) / totalReadSections) - 1;
+
 				if (startPositionInBytes > currentPositionInBytes) {
-					inputStream.skip(startPositionInBytes - currentPositionInBytes);
+					long amountToSkip = startPositionInBytes - currentPositionInBytes;
+					long amountSkipped = 0;
+					while (amountSkipped != amountToSkip && amountSkipped >= 0) {
+						amountToSkip -= amountSkipped;
+						amountSkipped = inputStream.skip(amountToSkip);
+					}
+
+					if (amountToSkip > 0 && amountSkipped < 0) {
+						throw new IllegalStateException("Cannot skip over input stream");
+					}
 					currentPositionInBytes = startPositionInBytes;
 				}
+
+				int endLinesFound = 0;
 
 				byte[] bytes = new byte[4096];
 
 				StringBuilder currentLine = new StringBuilder();
-				int endLinesFound = 0;
 
 				int numberOfBytesRead = 0;
 
@@ -675,10 +755,13 @@ public final class DelimitedFileParserUtil {
 						currentPositionInBytes += (in.position() - lastInPosition);
 						lastInPosition = in.position();
 						out.position(0);
-						if ((currentCharacter == StringUtil.NEWLINE_SYMBOL)) {
+						if ((currentCharacter == '\r')) {
+							// effectively remove carriage return (actually ignoring it) if this is a windows based file
+						} else if ((currentCharacter == StringUtil.NEWLINE_SYMBOL)) {
 							endLinesFound++;
 							if (endLinesFound > 1) {
 								shouldContinue = processLine(currentLine.toString(), currentPositionInBytes, stopPositionInBytes, headerNameToValueMapFromRow);
+								totalLinesRead.incrementAndGet();
 								if (!shouldContinue) {
 									break outerByteLoop;
 								}
@@ -688,14 +771,32 @@ public final class DelimitedFileParserUtil {
 							currentLine.append(currentCharacter);
 						}
 					}
+
+					totalBytesRead.addAndGet(numberOfBytesRead);
+
+					if (textProgressListener != null) {
+						double percentComplete = (totalBytesRead.get() / (double) sizeInBytes) * 100;
+						int percentCompleteAsInt = (int) Math.floor(percentComplete);
+						if (percentCompleteAsInt > lastPercentComplete.getAndSet(percentCompleteAsInt)) {
+							long currentProcessTimeInMilliseconds = System.currentTimeMillis() - startTimeInMs;
+							executor.execute(new Runnable() {
+								@Override
+								public void run() {
+									textProgressListener.progressOccurred(new ProgressUpdate(totalLinesRead.get(), percentComplete, currentProcessTimeInMilliseconds));
+								}
+							});
+
+						}
+					}
 				}
+
 				if (shouldContinue && currentLine.length() > 0) {
 					processLine(currentLine.toString(), currentPositionInBytes, stopPositionInBytes, headerNameToValueMapFromRow);
 				}
 			} catch (IOException e) {
 				throw new RuntimeException(e.getMessage(), e);
 			}
-
+			return null;
 		}
 
 		private boolean processLine(String currentLine, long currentPositionInBytes, long stopPositionInBytes, Map<String, String> headerNameToValueMapFromRow) {
@@ -705,11 +806,8 @@ public final class DelimitedFileParserUtil {
 			if (positionInBytesOfLinesReadByEachFileParser.putIfAbsent(currentPositionInBytes, true) == null) {
 				// System.out.println(readSectionIndex + ":" + currentLine.toString());
 				linesOfData.incrementAndGet();
-				String currentRow = currentLine.toString();
-				// remove carriage return if this is a windows based file
-				currentRow = currentRow.replace(CARRIAGE_RETURN, "");
 
-				String[] parsedCurrentRow = currentRow.split(columnDelimiter);
+				String[] parsedCurrentRow = currentLine.split(columnDelimiter);
 
 				if (parsedCurrentRow != null) {
 					headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow, headerNameToValueMapFromRow);
@@ -735,6 +833,7 @@ public final class DelimitedFileParserUtil {
 
 			return continueProcessing;
 		}
+
 	}
 
 	/**

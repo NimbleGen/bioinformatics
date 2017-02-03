@@ -33,10 +33,8 @@ import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 
-
 public class JavaVersionChecker {
 
-	private final static Preferences preferences = Preferences.userRoot().node(JavaVersionChecker.class.getName());
 	private final static String LAST_JVM_PREFERENCE = "jvm_path";
 
 	private final static String SECONDARY_MAIN_CLASS_MANIFEST_TAG = "Second-Main-Class";
@@ -48,6 +46,10 @@ public class JavaVersionChecker {
 	private final static String DEFAULT_WINDOWS_APPLICATIONS_DIRECTORY = "C:/Program Files/";
 
 	public static void main(String[] args) {
+		checkVersionOfJavaAndLaunchApplicaiton(args);
+	}
+
+	private static void checkVersionOfJavaAndLaunchApplicaiton(String[] args) {
 
 		String requiredMajorMinorVersionOfJavaAsString = getManifestValue(REQUIRED_JAVA_VERSION_MANIFEST_TAG);
 		double requiredMajorMinorJavaVersion = 1.6;
@@ -74,160 +76,212 @@ public class JavaVersionChecker {
 			displayWarningWithDialog = Boolean.parseBoolean(displayWarningWithDialogAsString);
 		}
 
-		String versionAsString = System.getProperty("java.specification.version");
-		double actualJavaVersionAsDouble = 1.5;
 		try {
-			actualJavaVersionAsDouble = Double.valueOf(versionAsString);
-		} catch (NumberFormatException e) {
-			System.err.println("Could not detect the version of the JVM[" + versionAsString + "] so using 1.5.");
-		}
 
-		boolean javaVersionIsInadequate = (actualJavaVersionAsDouble < requiredMajorMinorJavaVersion);
-
-		String JVMBitAsString = System.getProperty("sun.arch.data.model");
-		int actualJavaBitAsInteger = 32;
-		try {
-			actualJavaBitAsInteger = Integer.valueOf(JVMBitAsString);
-		} catch (NumberFormatException e) {
-			System.err.println("Could not detect the bit depth of the JVM[" + JVMBitAsString + "] so using 32.");
-		}
-		boolean javaJvmBitsAreInadequate = (actualJavaBitAsInteger < requiredJavaBit);
-
-		boolean shouldLoadMainClass = !javaVersionIsInadequate && !javaJvmBitsAreInadequate;
-		int javaExitNumber = 0;
-
-		boolean launchedsuccessfully = false;
-
-		if (shouldLoadMainClass) {
-			Class<?> clazz;
+			String versionAsString = System.getProperty("java.specification.version");
+			double actualJavaVersionAsDouble = 1.5;
 			try {
-				clazz = Class.forName(mainClass);
-				Class<?>[] argTypes = new Class[] { String[].class };
-				Method method = clazz.getDeclaredMethod("main", argTypes);
-				method.invoke(null, (Object) args);
-				launchedsuccessfully = true;
-			} catch (Exception e) {
-				throw new IllegalStateException("Could not instantiate the provided main class[" + mainClass + "].  " + e.getMessage());
+				actualJavaVersionAsDouble = Double.valueOf(versionAsString);
+			} catch (NumberFormatException e) {
+				System.err.println("Could not detect the version of the JVM[" + versionAsString + "] so using 1.5.");
 			}
-		} else {
 
-			String lastJvm = preferences.get(LAST_JVM_PREFERENCE, null);
+			boolean javaVersionIsInadequate = (actualJavaVersionAsDouble < requiredMajorMinorJavaVersion);
 
-			if (lastJvm != null) {
+			String JVMBitAsString = System.getProperty("sun.arch.data.model");
+			int actualJavaBitAsInteger = 32;
+			try {
+				actualJavaBitAsInteger = Integer.valueOf(JVMBitAsString);
+			} catch (NumberFormatException e) {
+				System.err.println("Could not detect the bit depth of the JVM[" + JVMBitAsString + "] so using 32.");
+			}
+			boolean javaJvmBitsAreInadequate = (actualJavaBitAsInteger < requiredJavaBit);
 
-				// load using this jvm
+			boolean shouldLoadMainClass = !javaVersionIsInadequate && !javaJvmBitsAreInadequate;
+			int javaExitNumber = 0;
+
+			boolean launchedsuccessfully = false;
+
+			if (shouldLoadMainClass) {
+				Class<?> clazz;
 				try {
-					launch(new File(lastJvm), args, mainClass);
+					clazz = Class.forName(mainClass);
+					Class<?>[] argTypes = new Class[] { String[].class };
+					Method method = clazz.getDeclaredMethod("main", argTypes);
+					method.invoke(null, (Object) args);
 					launchedsuccessfully = true;
-				} catch (IOException e) {
-					JOptionPane.showMessageDialog(null, e.getMessage(), "Invalid JVM", JOptionPane.WARNING_MESSAGE);
-					launchedsuccessfully = false;
+				} catch (Exception e) {
+					String message = e.getMessage();
+					Throwable cause = e.getCause();
+					while (message == null && cause != null) {
+						message = cause.getMessage();
+						cause = cause.getCause();
+					}
+					if (message == null) {
+						message = "";
+					}
+					throw new IllegalStateException("Could not instantiate the provided main class[" + mainClass + "].  " + message);
 				}
+			} else {
 
-			}
+				Preferences preferences = Preferences.userRoot().node(JavaVersionChecker.class.getName());
+				String lastJvm = preferences.get(LAST_JVM_PREFERENCE, null);
 
-			if (!launchedsuccessfully) {
+				if (!launchedsuccessfully) {
 
-				javaExitNumber = 1;
+					javaExitNumber = 1;
 
-				String baseMessage = "";
+					String baseMessage = "";
 
-				if (javaVersionIsInadequate) {
-					baseMessage += "This application requires Java Version " + requiredMajorMinorJavaVersion + " or newer and found Java version[" + actualJavaVersionAsDouble + "].  ";
-				}
+					if (javaVersionIsInadequate) {
+						baseMessage += "This application requires Java Version " + requiredMajorMinorJavaVersion + " or newer and found you are using Java version[" + actualJavaVersionAsDouble
+								+ "].  ";
+					}
 
-				if (javaJvmBitsAreInadequate) {
-					baseMessage += "This application requires a " + requiredJavaBit + " bit JVM or higher.  You are currently running a " + actualJavaBitAsInteger + " bit JVM.  ";
-				}
+					if (javaJvmBitsAreInadequate) {
+						baseMessage += "This application requires a " + requiredJavaBit + " bit JVM or higher.  You are currently running a " + actualJavaBitAsInteger + " bit JVM.  ";
+					}
 
-				if (displayWarningWithDialog && !isHeadless()) {
+					if (displayWarningWithDialog && !isHeadless()) {
 
-					Boolean is64Bit = is64Bit();
-					if (is64Bit != null && !is64Bit && requiredJavaBit == 64) {
-						// just error out since an appropriate JVM will not be available on this OS
-						String warning = baseMessage + "It appears as though you are using a 32-bit OS, which means you will not be able to execute this application on this system.";
-						JOptionPane.showMessageDialog(null, warning, "Invalid JVM", JOptionPane.WARNING_MESSAGE);
-					} else {
+						Boolean is64Bit = is64Bit();
+						if (is64Bit != null && !is64Bit && requiredJavaBit == 64) {
+							// just error out since an appropriate JVM will not be available on this OS
+							String warning = baseMessage + "It appears as though you are using a 32-bit OS, which means you will not be able to execute this application on this system.";
+							JOptionPane.showMessageDialog(null, warning, "Invalid JVM", JOptionPane.WARNING_MESSAGE);
+						} else {
 
-						String message = baseMessage + "\nWould you like to locate an appropriate JVM (version:" + requiredMajorMinorVersionOfJavaAsString + "+ and " + requiredJavaBit + "-bit+)?";
+							if (lastJvm != null && testJVM(new File(lastJvm), requiredJavaBit, requiredMajorMinorJavaVersion)) {
+								String message = baseMessage + "\nWould you like to use a previously found JVM [" + lastJvm + "] which meets the following requirements:\n     *version: "
+										+ requiredMajorMinorVersionOfJavaAsString + "\n     *bit-depth: " + requiredJavaBit + "-bit?";
 
-						Object[] options = { "Yes", "Close" };
-						final int selection = JOptionPane.showOptionDialog(null, message, "Invalid JVM", JOptionPane.YES_NO_OPTION, JOptionPane.ERROR_MESSAGE, null, options, options[0]);
+								Object[] options = { "Yes", "Close" };
+								final int selection = JOptionPane.showOptionDialog(null, message, "Invalid JVM", JOptionPane.YES_NO_OPTION, JOptionPane.ERROR_MESSAGE, null, options, options[0]);
 
-						if (selection == 0) {
-							File jvmDirectory = null;
-							JFileChooser fileChooser = new JFileChooser();
-							fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-							fileChooser.setApproveButtonText("Open");
-
-							fileChooser.setDialogTitle("Select JVM Bin Directory");
-							String instructions = "<html>Select a JVM bin\\ Directory where:<br> -JVM version is " + requiredMajorMinorVersionOfJavaAsString + "+<br> -JVM is " + requiredJavaBit
-									+ "-bit+</html>";
-							File applicationsDirectory = null;
-							if (isWindows()) {
-								applicationsDirectory = new File(DEFAULT_WINDOWS_APPLICATIONS_DIRECTORY);
-							} else if (isLinux()) {
-								applicationsDirectory = new File(DEFAULT_LINUX_APPLICATIONS_DIRECTORY);
-							}
-
-							File defaultDirectory = null;
-							if (applicationsDirectory != null) {
-								File javaDirectory = new File(applicationsDirectory, "Java/");
-								if (javaDirectory.exists()) {
-									defaultDirectory = javaDirectory;
-								} else {
-									javaDirectory = new File(applicationsDirectory, "java/");
-									if (javaDirectory.exists()) {
-										defaultDirectory = javaDirectory;
-									}
-								}
-
-								if (defaultDirectory == null) {
-									defaultDirectory = applicationsDirectory;
-								}
-							} else {
-								defaultDirectory = new File(".");
-							}
-							fileChooser.setCurrentDirectory(defaultDirectory);
-
-							fileChooser.setAccessory(new JLabel(instructions));
-
-							int returnValue = fileChooser.showOpenDialog(null);
-
-							if (returnValue == JFileChooser.APPROVE_OPTION) {
-								jvmDirectory = fileChooser.getSelectedFile();
-
-								boolean jvmIsAdequate = testJVM(jvmDirectory, requiredJavaBit, requiredMajorMinorJavaVersion);
-								if (jvmIsAdequate) {
-									preferences.put(LAST_JVM_PREFERENCE, jvmDirectory.getAbsolutePath());
+								if (selection == 0) {
+									// load using the last found jvm
 									try {
-										launch(jvmDirectory, args, mainClass);
+										launch(new File(lastJvm), args, mainClass);
 										launchedsuccessfully = true;
 									} catch (IOException e) {
-										e.printStackTrace();
+										if (displayWarningWithDialog && !isHeadless()) {
+											JOptionPane.showMessageDialog(null, e.getMessage(), "Invalid JVM", JOptionPane.WARNING_MESSAGE);
+										} else {
+											System.err.println(e.getMessage());
+										}
+										launchedsuccessfully = false;
 									}
 								} else {
-									JOptionPane.showMessageDialog(null, "The provided JVM is not valid.", "Invalid JVM", JOptionPane.WARNING_MESSAGE);
+									preferences.remove(LAST_JVM_PREFERENCE);
+								}
+							} else {
+
+								String message = baseMessage + "\nWould you like to locate an appropriate JVM (version:" + requiredMajorMinorVersionOfJavaAsString + "+ and " + requiredJavaBit
+										+ "-bit)?";
+
+								Object[] options = { "Yes", "Close" };
+								final int selection = JOptionPane.showOptionDialog(null, message, "Invalid JVM", JOptionPane.YES_NO_OPTION, JOptionPane.ERROR_MESSAGE, null, options, options[0]);
+
+								if (selection == 0) {
+									File jvmDirectory = null;
+									JFileChooser fileChooser = new JFileChooser();
+									fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+									fileChooser.setApproveButtonText("Open");
+
+									fileChooser.setDialogTitle("Select JVM Bin Directory");
+									String instructions = "<html>Select a JVM bin\\ Directory where:<br> -JVM version is " + requiredMajorMinorVersionOfJavaAsString + "+<br> -JVM is "
+											+ requiredJavaBit + "-bit+</html>";
+									File applicationsDirectory = null;
+									if (isWindows()) {
+										applicationsDirectory = new File(DEFAULT_WINDOWS_APPLICATIONS_DIRECTORY);
+									} else if (isLinux()) {
+										applicationsDirectory = new File(DEFAULT_LINUX_APPLICATIONS_DIRECTORY);
+									}
+
+									File defaultDirectory = null;
+									if (applicationsDirectory != null) {
+										File javaDirectory = new File(applicationsDirectory, "Java/");
+										if (javaDirectory.exists()) {
+											defaultDirectory = javaDirectory;
+										} else {
+											javaDirectory = new File(applicationsDirectory, "java/");
+											if (javaDirectory.exists()) {
+												defaultDirectory = javaDirectory;
+											}
+										}
+
+										if (defaultDirectory == null) {
+											defaultDirectory = applicationsDirectory;
+										}
+									} else {
+										defaultDirectory = new File(".");
+									}
+									fileChooser.setCurrentDirectory(defaultDirectory);
+
+									fileChooser.setAccessory(new JLabel(instructions));
+
+									int returnValue = fileChooser.showOpenDialog(null);
+
+									if (returnValue == JFileChooser.APPROVE_OPTION) {
+										jvmDirectory = fileChooser.getSelectedFile();
+										if (jvmDirectory.getName() != "bin") {
+											File binDirectory = new File(jvmDirectory, "bin");
+											if (binDirectory.exists() && binDirectory.isDirectory()) {
+												jvmDirectory = binDirectory;
+											} else {
+												File jreBinDirectory = new File(new File(jvmDirectory, "jre"), "bin");
+												if (jreBinDirectory.exists() && jreBinDirectory.isDirectory()) {
+													jvmDirectory = jreBinDirectory;
+												}
+											}
+
+										}
+
+										boolean jvmIsAdequate = testJVM(jvmDirectory, requiredJavaBit, requiredMajorMinorJavaVersion);
+										if (jvmIsAdequate) {
+											preferences.put(LAST_JVM_PREFERENCE, jvmDirectory.getAbsolutePath());
+											try {
+												launch(jvmDirectory, args, mainClass);
+												launchedsuccessfully = true;
+											} catch (IOException e) {
+												e.printStackTrace();
+											}
+										} else {
+											JOptionPane.showMessageDialog(null, "The provided JVM is not valid.", "Invalid JVM", JOptionPane.WARNING_MESSAGE);
+										}
+									}
 								}
 							}
 						}
-					}
 
-				} else {
-					String warning = baseMessage + "Please execute the application with an appropriate version of Java.";
-					System.err.println(warning);
+					} else {
+						String warning = baseMessage + "Please execute the application with an appropriate version of Java.";
+						System.err.println(warning);
+					}
 				}
 			}
-		}
 
-		if (!launchedsuccessfully) {
-			System.exit(javaExitNumber);
+			if (!launchedsuccessfully) {
+				System.exit(javaExitNumber);
+			}
+
+		} catch (Throwable t) {
+			if (displayWarningWithDialog && !isHeadless()) {
+				JOptionPane.showMessageDialog(null, t.getMessage(), "Execution Error", JOptionPane.WARNING_MESSAGE);
+			} else {
+				System.err.println(t.getMessage());
+			}
 		}
 
 	}
 
 	public static void launch(File pathToJvmBinDirectory, String[] arguments, String mainClass) throws IOException {
-		String path = new File(pathToJvmBinDirectory, "java").getAbsolutePath();
+		String path;
+		if (isWindows()) {
+			path = new File(pathToJvmBinDirectory, "java.exe").getAbsolutePath();
+		} else {
+			path = new File(pathToJvmBinDirectory, "java").getAbsolutePath();
+		}
 
 		String jarPath = new java.io.File(JavaVersionChecker.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getAbsolutePath();
 
@@ -251,7 +305,12 @@ public class JavaVersionChecker {
 
 	public static boolean testJVM(File pathToJvmBinDirectory, int jvmBitRequirement, double jvmVersionRequirement) {
 		boolean success = false;
-		String path = new File(pathToJvmBinDirectory, "java").getAbsolutePath();
+		String path;
+		if (isWindows()) {
+			path = new File(pathToJvmBinDirectory, "java.exe").getAbsolutePath();
+		} else {
+			path = new File(pathToJvmBinDirectory, "java").getAbsolutePath();
+		}
 		ProcessBuilder processBuilder = new ProcessBuilder(path, "-D" + jvmBitRequirement, "-version");
 		try {
 			Process process = processBuilder.start();
@@ -260,7 +319,8 @@ public class JavaVersionChecker {
 			String line;
 			boolean versionLineFound = false;
 			while (!versionLineFound && (line = reader.readLine()) != null) {
-				if (line.contains("java version")) {
+				System.out.println(line);
+				if (line.contains("version")) {
 					versionLineFound = true;
 					success = line.contains("" + jvmVersionRequirement);
 				}

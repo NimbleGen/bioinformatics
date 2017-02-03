@@ -30,43 +30,57 @@ import ch.qos.logback.core.FileAppender;
 
 public class LoggingUtil {
 
-	private static File currentLogFile;
+	private static File[] currentLogFiles;
 
 	private LoggingUtil() {
 		throw new AssertionError();
 	}
 
 	public static void setLogFile(String loggerName, File logFile) throws IOException {
-		if (!logFile.exists()) {
-			FileUtil.createNewFile(logFile);
+		setLogFiles(loggerName, new File[] { logFile });
+	}
+
+	public static void setLogFiles(String loggerName, File[] logFiles) throws IOException {
+
+		for (File logFile : logFiles) {
+			if (!logFile.exists()) {
+				FileUtil.createNewFile(logFile);
+			}
 		}
 
-		currentLogFile = logFile;
+		currentLogFiles = logFiles;
 
 		LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-
-		FileAppender<ILoggingEvent> fileAppender = new FileAppender<ILoggingEvent>();
-		fileAppender.setContext(loggerContext);
-		fileAppender.setName(logFile.getName());
-		fileAppender.setFile(logFile.getAbsolutePath());
-
-		PatternLayoutEncoder encoder = new PatternLayoutEncoder();
-		encoder.setContext(loggerContext);
-		encoder.setPattern("%r %d{HH:mm:ss.SSS} - %msg%n");
-		encoder.setImmediateFlush(true);
-		encoder.start();
-
-		fileAppender.setEncoder(encoder);
-		fileAppender.start();
 
 		// attach the rolling file appender to the logger of your choice
 		Logger logbackLogger = loggerContext.getLogger(loggerName);
 		logbackLogger.setLevel(Level.ALL);
-		logbackLogger.addAppender(fileAppender);
+
+		for (File logFile : logFiles) {
+			FileAppender<ILoggingEvent> fileAppender = new FileAppender<ILoggingEvent>();
+			fileAppender.setContext(loggerContext);
+			fileAppender.setName(logFile.getName());
+			fileAppender.setFile(logFile.getAbsolutePath());
+
+			PatternLayoutEncoder encoder = new PatternLayoutEncoder();
+			encoder.setContext(loggerContext);
+			encoder.setPattern("%r %d{HH:mm:ss.SSS} - %msg%n");
+			encoder.setImmediateFlush(true);
+			encoder.start();
+
+			fileAppender.setEncoder(encoder);
+			fileAppender.start();
+
+			logbackLogger.addAppender(fileAppender);
+		}
 	}
 
 	public static File getLogFile() {
-		return currentLogFile;
+		File logFile = null;
+		if (currentLogFiles != null && currentLogFiles.length > 0) {
+			logFile = currentLogFiles[0];
+		}
+		return logFile;
 	}
 
 	public static void outputLogsToConsole(String loggerName) {
