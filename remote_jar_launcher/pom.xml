@@ -2,23 +2,15 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<name>remote_app_launcher</name>
+	<name>Remote Jar Launcher</name>
 	<groupId>com.roche.sequencing</groupId>
-	<artifactId>remote_app_launcher</artifactId>
+	<artifactId>remote_jar_launcher</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
-
-	<dependencies>
-		<dependency>
-			<groupId>commons-io</groupId>
-			<artifactId>commons-io</artifactId>
-			<version>2.5</version>
-		</dependency>
-	</dependencies>
 
 	<build>
 		<plugins>
@@ -27,8 +19,8 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.1</version>
 				<configuration>
-					<source>1.7</source>
-					<target>1.7</target>
+					<source>1.5</source>
+					<target>1.5</target>
 					<encoding>ISO-8859-1</encoding>
 					<showWarnings>true</showWarnings>
 					<showDeprecation>false</showDeprecation>

@@ -21,9 +21,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
@@ -50,7 +53,6 @@ public class JavaVersionChecker {
 	}
 
 	private static void checkVersionOfJavaAndLaunchApplicaiton(String[] args) {
-
 		String requiredMajorMinorVersionOfJavaAsString = getManifestValue(REQUIRED_JAVA_VERSION_MANIFEST_TAG);
 		double requiredMajorMinorJavaVersion = 1.6;
 		if (requiredMajorMinorVersionOfJavaAsString != null) {
@@ -262,20 +264,20 @@ public class JavaVersionChecker {
 			}
 
 			if (!launchedsuccessfully) {
+				System.out.println("unable to launch.");
 				System.exit(javaExitNumber);
 			}
 
 		} catch (Throwable t) {
+			t.printStackTrace(System.err);
+			System.err.println(t.getMessage());
 			if (displayWarningWithDialog && !isHeadless()) {
 				JOptionPane.showMessageDialog(null, t.getMessage(), "Execution Error", JOptionPane.WARNING_MESSAGE);
-			} else {
-				System.err.println(t.getMessage());
 			}
 		}
-
 	}
 
-	public static void launch(File pathToJvmBinDirectory, String[] arguments, String mainClass) throws IOException {
+	public static void launch(File pathToJvmBinDirectory, String[] jarArguments, String mainClass) throws IOException {
 		String path;
 		if (isWindows()) {
 			path = new File(pathToJvmBinDirectory, "java.exe").getAbsolutePath();
@@ -285,21 +287,36 @@ public class JavaVersionChecker {
 
 		String jarPath = new java.io.File(JavaVersionChecker.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getAbsolutePath();
 
-		String[] commands = new String[arguments.length + 4];
+		RuntimeMXBean runtimeMxBean = ManagementFactory.getRuntimeMXBean();
+		List<String> jvmArguments = runtimeMxBean.getInputArguments();
+
+		String[] commands = new String[jarArguments.length + jvmArguments.size() + 4];
 		int index = 0;
 		commands[index] = path;
 		index++;
+		for (String argument : jvmArguments) {
+			commands[index] = argument;
+			index++;
+		}
 		commands[index] = "-cp";
 		index++;
 		commands[index] = jarPath;
 		index++;
-		for (String argument : arguments) {
+		commands[index] = mainClass;
+		index++;
+		for (String argument : jarArguments) {
 			commands[index] = argument;
 			index++;
 		}
-		commands[index] = mainClass;
-		index++;
+
+		System.out.println("Starting new JVM with following command:");
+		StringBuilder command = new StringBuilder();
+		for (String argument : commands) {
+			command.append(argument + " ");
+		}
+		System.out.println(command.toString());
 		ProcessBuilder processBuilder = new ProcessBuilder(commands);
+
 		processBuilder.start();
 	}
 
@@ -319,7 +336,6 @@ public class JavaVersionChecker {
 			String line;
 			boolean versionLineFound = false;
 			while (!versionLineFound && (line = reader.readLine()) != null) {
-				System.out.println(line);
 				if (line.contains("version")) {
 					versionLineFound = true;
 					success = line.contains("" + jvmVersionRequirement);

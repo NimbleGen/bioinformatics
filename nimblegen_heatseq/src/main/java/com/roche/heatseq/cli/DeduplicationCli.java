@@ -16,15 +16,6 @@
 
 package com.roche.heatseq.cli;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileHeader.SortOrder;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordIterator;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReader.Type;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.ValidationStringency;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -59,6 +50,15 @@ import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.LoggingUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReader.Type;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
+
 public class DeduplicationCli {
 	private final static Logger logger = LoggerFactory.getLogger(DeduplicationCli.class);
 
@@ -86,7 +86,8 @@ public class DeduplicationCli {
 	private final static CommandLineOption TMP_DIR_OPTION = new CommandLineOption("Temporary Directory", "tmpDir", null, "Location to store temporary files.", false, false);
 	private final static CommandLineOption NUM_PROCESSORS_OPTION = new CommandLineOption("Number of Processors", "numProcessors", null,
 			"The number of threads to run in parallel.  If not specified this will default to the number of cores available on the machine.  The designated value and default value will be capped at "
-					+ MAX_NUMBER_OF_PROCESSORS + ".", false, false);
+					+ MAX_NUMBER_OF_PROCESSORS + ".",
+			false, false);
 	private final static CommandLineOption OUTPUT_BAM_FILE_NAME_OPTION = new CommandLineOption("Output Bam File Name", "outputBamFileName", 'o', "Name for output bam file.", true, false);
 	private final static CommandLineOption MATCH_SCORE_OPTION = new CommandLineOption("Match Score", "matchScore", null,
 			"The score given to matching nucleotides when extending alignments to the primers. (Default: " + SimpleAlignmentScorer.DEFAULT_MATCH_SCORE + ")", false, false);
@@ -396,13 +397,10 @@ public class DeduplicationCli {
 						} else if (!genomeNameFromProbeInfoFile.equals(matchingGenomeBasedOnContainerSizes)) {
 							logger.info("Mismatch Genome Report" + StringUtil.NEWLINE + GenomeIdentifier.createMismatchGenomeReportText(genomeNameFromProbeInfoFile, containerSizesByNameFromBam));
 							CliStatusConsole.logStatus(StringUtil.NEWLINE + "WARNING:");
-							CliStatusConsole
-									.logStatus("It appears that the incorrect genome was used for mapping.  The names and sizes of the genome sequences used for mapping found in the provided BAM/SAM file ["
-											+ samOrBamFile.getAbsolutePath()
-											+ "] do not match the sequence sizes expected based on the indicated genome build ["
-											+ genomeNameFromProbeInfoFile
-											+ "] by the probe information file ["
-											+ probeInfoFile.getAbsolutePath()
+							CliStatusConsole.logStatus(
+									"It appears that the incorrect genome was used for mapping.  The names and sizes of the genome sequences used for mapping found in the provided BAM/SAM file ["
+											+ samOrBamFile.getAbsolutePath() + "] do not match the sequence sizes expected based on the indicated genome build [" + genomeNameFromProbeInfoFile
+											+ "] by the probe information file [" + probeInfoFile.getAbsolutePath()
 											+ "].  Deduplication will continue but the results should be classified as suspect.  Please review the mismatch genome report in the log file["
 											+ logFile.getCanonicalPath() + "] for details on how the expected genome and provided genome differ." + StringUtil.NEWLINE);
 						}
@@ -418,56 +416,16 @@ public class DeduplicationCli {
 					logger.debug("The input BAM file[" + samOrBamFile.getAbsolutePath() + "] was deemed sorted based on header information.");
 				}
 				if (!isSortIndicatedInHeader || isSamFile) {
-					// sam files need to be sorted and converted to bam files regardless
-					boolean isSorted = !isSamFormat;
-					long sortedCheckStart = System.currentTimeMillis();
-					// verify the file is sorted by comparing lines
-					SAMRecordIterator iter = samReader.iterator();
-					SAMRecord lastRecord = null;
-					int entryNumber = 0;
-					recordLoop: while (iter.hasNext() && isSorted) {
-						SAMRecord currentRecord = iter.next();
-						if (lastRecord != null) {
-							boolean isReferenceSame = lastRecord.getReferenceIndex() == currentRecord.getReferenceIndex();
-							if (isReferenceSame) {
-								boolean isAlignmentPositionSorted = lastRecord.getAlignmentStart() <= currentRecord.getAlignmentStart();
-								isSorted = isAlignmentPositionSorted;
-							} else {
-								boolean bothReadsAreMapped = !currentRecord.getReadUnmappedFlag() && !lastRecord.getReadUnmappedFlag();
-								if (bothReadsAreMapped) {
-									boolean isReferenceIndexSorted = lastRecord.getReferenceIndex() < currentRecord.getReferenceIndex();
-									isSorted = isReferenceIndexSorted;
-								} else {
-									// no need to keep checking since all the reads should be
-									// unmapped after this point
-									break recordLoop;
-								}
-							}
-						}
-						lastRecord = currentRecord;
-						entryNumber++;
-					}
-					iter.close();
-					long sortedCheckStop = System.currentTimeMillis();
-					logger.debug("Time to check if sorted:" + DateUtil.convertMillisecondsToHHMMSS(sortedCheckStop - sortedCheckStart));
+					CliStatusConsole.logStatus("The input SAM/BAM file is not sorted.");
+					sortedBamFile = new File(tempOutputDirectory, "sorted_" + FileUtil.getFileNameWithoutExtension(samOrBamFile.getName()) + ".bam");
+					CliStatusConsole.logStatus("Creating a sorted input BAM file at [" + sortedBamFile.getAbsolutePath() + "].");
 
-					if (isSorted) {
-						logger.debug("The input BAM file[" + samOrBamFile.getAbsolutePath() + "] is sorted.");
-						sortedBamFile = samOrBamFile;
-					} else {
-						CliStatusConsole.logStatus("The input SAM/BAM file is not sorted.");
-						logger.info("SAM/BAM file was unsorted starting at entry[" + entryNumber + "].");
-						sortedBamFile = new File(tempOutputDirectory, "sorted_" + FileUtil.getFileNameWithoutExtension(samOrBamFile.getName()) + ".bam");
-						CliStatusConsole.logStatus("Creating a sorted input BAM file at [" + sortedBamFile.getAbsolutePath() + "].");
+					long sortStart = System.currentTimeMillis();
+					BamFileUtil.sortOnCoordinates(samOrBamFile, sortedBamFile);
+					long sortStop = System.currentTimeMillis();
+					CliStatusConsole.logStatus("Done creating a sorted BAM file in " + DateUtil.convertMillisecondsToHHMMSS(sortStop - sortStart) + "(HH:MM:SS).");
 
-						long sortStart = System.currentTimeMillis();
-						BamFileUtil.sortOnCoordinates(samOrBamFile, sortedBamFile);
-						long sortStop = System.currentTimeMillis();
-						CliStatusConsole.logStatus("Done creating a sorted BAM file in " + DateUtil.convertMillisecondsToHHMMSS(sortStop - sortStart) + "(HH:MM:SS).");
-
-						newSortedBamFileCreated = true;
-					}
-
+					newSortedBamFileCreated = true;
 				} else {
 					CliStatusConsole.logStatus("The BAM header indicates that the BAM file is sorted.");
 					sortedBamFile = samOrBamFile;
@@ -555,9 +513,9 @@ public class DeduplicationCli {
 
 			long applicationStop = System.currentTimeMillis();
 			CliStatusConsole.logStatus("Deduplication has completed successfully.");
-			CliStatusConsole.logStatus("Start Time: " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "(YYYY/MM/DD HH:MM:SS)  Stop Time: "
-					+ DateUtil.convertTimeInMillisecondsToDate(applicationStop) + "(YYYY/MM/DD HH:MM:SS)  Total Time: " + DateUtil.convertMillisecondsToHHMMSS(applicationStop - applicationStart)
-					+ "(HH:MM:SS)" + StringUtil.NEWLINE);
+			CliStatusConsole.logStatus(
+					"Start Time: " + DateUtil.convertTimeInMillisecondsToDate(applicationStart) + "(YYYY/MM/DD HH:MM:SS)  Stop Time: " + DateUtil.convertTimeInMillisecondsToDate(applicationStop)
+							+ "(YYYY/MM/DD HH:MM:SS)  Total Time: " + DateUtil.convertMillisecondsToHHMMSS(applicationStop - applicationStart) + "(HH:MM:SS)" + StringUtil.NEWLINE);
 
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
