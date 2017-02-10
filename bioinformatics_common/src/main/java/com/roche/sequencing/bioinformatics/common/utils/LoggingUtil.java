@@ -31,16 +31,25 @@ import ch.qos.logback.core.FileAppender;
 public class LoggingUtil {
 
 	private static File[] currentLogFiles;
+	private final static String ENCODER_PATTERN = " %d{HH:mm:ss.SSS} - %msg%n";
 
 	private LoggingUtil() {
 		throw new AssertionError();
 	}
 
 	public static void setLogFile(String loggerName, File logFile) throws IOException {
-		setLogFiles(loggerName, new File[] { logFile });
+		setLogFile(loggerName, logFile, "");
+	}
+
+	public static void setLogFile(String loggerName, File logFile, String sessionId) throws IOException {
+		setLogFiles(loggerName, new File[] { logFile }, sessionId);
 	}
 
 	public static void setLogFiles(String loggerName, File[] logFiles) throws IOException {
+		setLogFiles(loggerName, logFiles, "");
+	}
+
+	public static void setLogFiles(String loggerName, File[] logFiles, String sessionId) throws IOException {
 
 		for (File logFile : logFiles) {
 			if (!logFile.exists()) {
@@ -64,7 +73,7 @@ public class LoggingUtil {
 
 			PatternLayoutEncoder encoder = new PatternLayoutEncoder();
 			encoder.setContext(loggerContext);
-			encoder.setPattern("%r %d{HH:mm:ss.SSS} - %msg%n");
+			encoder.setPattern("SESSION:" + sessionId + ENCODER_PATTERN);
 			encoder.setImmediateFlush(true);
 			encoder.start();
 
@@ -84,11 +93,15 @@ public class LoggingUtil {
 	}
 
 	public static void outputLogsToConsole(String loggerName) {
+		outputLogsToConsole(loggerName, "");
+	}
+
+	public static void outputLogsToConsole(String loggerName, String sessionId) {
 		LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
 
 		PatternLayoutEncoder encoder = new PatternLayoutEncoder();
 		encoder.setContext(loggerContext);
-		encoder.setPattern("%r %d{HH:mm:ss.SSS} - %msg%n");
+		encoder.setPattern("SESSION:" + sessionId + ENCODER_PATTERN);
 		encoder.setImmediateFlush(true);
 		encoder.start();
 

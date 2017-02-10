@@ -214,7 +214,7 @@ public final class StringUtil {
 			}
 			currentLineText.append(currentChar);
 			if ((currentLineText.length() > maxCharactersInALine)) {
-				if (indexOfLastSpace == startIndexOfCurrentLine) {
+				if (indexOfLastSpace <= startIndexOfCurrentLine) {
 					throw new IllegalStateException("The text can not be split on spaces.");
 				}
 
@@ -233,9 +233,20 @@ public final class StringUtil {
 		return lines.toArray(new String[0]);
 	}
 
+	public static String[] wrapLines(String string, int lineLength) {
+		List<String> lines = new ArrayList<String>();
+		int index = 0;
+		while (index < string.length()) {
+			int endIndex = Math.min(index + lineLength, string.length());
+			lines.add(string.substring(index, endIndex));
+			index = endIndex;
+		}
+		return lines.toArray(new String[0]);
+	}
+
 	public static void main(String[] args) {
-		String s = "A boy ran very far to get home.  He made it very quickly.";
-		System.out.println(ArraysUtil.toString(splitIntoLines(s, 10)));
+		String s = "asdfasdfasdfasdfasdf dfasdf adfas asdfasf aasdfasa adsf asf";
+		System.out.println(ArraysUtil.toString(wrapLines(s, 4)));
 	}
 
 	/**

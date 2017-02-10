@@ -410,7 +410,7 @@ public class DeduplicationCli {
 				}
 
 				boolean isSortIndicatedInHeader = header.getSortOrder().equals(SortOrder.coordinate);
-				boolean isSamFile = FileUtil.getFileExtension(samOrBamFile).equals(SAM_FILE_EXTENSION);
+				boolean isSamFile = FileUtil.getFileExtension(samOrBamFile).equals(SAM_FILE_EXTENSION) || isSamFormat;
 
 				if (isSortIndicatedInHeader) {
 					logger.debug("The input BAM file[" + samOrBamFile.getAbsolutePath() + "] was deemed sorted based on header information.");

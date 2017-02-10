@@ -9,7 +9,6 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -20,6 +19,8 @@ import java.util.List;
 import java.util.Map;
 
 import javax.swing.JOptionPane;
+
+import org.apache.commons.codec.digest.DigestUtils;
 
 public class RemoteJarLauncher {
 
@@ -33,7 +34,8 @@ public class RemoteJarLauncher {
 	public static final String separator = System.getProperty("file.separator");
 
 	private final static String PATH_TO_JAR_KEY = "path_to_jar";
-	private final static String JAR_ARGUMENTS_KEY = "jar_arguments";
+	private final static String DEFAULT_JAR_ARGUMENTS_KEY = "default_jar_arguments";
+	private final static String ADDITIONAL_JAR_ARGUMENTS_KEY = "additional_jar_arguments";
 	private final static String JVM_ARGUMENTS_KEY = "jvm_arguments";
 	private final static String REQUIRED_MIN_JVM_MAJOR_VERSION_KEY = "required_min_jvm_major_version";
 	private final static String REQUIRED_MIN_JVM_BIT_DEPTH_KEY = "required_min_jvm_bit_depth";
@@ -57,9 +59,8 @@ public class RemoteJarLauncher {
 		boolean isRunFromJarFile = !jarFile.isDirectory();
 		String extension = ".jar";
 		if (!isRunFromJarFile) {
-			// throw new IllegalStateException("The Remote App Launcher only works as a Jar File.");
-			jarFile = new File("C:\\Users\\heilmank\\Desktop\\runSlideViewer.jar");
-
+			throw new IllegalStateException("The Remote App Launcher only works as a Jar File.");
+			// jarFile = new File("C:\\Users\\heilmank\\Desktop\\runSlideViewer.jar");
 		}
 		File jarDirectory = jarFile.getParentFile();
 		String jarFileName = jarFile.getName();
@@ -101,13 +102,22 @@ public class RemoteJarLauncher {
 		}
 
 		String pathToJar = getConfigurationValue(configurationMap, PATH_TO_JAR_KEY, osName, null);
-		String jarArguments = getConfigurationValue(configurationMap, JAR_ARGUMENTS_KEY, osName, "");
+		String defaultJarArguments = getConfigurationValue(configurationMap, DEFAULT_JAR_ARGUMENTS_KEY, osName, "");
+		String additionalJarArguments = getConfigurationValue(configurationMap, ADDITIONAL_JAR_ARGUMENTS_KEY, osName, "");
 		String jvmArguments = getConfigurationValue(configurationMap, JVM_ARGUMENTS_KEY, osName, "");
 		String requiredJvmVersionAsString = getConfigurationValue(configurationMap, REQUIRED_MIN_JVM_MAJOR_VERSION_KEY, osName, "");
 		int requiredMinJvmVersion = 0;
 		if (requiredJvmVersionAsString != "") {
 			requiredMinJvmVersion = Integer.parseInt(requiredJvmVersionAsString);
 		}
+
+		String jarArguments = "";
+		if (args.length > 0) {
+			jarArguments = toString(args, " ") + " " + additionalJarArguments;
+		} else {
+			jarArguments = defaultJarArguments + " " + additionalJarArguments;
+		}
+
 		String requiredMinJvmBitDepthAsString = getConfigurationValue(configurationMap, REQUIRED_MIN_JVM_BIT_DEPTH_KEY, osName, "");
 		Integer requiredMinJvmBitDepth = null;
 		if (requiredMinJvmBitDepthAsString != "") {
@@ -150,94 +160,109 @@ public class RemoteJarLauncher {
 			System.out.println("The provided JVM meets the applications minimum requirements (a " + requiredMinJvmBitDepth + "-bit JVM versioned " + requiredMinJvmVersion + " or greater).");
 		}
 
-		if (pathToJar != null) {
-			File jarToExecute = new File(jarDirectory, pathToJar);
-			if (!jarToExecute.exists()) {
-				throw new IllegalStateException("Unable to locate the jar file[" + jarToExecute.getAbsolutePath() + "] provided in configuration file[" + launchFile.getAbsolutePath() + "].");
-			}
-			File tempDirectory = getTempDirectory();
-			File localJar = new File(tempDirectory, jarToExecute.getName());
+		if (pathToJar == null) {
+			throw new IllegalStateException("The " + PATH_TO_JAR_KEY + " key was not provided in the configuration file[" + launchFile.getAbsolutePath() + "].");
+		}
 
-			System.out.println("Copying JAR file[" + jarToExecute.getAbsolutePath() + "] to local directory[" + localJar.getAbsolutePath() + "].");
+		File jarToExecute = new File(jarDirectory, pathToJar);
+		if (!jarToExecute.exists()) {
+			throw new IllegalStateException("Unable to locate the jar file[" + jarToExecute.getAbsolutePath() + "] provided in configuration file[" + launchFile.getAbsolutePath() + "].");
+		}
+		String jarToExecuteMd5Sum = md5sum(jarToExecute);
+
+		File tempDirectory = getTempDirectory();
+		File localJar = new File(tempDirectory, jarToExecute.getName());
+
+		String localJarMd5Sum = "";
+		if (localJar.exists()) {
+			localJarMd5Sum = md5sum(localJar);
+		}
+		boolean localFileIsUpToDate = jarToExecuteMd5Sum.equals(localJarMd5Sum);
+
+		int i = 2;
+		while (localJar.exists() && !localFileIsUpToDate) {
+			localJar = new File(tempDirectory, jarFileName + "_" + i + ".jar");
+			i++;
+			if (localJar.exists()) {
+				localJarMd5Sum = md5sum(localJar);
+				localFileIsUpToDate = jarToExecuteMd5Sum.equals(localJarMd5Sum);
+			} else {
+				localFileIsUpToDate = false;
+			}
+		}
+
+		if (!localFileIsUpToDate) {
 			try {
 				copyFileUsingStream(jarToExecute, localJar);
+				System.out.println("Done copying jar file[" + jarToExecute + "] to [" + localJar.getAbsolutePath() + "].");
 			} catch (IOException e) {
-				// cannot write to file because the file is in use
-				if (localJar.exists()) {
-					if (jarToExecute.length() != localJar.length()) {
-						int i = 2;
-						while (localJar.exists()) {
-							localJar = new File(tempDirectory, jarFileName + "_" + i + ".jar");
-							i++;
-						}
-						copyFileUsingStream(jarToExecute, localJar);
-					}
-				}
+				throw new IllegalStateException("Unable to create local jar at [" + localJar.getAbsolutePath() + "].");
 			}
-			System.out.println("Done Copying JAR file.");
+		} else {
+			System.out.println("The existing local jar file [" + localJar.getAbsolutePath() + "] has an md5Sum[" + localJarMd5Sum + "] which matches the remote jar file["
+					+ jarToExecute.getAbsolutePath() + "]:md5Sum[" + jarToExecuteMd5Sum + "] so the existing local jar file will be used.");
+		}
 
-			// String classpath = System.getProperty("java.class.path");
+		ProcessBuilder processBuilder = null;
+		List<String> params = new ArrayList<String>();
 
-			List<String> params = new ArrayList<String>();
-			params.add(jvmDetails.getJavaExecutablePath().getAbsolutePath());
-			for (String param : jvmArguments.split(" ")) {
-				if (!param.equals("")) {
-					params.add(param);
-				}
-			}
-			params.add("-jar");
-			params.add(localJar.getAbsolutePath());
-			for (String param : jarArguments.split(" ")) {
+		// String classpath = System.getProperty("java.class.path");
+
+		params.add(jvmDetails.getJavaExecutablePath().getAbsolutePath());
+		for (String param : jvmArguments.split(" ")) {
+			if (!param.equals("")) {
 				params.add(param);
 			}
+		}
+		params.add("-jar");
+		params.add(localJar.getAbsolutePath());
+		for (String param : jarArguments.split(" ")) {
+			params.add(param);
+		}
+		System.out.println();
+		System.out.println("Starting new JVM with following command:");
+		StringBuilder command = new StringBuilder();
+		for (String argument : params) {
+			command.append(argument + " ");
+		}
+		System.out.println(command.toString());
+		System.out.println();
+		System.out.println("APPLICATION OUTPUT:");
 
-			System.out.println("Starting new JVM with following command:");
-			StringBuilder command = new StringBuilder();
-			for (String argument : params) {
-				command.append(argument + " ");
-			}
-			System.out.println(command.toString());
+		processBuilder = new ProcessBuilder(params);
+		processBuilder.directory(jarDirectory);
+		// merge the error stream with the input stream
+		// processBuilder.redirectErrorStream(true);
 
-			ProcessBuilder processBuilder = new ProcessBuilder(params);
-			processBuilder.directory(jarDirectory);
-			// merge the error stream with the input stream
-			processBuilder.redirectErrorStream(true);
+		try {
+			final Process process = processBuilder.start();
 
-			try {
-				final Process process = processBuilder.start();
+			@SuppressWarnings("unused")
+			StreamListener outputStreamListener = new StreamListener(process.getInputStream(), System.out);
+			StreamListener errorStreamListener = new StreamListener(process.getErrorStream(), System.err);
 
-				final StringBuilder outputString = new StringBuilder();
-				InputStream stdout = process.getInputStream();
-				BufferedReader reader = new BufferedReader(new InputStreamReader(stdout));
-				String line;
-				while ((line = reader.readLine()) != null) {
-					outputString.append(line);
-					System.out.println(line);
-				}
+			// in some cases the executables need a little nudging to terminate
+			// such is the case when a 'press any key...' command is present
+			process.getOutputStream().close();
 
-				int exitValue = process.waitFor();
+			int exitValue = process.waitFor();
 
-				// in some cases the executables need a little nudging to terminate
-				// such is the case when a 'press any key...' command is present
-				process.getOutputStream().close();
-
-				System.out.println("exit value:" + exitValue);
-				String consoleOutputString = outputString.toString();
-
-				if (exitValue != 0) {
-					System.err.println("There was a problem launching the application.");
-					System.err.println("arguments: " + NEWLINE + toString(params, NEWLINE));
-					System.err.println(consoleOutputString);
-					if (!isHeadless()) {
-						String message = "There was a problem launching the application." + NEWLINE + "Creating a new process with the following arguments: " + NEWLINE + toString(params, NEWLINE)
-								+ NEWLINE + toString(splitIntoLines(consoleOutputString, 50), NEWLINE);
-						JOptionPane.showMessageDialog(null, message, "Error Launching Application", JOptionPane.WARNING_MESSAGE);
+			if (exitValue != 0) {
+				if (!isHeadless()) {
+					String[] consoleOutputLines = null;
+					try {
+						consoleOutputLines = splitIntoLines(errorStreamListener.getString(), 50);
+					} catch (Exception e) {
+						consoleOutputLines = wrapLines(errorStreamListener.getString(), 50);
 					}
 
+					String message = "There was a problem running the application." + NEWLINE + "arguments: " + NEWLINE + toString(params, NEWLINE) + NEWLINE + toString(consoleOutputLines, NEWLINE);
+					JOptionPane.showMessageDialog(null, message, "Error Running Application", JOptionPane.WARNING_MESSAGE);
 				}
-			} catch (IOException e) {
-				throw new IllegalStateException(e.getMessage(), e);
+
 			}
+		} catch (IOException e) {
+			throw new IllegalStateException(e.getMessage(), e);
 		}
 	}
 
@@ -277,6 +302,7 @@ public class RemoteJarLauncher {
 
 			return result;
 		}
+
 	}
 
 	public static String[] splitIntoLines(String string, int maxCharactersInALine) {
@@ -293,7 +319,7 @@ public class RemoteJarLauncher {
 			}
 			currentLineText.append(currentChar);
 			if ((currentLineText.length() > maxCharactersInALine)) {
-				if (indexOfLastSpace == startIndexOfCurrentLine) {
+				if (indexOfLastSpace <= startIndexOfCurrentLine) {
 					throw new IllegalStateException("The text can not be split on spaces.");
 				}
 
@@ -309,6 +335,17 @@ public class RemoteJarLauncher {
 			}
 		}
 
+		return lines.toArray(new String[0]);
+	}
+
+	public static String[] wrapLines(String string, int lineLength) {
+		List<String> lines = new ArrayList<String>();
+		int index = 0;
+		while (index < string.length()) {
+			int endIndex = Math.min(index + lineLength, string.length());
+			lines.add(string.substring(index, endIndex));
+			index = endIndex;
+		}
 		return lines.toArray(new String[0]);
 	}
 
@@ -416,6 +453,21 @@ public class RemoteJarLauncher {
 	public static boolean isHeadless() {
 		GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
 		return env.isHeadlessInstance();
+	}
+
+	public static String md5sum(File file) throws FileNotFoundException, IOException {
+		String md5Sum = null;
+		FileInputStream fis = null;
+
+		try {
+			fis = new FileInputStream(file);
+			md5Sum = DigestUtils.md5Hex(fis);
+		} finally {
+			if (fis != null) {
+				fis.close();
+			}
+		}
+		return md5Sum;
 	}
 
 }
