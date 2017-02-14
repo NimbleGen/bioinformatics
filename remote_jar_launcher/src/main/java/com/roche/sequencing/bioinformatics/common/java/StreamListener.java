@@ -1,6 +1,7 @@
 package com.roche.sequencing.bioinformatics.common.java;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -44,5 +45,10 @@ public class StreamListener {
 
 	public String getString() {
 		return string.toString();
+	}
+
+	public static void main(String[] args) {
+		File file = new File(".");
+		System.out.println(file.getAbsolutePath());
 	}
 }

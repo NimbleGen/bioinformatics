@@ -40,6 +40,7 @@ public class RemoteJarLauncher {
 	private final static String REQUIRED_MIN_JVM_MAJOR_VERSION_KEY = "required_min_jvm_major_version";
 	private final static String REQUIRED_MIN_JVM_BIT_DEPTH_KEY = "required_min_jvm_bit_depth";
 
+	// note: if there are arguments the first argument should be the base directory
 	public static void main(String[] args) {
 		System.out.println("Starting Remote JAR Launcher");
 		try {
@@ -54,6 +55,7 @@ public class RemoteJarLauncher {
 		}
 	}
 
+	// note: if there are arguments the first argument should be the base directory
 	public static void copyRemoteAppAndRunLocally(String[] args) throws URISyntaxException, IOException, InterruptedException {
 		File jarFile = new File(RemoteJarLauncher.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath());
 		boolean isRunFromJarFile = !jarFile.isDirectory();
@@ -111,11 +113,21 @@ public class RemoteJarLauncher {
 			requiredMinJvmVersion = Integer.parseInt(requiredJvmVersionAsString);
 		}
 
-		String jarArguments = "";
+		String baseDirectory = null;
 		if (args.length > 0) {
-			jarArguments = toString(args, " ") + " " + additionalJarArguments;
+			baseDirectory = args[0];
+		}
+
+		String jarArguments = "";
+		if (args.length > 1) {
+			StringBuilder jarArgumentsBuilder = new StringBuilder();
+			for (int i = 1; i < args.length; i++) {
+				jarArgumentsBuilder.append(args[i] + " ");
+			}
+
+			jarArguments = jarArgumentsBuilder.toString().trim() + " " + additionalJarArguments;
 		} else {
-			jarArguments = defaultJarArguments + " " + additionalJarArguments;
+			jarArguments = defaultJarArguments.trim() + " " + additionalJarArguments;
 		}
 
 		String requiredMinJvmBitDepthAsString = getConfigurationValue(configurationMap, REQUIRED_MIN_JVM_BIT_DEPTH_KEY, osName, "");
@@ -144,11 +156,12 @@ public class RemoteJarLauncher {
 			}
 
 			Collections.sort(sufficientJvms, new JvmDetailsComparator());
-			System.out.println();
-			System.out.println("Found the following " + requiredMinJvmBitDepth + "-bit JVMs versioned " + requiredMinJvmVersion + " or greater:");
-			for (JvmDetails sufficientJvm : sufficientJvms) {
-				System.out.println(sufficientJvm);
-			}
+			// Note: This was too verbose
+			// System.out.println();
+			// System.out.println("Found the following " + requiredMinJvmBitDepth + "-bit JVMs versioned " + requiredMinJvmVersion + " or greater:");
+			// for (JvmDetails sufficientJvm : sufficientJvms) {
+			// System.out.println(sufficientJvm);
+			// }
 
 			jvmDetails = sufficientJvms.get(0);
 
@@ -181,7 +194,7 @@ public class RemoteJarLauncher {
 
 		int i = 2;
 		while (localJar.exists() && !localFileIsUpToDate) {
-			localJar = new File(tempDirectory, jarFileName + "_" + i + ".jar");
+			localJar = new File(tempDirectory, jarToExecute.getName().replace(".jar", "") + "_" + i + ".jar");
 			i++;
 			if (localJar.exists()) {
 				localJarMd5Sum = md5sum(localJar);
@@ -213,6 +226,9 @@ public class RemoteJarLauncher {
 			if (!param.equals("")) {
 				params.add(param);
 			}
+		}
+		if (baseDirectory != null) {
+			params.add("-Duser.dir=" + baseDirectory);
 		}
 		params.add("-jar");
 		params.add(localJar.getAbsolutePath());

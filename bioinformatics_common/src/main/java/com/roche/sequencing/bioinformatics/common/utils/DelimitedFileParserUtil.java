@@ -276,12 +276,14 @@ public final class DelimitedFileParserUtil {
 		private final String columnDelimiter;
 		private final Map<Integer, String> headerNameToColumnMap;
 		private String nextLine;
+		private final String filePath;
 
-		public DelimitedFileLineIterator(String columnDelimiter, BufferedReader reader, Map<Integer, String> headerNameToColumnMap) throws IOException {
+		public DelimitedFileLineIterator(String columnDelimiter, BufferedReader reader, Map<Integer, String> headerNameToColumnMap, String filePath) throws IOException {
 			this.columnDelimiter = columnDelimiter;
 			this.reader = reader;
 			this.headerNameToColumnMap = headerNameToColumnMap;
 			this.nextLine = reader.readLine();
+			this.filePath = filePath;
 		}
 
 		@Override
@@ -315,7 +317,7 @@ public final class DelimitedFileParserUtil {
 			String[] parsedCurrentRow = currentRow.split(columnDelimiter);
 
 			if (parsedCurrentRow != null) {
-				headerNameToValueMapFromRow = parseRow(headerNameToColumnMap, parsedCurrentRow, null);
+				headerNameToValueMapFromRow = parseRow(headerNameToColumnMap, parsedCurrentRow, null, filePath);
 			}
 
 			return headerNameToValueMapFromRow;
@@ -366,7 +368,7 @@ public final class DelimitedFileParserUtil {
 			String[] parsedHeaderRow = header.getHeadLine().split(columnDelimiter);
 
 			Map<Integer, String> headerNameToColumnMap = getColumnIndexToHeaderNameMapping(headerNames, parsedHeaderRow, extractAdditionalHeaderNames);
-			delimitedFileLineIterator = new DelimitedFileLineIterator(columnDelimiter, bufferedReader, headerNameToColumnMap);
+			delimitedFileLineIterator = new DelimitedFileLineIterator(columnDelimiter, bufferedReader, headerNameToColumnMap, delimitedFile.getAbsolutePath());
 		}
 
 		return delimitedFileLineIterator;
@@ -522,7 +524,7 @@ public final class DelimitedFileParserUtil {
 					String[] parsedCurrentRow = currentRow.split(columnDelimiter);
 
 					if (parsedCurrentRow != null) {
-						headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow, headerNameToValueMapFromRow);
+						headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow, headerNameToValueMapFromRow, delimitedInputStreamFactory.getName());
 
 						lineParser.parseDelimitedLine(headerNameToValueMapFromRow);
 					}
@@ -600,7 +602,8 @@ public final class DelimitedFileParserUtil {
 
 			for (int i = 0; i < numberOfRunnables; i++) {
 				tasks.add(new FileParser(i, numberOfRunnables, delimitedInputStreamFactory, lineParser, header, columnToHeaderNameMap, linesOfData, wasInterrupted, columnDelimiter,
-						positionInBytesOfLinesReadByEachFileParser, totalBytesRead, lastPercentComplete, startTimeInMs, totalLinesRead, textProgressListener, executor));
+						positionInBytesOfLinesReadByEachFileParser, totalBytesRead, lastPercentComplete, startTimeInMs, totalLinesRead, textProgressListener, executor,
+						delimitedInputStreamFactory.getName()));
 			}
 
 			List<Throwable> exceptions = new ArrayList<Throwable>();
@@ -662,6 +665,7 @@ public final class DelimitedFileParserUtil {
 		private final AtomicInteger lastPercentComplete;
 		private final long startTimeInMs;
 		private final AtomicInteger totalLinesRead;
+		private final String filePath;
 
 		private final ITextProgressListener textProgressListener;
 
@@ -670,7 +674,7 @@ public final class DelimitedFileParserUtil {
 		public FileParser(int readSectionIndex, int totalReadSections, IInputStreamFactory delimitedInputStreamFactory, IDelimitedLineParser lineParser, Header header,
 				Map<Integer, String> columnToHeaderNameMap, AtomicInteger linesOfData, AtomicBoolean wasInterrupted, String columnDelimiter,
 				ConcurrentHashMap<Long, Boolean> positionInBytesOfFirstLinesReadByEachFileParser, AtomicLong totalBytesRead, AtomicInteger lastPercentComplete, long startTimeInMs,
-				AtomicInteger totalLinesRead, ITextProgressListener textProgressListener, Executor executor) {
+				AtomicInteger totalLinesRead, ITextProgressListener textProgressListener, Executor executor, String filePath) {
 			super();
 			this.readSectionIndex = readSectionIndex;
 			this.totalReadSections = totalReadSections;
@@ -688,6 +692,7 @@ public final class DelimitedFileParserUtil {
 			this.startTimeInMs = startTimeInMs;
 			this.totalLinesRead = totalLinesRead;
 			this.executor = executor;
+			this.filePath = filePath;
 		}
 
 		@Override
@@ -710,9 +715,9 @@ public final class DelimitedFileParserUtil {
 				}
 
 				long startPositionInBytes = (long) Math.floor((sizeInBytes * readSectionIndex) / totalReadSections);
-				long stopPositionInBytes = (long) Math.floor((sizeInBytes * (readSectionIndex + 1)) / totalReadSections) - 1;
+				long stopPositionInBytes = (long) Math.floor((sizeInBytes * (readSectionIndex + 1)) / totalReadSections);
 
-				if (startPositionInBytes > currentPositionInBytes) {
+				if (currentPositionInBytes < startPositionInBytes) {
 					long amountToSkip = startPositionInBytes - currentPositionInBytes;
 					long amountSkipped = 0;
 					while (amountSkipped != amountToSkip && amountSkipped >= 0) {
@@ -760,7 +765,7 @@ public final class DelimitedFileParserUtil {
 						} else if ((currentCharacter == StringUtil.NEWLINE_SYMBOL)) {
 							endLinesFound++;
 							if (endLinesFound > 1) {
-								shouldContinue = processLine(currentLine.toString(), currentPositionInBytes, stopPositionInBytes, headerNameToValueMapFromRow);
+								shouldContinue = processLine(currentLine.toString(), currentPositionInBytes, stopPositionInBytes, headerNameToValueMapFromRow, filePath);
 								totalLinesRead.incrementAndGet();
 								if (!shouldContinue) {
 									break outerByteLoop;
@@ -791,7 +796,7 @@ public final class DelimitedFileParserUtil {
 				}
 
 				if (shouldContinue && currentLine.length() > 0) {
-					processLine(currentLine.toString(), currentPositionInBytes, stopPositionInBytes, headerNameToValueMapFromRow);
+					processLine(currentLine.toString(), currentPositionInBytes, stopPositionInBytes, headerNameToValueMapFromRow, filePath);
 				}
 			} catch (IOException e) {
 				throw new RuntimeException(e.getMessage(), e);
@@ -799,7 +804,7 @@ public final class DelimitedFileParserUtil {
 			return null;
 		}
 
-		private boolean processLine(String currentLine, long currentPositionInBytes, long stopPositionInBytes, Map<String, String> headerNameToValueMapFromRow) {
+		private boolean processLine(String currentLine, long currentPositionInBytes, long stopPositionInBytes, Map<String, String> headerNameToValueMapFromRow, String filePath) {
 			boolean continueProcessing = true;
 
 			// this is handling the case where two or more file parsers have been positioned in the same line
@@ -810,7 +815,7 @@ public final class DelimitedFileParserUtil {
 				String[] parsedCurrentRow = currentLine.split(columnDelimiter);
 
 				if (parsedCurrentRow != null) {
-					headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow, headerNameToValueMapFromRow);
+					headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow, headerNameToValueMapFromRow, filePath);
 
 					lineParser.parseDelimitedLine(headerNameToValueMapFromRow);
 				}
@@ -869,7 +874,7 @@ public final class DelimitedFileParserUtil {
 		return columnToNameMapping;
 	}
 
-	private static Map<String, String> parseRow(Map<Integer, String> headerInfo, String[] parsedCurrentRow, Map<String, String> returnMapToPopulate) {
+	private static Map<String, String> parseRow(Map<Integer, String> headerInfo, String[] parsedCurrentRow, Map<String, String> returnMapToPopulate, String filePath) {
 		Map<String, String> headerNameToValueMap = null;
 		if (returnMapToPopulate != null) {
 			headerNameToValueMap = returnMapToPopulate;
@@ -883,7 +888,7 @@ public final class DelimitedFileParserUtil {
 			String headerName = headerEntry.getValue();
 
 			if (parsedCurrentRow.length == 1 && headerInfo.size() > 1) {
-				String message = "Unable to parse line[" + ArraysUtil.toString(parsedCurrentRow, StringUtil.TAB) + "] because it does not contain column index[" + columnIndex
+				String message = "Unable to parse line[" + ArraysUtil.toString(parsedCurrentRow, StringUtil.TAB) + "] in file[" + filePath + "] because it does not contain column index[" + columnIndex
 						+ "] which is a value for the header name[" + headerName
 						+ "].  This appears to an issue with the provided column delimiter; this line does not contain a single instance of the column delimiter string.";
 				throw new IllegalStateException(message);
@@ -937,7 +942,7 @@ public final class DelimitedFileParserUtil {
 							String[] parsedCurrentRow = currentRow.split(columnDelimiter);
 
 							if (parsedCurrentRow != null) {
-								headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow, headerNameToValueMapFromRow);
+								headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow, headerNameToValueMapFromRow, delimitedFile.getAbsolutePath());
 
 								boolean isValueAcceptable = true;
 								headerLoop: for (String headerName : headerNameToValueMapFromRow.keySet()) {
