@@ -143,14 +143,14 @@ public class NeedlemanWunschGlobalAlignment {
 	/**
 	 * @return the reference sequence used to calculate this alignment
 	 */
-	private ISequence getReferenceSequence() {
+	public ISequence getReferenceSequence() {
 		return referenceSequence;
 	}
 
 	/**
 	 * @return the query sequence used to calculate this alignment
 	 */
-	private ISequence getQuerySequence() {
+	public ISequence getQuerySequence() {
 		return querySequence;
 	}
 
@@ -273,9 +273,13 @@ public class NeedlemanWunschGlobalAlignment {
 
 		if (!isEndOfRow || getAlignmentScorer().shouldPenalizeEndingTerminalGaps()) {
 			if (isVerticalGapContinuation) {
-				verticalScore += getAlignmentScorer().getGapScore();
+				if (cellAbove.getIndexInGap() != null) {
+					verticalScore += getAlignmentScorer().getGapScore(cellAbove.getIndexInGap() + 1);
+				} else {
+					throw new AssertionError();
+				}
 			} else {
-				verticalScore += getAlignmentScorer().getGapStartScore();
+				verticalScore += getAlignmentScorer().getGapStartScore() + getAlignmentScorer().getGapScore(0);
 			}
 		}
 
@@ -285,9 +289,13 @@ public class NeedlemanWunschGlobalAlignment {
 
 		if (!isBottomOfColumn || getAlignmentScorer().shouldPenalizeEndingTerminalGaps()) {
 			if (isHorizontalGapContinuation) {
-				horizontalScore += getAlignmentScorer().getGapScore();
+				if (cellToLeft.getIndexInGap() != null) {
+					horizontalScore += getAlignmentScorer().getGapScore(cellToLeft.getIndexInGap());
+				} else {
+					throw new AssertionError();
+				}
 			} else {
-				horizontalScore += getAlignmentScorer().getGapStartScore();
+				horizontalScore += getAlignmentScorer().getGapStartScore() + getAlignmentScorer().getGapScore(0);
 			}
 		}
 
@@ -300,8 +308,18 @@ public class NeedlemanWunschGlobalAlignment {
 
 		if (maxScore == horizontalScore) {
 			currentCell.setSourceCell(cellToLeft);
+			if (cellToLeft.getIndexInGap() != null) {
+				currentCell.setIndexInGap(cellToLeft.getIndexInGap() + 1);
+			} else {
+				currentCell.setIndexInGap(0);
+			}
 		} else if (maxScore == verticalScore) {
 			currentCell.setSourceCell(cellAbove);
+			if (cellAbove.getIndexInGap() != null) {
+				currentCell.setIndexInGap(cellAbove.getIndexInGap() + 1);
+			} else {
+				currentCell.setIndexInGap(0);
+			}
 		} else if (maxScore == matchOrMismatchScore) {
 			currentCell.setSourceCell(cellAboveLeft);
 		} else {
@@ -337,13 +355,17 @@ public class NeedlemanWunschGlobalAlignment {
 
 		if ((rowIndex == 0) && (columnIndex != 0)) {
 			if (getAlignmentScorer().shouldPenalizeStartingTerminalGaps()) {
-				score = getAlignmentScorer().getGapStartScore() + (columnIndex - 1) * getAlignmentScorer().getGapScore();
+				// this minus one in getAlignmentScorer().getGapScore(0) - 1 is so this behaves exactly as a previous version
+				// when using the SimpleAlignmentScorer
+				score = getAlignmentScorer().getGapStartScore() + ((columnIndex - 1) * (getAlignmentScorer().getGapScore(0) - 1));
 			} else {
 				score = 0;
 			}
 		} else if ((columnIndex == 0) && (rowIndex != 0)) {
 			if (getAlignmentScorer().shouldPenalizeStartingTerminalGaps()) {
-				score = getAlignmentScorer().getGapStartScore() + (rowIndex - 1) * getAlignmentScorer().getGapScore();
+				// this minus one in getAlignmentScorer().getGapScore(0) - 1 is so this behaves exactly as a previous version
+				// when using the SimpleAlignmentScorer
+				score = getAlignmentScorer().getGapStartScore() + ((rowIndex - 1) * (getAlignmentScorer().getGapScore(0) - 1));
 			} else {
 				score = 0;
 			}

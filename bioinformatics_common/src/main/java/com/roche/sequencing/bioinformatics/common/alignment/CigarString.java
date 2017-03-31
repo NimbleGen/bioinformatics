@@ -27,9 +27,9 @@ public class CigarString {
 
 	private final String nonSummarizedCigarString;
 
-	private CigarString(String summarizedCigarString) {
+	private CigarString(String nonSummarizedCigarString) {
 		super();
-		this.nonSummarizedCigarString = summarizedCigarString;
+		this.nonSummarizedCigarString = nonSummarizedCigarString;
 	}
 
 	static CigarString FromNonSummarizedCigarString(String nonSummarizedCigarStringWithSequenceMismatches) {
@@ -37,13 +37,16 @@ public class CigarString {
 	}
 
 	public String getCigarString(boolean summarize, boolean includeSequenceMismatches) {
-		return getCigarString(summarize, includeSequenceMismatches, false);
+		return getCigarString(summarize, includeSequenceMismatches, false, false);
 	}
 
-	public String getCigarString(boolean summarize, boolean includeSequenceMismatches, boolean ignoreSequenceDeletions) {
+	public String getCigarString(boolean summarize, boolean includeSequenceMismatches, boolean ignoreSequenceDeletions, boolean ignoreSequenceInsertions) {
 		String cigarString = nonSummarizedCigarString;
 		if (ignoreSequenceDeletions) {
 			cigarString = cigarString.replaceAll("D", "");
+		}
+		if (ignoreSequenceInsertions) {
+			cigarString = cigarString.replaceAll("I", "");
 		}
 		if (!includeSequenceMismatches) {
 			cigarString = CigarStringUtil.replaceSequenceMatchesAndMismatchesFromCigarString(cigarString);
@@ -55,17 +58,28 @@ public class CigarString {
 		return cigarString;
 	}
 
+	public int getLengthOfReference() {
+		int length = 0;
+		for (int i = 0; i < nonSummarizedCigarString.length(); i++) {
+			char character = nonSummarizedCigarString.charAt(i);
+			if (character != 'I') {
+				length++;
+			}
+		}
+		return length;
+	}
+
 	/**
 	 * @return a standard cigar string as found in BAM files (for example, 45M1I37M)
 	 */
 	public String getStandardCigarString() {
-		return getCigarString(true, false, false);
+		return getCigarString(true, false, false, false);
 	}
 
 	/**
 	 * @return a cigar string that represents the alignment of both sequences reversed
 	 */
-	CigarString reverse() {
+	public CigarString reverse() {
 		return new CigarString(StringUtil.reverse(nonSummarizedCigarString));
 	}
 

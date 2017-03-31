@@ -70,8 +70,14 @@ public class SimpleAlignmentScorer implements IAlignmentScorer {
 	}
 
 	@Override
-	public double getGapScore() {
-		return gapExtension;
+	public double getGapScore(int indexInGap) {
+		double score;
+		if (indexInGap == 0) {
+			score = 0;
+		} else {
+			score = gapExtension;
+		}
+		return score;
 	}
 
 	@Override

@@ -31,12 +31,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.roche.heatseq.objects.ParsedProbeFile;
-import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.utils.IlluminaFastQReadNameUtil;
-import com.roche.heatseq.utils.PicardException;
-import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
+import com.roche.sequencing.bioinformatics.common.utils.IlluminaFastQReadNameUtil;
+import com.roche.sequencing.bioinformatics.common.utils.fastq.PicardException;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ParsedProbeFile;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil;
 
 class RangeMap<O> implements IRangeMap<O> {
 

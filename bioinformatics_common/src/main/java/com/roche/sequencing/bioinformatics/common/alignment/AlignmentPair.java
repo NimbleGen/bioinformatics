@@ -93,12 +93,13 @@ public class AlignmentPair {
 	 * @return the reference sequence alignment with no beginning or ending gaps
 	 */
 	public AlignmentPair getAlignmentWithoutEndingAndBeginningQueryInserts() {
-		return new AlignmentPair(referenceAlignment.subSequence(firstNonDeletionIndexInQuery, lastNonDeletionIndexInQuery), queryAlignment.subSequence(firstNonDeletionIndexInQuery,
-				lastNonDeletionIndexInQuery));
+		ISequence newReferenceAlignment = referenceAlignment.subSequence(firstNonDeletionIndexInQuery, lastNonDeletionIndexInQuery);
+		ISequence newQueryAlignment = queryAlignment.subSequence(firstNonDeletionIndexInQuery, lastNonDeletionIndexInQuery);
+		return new AlignmentPair(newReferenceAlignment, newQueryAlignment);
 	}
 
 	/**
-	 * @return the reference sequence alignment with no beginning or ending gaps
+	 * @return the reference sequence alignment with no ending gaps
 	 */
 	public AlignmentPair getAlignmentWithoutEndingReferenceInserts() {
 		return new AlignmentPair(referenceAlignment.subSequence(0, lastNonDeletionIndexInReference), queryAlignment.subSequence(0, lastNonDeletionIndexInReference));
@@ -108,12 +109,12 @@ public class AlignmentPair {
 	 * @return the reference sequence alignment with no beginning or ending gaps
 	 */
 	public AlignmentPair getAlignmentWithoutEndingAndBeginningReferenceInserts() {
-		return new AlignmentPair(referenceAlignment.subSequence(firstNonDeletionIndexInQuery, lastNonDeletionIndexInReference), queryAlignment.subSequence(firstNonDeletionIndexInReference,
-				lastNonDeletionIndexInReference));
+		return new AlignmentPair(referenceAlignment.subSequence(firstNonDeletionIndexInReference, lastNonDeletionIndexInReference),
+				queryAlignment.subSequence(firstNonDeletionIndexInReference, lastNonDeletionIndexInReference));
 	}
 
 	/**
-	 * @return the reference sequence alignment with no beginning or ending gaps
+	 * @return the reference sequence alignment with no ending gaps
 	 */
 	public AlignmentPair getAlignmentWithoutEndingQueryInserts() {
 		return new AlignmentPair(referenceAlignment.subSequence(0, lastNonDeletionIndexInQuery), queryAlignment.subSequence(0, lastNonDeletionIndexInQuery));
@@ -144,15 +145,92 @@ public class AlignmentPair {
 	 * @return the reverse of the mismatch details string
 	 */
 	public String getReverseMismatchDetailsString() {
-		AlignmentPair alignmentWithoutEndingAndBeginningQueryInserts = getAlignmentWithoutEndingAndBeginningQueryInserts();
-		ISequence referenceSequenceAlignment = alignmentWithoutEndingAndBeginningQueryInserts.getReferenceAlignment();
-		ISequence querySequenceAlignment = alignmentWithoutEndingAndBeginningQueryInserts.getQueryAlignment();
+		ISequence reverseReferenceSequenceAlignment = getReferenceAlignment().getReverse();
+		ISequence reverseQuerySequenceAlignment = getQueryAlignment().getReverse();
 
-		return CigarStringUtil.getMismatchDetailsString(referenceSequenceAlignment.getReverse(), querySequenceAlignment.getReverse(), getReverseCigarString());
+		return CigarStringUtil.getMismatchDetailsString(reverseReferenceSequenceAlignment, reverseQuerySequenceAlignment, getReverseCigarString());
+	}
+
+	/**
+	 * @return the reverse compliment of the mismatch details string
+	 */
+	public String getReverseComplimentMismatchDetailsString() {
+		ISequence reverseComplimentReferenceSequenceAlignment = getReferenceAlignment().getReverseCompliment();
+		ISequence reverseComplimentQuerySequenceAlignment = getQueryAlignment().getReverseCompliment();
+
+		return CigarStringUtil.getMismatchDetailsString(reverseComplimentReferenceSequenceAlignment, reverseComplimentQuerySequenceAlignment, getReverseCigarString());
 	}
 
 	public int getFirstNonInsertQueryMatchInReference() {
 		return firstNonDeletionIndexInQuery;
+	}
+
+	public int getFirstNonInsertQueryMatchInQuery() {
+		return firstNonDeletionIndexInReference;
+	}
+
+	public int getLastNonInsertQueryMatchInReference() {
+		return lastNonDeletionIndexInQuery;
+	}
+
+	public int getLastNonInsertQueryMatchInQuery() {
+		return lastNonDeletionIndexInReference;
+	}
+
+	public int getNumberOfInsertionsRelativeToReference() {
+		int numberOfInsertions = 0;
+		for (int i = 0; i < referenceAlignment.size(); i++) {
+			ICode ref = referenceAlignment.getCodeAt(i);
+			if (ref.matches(IupacNucleotideCode.GAP)) {
+				numberOfInsertions++;
+			}
+		}
+		return numberOfInsertions;
+	}
+
+	public int getNumberOfInsertionGapsRelativeToReference() {
+		int numberOfInsertionGaps = 0;
+		boolean inGap = false;
+		for (int i = 0; i < referenceAlignment.size(); i++) {
+			ICode ref = referenceAlignment.getCodeAt(i);
+			if (ref.matches(IupacNucleotideCode.GAP)) {
+				if (!inGap) {
+					inGap = true;
+					numberOfInsertionGaps++;
+				}
+			} else {
+				inGap = false;
+			}
+		}
+		return numberOfInsertionGaps;
+	}
+
+	public int getNumberOfDeletionsRelativeToReference() {
+		int numberOfDeletions = 0;
+		for (int i = 0; i < referenceAlignment.size(); i++) {
+			ICode query = queryAlignment.getCodeAt(i);
+			if (query.matches(IupacNucleotideCode.GAP)) {
+				numberOfDeletions++;
+			}
+		}
+		return numberOfDeletions;
+	}
+
+	public int getNumberOfDeletionGapsRelativeToReference() {
+		int numberOfDeletionGaps = 0;
+		boolean inGap = false;
+		for (int i = 0; i < referenceAlignment.size(); i++) {
+			ICode query = queryAlignment.getCodeAt(i);
+			if (query.matches(IupacNucleotideCode.GAP)) {
+				if (!inGap) {
+					inGap = true;
+					numberOfDeletionGaps++;
+				}
+			} else {
+				inGap = false;
+			}
+		}
+		return numberOfDeletionGaps;
 	}
 
 	public int getNumberOfMismatches() {
@@ -165,6 +243,22 @@ public class AlignmentPair {
 			}
 		}
 		return numberOfMismatches;
+	}
+
+	public int getNumberOfOverlaps() {
+		int numberOfOverlaps = 0;
+		for (int i = 0; i < referenceAlignment.size(); i++) {
+			ICode ref = referenceAlignment.getCodeAt(i);
+			ICode query = queryAlignment.getCodeAt(i);
+			if (ref.matches(query)) {
+				numberOfOverlaps++;
+			}
+		}
+		return numberOfOverlaps;
+	}
+
+	public AlignmentPair subAlignment(int start, int stop) {
+		return new AlignmentPair(referenceAlignment.subSequence(start, stop), queryAlignment.subSequence(start, stop));
 	}
 
 }

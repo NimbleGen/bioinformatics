@@ -18,6 +18,7 @@ public class BedFileParser {
 
 	private final static String UNIQUE_TEXT_START = "!$%#";
 	private final static String UNIQUE_TEXT_END = "#%$!";
+	private final static String EMPTY_FIELD = ".";
 
 	private BedFileParser() {
 		throw new AssertionError();
@@ -78,8 +79,8 @@ public class BedFileParser {
 						int secondIndex = lineWithTrackTextRemoved.indexOf("\"", firstIndex + 1);
 
 						if (secondIndex == -1) {
-							throw new IllegalStateException("There are an odd number of \"s found in the text[" + line + "] on line[" + currentLineNumber + "] of bed file["
-									+ bedFile.getAbsolutePath() + "].");
+							throw new IllegalStateException(
+									"There are an odd number of \"s found in the text[" + line + "] on line[" + currentLineNumber + "] of bed file[" + bedFile.getAbsolutePath() + "].");
 						}
 
 						String text = lineWithTrackTextRemoved.substring(firstIndex, secondIndex + 1);
@@ -138,8 +139,12 @@ public class BedFileParser {
 									try {
 										score = Integer.parseInt(scoreAsString);
 									} catch (NumberFormatException e) {
-										throw new IllegalStateException("The provided value for the score column[" + scoreAsString + "], which is column 5, is not a valid score at line["
-												+ currentLineNumber + "] in the bed file[" + bedFile.getAbsolutePath() + "].");
+										if (scoreAsString.equals(EMPTY_FIELD)) {
+											score = 0;
+										} else {
+											throw new IllegalStateException("The provided value for the score column[" + scoreAsString + "], which is column 5, is not a valid score at line["
+													+ currentLineNumber + "] in the bed file[" + bedFile.getAbsolutePath() + "].");
+										}
 									}
 								}
 								break;

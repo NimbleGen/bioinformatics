@@ -12,8 +12,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +33,8 @@ public class RemoteJarLauncher {
 
 	private final static String PATH_TO_JAR_KEY = "path_to_jar";
 	private final static String DEFAULT_JAR_ARGUMENTS_KEY = "default_jar_arguments";
-	private final static String ADDITIONAL_JAR_ARGUMENTS_KEY = "additional_jar_arguments";
+	private final static String LEADING_JAR_ARGUMENTS_KEY = "leading_jar_arguments";
+	private final static String TRAILING_JAR_ARGUMENTS_KEY = "trailing_jar_arguments";
 	private final static String JVM_ARGUMENTS_KEY = "jvm_arguments";
 	private final static String REQUIRED_MIN_JVM_MAJOR_VERSION_KEY = "required_min_jvm_major_version";
 	private final static String REQUIRED_MIN_JVM_BIT_DEPTH_KEY = "required_min_jvm_bit_depth";
@@ -61,8 +60,8 @@ public class RemoteJarLauncher {
 		boolean isRunFromJarFile = !jarFile.isDirectory();
 		String extension = ".jar";
 		if (!isRunFromJarFile) {
-			throw new IllegalStateException("The Remote App Launcher only works as a Jar File.");
-			// jarFile = new File("C:\\Users\\heilmank\\Desktop\\runSlideViewer.jar");
+			// throw new IllegalStateException("The Remote App Launcher only works as a Jar File.");
+			jarFile = new File("C:\\Users\\heilmank\\Desktop\\runPeptideTool.jar");
 		}
 		File jarDirectory = jarFile.getParentFile();
 		String jarFileName = jarFile.getName();
@@ -96,16 +95,22 @@ public class RemoteJarLauncher {
 		if (pathToJavaFile.getName().equals("jre") && pathToJavaFile.getParentFile().getName().toLowerCase().contains("jdk")) {
 			pathToJavaFile = pathToJavaFile.getParentFile();
 		}
-		JvmDetails jvmDetails = JvmUtil.getJvmDetails(pathToJavaFile);
-		System.out.println("jvm details:" + jvmDetails);
-		String osName = getOsName();
+
+		String osName;
 		if (isMacOsX()) {
 			osName = "mac";
+		} else if (isWindows()) {
+			osName = "Windows";
+		} else if (isLinux()) {
+			osName = "Linux";
+		} else {
+			throw new AssertionError();
 		}
 
 		String pathToJar = getConfigurationValue(configurationMap, PATH_TO_JAR_KEY, osName, null);
 		String defaultJarArguments = getConfigurationValue(configurationMap, DEFAULT_JAR_ARGUMENTS_KEY, osName, "");
-		String additionalJarArguments = getConfigurationValue(configurationMap, ADDITIONAL_JAR_ARGUMENTS_KEY, osName, "");
+		String leadingJarArguments = getConfigurationValue(configurationMap, LEADING_JAR_ARGUMENTS_KEY, osName, "");
+		String trailingJarArguments = getConfigurationValue(configurationMap, TRAILING_JAR_ARGUMENTS_KEY, osName, "");
 		String jvmArguments = getConfigurationValue(configurationMap, JVM_ARGUMENTS_KEY, osName, "");
 		String requiredJvmVersionAsString = getConfigurationValue(configurationMap, REQUIRED_MIN_JVM_MAJOR_VERSION_KEY, osName, "");
 		int requiredMinJvmVersion = 0;
@@ -121,14 +126,36 @@ public class RemoteJarLauncher {
 		String jarArguments = "";
 		if (args.length > 1) {
 			StringBuilder jarArgumentsBuilder = new StringBuilder();
+
 			for (int i = 1; i < args.length; i++) {
 				jarArgumentsBuilder.append(args[i] + " ");
 			}
 
-			jarArguments = jarArgumentsBuilder.toString().trim() + " " + additionalJarArguments;
+			if (leadingJarArguments != "") {
+				jarArguments = leadingJarArguments + " ";
+			}
+
+			if (jarArgumentsBuilder.toString().trim() != "") {
+				jarArguments += jarArgumentsBuilder.toString().trim() + " ";
+			}
+
+			if (trailingJarArguments != "") {
+				jarArguments += trailingJarArguments;
+			}
 		} else {
-			jarArguments = defaultJarArguments.trim() + " " + additionalJarArguments;
+			if (leadingJarArguments != "") {
+				jarArguments = leadingJarArguments + " ";
+			}
+
+			if (defaultJarArguments.trim() != "") {
+				jarArguments += defaultJarArguments.trim() + " ";
+			}
+
+			if (trailingJarArguments != "") {
+				jarArguments += trailingJarArguments;
+			}
 		}
+		jarArguments = jarArguments.trim();
 
 		String requiredMinJvmBitDepthAsString = getConfigurationValue(configurationMap, REQUIRED_MIN_JVM_BIT_DEPTH_KEY, osName, "");
 		Integer requiredMinJvmBitDepth = null;
@@ -136,35 +163,8 @@ public class RemoteJarLauncher {
 			requiredMinJvmBitDepth = Integer.parseInt(requiredMinJvmBitDepthAsString);
 		}
 
-		boolean jvmIsSufficient = (jvmDetails != null && (jvmDetails.getJvmBitDepth().isSufficientToHandleProvidedBitDepth(requiredMinJvmBitDepth))
-				&& (requiredMinJvmVersion <= jvmDetails.getVersion().getMajorVersion()));
-
-		if (!jvmIsSufficient) {
-			System.out.println("The provided JVM does not meet the applications minimum requirements.  Searching for a " + requiredMinJvmBitDepth + "-bit JVM versioned " + requiredMinJvmVersion
-					+ " or greater.");
-			List<JvmDetails> sufficientJvms = new ArrayList<JvmDetails>();
-			for (JvmDetails currentJvmDetails : JvmUtil.findJvms()) {
-				boolean isSufficient = (currentJvmDetails != null && (currentJvmDetails.getJvmBitDepth().isSufficientToHandleProvidedBitDepth(requiredMinJvmBitDepth))
-						&& (requiredMinJvmVersion <= currentJvmDetails.getVersion().getMajorVersion()));
-				if (isSufficient) {
-					sufficientJvms.add(currentJvmDetails);
-				}
-			}
-
-			if (sufficientJvms.size() == 0) {
-				throw new IllegalStateException("Unable to find a " + requiredMinJvmBitDepth + "-bit JVM versioned " + requiredMinJvmVersion + " or greater.");
-			}
-
-			Collections.sort(sufficientJvms, new JvmDetailsComparator());
-			// Note: This was too verbose
-			// System.out.println();
-			// System.out.println("Found the following " + requiredMinJvmBitDepth + "-bit JVMs versioned " + requiredMinJvmVersion + " or greater:");
-			// for (JvmDetails sufficientJvm : sufficientJvms) {
-			// System.out.println(sufficientJvm);
-			// }
-
-			jvmDetails = sufficientJvms.get(0);
-
+		JvmDetails jvmDetails = JvmUtil.getBestSufficientJvm(pathToJavaFile, requiredMinJvmBitDepth, requiredMinJvmVersion);
+		if (jvmDetails != null) {
 			System.out.println();
 			System.out.println("Using the following JVM:");
 			System.out.println(jvmDetails);
@@ -280,45 +280,6 @@ public class RemoteJarLauncher {
 		} catch (IOException e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
-	}
-
-	private static class JvmDetailsComparator implements Comparator<JvmDetails> {
-		public int compare(JvmDetails o1, JvmDetails o2) {
-			int result = o2.getVersion().getMajorVersion() - o1.getVersion().getMajorVersion();
-
-			if (result == 0) {
-				if (o1.getJvmType() != o2.getJvmType()) {
-					if (o1.getJvmType() == JvmTypeEnum.JDK) {
-						result = -1;
-					} else {
-						result = 1;
-					}
-				}
-			}
-
-			if (result == 0) {
-				if (!o1.getVendor().equals(o2.getVendor())) {
-					if (o1.getVendor().equals("Oracle Corporation")) {
-						result = -1;
-					} else {
-						result = 1;
-					}
-				}
-			}
-
-			if (result == 0) {
-				if (o1.getJvmBitDepth() != o2.getJvmBitDepth()) {
-					if (o1.getJvmBitDepth() == JvmBitDepthEnum.BIT_DEPTH_64) {
-						result = -1;
-					} else {
-						result = 1;
-					}
-				}
-			}
-
-			return result;
-		}
-
 	}
 
 	public static String[] splitIntoLines(String string, int maxCharactersInALine) {

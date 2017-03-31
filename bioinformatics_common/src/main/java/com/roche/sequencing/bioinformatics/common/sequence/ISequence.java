@@ -22,7 +22,7 @@ public interface ISequence extends Iterable<ICode> {
 	 * 
 	 * @param sequenceAsString
 	 */
-	void append(ISequence sequenceAsString);
+	ISequence append(ISequence sequenceAsString);
 
 	/**
 	 * @return the number of codes present in this sequence

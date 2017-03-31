@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.roche.heatseq.process;
+package com.roche.sequencing.bioinformatics.common.utils.probeinfo;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -21,12 +21,14 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
-import com.roche.heatseq.cli.CliStatusConsole;
-import com.roche.heatseq.objects.ParsedProbeFile;
-import com.roche.heatseq.utils.ProbeFileUtil;
-import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil.ProbeHeaderInformation;
 
 public class ProbeInfoFileValidator {
+
+	private static final Logger logger = LoggerFactory.getLogger(ProbeInfoFileValidator.class);
 
 	private ProbeInfoFileValidator() {
 		throw new AssertionError();
@@ -55,7 +57,7 @@ public class ProbeInfoFileValidator {
 			if (md5SumFromHeader != null) {
 				String calculatedMd5Sum = ProbeFileUtil.getHeaderlessMd5SumOfFile(probeInfoFile);
 				if (!md5SumFromHeader.equals(calculatedMd5Sum)) {
-					CliStatusConsole.logError("WARNING: The probe information found within the probe information file[" + probeInfoFile.getAbsolutePath()
+					logger.error("WARNING: The probe information found within the probe information file[" + probeInfoFile.getAbsolutePath()
 							+ "] has been modified from the originally produced content supplied by Roche NimbleGen.");
 				}
 			}

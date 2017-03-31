@@ -27,8 +27,8 @@ import java.util.Iterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.roche.heatseq.utils.FastqReader;
-import com.roche.heatseq.utils.PicardException;
+import com.roche.sequencing.bioinformatics.common.utils.fastq.FastqReader;
+import com.roche.sequencing.bioinformatics.common.utils.fastq.PicardException;
 
 public class FastqValidator {
 

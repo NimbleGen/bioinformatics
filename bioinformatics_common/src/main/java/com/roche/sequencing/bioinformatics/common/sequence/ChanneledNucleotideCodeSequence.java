@@ -93,7 +93,7 @@ class ChanneledNucleotideCodeSequence implements ISequence, Comparable<Channeled
 	}
 
 	@Override
-	public synchronized void append(ISequence codeSequenceToAppend) {
+	public synchronized ISequence append(ISequence codeSequenceToAppend) {
 		if (codeSequenceToAppend instanceof ChanneledNucleotideCodeSequence) {
 			ChanneledNucleotideCodeSequence codeSequenceToAppendAsIupacSequence = (ChanneledNucleotideCodeSequence) codeSequenceToAppend;
 
@@ -116,6 +116,7 @@ class ChanneledNucleotideCodeSequence implements ISequence, Comparable<Channeled
 		} else {
 			throw new IllegalArgumentException("The passed in ISequence codeSequenceToAppend must be of type ChanneledNucleotideCodeSequence to be utilized by the append method.");
 		}
+		return this;
 	}
 
 	@Override

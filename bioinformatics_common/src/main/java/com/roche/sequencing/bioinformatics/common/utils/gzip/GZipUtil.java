@@ -45,6 +45,7 @@ import com.roche.sequencing.bioinformatics.common.text.GZipIndex.GZipBlockIndex;
 import com.roche.sequencing.bioinformatics.common.utils.ByteUtil;
 import com.roche.sequencing.bioinformatics.common.utils.CheckSumUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.IInputStreamFactory;
 import com.roche.sequencing.bioinformatics.common.utils.InputStreamFactory;
 import com.roche.sequencing.bioinformatics.common.utils.gzip.nayuki.CircularDictionary;
 import com.roche.sequencing.bioinformatics.common.utils.gzip.nayuki.Deflate;
@@ -85,7 +86,7 @@ public final class GZipUtil {
 		return isCompressed;
 	}
 
-	public static boolean isCompressed(InputStreamFactory inputStreamFactory) throws FileNotFoundException, IOException {
+	public static boolean isCompressed(IInputStreamFactory inputStreamFactory) throws FileNotFoundException, IOException {
 		boolean isCompressed;
 
 		try {
@@ -154,9 +155,9 @@ public final class GZipUtil {
 			}
 			int compressionMethodIdentifier = ByteUtil.convertByteToInt(bytes[currentByteIndex++], false);
 			if (compressionMethodIdentifier != DEFLATE_COMPRESSION_METHOD_INDICATOR) {
-				throw new IllegalStateException("The provided compression method[" + compressionMethodIdentifier
-						+ "] does not match the expected compression method indicator for 'deflate' compression [" + DEFLATE_COMPRESSION_METHOD_INDICATOR
-						+ "] which is the only type of compression this implementation can handle.");
+				throw new IllegalStateException(
+						"The provided compression method[" + compressionMethodIdentifier + "] does not match the expected compression method indicator for 'deflate' compression ["
+								+ DEFLATE_COMPRESSION_METHOD_INDICATOR + "] which is the only type of compression this implementation can handle.");
 			}
 
 			byte flagsByte = bytes[currentByteIndex++];

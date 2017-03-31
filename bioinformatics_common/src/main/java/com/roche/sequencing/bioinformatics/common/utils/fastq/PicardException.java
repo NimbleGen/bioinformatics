@@ -1,4 +1,4 @@
-package com.roche.heatseq.utils;
+package com.roche.sequencing.bioinformatics.common.utils.fastq;
 
 public class PicardException extends RuntimeException {
 

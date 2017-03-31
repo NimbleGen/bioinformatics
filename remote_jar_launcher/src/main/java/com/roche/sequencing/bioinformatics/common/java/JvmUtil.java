@@ -10,6 +10,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -92,6 +94,84 @@ public class JvmUtil {
 		}
 
 		return allJvmDetails.toArray(new JvmDetails[0]);
+	}
+
+	public static JvmDetails getBestSufficientJvm(File initialJavaToCheck, Integer requiredMinJvmBitDepth, Integer requiredMinJvmVersion) {
+		JvmDetails jvmDetails;
+		if (initialJavaToCheck != null && initialJavaToCheck.exists()) {
+			jvmDetails = JvmUtil.getJvmDetails(initialJavaToCheck);
+		} else {
+			jvmDetails = null;
+		}
+		boolean jvmIsSufficient = (jvmDetails != null && (jvmDetails.getJvmBitDepth().isSufficientToHandleProvidedBitDepth(requiredMinJvmBitDepth))
+				&& (requiredMinJvmVersion <= jvmDetails.getVersion().getMajorVersion()));
+
+		if (!jvmIsSufficient) {
+			System.out.println("The provided JVM does not meet the applications minimum requirements.  Searching for a " + requiredMinJvmBitDepth + "-bit JVM versioned " + requiredMinJvmVersion
+					+ " or greater.");
+			List<JvmDetails> sufficientJvms = new ArrayList<JvmDetails>();
+			for (JvmDetails currentJvmDetails : JvmUtil.findJvms()) {
+				boolean isSufficient = (currentJvmDetails != null && (currentJvmDetails.getJvmBitDepth().isSufficientToHandleProvidedBitDepth(requiredMinJvmBitDepth))
+						&& (requiredMinJvmVersion <= currentJvmDetails.getVersion().getMajorVersion()));
+				if (isSufficient) {
+					sufficientJvms.add(currentJvmDetails);
+				}
+			}
+
+			if (sufficientJvms.size() == 0) {
+				throw new IllegalStateException("Unable to find a " + requiredMinJvmBitDepth + "-bit JVM versioned " + requiredMinJvmVersion + " or greater.");
+			}
+
+			Collections.sort(sufficientJvms, new JvmDetailsComparator());
+			// Note: This was too verbose
+			// System.out.println();
+			// System.out.println("Found the following " + requiredMinJvmBitDepth + "-bit JVMs versioned " + requiredMinJvmVersion + " or greater:");
+			// for (JvmDetails sufficientJvm : sufficientJvms) {
+			// System.out.println(sufficientJvm);
+			// }
+
+			jvmDetails = sufficientJvms.get(0);
+		}
+		return jvmDetails;
+	}
+
+	private static class JvmDetailsComparator implements Comparator<JvmDetails> {
+		public int compare(JvmDetails o1, JvmDetails o2) {
+			int result = o2.getVersion().getMajorVersion() - o1.getVersion().getMajorVersion();
+
+			if (result == 0) {
+				if (o1.getJvmType() != o2.getJvmType()) {
+					if (o1.getJvmType() == JvmTypeEnum.JDK) {
+						result = -1;
+					} else {
+						result = 1;
+					}
+				}
+			}
+
+			if (result == 0) {
+				if (!o1.getVendor().equals(o2.getVendor())) {
+					if (o1.getVendor().equals("Oracle Corporation")) {
+						result = -1;
+					} else {
+						result = 1;
+					}
+				}
+			}
+
+			if (result == 0) {
+				if (o1.getJvmBitDepth() != o2.getJvmBitDepth()) {
+					if (o1.getJvmBitDepth() == JvmBitDepthEnum.BIT_DEPTH_64) {
+						result = -1;
+					} else {
+						result = 1;
+					}
+				}
+			}
+
+			return result;
+		}
+
 	}
 
 	private static class JavaExecutableFileFilter implements FileFilter {

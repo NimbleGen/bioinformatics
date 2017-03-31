@@ -71,6 +71,7 @@ import com.roche.sequencing.bioinformatics.common.text.ITextProgressListener;
 import com.roche.sequencing.bioinformatics.common.text.ProgressUpdate;
 import com.roche.sequencing.bioinformatics.common.text.TextFileIndex;
 import com.roche.sequencing.bioinformatics.common.text.TextPosition;
+import com.roche.sequencing.bioinformatics.common.text.TextSearchIndex;
 import com.roche.sequencing.bioinformatics.common.text.viewer.TextViewerUtil.Indexes;
 import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
@@ -510,7 +511,8 @@ public class TextViewerPanel extends JPanel {
 				indexingProgressBar.setValue(0);
 				indexingPanel.setVisible(true);
 				Indexes indexes = TextViewerUtil.indexFile(file, progressListener);
-				loadDocument(file, randomAccessToFile, indexes.getTextFileIndex(), indexes.getgZipIndex(), indexes.getgZipDictionaryBytes(), indexes.getBamBlockIndexFile());
+				loadDocument(file, randomAccessToFile, indexes.getTextFileIndex(), indexes.getgZipIndex(), indexes.getgZipDictionaryBytes(), indexes.getBamBlockIndexFile(),
+						indexes.getTextSearchIndex());
 				indexingPanel.setVisible(false);
 				isIndexing = false;
 			} catch (Exception e) {
@@ -520,8 +522,8 @@ public class TextViewerPanel extends JPanel {
 		}
 	}
 
-	private void loadDocument(File file, RandomAccessFile randomAccessToFile, TextFileIndex textFileIndex, GZipIndex gZipIndex, IBytes gZipDictionaryBytes, File bamBlockIndexFile)
-			throws FileNotFoundException {
+	private void loadDocument(File file, RandomAccessFile randomAccessToFile, TextFileIndex textFileIndex, GZipIndex gZipIndex, IBytes gZipDictionaryBytes, File bamBlockIndexFile,
+			TextSearchIndex textSearchIndex) throws FileNotFoundException {
 		String fileExtension = FileUtil.getFileExtension(file).toLowerCase();
 		boolean isBamFile = fileExtension.endsWith(TextViewerUtil.BAM_FILE_EXTENSION);
 		boolean isProbeInfoFile = file.getName().toLowerCase().endsWith(TextViewerUtil.PROBE_INFO_FILE_ENDING_TEXT);
@@ -548,9 +550,9 @@ public class TextViewerPanel extends JPanel {
 		}
 
 		if (gZipIndex != null) {
-			this.document = new Document(textFileIndex, gZipIndex, gZipDictionaryBytes, file, byteConverter);
+			this.document = new Document(textFileIndex, gZipIndex, gZipDictionaryBytes, file, byteConverter, textSearchIndex);
 		} else {
-			this.document = new Document(textFileIndex, file, byteConverter);
+			this.document = new Document(textFileIndex, file, byteConverter, textSearchIndex);
 		}
 
 		int numberOfLinesThatCanFitInView = getNumberOfLinesThatCanFitInViewer();
@@ -895,9 +897,8 @@ public class TextViewerPanel extends JPanel {
 					lastEnteredGoToLineNumber = lineNumber;
 					setLineNumber(lineNumber);
 				} else {
-					JOptionPane.showMessageDialog(parentTextViewer,
-							"The provided line number[" + DF.format(lineNumber) + "] in invalid.  Acceptable line numbers are within the range of 1 and " + DF.format(document.getNumberOfLines())
-									+ "(inclusive).", "Invalid Line Number", JOptionPane.ERROR_MESSAGE);
+					JOptionPane.showMessageDialog(parentTextViewer, "The provided line number[" + DF.format(lineNumber) + "] in invalid.  Acceptable line numbers are within the range of 1 and "
+							+ DF.format(document.getNumberOfLines()) + "(inclusive).", "Invalid Line Number", JOptionPane.ERROR_MESSAGE);
 				}
 			}
 		}
@@ -921,14 +922,18 @@ public class TextViewerPanel extends JPanel {
 							ITextProgressListener progressListener = new ITextProgressListener() {
 								@Override
 								public void progressOccurred(ProgressUpdate progressUpdate) {
-									findingLabel.setText("<html><div style='text-align: center;'>Seaching<br>Time Left:" + progressUpdate.getEstimatedTimeToCompletionInHHMMSS()
-											+ "(HH:MM:SS)</div><html>");
+									findingLabel.setText(
+											"<html><div style='text-align: center;'>Seaching<br>Time Left:" + progressUpdate.getEstimatedTimeToCompletionInHHMMSS() + "(HH:MM:SS)</div><html>");
 									findingProgressBar.setValue((int) progressUpdate.getPercentComplete());
 									generalStatusLabel.setText("Searching for '" + searchString + "'.  " + progressUpdate.getPercentComplete() + "%  Searched.  Time Left:"
 											+ progressUpdate.getEstimatedTimeToCompletionInHHMMSSMMM());
 								}
 							};
-							TextPosition foundTextPosition = document.search(currentLineNumber, currentPositionInLine + 1, isSearchCaseSensitive, searchString, progressListener);
+							TextPosition foundTextPosition = document.search(currentLineNumber, currentPositionInLine + 1, null, isSearchCaseSensitive, searchString, progressListener);
+
+							if (foundTextPosition == null) {
+								foundTextPosition = document.search(0, 0, currentLineNumber, isSearchCaseSensitive, searchString, progressListener);
+							}
 
 							String message;
 							if (foundTextPosition != null) {
@@ -1005,8 +1010,8 @@ public class TextViewerPanel extends JPanel {
 								// TODO show progress and allow to be cancelled
 								document.copyTextToFile(file, start.getLineNumber(), start.getColumnIndex(), end.getLineNumber(), end.getColumnIndex());
 							} catch (IOException e) {
-								JOptionPane
-										.showMessageDialog(parentTextViewer, "Unable to save text to file.  " + e.getMessage(), "Unable to Write Selected Text to File", JOptionPane.WARNING_MESSAGE);
+								JOptionPane.showMessageDialog(parentTextViewer, "Unable to save text to file.  " + e.getMessage(), "Unable to Write Selected Text to File",
+										JOptionPane.WARNING_MESSAGE);
 							}
 						}
 					}

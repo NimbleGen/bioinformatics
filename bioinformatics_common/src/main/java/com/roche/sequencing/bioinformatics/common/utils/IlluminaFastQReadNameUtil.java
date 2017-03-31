@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package com.roche.heatseq.utils;
+package com.roche.sequencing.bioinformatics.common.utils;
 
 /**
  * 
@@ -53,7 +53,11 @@ public class IlluminaFastQReadNameUtil {
 	 */
 	public static String getUniqueIdForReadHeader(String commonReadNameBeginning, String readHeader) {
 		if (commonReadNameBeginning != null && !commonReadNameBeginning.isEmpty()) {
-			readHeader = readHeader.substring(commonReadNameBeginning.length());
+			if (readHeader.length() > commonReadNameBeginning.length()) {
+				readHeader = readHeader.substring(commonReadNameBeginning.length());
+			} else {
+				readHeader = "";
+			}
 		}
 
 		int firstSpace = readHeader.indexOf(" ");

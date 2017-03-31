@@ -43,143 +43,15 @@ public class TextFileIndexer {
 
 	public static TextFileIndex indexText(File file, int recordedLineIncrement, ITextProgressListener optionalProgressListener) {
 		TextFileIndex textFileIndex = null;
-		textFileIndex = indexText(new InputStreamFactory(file), recordedLineIncrement, optionalProgressListener);
+		textFileIndex = indexText(new InputStreamFactory(file), recordedLineIncrement, null, optionalProgressListener);
 		return textFileIndex;
 	}
 
 	public static TextFileIndex indexText(InputStreamFactory inputStreamFactory, int recordedLineIncrement) {
-		return indexText(inputStreamFactory, recordedLineIncrement, null);
+		return indexText(inputStreamFactory, recordedLineIncrement, null, null);
 	}
 
-	public static TextFileIndex indexText(InputStreamFactory inputStreamFactory, int recordedLineIncrement, ITextProgressListener optionalProgressListener) {
-		List<Long> linePositionsInBytes = new ArrayList<Long>();
-		Map<Integer, Integer> maxCharsByTabCount = new HashMap<Integer, Integer>();
-
-		long startTimeInMs = System.currentTimeMillis();
-
-		int linesRead = 1;
-		CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
-
-		boolean isCompressed = false;
-
-		try {
-			isCompressed = GZipUtil.isCompressed(inputStreamFactory);
-		} catch (IOException e) {
-			throw new RuntimeException(e.getMessage(), e);
-		}
-
-		InputStream inputStream;
-		try {
-			inputStream = inputStreamFactory.createInputStream();
-		} catch (IOException e) {
-			throw new RuntimeException(e.getMessage(), e);
-		}
-
-		if (isCompressed) {
-			try {
-				inputStream = new GZIPInputStream(inputStream);
-			} catch (IOException e) {
-				throw new RuntimeException(e.getMessage(), e);
-			}
-		}
-
-		long fileSizeInBytes = inputStreamFactory.getSizeInBytes();
-		double lastPercentUpdated = -1;
-
-		try (InputStream bufferedInputStream = new BufferedInputStream(inputStream)) {
-
-			// this will actually put the current position at the header line but since the first line found
-			// is never read it will work as expected
-			long currentPositionInBytes = 0;
-			linePositionsInBytes.add(currentPositionInBytes);
-
-			byte[] bytes = new byte[4096];
-
-			int numberOfBytesRead = 0;
-
-			while (((numberOfBytesRead = bufferedInputStream.read(bytes)) != -1)) {
-
-				ByteBuffer in = null;
-				if (numberOfBytesRead < bytes.length) {
-					in = ByteBuffer.wrap(Arrays.copyOf(bytes, numberOfBytesRead));
-				} else {
-					in = ByteBuffer.wrap(bytes);
-				}
-
-				CharBuffer out = CharBuffer.allocate(1);
-				out.position(0);
-
-				int lastInPosition = 0;
-				long lastPositionInBytes = -1;
-				int currentLineLength = 0;
-				int tabsInLine = 0;
-				while (in.hasRemaining() && (lastPositionInBytes != currentPositionInBytes)) {
-
-					if (optionalProgressListener != null) {
-						double percentComplete = ((double) currentPositionInBytes / (double) fileSizeInBytes) * 100;
-						int truncatedPercentCopmplete = (int) Math.floor(percentComplete);
-						if (truncatedPercentCopmplete >= (lastPercentUpdated + 1)) {
-							lastPercentUpdated = truncatedPercentCopmplete;
-							long currentProcessTimeInMs = System.currentTimeMillis() - startTimeInMs;
-							optionalProgressListener.progressOccurred(new ProgressUpdate((linesRead - 1), percentComplete, currentProcessTimeInMs));
-						}
-					}
-
-					decoder.decode(in, out, true);
-					char currentCharacter = out.array()[0];
-					int characterLengthInBytes = (in.position() - lastInPosition);
-					lastPositionInBytes = currentPositionInBytes;
-					currentPositionInBytes += characterLengthInBytes;
-					lastInPosition = in.position();
-					out.position(0);
-					if (currentCharacter == StringUtil.NEWLINE_SYMBOL) {
-						if (linesRead % recordedLineIncrement == 0) {
-							linePositionsInBytes.add(currentPositionInBytes);
-						}
-						// we need to know which lines might be the longest, but the number of characters per
-						// tab is not known here. So assuming that characters per tab is greater than or equal to 1
-						// we keep a list of all possible longest lines.
-						Integer maxChars = maxCharsByTabCount.get(tabsInLine);
-						if (maxChars == null) {
-							maxChars = currentLineLength;
-							maxCharsByTabCount.put(tabsInLine, maxChars);
-						} else {
-							if (currentLineLength > maxChars) {
-								maxCharsByTabCount.put(tabsInLine, currentLineLength);
-							}
-						}
-
-						linesRead++;
-
-						tabsInLine = 0;
-						currentLineLength = 0;
-					} else if (StringUtil.TAB.equals("" + currentCharacter)) {
-						tabsInLine++;
-						currentLineLength++;
-					} else {
-						currentLineLength++;
-					}
-
-					if (Thread.currentThread().isInterrupted()) {
-						throw new RuntimeException("Indexing was stopped.");
-					}
-
-				}
-			}
-		} catch (IOException e) {
-			throw new RuntimeException(e.getMessage(), e);
-		}
-
-		if (optionalProgressListener != null) {
-			double percentComplete = 100;
-			long currentProcessTimeInMs = System.currentTimeMillis() - startTimeInMs;
-			optionalProgressListener.progressOccurred(new ProgressUpdate((linesRead - 1), percentComplete, currentProcessTimeInMs));
-		}
-
-		return new TextFileIndex(fileSizeInBytes, recordedLineIncrement, ArraysUtil.convertToLongArray(linePositionsInBytes), linesRead, maxCharsByTabCount, VERSION);
-	}
-
-	public static TextFileIndex indexText(InputStreamFactory inputStreamFactory, int recordedLineIncrement, GZipIndex gZipIndex, IBytes gZipDictionaryBytes,
+	public static TextFileIndex indexText(InputStreamFactory inputStreamFactory, int recordedLineIncrement, ITextFileIndexerLineListeners lineListener,
 			ITextProgressListener optionalProgressListener) {
 		List<Long> linePositionsInBytes = new ArrayList<Long>();
 		Map<Integer, Integer> maxCharsByTabCount = new HashMap<Integer, Integer>();
@@ -242,6 +114,7 @@ public class TextFileIndexer {
 				long lastPositionInBytes = -1;
 				int currentLineLength = 0;
 				int tabsInLine = 0;
+				StringBuilder currentLine = new StringBuilder();
 				while (in.hasRemaining() && (lastPositionInBytes != currentPositionInBytes)) {
 
 					if (optionalProgressListener != null) {
@@ -262,6 +135,11 @@ public class TextFileIndexer {
 					lastInPosition = in.position();
 					out.position(0);
 					if (currentCharacter == StringUtil.NEWLINE_SYMBOL) {
+						if (lineListener != null) {
+							lineListener.lineRead(linesRead, currentLine.toString());
+						}
+						currentLine = new StringBuilder();
+
 						if (linesRead % recordedLineIncrement == 0) {
 							linePositionsInBytes.add(currentPositionInBytes);
 						}
@@ -283,9 +161,148 @@ public class TextFileIndexer {
 						tabsInLine = 0;
 						currentLineLength = 0;
 					} else if (StringUtil.TAB.equals("" + currentCharacter)) {
+						currentLine.append(currentCharacter);
 						tabsInLine++;
 						currentLineLength++;
 					} else {
+						currentLine.append(currentCharacter);
+						currentLineLength++;
+					}
+
+					if (Thread.currentThread().isInterrupted()) {
+						throw new RuntimeException("Indexing was stopped.");
+					}
+
+				}
+			}
+		} catch (IOException e) {
+			throw new RuntimeException(e.getMessage(), e);
+		}
+
+		if (optionalProgressListener != null) {
+			double percentComplete = 100;
+			long currentProcessTimeInMs = System.currentTimeMillis() - startTimeInMs;
+			optionalProgressListener.progressOccurred(new ProgressUpdate((linesRead - 1), percentComplete, currentProcessTimeInMs));
+		}
+
+		return new TextFileIndex(fileSizeInBytes, recordedLineIncrement, ArraysUtil.convertToLongArray(linePositionsInBytes), linesRead, maxCharsByTabCount, VERSION);
+	}
+
+	public static TextFileIndex indexText(InputStreamFactory inputStreamFactory, int recordedLineIncrement, GZipIndex gZipIndex, IBytes gZipDictionaryBytes, ITextFileIndexerLineListeners lineListener,
+			ITextProgressListener optionalProgressListener) {
+		List<Long> linePositionsInBytes = new ArrayList<Long>();
+		Map<Integer, Integer> maxCharsByTabCount = new HashMap<Integer, Integer>();
+
+		long startTimeInMs = System.currentTimeMillis();
+
+		int linesRead = 1;
+		CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+
+		boolean isCompressed = false;
+
+		try {
+			isCompressed = GZipUtil.isCompressed(inputStreamFactory);
+		} catch (IOException e) {
+			throw new RuntimeException(e.getMessage(), e);
+		}
+
+		InputStream inputStream;
+		try {
+			inputStream = inputStreamFactory.createInputStream();
+		} catch (IOException e) {
+			throw new RuntimeException(e.getMessage(), e);
+		}
+
+		if (isCompressed) {
+			try {
+				inputStream = new GZIPInputStream(inputStream);
+			} catch (IOException e) {
+				throw new RuntimeException(e.getMessage(), e);
+			}
+		}
+
+		long fileSizeInBytes = inputStreamFactory.getSizeInBytes();
+		double lastPercentUpdated = -1;
+
+		try (InputStream bufferedInputStream = new BufferedInputStream(inputStream)) {
+
+			// this will actually put the current position at the header line but since the first line found
+			// is never read it will work as expected
+			long currentPositionInBytes = 0;
+			linePositionsInBytes.add(currentPositionInBytes);
+
+			byte[] bytes = new byte[4096];
+
+			int numberOfBytesRead = 0;
+
+			StringBuilder currentLine = new StringBuilder();
+			while (((numberOfBytesRead = bufferedInputStream.read(bytes)) != -1)) {
+
+				ByteBuffer in = null;
+				if (numberOfBytesRead < bytes.length) {
+					in = ByteBuffer.wrap(Arrays.copyOf(bytes, numberOfBytesRead));
+				} else {
+					in = ByteBuffer.wrap(bytes);
+				}
+
+				CharBuffer out = CharBuffer.allocate(1);
+				out.position(0);
+
+				int lastInPosition = 0;
+				long lastPositionInBytes = -1;
+				int currentLineLength = 0;
+				int tabsInLine = 0;
+				while (in.hasRemaining() && (lastPositionInBytes != currentPositionInBytes)) {
+
+					if (optionalProgressListener != null) {
+						double percentComplete = ((double) currentPositionInBytes / (double) fileSizeInBytes) * 100;
+						int truncatedPercentCopmplete = (int) Math.floor(percentComplete);
+						if (truncatedPercentCopmplete >= (lastPercentUpdated + 1)) {
+							lastPercentUpdated = truncatedPercentCopmplete;
+							long currentProcessTimeInMs = System.currentTimeMillis() - startTimeInMs;
+							optionalProgressListener.progressOccurred(new ProgressUpdate((linesRead - 1), percentComplete, currentProcessTimeInMs));
+						}
+					}
+
+					decoder.decode(in, out, true);
+					char currentCharacter = out.array()[0];
+					int characterLengthInBytes = (in.position() - lastInPosition);
+					lastPositionInBytes = currentPositionInBytes;
+					currentPositionInBytes += characterLengthInBytes;
+					lastInPosition = in.position();
+					out.position(0);
+					if (currentCharacter == StringUtil.NEWLINE_SYMBOL) {
+						if (lineListener != null) {
+							lineListener.lineRead(linesRead, currentLine.toString());
+						}
+						currentLine = new StringBuilder();
+
+						if (linesRead % recordedLineIncrement == 0) {
+							linePositionsInBytes.add(currentPositionInBytes);
+						}
+						// we need to know which lines might be the longest, but the number of characters per
+						// tab is not known here. So assuming that characters per tab is greater than or equal to 1
+						// we keep a list of all possible longest lines.
+						Integer maxChars = maxCharsByTabCount.get(tabsInLine);
+						if (maxChars == null) {
+							maxChars = currentLineLength;
+							maxCharsByTabCount.put(tabsInLine, maxChars);
+						} else {
+							if (currentLineLength > maxChars) {
+								maxCharsByTabCount.put(tabsInLine, currentLineLength);
+							}
+						}
+
+						linesRead++;
+
+						tabsInLine = 0;
+						currentLineLength = 0;
+					} else if (StringUtil.TAB.equals("" + currentCharacter)) {
+						currentLine.append(currentCharacter);
+						tabsInLine++;
+						currentLineLength++;
+					} else {
+						currentLine.append(currentCharacter);
 						currentLineLength++;
 					}
 
@@ -324,8 +341,8 @@ public class TextFileIndexer {
 		int i = 0;
 		int magicNumber = integersFromFile.get(i);
 		if (magicNumber != MAGIC_NUMBER) {
-			throw new IOException("The provided file is not a Text File Index since it contains the incorrect magic number[" + magicNumber + "] instead of the required magic number[" + MAGIC_NUMBER
-					+ "].");
+			throw new IOException(
+					"The provided file is not a Text File Index since it contains the incorrect magic number[" + magicNumber + "] instead of the required magic number[" + MAGIC_NUMBER + "].");
 		}
 		i++;
 		int version = integersFromFile.get(i);

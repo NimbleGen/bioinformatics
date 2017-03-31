@@ -30,7 +30,7 @@ public interface IAlignmentScorer {
 	/**
 	 * @return the score associated with the continuation of a gap
 	 */
-	double getGapScore();
+	double getGapScore(int indexInGap);
 
 	/**
 	 * 

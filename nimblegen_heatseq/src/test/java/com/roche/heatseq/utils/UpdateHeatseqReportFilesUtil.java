@@ -129,8 +129,8 @@ public class UpdateHeatseqReportFilesUtil {
 		final DecimalFormat formatter = new DecimalFormat("0.0000");
 		final String[] SUMMARY_HEADER = new String[] { "duplicate_read_pairs_removed", "unique_read_pairs" };
 
-		File[] files = new File[] { new File(
-				"R:\\SoftwareDevelopment\\HeatSeqApplication\\Validation\\autotestplan_current\\hsqutils_testplan\\run2\\expected_results\\Results_HSQUtils_dedup_summary.txt") };
+		File[] files = new File[] {
+				new File("R:\\SoftwareDevelopment\\HeatSeqApplication\\Validation\\autotestplan_current\\hsqutils_testplan\\run2\\expected_results\\Results_HSQUtils_dedup_summary.txt") };
 
 		for (File file : files) {
 

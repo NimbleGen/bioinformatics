@@ -117,7 +117,7 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 	}
 
 	@Override
-	public synchronized void append(ISequence codeSequenceToAppend) {
+	public synchronized ISequence append(ISequence codeSequenceToAppend) {
 		if (codeSequenceToAppend instanceof IupacNucleotideCodeSequence) {
 			IupacNucleotideCodeSequence codeSequenceToAppendAsIupacSequence = (IupacNucleotideCodeSequence) codeSequenceToAppend;
 
@@ -131,6 +131,7 @@ public class IupacNucleotideCodeSequence implements ISequence, Comparable<IupacN
 		} else {
 			throw new IllegalArgumentException("The passed in ISequence codeSequenceToAppend must be of type IupacNucleotideCodeSequence to be utilized by the append method.");
 		}
+		return this;
 	}
 
 	/**

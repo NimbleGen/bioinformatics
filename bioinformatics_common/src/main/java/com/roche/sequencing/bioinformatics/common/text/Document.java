@@ -33,30 +33,34 @@ public class Document implements IDocument {
 	private final IBytes dictionaryBytes;
 	private final GZipIndex gZipIndex;
 	private final IByteDecoder byteConverter;
+	private final TextSearchIndex textSearchIndex;
 
 	private String[] lastRetreivedText;
 	private int lastStartingLineNumber;
 	private int lastEndingLineNumber;
 
-	public Document(TextFileIndex textFileIndex, File file, IByteDecoder optionalByteConverter) throws FileNotFoundException {
-		this(textFileIndex, null, null, file, optionalByteConverter);
+	public Document(TextFileIndex textFileIndex, File file, IByteDecoder optionalByteConverter, TextSearchIndex textSearchIndex) throws FileNotFoundException {
+		this(textFileIndex, null, null, file, optionalByteConverter, textSearchIndex);
 	}
 
-	public Document(File file, File indexFile, File gZipIndexFile, File gZipDictionaryFile, IByteDecoder optionalByteConverter) throws IOException {
+	public Document(File file, File indexFile, File gZipIndexFile, File gZipDictionaryFile, IByteDecoder optionalByteConverter, TextSearchIndex textSearchIndex) throws IOException {
 		randomAccessToFile = new RandomAccessFile(file, "r");
 		textFileIndex = TextFileIndexer.loadIndexFile(indexFile);
 		gZipIndex = GZipIndexer.loadIndexFile(gZipIndexFile, gZipDictionaryFile);
 		dictionaryBytes = new RandomAccessFileBytes(new RandomAccessFile(gZipDictionaryFile, "r"));
+		this.textSearchIndex = textSearchIndex;
 		this.byteConverter = optionalByteConverter;
 	}
 
-	public Document(TextFileIndex textFileIndex, GZipIndex gZipIndex, IBytes dictionaryBytes, File file, IByteDecoder optionalByteConverter) throws FileNotFoundException {
+	public Document(TextFileIndex textFileIndex, GZipIndex gZipIndex, IBytes dictionaryBytes, File file, IByteDecoder optionalByteConverter, TextSearchIndex textSearchIndex)
+			throws FileNotFoundException {
 		super();
 		this.textFileIndex = textFileIndex;
 		this.gZipIndex = gZipIndex;
 		this.dictionaryBytes = dictionaryBytes;
 		this.randomAccessToFile = new RandomAccessFile(file, "r");
 		this.byteConverter = optionalByteConverter;
+		this.textSearchIndex = textSearchIndex;
 	}
 
 	@Override
@@ -97,14 +101,14 @@ public class Document implements IDocument {
 				}
 
 				if (startingCharacterIndexInLine >= lineText.length()) {
-					throw new IllegalArgumentException("The provided startingCharacterIndexInLine[" + startingCharacterIndexInLine + "] must be less than the provided lines length["
-							+ lineText.length() + "].");
+					throw new IllegalArgumentException(
+							"The provided startingCharacterIndexInLine[" + startingCharacterIndexInLine + "] must be less than the provided lines length[" + lineText.length() + "].");
 				}
 
 				if (startingCharacterIndexInLine > endingCharacterIndexInLine) {
 					throw new IllegalArgumentException("The starting line number[" + startingLineNumber + "] and ending line number[" + endingLineNumberInclusive
-							+ "]  are the same, but the startingCharacterIndexInLine[" + startingCharacterIndexInLine + "] is greater than the endingCharacterIndexInLine["
-							+ endingCharacterIndexInLine + "] which means that no text is available for copying.");
+							+ "]  are the same, but the startingCharacterIndexInLine[" + startingCharacterIndexInLine + "] is greater than the endingCharacterIndexInLine[" + endingCharacterIndexInLine
+							+ "] which means that no text is available for copying.");
 				}
 
 				int characterEndExclusive = Math.min(lineText.length(), endingCharacterIndexInLine + 1);
@@ -113,8 +117,8 @@ public class Document implements IDocument {
 			} else {
 				String startLineText = getText(startingLineNumber, startingLineNumber)[0];
 				if (startingCharacterIndexInLine >= startLineText.length()) {
-					throw new IllegalArgumentException("The provided startingCharacterIndexInLine[" + startingCharacterIndexInLine + "] must be less than the provided lines length["
-							+ startLineText.length() + "].");
+					throw new IllegalArgumentException(
+							"The provided startingCharacterIndexInLine[" + startingCharacterIndexInLine + "] must be less than the provided lines length[" + startLineText.length() + "].");
 				}
 
 				if (startingCharacterIndexInLine > 0) {
@@ -296,12 +300,36 @@ public class Document implements IDocument {
 	}
 
 	@Override
-	public TextPosition search(int startingLine, int startingCharacterIndexInLine, boolean isSearchCaseSensitive, String searchString) {
-		return search(startingLine, startingCharacterIndexInLine, isSearchCaseSensitive, searchString, null);
+	public TextPosition search(int startingLine, int startingCharacterIndexInLine, Integer stopLine, boolean isSearchCaseSensitive, String searchString) {
+		return search(startingLine, startingCharacterIndexInLine, stopLine, isSearchCaseSensitive, searchString, null);
 	}
 
 	@Override
-	public TextPosition search(int startingLine, int startingCharacterIndexInLine, boolean isSearchCaseSensitive, String searchString, ITextProgressListener optionalTextProgressListener) {
+	public TextPosition search(int startingLine, int startingCharacterIndexInLine, Integer stopLine, boolean isSearchCaseSensitive, String searchString,
+			ITextProgressListener optionalTextProgressListener) {
+		TextPosition searchStringTextPosition = null;
+
+		searchString = searchString.trim();
+		// if (!isSearchCaseSensitive) {
+		// searchString = searchString.toLowerCase();
+		// }
+
+		int[] lineNumbers = textSearchIndex.search(searchString);
+
+		lineLoop: for (int lineNumber : lineNumbers) {
+			if (lineNumber >= startingLine && (stopLine == null || lineNumber <= stopLine)) {
+				String lineText = getText(lineNumber, lineNumber)[0];
+				int indexOfText = lineText.indexOf(searchString);
+				searchStringTextPosition = new TextPosition(lineNumber, indexOfText);
+				break lineLoop;
+			}
+		}
+
+		return searchStringTextPosition;
+	}
+
+	@SuppressWarnings("unused")
+	private TextPosition oldSearch(int startingLine, int startingCharacterIndexInLine, boolean isSearchCaseSensitive, String searchString, ITextProgressListener optionalTextProgressListener) {
 		long timeStartInMs = System.currentTimeMillis();
 		int linesInDocument = getNumberOfLines();
 
@@ -389,6 +417,9 @@ public class Document implements IDocument {
 		randomAccessToFile.close();
 		if (dictionaryBytes != null) {
 			dictionaryBytes.close();
+		}
+		if (textSearchIndex != null) {
+			textSearchIndex.closeIndex();
 		}
 	}
 

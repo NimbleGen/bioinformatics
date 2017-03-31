@@ -13,7 +13,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.roche.heatseq.utils;
+package com.roche.sequencing.bioinformatics.common.utils.fastq;
+
+import java.io.BufferedReader;
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.zip.GZIPInputStream;
+
+import com.roche.sequencing.bioinformatics.common.utils.gzip.GZipUtil;
 
 /*
  * The MIT License
@@ -49,18 +61,6 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.samtools.util.StringUtil;
 
-import java.io.BufferedReader;
-import java.io.Closeable;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.zip.GZIPInputStream;
-
-import com.roche.sequencing.bioinformatics.common.utils.gzip.GZipUtil;
-
 /**
  * Reads a fastq file.
  */
@@ -77,7 +77,7 @@ public class FastqReader implements Iterator<FastqRecord>, Iterable<FastqRecord>
 		this(gzippedOrUncompressedFastqFile, DEFAULT_BUFFER_SIZE);
 	}
 
-	FastqReader(final File gzippedOrUncompressedFastqFile, boolean checkRecords) {
+	public FastqReader(final File gzippedOrUncompressedFastqFile, boolean checkRecords) {
 		this(gzippedOrUncompressedFastqFile, DEFAULT_BUFFER_SIZE, checkRecords);
 	}
 

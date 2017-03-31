@@ -30,15 +30,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.ApplicationSettings;
-import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.process.BamFileValidator;
 import com.roche.heatseq.process.FastqValidator;
 import com.roche.heatseq.process.InputFilesExistValidator;
 import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentification;
 import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentification.ReadNameDetails;
 import com.roche.heatseq.utils.BamFileUtil;
-import com.roche.heatseq.utils.ProbeFileUtil;
-import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.SimpleAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
@@ -49,6 +46,9 @@ import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.LoggingUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ParsedProbeFile;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil.ProbeHeaderInformation;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileHeader.SortOrder;
@@ -198,15 +198,15 @@ public class DeduplicationCli {
 		long usableTempSpaceInBytes = tempDirectory.getUsableSpace();
 		if (usableTempSpaceInBytes <= requiredTempSpaceInBytes) {
 			throw new IllegalStateException("The amount of temporary storage space required by this application is "
-					+ doubleFormatter.format((double) requiredTempSpaceInBytes / (double) BYTES_PER_MEGABYTE) + "MB which is greater than the amount of usable space in the temp directory ["
-					+ doubleFormatter.format((double) usableTempSpaceInBytes / (double) BYTES_PER_MEGABYTE) + "MB].");
+					+ doubleFormatter.format((double) requiredTempSpaceInBytes / (double) BYTES_PER_MEGABYTE) + "MB which is greater than the amount of usable space["
+					+ doubleFormatter.format((double) usableTempSpaceInBytes / (double) BYTES_PER_MEGABYTE) + "MB] in the temp directory[" + tempDirectory.getAbsolutePath() + "].");
 		}
 		long requiredOutputSpaceInBytes = fastQ1File.length() * 2;
 		long usableOutputSpaceInBytes = outputDirectory.getUsableSpace();
 		if (usableOutputSpaceInBytes <= requiredOutputSpaceInBytes) {
 			throw new IllegalStateException("The amount of storage space required by this application's output is "
-					+ doubleFormatter.format((double) requiredOutputSpaceInBytes / (double) BYTES_PER_MEGABYTE) + "MB which is greater than the amount of usable space in the output directory ["
-					+ doubleFormatter.format((double) usableOutputSpaceInBytes / (double) BYTES_PER_MEGABYTE) + "MB].");
+					+ doubleFormatter.format((double) requiredOutputSpaceInBytes / (double) BYTES_PER_MEGABYTE) + "MB which is greater than the amount of usable space ["
+					+ doubleFormatter.format((double) usableOutputSpaceInBytes / (double) BYTES_PER_MEGABYTE) + "MB]  in the output directory[" + outputDirectory.getAbsolutePath() + "].");
 		}
 
 		int numProcessors = Runtime.getRuntime().availableProcessors();

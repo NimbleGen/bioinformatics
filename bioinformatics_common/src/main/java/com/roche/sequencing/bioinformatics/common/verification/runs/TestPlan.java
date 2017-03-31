@@ -437,7 +437,7 @@ public class TestPlan {
 			executionDetailsParagraph.add(Chunk.NEWLINE);
 
 			try {
-				String md5Sum = Md5CheckSumUtil.md5sum(applicationToTest);
+				String md5Sum = Md5CheckSumUtil.md5Sum(applicationToTest);
 				executionDetailsParagraph.add(new Phrase("Jar File Md5Sum: " + md5Sum, REGULAR_FONT));
 				executionDetailsParagraph.add(Chunk.NEWLINE);
 				executionDetailsParagraph.add(new Phrase("Jar File Location: " + applicationToTest.getAbsolutePath(), REGULAR_FONT));

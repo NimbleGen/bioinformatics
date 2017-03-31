@@ -17,6 +17,7 @@
 package com.roche.sequencing.bioinformatics.common.mapping;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -50,6 +51,7 @@ public class SimpleMapper<O> {
 	private final HashSet<ISequence> sequencesToExclude;
 
 	private final Map<ISequence, Set<O>> sequenceSliceToReferenceAddressMap;
+	private final Map<O, Integer> referenceAddressesToSizeMap;
 
 	/**
 	 * Default Constructor
@@ -77,6 +79,7 @@ public class SimpleMapper<O> {
 		this.maxReferencesStoredPerSequence = maxReferencesStoredPerSequence;
 		this.sequenceSliceToReferenceAddressMap = new ConcurrentHashMap<ISequence, Set<O>>();
 		this.sequencesToExclude = new HashSet<ISequence>();
+		this.referenceAddressesToSizeMap = new HashMap<>();
 	}
 
 	/**
@@ -86,13 +89,14 @@ public class SimpleMapper<O> {
 	 * @param sequenceAddress
 	 */
 	public void addReferenceSequence(ISequence referenceSequence, O sequenceAddress) {
+		referenceAddressesToSizeMap.put(sequenceAddress, referenceSequence.size());
 		if (referenceSequence.size() >= comparisonSequenceSize) {
 			for (int subsequenceStartIndex = 0; subsequenceStartIndex < referenceSequence.size() - comparisonSequenceSize; subsequenceStartIndex += referenceSpacing) {
 				addSliceToReferenceMap(referenceSequence.subSequence(subsequenceStartIndex, subsequenceStartIndex + comparisonSequenceSize - 1), sequenceAddress);
 			}
 		} else {
-			throw new IllegalStateException("comparison sequence size[" + comparisonSequenceSize + "] must be less than the size of all sequences -- the current sequence size is "
-					+ referenceSequence.size() + ".");
+			throw new IllegalStateException(
+					"comparison sequence size[" + comparisonSequenceSize + "] must be less than the size of all sequences -- the current sequence size is " + referenceSequence.size() + ".");
 		}
 	}
 
@@ -104,6 +108,7 @@ public class SimpleMapper<O> {
 	 */
 
 	public void removeReferenceSequenceByAddress(O sequenceAddress) {
+		referenceAddressesToSizeMap.remove(sequenceAddress);
 		for (Entry<ISequence, Set<O>> entry : sequenceSliceToReferenceAddressMap.entrySet()) {
 			Set<O> set = entry.getValue();
 			if (set.contains(sequenceAddress)) {
@@ -145,23 +150,33 @@ public class SimpleMapper<O> {
 	 * @return the set of unique identifiers/keys/sequence addresses that best map to the provided query sequence
 	 */
 	@SuppressWarnings("unchecked")
-	public List<O> getBestCandidateReferences(ISequence querySequence, int limit, double minRatioOfHitsToAvailableHits) {
-		double availableHits = (double) (querySequence.size() - comparisonSequenceSize) / (double) querySpacing;
-		double hitLimitBasedOnMinRatio = minRatioOfHitsToAvailableHits * availableHits;
+	public List<O> getBestCandidateReferences(ISequence querySequence, int limitOnNumberOfCandidatesToReturn, double minRatioOfHitsToAvailableHits) {
+		double availableHitsBasedOnQuery = (double) (querySequence.size() - comparisonSequenceSize) / (double) querySpacing;
+		double hitLimitBasedOnQueryMinRatio = minRatioOfHitsToAvailableHits * availableHitsBasedOnQuery;
 
 		TallyMap<O> matchTallies = getReferenceTallyMap(querySequence);
 
-		int lastAddedSize = 0;
+		int lastAddeHitSize = 0;
 
 		List<O> bestCandidates = new LinkedList<O>();
 		if (matchTallies.getLargestCount() > 0) {
 			entryLoop: for (Entry<O, Integer> entry : matchTallies.getObjectsSortedFromMostTalliesToLeast()) {
+				O key = entry.getKey();
+				int referenceSize = referenceAddressesToSizeMap.get(key);
+
+				double availableHitsBasedOnReference = (double) (referenceSize - comparisonSequenceSize) / (double) referenceSpacing;
+				double hitLimitBasedOnReferenceMinRatio = minRatioOfHitsToAvailableHits * availableHitsBasedOnReference;
+
 				int hits = entry.getValue();
-				if ((bestCandidates.size() >= limit && hits < lastAddedSize) || (hits < hitLimitBasedOnMinRatio)) {
+				boolean entryRejectedBecauseHitsAreBelowMinRatio = (hits < hitLimitBasedOnQueryMinRatio) && (hits < hitLimitBasedOnReferenceMinRatio);
+				boolean entryRejectedBecauseCandidateLimitIsReachedAndIsNotTiedWithACurrentCandidate = (bestCandidates.size() > limitOnNumberOfCandidatesToReturn) && (hits < lastAddeHitSize);
+				if (entryRejectedBecauseHitsAreBelowMinRatio || entryRejectedBecauseCandidateLimitIsReachedAndIsNotTiedWithACurrentCandidate) {
+					// since we are walking through this from best to worst we can skip the rest of the entries once
+					// we get one failure
 					break entryLoop;
 				} else {
 					bestCandidates.add(entry.getKey());
-					lastAddedSize = hits;
+					lastAddeHitSize = hits;
 				}
 			}
 		} else {

@@ -241,7 +241,7 @@ public final class FileUtil {
 	 * 
 	 * @throws IOException
 	 */
-	private static String getFirstLineEndOfLineSymbolsAsString(File file) throws IOException {
+	public static String getFirstLineEndOfLineSymbolsAsString(File file) throws IOException {
 		String firstLineEOL = null;
 		StringBuilder firstLineEOLBuilder = new StringBuilder();
 		try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
@@ -353,29 +353,93 @@ public final class FileUtil {
 	}
 
 	public static int countNumberOfLinesInFile(File file) throws IOException {
-		int count = 1;
+		return countNumberOfLinesInFile(new InputStreamFactory(file));
+	}
+
+	public static int countNumberOfLinesInFile(IInputStreamFactory inputStreamFactory) throws IOException {
+		return countNumberOfLinesInFile(inputStreamFactory, null);
+	}
+
+	public static int countNumberOfLinesInFile(IInputStreamFactory inputStreamFactory, Long stopPositionInBytes) throws IOException {
+		int lineCount = 1;
+		int totalBytesRead = 0;
 		boolean empty = true;
 		InputStream inputStream;
-		if (GZipUtil.isCompressed(file)) {
-			inputStream = new GZIPInputStream(new FileInputStream(file));
+		if (GZipUtil.isCompressed(inputStreamFactory)) {
+			inputStream = new GZIPInputStream(inputStreamFactory.createInputStream());
 		} else {
-			inputStream = new BufferedInputStream(new FileInputStream(file));
+			inputStream = new BufferedInputStream(inputStreamFactory.createInputStream());
 		}
 		try {
 			byte[] character = new byte[1024];
 			int readChars = 0;
-			while ((readChars = inputStream.read(character)) != -1) {
+			loop: while ((readChars = inputStream.read(character)) != -1) {
 				empty = false;
 				for (int i = 0; i < readChars; ++i) {
 					if (((char) character[i]) == StringUtil.NEWLINE_SYMBOL) {
-						++count;
+						++lineCount;
+					}
+					totalBytesRead++;
+					if (stopPositionInBytes != null && totalBytesRead > stopPositionInBytes) {
+						break loop;
 					}
 				}
 			}
 		} finally {
 			inputStream.close();
 		}
-		return (count == 0 && !empty) ? 1 : count;
+		return (lineCount == 0 && !empty) ? 1 : lineCount;
+	}
+
+	public static boolean fileContainsText(File file, String text, boolean ignoreCase) throws IOException {
+		return fileContainsText(new InputStreamFactory(file), text, ignoreCase);
+	}
+
+	public static boolean fileContainsText(IInputStreamFactory inputStreamFactory, String text, boolean ignoreCase) throws IOException {
+		boolean match = false;
+		int indexInText = 0;
+
+		InputStream inputStream;
+		if (GZipUtil.isCompressed(inputStreamFactory)) {
+			inputStream = new GZIPInputStream(inputStreamFactory.createInputStream());
+		} else {
+			inputStream = new BufferedInputStream(inputStreamFactory.createInputStream());
+		}
+		try {
+			byte[] character = new byte[1024];
+			int readChars = 0;
+			loop: while ((readChars = inputStream.read(character)) != -1) {
+				for (int i = 0; i < readChars; ++i) {
+					char currentChar = (char) character[i];
+					char charToCompare = text.charAt(indexInText);
+
+					if (ignoreCase) {
+						currentChar = Character.toLowerCase(currentChar);
+						charToCompare = Character.toLowerCase(charToCompare);
+					}
+
+					if ((currentChar) == charToCompare) {
+						indexInText++;
+					} else {
+						indexInText = 0;
+						charToCompare = text.charAt(indexInText);
+						if (ignoreCase) {
+							charToCompare = Character.toLowerCase(charToCompare);
+						}
+						if (currentChar == text.charAt(indexInText)) {
+							indexInText++;
+						}
+					}
+					if (indexInText >= text.length()) {
+						match = true;
+						break loop;
+					}
+				}
+			}
+		} finally {
+			inputStream.close();
+		}
+		return match;
 	}
 
 	/**

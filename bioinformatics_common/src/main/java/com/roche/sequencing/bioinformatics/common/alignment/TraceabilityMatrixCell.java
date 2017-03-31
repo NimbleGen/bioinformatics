@@ -24,6 +24,7 @@ package com.roche.sequencing.bioinformatics.common.alignment;
 class TraceabilityMatrixCell {
 	private TraceabilityMatrixCell sourceCell;
 	private double score;
+	private Integer indexInGap;
 	private final int row;
 	private final int col;
 
@@ -46,6 +47,14 @@ class TraceabilityMatrixCell {
 	 */
 	public double getScore() {
 		return score;
+	}
+
+	public Integer getIndexInGap() {
+		return indexInGap;
+	}
+
+	public void setIndexInGap(Integer indexInGap) {
+		this.indexInGap = indexInGap;
 	}
 
 	/**

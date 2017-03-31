@@ -21,8 +21,8 @@ public interface IDocument {
 
 	int getNumberOfCharactersInLongestLine(int charactersPerTab);
 
-	TextPosition search(int startingLine, int startingCharacterIndexInLine, boolean isSearchCaseSensitive, String searchString);
+	TextPosition search(int startingLine, int startingCharacterIndexInLine, Integer stopLine, boolean isSearchCaseSensitive, String searchString);
 
-	TextPosition search(int startingLine, int startingCharacterIndexInLine, boolean isSearchCaseSensitive, String searchString, ITextProgressListener optionalTextProgressListener);
+	TextPosition search(int startingLine, int startingCharacterIndexInLine, Integer stopLine, boolean isSearchCaseSensitive, String searchString, ITextProgressListener optionalTextProgressListener);
 
 }

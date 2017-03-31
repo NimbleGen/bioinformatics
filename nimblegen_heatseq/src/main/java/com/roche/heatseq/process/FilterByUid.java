@@ -32,7 +32,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.IReadPair;
-import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ReadPair;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
@@ -44,6 +43,7 @@ import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.TabDelimitedFileWriter;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
 
 /**
  * Filter a set of reads to find the best read per UID

@@ -16,16 +16,9 @@
 
 package com.roche.heatseq.utils;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileHeader.SortOrder;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
-
 import java.io.File;
 import java.util.List;
 
-import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.qualityreport.ReportManager;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarString;
@@ -34,6 +27,13 @@ import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
+
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
 
 /**
  * Utility class for creating sam records using picard
@@ -216,7 +216,7 @@ public class SAMRecordUtil {
 		int numberOfSubstitutions = 0;
 
 		CigarString cigarString = alignment.getCigarString();
-		String sequenceCigarString = cigarString.getCigarString(false, true, false);
+		String sequenceCigarString = cigarString.getCigarString(false, true, false, false);
 		int insertsSinceLastInsertionOrMismatch = 0;
 		for (Character character : sequenceCigarString.toCharArray()) {
 			if (character == CigarStringUtil.CIGAR_SEQUENCE_MISMATCH) {

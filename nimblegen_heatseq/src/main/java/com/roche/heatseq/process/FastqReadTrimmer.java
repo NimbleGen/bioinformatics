@@ -27,14 +27,14 @@ import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.cli.CliStatusConsole;
 import com.roche.heatseq.cli.DeduplicationCli;
-import com.roche.heatseq.objects.ParsedProbeFile;
-import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.utils.FastqReader;
-import com.roche.heatseq.utils.PicardException;
-import com.roche.heatseq.utils.ProbeFileUtil;
-import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
+import com.roche.sequencing.bioinformatics.common.utils.fastq.FastqReader;
+import com.roche.sequencing.bioinformatics.common.utils.fastq.PicardException;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ParsedProbeFile;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil.ProbeHeaderInformation;
 
 public class FastqReadTrimmer {
 

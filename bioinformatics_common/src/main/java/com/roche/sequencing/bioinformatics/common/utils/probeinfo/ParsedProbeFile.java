@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package com.roche.heatseq.objects;
+package com.roche.sequencing.bioinformatics.common.utils.probeinfo;
 
 import java.util.ArrayList;
 import java.util.Collections;

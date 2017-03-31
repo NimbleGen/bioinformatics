@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package com.roche.heatseq.utils;
+package com.roche.sequencing.bioinformatics.common.utils.probeinfo;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -29,9 +29,6 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.roche.heatseq.objects.ParsedProbeFile;
-import com.roche.heatseq.objects.Probe;
-import com.roche.heatseq.process.ProbeInfoFileValidator;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
@@ -154,17 +151,7 @@ public final class ProbeFileUtil {
 	public static String getHeaderlessMd5SumOfFile(File probeInfoFile) {
 		String headerlessMd5Sum = null;
 		try {
-			String fileString = FileUtil.readFileAsString(probeInfoFile);
-
-			String headerlessText = fileString;
-			if (fileString.startsWith("#")) {
-				int firstLineEndIndex = fileString.indexOf(StringUtil.LINUX_NEWLINE);
-				headerlessText = fileString.substring(firstLineEndIndex + 1, fileString.length());
-			}
-
-			if (headerlessText.length() > 0) {
-				headerlessMd5Sum = Md5CheckSumUtil.md5sum(headerlessText.toString());
-			}
+			headerlessMd5Sum = Md5CheckSumUtil.md5SumWithSkippingCommentLines(probeInfoFile);
 		} catch (IOException e) {
 			logger.warn(e.getMessage(), e);
 		}
@@ -374,8 +361,8 @@ public final class ProbeFileUtil {
 
 		String headerlessMd5Sum = nameValuePairs.get(HEADERLESS_MD5SUM);
 
-		return new ProbeHeaderInformation(ligationUidLength, extensionUidLength, additionalLigationLength, additionalExtensionLength, basesInsideExtensionPrimerWindow,
-				basesInsideLigationPrimerWindow, performThreePrimeTrimming, genomeName, headerlessMd5Sum);
+		return new ProbeHeaderInformation(ligationUidLength, extensionUidLength, additionalLigationLength, additionalExtensionLength, basesInsideExtensionPrimerWindow, basesInsideLigationPrimerWindow,
+				performThreePrimeTrimming, genomeName, headerlessMd5Sum);
 	}
 
 	public static void reverseComplimentProbeFile(File inputProbeInfoFile, File outputProbeInfoFile) {

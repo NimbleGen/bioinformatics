@@ -118,7 +118,7 @@ public class NucleotideCodeSequence implements ISequence, Comparable<NucleotideC
 	}
 
 	@Override
-	public synchronized void append(ISequence sequenceToAppend) {
+	public synchronized ISequence append(ISequence sequenceToAppend) {
 		if (sequenceToAppend instanceof NucleotideCodeSequence) {
 			NucleotideCodeSequence nucleotideSequenceToAppend = (NucleotideCodeSequence) sequenceToAppend;
 
@@ -132,6 +132,7 @@ public class NucleotideCodeSequence implements ISequence, Comparable<NucleotideC
 		} else {
 			throw new IllegalArgumentException("Passed in value ISequence nucleotideSequenceToAppend must be of type NucleotideSequece for method append.");
 		}
+		return this;
 	}
 
 	@Override

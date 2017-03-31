@@ -16,18 +16,6 @@
 
 package com.roche.heatseq.process;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileHeader.SortOrder;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordIterator;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.SamInputResource;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.fastq.FastqRecord;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -55,8 +43,6 @@ import com.roche.heatseq.cli.HsqUtilsCli;
 import com.roche.heatseq.objects.ApplicationSettings;
 import com.roche.heatseq.objects.ExtendReadResults;
 import com.roche.heatseq.objects.IReadPair;
-import com.roche.heatseq.objects.ParsedProbeFile;
-import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.objects.ReadNameSet;
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.objects.UidReductionResultsForAProbe;
@@ -65,10 +51,6 @@ import com.roche.heatseq.qualityreport.ProbeDetailsReport;
 import com.roche.heatseq.qualityreport.ProbeProcessingStats;
 import com.roche.heatseq.qualityreport.ReportManager;
 import com.roche.heatseq.utils.BamFileUtil;
-import com.roche.heatseq.utils.FastqReader;
-import com.roche.heatseq.utils.IlluminaFastQReadNameUtil;
-import com.roche.heatseq.utils.PicardException;
-import com.roche.heatseq.utils.ProbeFileUtil;
 import com.roche.heatseq.utils.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
@@ -78,8 +60,26 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.AlphaNumericStringComparator;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
+import com.roche.sequencing.bioinformatics.common.utils.IlluminaFastQReadNameUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 import com.roche.sequencing.bioinformatics.common.utils.TabDelimitedFileWriter;
+import com.roche.sequencing.bioinformatics.common.utils.fastq.FastqReader;
+import com.roche.sequencing.bioinformatics.common.utils.fastq.PicardException;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ParsedProbeFile;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil;
+
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SamInputResource;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.fastq.FastqRecord;
 
 /*
  * Class to get reads for each probe from a merged BAM file, determine which read to use for each UID, extend the reads to the target primers, and output the reduced and extended reads to a new BAM file
@@ -384,7 +384,6 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 						if (probeRanges != null) {
 							String readName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(commonReadNameBeginning, record.getReadName());
-
 							List<Probe> containedProbes = probeRanges.getObjectsThatContainRangeInclusive(record.getAlignmentStart(), record.getAlignmentEnd());
 
 							List<Probe> containedProbesFromFirstFoundReadInPair = containedProbesForFirstFoundReadByReadName.get(readName);
@@ -428,23 +427,29 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 											readTwoStart = Math.min(record.getAlignmentStart(), record.getAlignmentEnd());
 											readTwoStop = Math.max(record.getAlignmentStart(), record.getAlignmentEnd());
 										}
-
+										int totalNtsMissingFromStartOfCaptureTarget = 0;
 										int totalNtsOutsideOfCaptureTarget = 0;
 										if (readOneStart < probeStart) {
 											totalNtsOutsideOfCaptureTarget += (probeStart - readOneStart);
+										} else if (readOneStart > probeStart) {
+											totalNtsMissingFromStartOfCaptureTarget += (readOneStart - probeStart);
 										}
+
 										if (readOneStop > probeStop) {
 											totalNtsOutsideOfCaptureTarget += (readOneStop - probeStop);
 										}
 
 										if (readTwoStart < probeStart) {
 											totalNtsOutsideOfCaptureTarget += (probeStart - readTwoStart);
+										} else if (readTwoStart > probeStart) {
+											totalNtsMissingFromStartOfCaptureTarget += (readTwoStart - probeStart);
 										}
 										if (readTwoStop > probeStop) {
 											totalNtsOutsideOfCaptureTarget += (readTwoStop - probeStop);
 										}
 
-										containedProbesWithReadsWithinCaptureTarget.add(new ProbeAndOutOfBoundNucleotidesPair(totalNtsOutsideOfCaptureTarget, probe));
+										containedProbesWithReadsWithinCaptureTarget
+												.add(new ProbeAndOutOfBoundNucleotidesPair(totalNtsOutsideOfCaptureTarget, totalNtsMissingFromStartOfCaptureTarget, probe));
 									}
 
 									Collections.sort(containedProbesWithReadsWithinCaptureTarget, new Comparator<ProbeAndOutOfBoundNucleotidesPair>() {
@@ -456,16 +461,35 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 									int bestOutOfBoundsNt = containedProbesWithReadsWithinCaptureTarget.get(0).getNumberOfOutOfBoundNucleotides();
 									int secondBestOutOfBoundsNt = containedProbesWithReadsWithinCaptureTarget.get(1).getNumberOfOutOfBoundNucleotides();
+
 									if (bestOutOfBoundsNt < secondBestOutOfBoundsNt) {
 										assignedProbe = containedProbesWithReadsWithinCaptureTarget.get(0).getProbe();
 									} else {
-										probesAssignedToMult.add(containedProbesWithReadsWithinCaptureTarget.get(0).getProbe());
-										probesAssignedToMult.add(containedProbesWithReadsWithinCaptureTarget.get(1).getProbe());
-										assignedToMultProbesCount.incrementAndGet();
-										String probeId1 = containedProbesWithReadsWithinCaptureTarget.get(0).getProbe().getProbeId();
-										String probeId2 = containedProbesWithReadsWithinCaptureTarget.get(1).getProbe().getProbeId();
-										logger.info("Read[" + readName + "] will not be processed because it aligns with multiple probes [probe1:" + probeId1 + "  (bases_outside_of_capture_score:"
-												+ bestOutOfBoundsNt + ")  ||  probe2:" + probeId2 + " (bases_outside_of_capture_score:" + secondBestOutOfBoundsNt + ")");
+
+										Collections.sort(containedProbesWithReadsWithinCaptureTarget, new Comparator<ProbeAndOutOfBoundNucleotidesPair>() {
+											@Override
+											public int compare(ProbeAndOutOfBoundNucleotidesPair o1, ProbeAndOutOfBoundNucleotidesPair o2) {
+												return Integer.compare(o1.getTotalNtsMissingFromStartOfCaptureTarget(), o2.getTotalNtsMissingFromStartOfCaptureTarget());
+											}
+										});
+
+										int bestMissingNtFromStart = containedProbesWithReadsWithinCaptureTarget.get(0).getTotalNtsMissingFromStartOfCaptureTarget();
+										int secondBestMissingNtFromStart = containedProbesWithReadsWithinCaptureTarget.get(1).getTotalNtsMissingFromStartOfCaptureTarget();
+
+										if (bestMissingNtFromStart < secondBestMissingNtFromStart) {
+											assignedProbe = containedProbesWithReadsWithinCaptureTarget.get(0).getProbe();
+										} else {
+											probesAssignedToMult.add(containedProbesWithReadsWithinCaptureTarget.get(0).getProbe());
+											probesAssignedToMult.add(containedProbesWithReadsWithinCaptureTarget.get(1).getProbe());
+											assignedToMultProbesCount.incrementAndGet();
+											String probeId1 = containedProbesWithReadsWithinCaptureTarget.get(0).getProbe().getProbeId();
+											String probeId2 = containedProbesWithReadsWithinCaptureTarget.get(1).getProbe().getProbeId();
+											// note: at this point both statistics which were used from tie breakers are the same so
+											// it does not matter if the exact statistics do not match the probe ids due to resorting (because they are the same values).
+											logger.info("Read[" + readName + "] will not be processed because it aligns with multiple probes [probe1:" + probeId1 + "  (bases_outside_of_capture_score:"
+													+ bestOutOfBoundsNt + " bases_missing_from_start:" + bestMissingNtFromStart + ")  ||  probe2:" + probeId2 + " (bases_outside_of_capture_score:"
+													+ secondBestOutOfBoundsNt + " bases_missing_from_start:" + secondBestMissingNtFromStart + ")]");
+										}
 									}
 
 								}
@@ -519,11 +543,13 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 	private static class ProbeAndOutOfBoundNucleotidesPair {
 		private final int numberOfOutOfBoundNucleotides;
+		private final int totalNtsMissingFromStartOfCaptureTarget;
 		private final Probe probe;
 
-		public ProbeAndOutOfBoundNucleotidesPair(int numberOfOutOfBoundNucleotides, Probe probe) {
+		public ProbeAndOutOfBoundNucleotidesPair(int numberOfOutOfBoundNucleotides, int totalNtsMissingFromStartOfCaptureTarget, Probe probe) {
 			super();
 			this.numberOfOutOfBoundNucleotides = numberOfOutOfBoundNucleotides;
+			this.totalNtsMissingFromStartOfCaptureTarget = totalNtsMissingFromStartOfCaptureTarget;
 			this.probe = probe;
 		}
 
@@ -533,6 +559,10 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 
 		public Probe getProbe() {
 			return probe;
+		}
+
+		public int getTotalNtsMissingFromStartOfCaptureTarget() {
+			return totalNtsMissingFromStartOfCaptureTarget;
 		}
 
 	}
@@ -577,8 +607,8 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 			SAMFileHeader header = BamFileUtil.getHeader(false, applicationSettings.isShouldExcludeProgramInBamHeader(), mergedSamReader.getFileHeader(), probeInfo,
 					applicationSettings.getCommandLineSignature(), applicationSettings.getProgramName(), applicationSettings.getProgramVersion());
 			header.setSortOrder(SortOrder.coordinate);
-			samWriter = new SAMFileWriterFactory().setMaxRecordsInRam(DEFAULT_MAX_RECORDS_IN_RAM).setTempDirectory(applicationSettings.getTempDirectory())
-					.makeBAMWriter(header, false, outputSortedBamFile, 0);
+			samWriter = new SAMFileWriterFactory().setMaxRecordsInRam(DEFAULT_MAX_RECORDS_IN_RAM).setTempDirectory(applicationSettings.getTempDirectory()).makeBAMWriter(header, false,
+					outputSortedBamFile, 0);
 
 			List<SAMSequenceRecord> referenceSequencesInBam = mergedSamReader.getFileHeader().getSequenceDictionary().getSequences();
 			List<String> referenceSequenceNamesInBam = new ArrayList<String>(referenceSequencesInBam.size());
@@ -1035,9 +1065,15 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 			mergedRecord.setReadName(record.getReadName());
 			mergedRecord.setAlignmentStart(record.getAlignmentStart());
 
-			SAMRecordUtil.setSamRecordExtensionUidAttribute(mergedRecord, readPair.getExtensionUid());
-			SAMRecordUtil.setSamRecordLigationUidAttribute(mergedRecord, readPair.getLigationUid());
-			SAMRecordUtil.setSamRecordProbeIdAttribute(mergedRecord, readPair.getProbeId());
+			if (!readPair.getExtensionUid().isEmpty()) {
+				SAMRecordUtil.setSamRecordExtensionUidAttribute(mergedRecord, readPair.getExtensionUid());
+			}
+			if (!readPair.getLigationUid().isEmpty()) {
+				SAMRecordUtil.setSamRecordLigationUidAttribute(mergedRecord, readPair.getLigationUid());
+			}
+			if (!readPair.getProbeId().isEmpty()) {
+				SAMRecordUtil.setSamRecordProbeIdAttribute(mergedRecord, readPair.getProbeId());
+			}
 			mergedRecord.setReadNegativeStrandFlag(isNegativeStrand);
 			mergedRecord.setReferenceName(record.getReferenceName());
 			if (isNegativeStrand) {

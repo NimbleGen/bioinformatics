@@ -19,6 +19,8 @@ package com.roche.heatseq.utils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import com.roche.sequencing.bioinformatics.common.utils.IlluminaFastQReadNameUtil;
+
 public class IlluminaFastqQReadNameUtilTest {
 
 	@Test(groups = { "unit" })

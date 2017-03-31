@@ -10,9 +10,11 @@ import org.slf4j.LoggerFactory;
 import com.roche.sequencing.bioinformatics.common.text.GZipIndex;
 import com.roche.sequencing.bioinformatics.common.text.GZipIndexer;
 import com.roche.sequencing.bioinformatics.common.text.GZipIndexer.GZipIndexPair;
+import com.roche.sequencing.bioinformatics.common.text.ITextFileIndexerLineListeners;
 import com.roche.sequencing.bioinformatics.common.text.ITextProgressListener;
 import com.roche.sequencing.bioinformatics.common.text.TextFileIndex;
 import com.roche.sequencing.bioinformatics.common.text.TextFileIndexer;
+import com.roche.sequencing.bioinformatics.common.text.TextSearchIndex;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.InputStreamFactory;
 import com.roche.sequencing.bioinformatics.common.utils.gzip.BamByteDecoder;
@@ -26,6 +28,7 @@ public class TextViewerUtil {
 	private final static Logger logger = LoggerFactory.getLogger(TextViewerUtil.class);
 
 	private final static String INDEX_EXTENSION = "idx";
+	private final static String TEXT_SEARCH_EXTENSION = "srch";
 	private final static String GZIP_DICTIONARY_EXTENSION = "gzdict";
 	private final static String GZIP_INDEX_EXTENSION = "gzx";
 	private final static String GZIP_FILE_EXTENSION = "gz";
@@ -42,6 +45,7 @@ public class TextViewerUtil {
 
 	public static Indexes indexFile(File file, ITextProgressListener progressListener) {
 		TextFileIndex textFileIndex = null;
+		TextSearchIndex textSearchIndex = null;
 		GZipIndex gZipIndex = null;
 		IBytes gZipDictionaryBytes = null;
 		File bamBlockIndexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + BAM_BLOCK_INDEX);
@@ -50,11 +54,12 @@ public class TextViewerUtil {
 		// prepend a '.' to the file name so it is possibly hidden or at least separates from actual file name when files
 		// are listed
 		File indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + INDEX_EXTENSION);
+		File textSearchFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + TEXT_SEARCH_EXTENSION);
 		boolean isGzipFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(GZIP_FILE_EXTENSION);
 		boolean isBamFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(BAM_FILE_EXTENSION);
 		if (isGzipFile || isBamFile || GZipUtil.isCompressed(file)) {
-			indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + FileUtil.getFileNameWithoutExtension(file.getName()) + "."
-					+ INDEX_EXTENSION);
+			indexFile = new File(
+					file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + FileUtil.getFileNameWithoutExtension(file.getName()) + "." + INDEX_EXTENSION);
 			File gZipIndexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + GZIP_INDEX_EXTENSION);
 			File gZipDictionaryFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + GZIP_DICTIONARY_EXTENSION);
 			if (gZipIndexFile.exists() && gZipDictionaryFile.exists()) {
@@ -97,6 +102,8 @@ public class TextViewerUtil {
 				if (textFileIndex.getFileSizeInBytes() != file.length() || textFileIndex.getVersion() != TextFileIndexer.VERSION) {
 					System.out.println("wiping out index.");
 					textFileIndex = null;
+				} else {
+					textSearchIndex = new TextSearchIndex(textSearchFile, true);
 				}
 				// textSearcher = new TextSearcher(searcherIndexFile);
 			} catch (IOException e) {
@@ -110,14 +117,34 @@ public class TextViewerUtil {
 			// to see the whole file
 
 			try {
-				textFileIndex = TextFileIndexer.indexText(file, LINES_FOR_EACH_INDEX, progressListener);
+				textSearchIndex = new TextSearchIndex(textSearchFile, false);
+				TextSearchIndexer textSearchIndexer = new TextSearchIndexer(textSearchIndex);
+
+				textFileIndex = TextFileIndexer.indexText(new InputStreamFactory(file), LINES_FOR_EACH_INDEX, textSearchIndexer, progressListener);
+				textSearchIndex.closeIndexWriter();
 				TextFileIndexer.saveIndexedTextToFile(textFileIndex, indexFile);
 			} catch (IOException e) {
 				logger.warn(e.getMessage(), e);
 			}
 		}
 
-		return new Indexes(textFileIndex, gZipIndex, gZipDictionaryBytes, bamBlockIndexFile);
+		return new Indexes(textFileIndex, gZipIndex, gZipDictionaryBytes, bamBlockIndexFile, textSearchIndex);
+	}
+
+	private static class TextSearchIndexer implements ITextFileIndexerLineListeners {
+
+		private final TextSearchIndex textSearchIndex;
+
+		public TextSearchIndexer(TextSearchIndex textSearchIndex) {
+			super();
+			this.textSearchIndex = textSearchIndex;
+		}
+
+		@Override
+		public void lineRead(int lineNumber, String lineText) {
+			textSearchIndex.addLine(lineNumber, lineText);
+		}
+
 	}
 
 	public static boolean isFileIndexed(File file) {
@@ -131,8 +158,8 @@ public class TextViewerUtil {
 			boolean isGzipFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(GZIP_FILE_EXTENSION);
 			boolean isBamFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(BAM_FILE_EXTENSION);
 			if (isGzipFile || isBamFile || GZipUtil.isCompressed(file)) {
-				indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + FileUtil.getFileNameWithoutExtension(file.getName()) + "."
-						+ INDEX_EXTENSION);
+				indexFile = new File(
+						file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + FileUtil.getFileNameWithoutExtension(file.getName()) + "." + INDEX_EXTENSION);
 				File gZipIndexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + GZIP_INDEX_EXTENSION);
 				File gZipDictionaryFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + file.getName() + "." + GZIP_DICTIONARY_EXTENSION);
 				if (isBamFile) {
@@ -160,8 +187,8 @@ public class TextViewerUtil {
 			boolean isGzipFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(GZIP_FILE_EXTENSION);
 			boolean isBamFile = FileUtil.getFileExtension(file).toLowerCase().endsWith(BAM_FILE_EXTENSION);
 			if (isGzipFile || isBamFile || GZipUtil.isCompressed(file)) {
-				indexFile = new File(file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + FileUtil.getFileNameWithoutExtension(file.getName()) + "."
-						+ INDEX_EXTENSION);
+				indexFile = new File(
+						file.getParentFile().getAbsolutePath() + File.separator + INDEX_DIR + File.separator + "." + FileUtil.getFileNameWithoutExtension(file.getName()) + "." + INDEX_EXTENSION);
 			}
 
 			if (indexFile.exists()) {// && searcherIndexFile.exists()) {
@@ -182,13 +209,15 @@ public class TextViewerUtil {
 		private final GZipIndex gZipIndex;
 		private final IBytes gZipDictionaryBytes;
 		private final File bamBlockIndexFile;
+		private final TextSearchIndex textSearchIndex;
 
-		public Indexes(TextFileIndex textFileIndex, GZipIndex gZipIndex, IBytes gZipDictionaryBytes, File bamBlockIndexFile) {
+		public Indexes(TextFileIndex textFileIndex, GZipIndex gZipIndex, IBytes gZipDictionaryBytes, File bamBlockIndexFile, TextSearchIndex textSearchIndex) {
 			super();
 			this.textFileIndex = textFileIndex;
 			this.gZipIndex = gZipIndex;
 			this.gZipDictionaryBytes = gZipDictionaryBytes;
 			this.bamBlockIndexFile = bamBlockIndexFile;
+			this.textSearchIndex = textSearchIndex;
 		}
 
 		public TextFileIndex getTextFileIndex() {
@@ -205,6 +234,10 @@ public class TextViewerUtil {
 
 		public File getBamBlockIndexFile() {
 			return bamBlockIndexFile;
+		}
+
+		public TextSearchIndex getTextSearchIndex() {
+			return textSearchIndex;
 		}
 
 	}

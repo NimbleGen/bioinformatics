@@ -32,6 +32,8 @@ import org.slf4j.LoggerFactory;
 
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.fastq.FastqReader;
+import com.roche.sequencing.bioinformatics.common.utils.fastq.FastqWriter;
 
 public class FastqSorter {
 	private final static Logger logger = LoggerFactory.getLogger(FastqSorter.class);

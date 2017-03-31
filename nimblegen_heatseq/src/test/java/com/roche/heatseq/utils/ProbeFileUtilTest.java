@@ -23,6 +23,8 @@ import java.net.URISyntaxException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil;
+
 public class ProbeFileUtilTest {
 
 	@Test(groups = { "unit" })

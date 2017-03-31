@@ -696,7 +696,7 @@ public class TestPlanRunCheck {
 
 			if (matchingOutputFile != null) {
 				try {
-					String calculatedMd5Sum = Md5CheckSumUtil.md5sum(matchingOutputFile);
+					String calculatedMd5Sum = Md5CheckSumUtil.md5Sum(matchingOutputFile);
 					success = md5Sum.equals(calculatedMd5Sum);
 					if (success) {
 						resultsDescription = "The calculatedmd5Sum[" + calculatedMd5Sum + "] on file[" + matchingOutputFile.getAbsolutePath() + "] matches the expected md5sum[" + md5Sum + "].";

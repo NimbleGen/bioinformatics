@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package com.roche.heatseq.objects;
+package com.roche.sequencing.bioinformatics.common.utils.probeinfo;
 
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.NucleotideCodeSequence;

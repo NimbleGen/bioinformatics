@@ -18,8 +18,8 @@ package com.roche.heatseq.objects;
 
 import java.io.File;
 
-import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil.ProbeHeaderInformation;
 
 /**
  * 

@@ -526,7 +526,11 @@ public final class DelimitedFileParserUtil {
 					if (parsedCurrentRow != null) {
 						headerNameToValueMapFromRow = parseRow(columnToHeaderNameMap, parsedCurrentRow, headerNameToValueMapFromRow, delimitedInputStreamFactory.getName());
 
-						lineParser.parseDelimitedLine(headerNameToValueMapFromRow);
+						try {
+							lineParser.parseDelimitedLine(headerNameToValueMapFromRow);
+						} catch (LineParserException e) {
+							throw new IllegalStateException("Unable to parse line number[" + (linesOfData.get() + header.getLinesPriorToHeader() + 1) + "] with text[" + currentRow + "].", e);
+						}
 					}
 
 					if (linesOfData.get() % 1000 == 0 && Thread.currentThread().isInterrupted()) {
@@ -599,11 +603,12 @@ public final class DelimitedFileParserUtil {
 			AtomicInteger lastPercentComplete = new AtomicInteger(0);
 			long startTimeInMs = System.currentTimeMillis();
 			AtomicInteger totalLinesRead = new AtomicInteger(0);
+			AtomicBoolean errorOccurredInOneOfTheParsers = new AtomicBoolean(false);
 
 			for (int i = 0; i < numberOfRunnables; i++) {
 				tasks.add(new FileParser(i, numberOfRunnables, delimitedInputStreamFactory, lineParser, header, columnToHeaderNameMap, linesOfData, wasInterrupted, columnDelimiter,
 						positionInBytesOfLinesReadByEachFileParser, totalBytesRead, lastPercentComplete, startTimeInMs, totalLinesRead, textProgressListener, executor,
-						delimitedInputStreamFactory.getName()));
+						delimitedInputStreamFactory.getName(), errorOccurredInOneOfTheParsers));
 			}
 
 			List<Throwable> exceptions = new ArrayList<Throwable>();
@@ -622,7 +627,7 @@ public final class DelimitedFileParserUtil {
 
 			if (exceptions.size() > 0) {
 				Throwable throwable = exceptions.get(0);
-				throw new RuntimeException(throwable.getMessage(), throwable);
+				throw new RuntimeException(throwable);
 			}
 
 			if (textProgressListener != null) {
@@ -658,6 +663,7 @@ public final class DelimitedFileParserUtil {
 
 		private final AtomicInteger linesOfData;
 		private final AtomicBoolean wasInterrupted;
+		private final AtomicBoolean errorOccurredInOneOfParsers;
 		private final String columnDelimiter;
 		private final ConcurrentHashMap<Long, Boolean> positionInBytesOfLinesReadByEachFileParser;
 
@@ -674,7 +680,7 @@ public final class DelimitedFileParserUtil {
 		public FileParser(int readSectionIndex, int totalReadSections, IInputStreamFactory delimitedInputStreamFactory, IDelimitedLineParser lineParser, Header header,
 				Map<Integer, String> columnToHeaderNameMap, AtomicInteger linesOfData, AtomicBoolean wasInterrupted, String columnDelimiter,
 				ConcurrentHashMap<Long, Boolean> positionInBytesOfFirstLinesReadByEachFileParser, AtomicLong totalBytesRead, AtomicInteger lastPercentComplete, long startTimeInMs,
-				AtomicInteger totalLinesRead, ITextProgressListener textProgressListener, Executor executor, String filePath) {
+				AtomicInteger totalLinesRead, ITextProgressListener textProgressListener, Executor executor, String filePath, AtomicBoolean errorOccurredInOneOfParsers) {
 			super();
 			this.readSectionIndex = readSectionIndex;
 			this.totalReadSections = totalReadSections;
@@ -693,6 +699,7 @@ public final class DelimitedFileParserUtil {
 			this.totalLinesRead = totalLinesRead;
 			this.executor = executor;
 			this.filePath = filePath;
+			this.errorOccurredInOneOfParsers = errorOccurredInOneOfParsers;
 		}
 
 		@Override
@@ -739,64 +746,83 @@ public final class DelimitedFileParserUtil {
 
 				int numberOfBytesRead = 0;
 
-				boolean shouldContinue = true;
+				boolean shouldContinue = !errorOccurredInOneOfParsers.get();
 
-				outerByteLoop: while (((numberOfBytesRead = inputStream.read(bytes)) != -1)) {
+				if (shouldContinue) {
+					outerByteLoop: while (((numberOfBytesRead = inputStream.read(bytes)) != -1)) {
 
-					ByteBuffer in = null;
-					if (numberOfBytesRead < bytes.length) {
-						in = ByteBuffer.wrap(Arrays.copyOf(bytes, numberOfBytesRead));
-					} else {
-						in = ByteBuffer.wrap(bytes);
-					}
-
-					CharBuffer out = CharBuffer.allocate(1);
-					out.position(0);
-
-					int lastInPosition = 0;
-					while (in.hasRemaining()) {
-						decoder.decode(in, out, true);
-						char currentCharacter = out.array()[0];
-						currentPositionInBytes += (in.position() - lastInPosition);
-						lastInPosition = in.position();
-						out.position(0);
-						if ((currentCharacter == '\r')) {
-							// effectively remove carriage return (actually ignoring it) if this is a windows based file
-						} else if ((currentCharacter == StringUtil.NEWLINE_SYMBOL)) {
-							endLinesFound++;
-							if (endLinesFound > 1) {
-								shouldContinue = processLine(currentLine.toString(), currentPositionInBytes, stopPositionInBytes, headerNameToValueMapFromRow, filePath);
-								totalLinesRead.incrementAndGet();
-								if (!shouldContinue) {
-									break outerByteLoop;
-								}
-							}
-							currentLine = new StringBuilder();
+						ByteBuffer in = null;
+						if (numberOfBytesRead < bytes.length) {
+							in = ByteBuffer.wrap(Arrays.copyOf(bytes, numberOfBytesRead));
 						} else {
-							currentLine.append(currentCharacter);
+							in = ByteBuffer.wrap(bytes);
 						}
-					}
 
-					totalBytesRead.addAndGet(numberOfBytesRead);
+						CharBuffer out = CharBuffer.allocate(1);
+						out.position(0);
 
-					if (textProgressListener != null) {
-						double percentComplete = (totalBytesRead.get() / (double) sizeInBytes) * 100;
-						int percentCompleteAsInt = (int) Math.floor(percentComplete);
-						if (percentCompleteAsInt > lastPercentComplete.getAndSet(percentCompleteAsInt)) {
-							long currentProcessTimeInMilliseconds = System.currentTimeMillis() - startTimeInMs;
-							executor.execute(new Runnable() {
-								@Override
-								public void run() {
-									textProgressListener.progressOccurred(new ProgressUpdate(totalLinesRead.get(), percentComplete, currentProcessTimeInMilliseconds));
+						int lastInPosition = 0;
+						while (in.hasRemaining()) {
+							decoder.decode(in, out, true);
+							char currentCharacter = out.array()[0];
+							currentPositionInBytes += (in.position() - lastInPosition);
+							lastInPosition = in.position();
+							out.position(0);
+							if ((currentCharacter == '\r')) {
+								// effectively remove carriage return (actually ignoring it) if this is a windows based file
+							} else if ((currentCharacter == StringUtil.NEWLINE_SYMBOL)) {
+								endLinesFound++;
+								if (endLinesFound > 1) {
+									try {
+										shouldContinue = processLine(currentLine.toString(), currentPositionInBytes, stopPositionInBytes, headerNameToValueMapFromRow, filePath);
+									} catch (LineParserException e) {
+										int lineNumber = FileUtil.countNumberOfLinesInFile(delimitedInputStreamFactory, currentPositionInBytes) - 1;
+										System.out.println("fail");
+										errorOccurredInOneOfParsers.set(true);
+										shouldContinue = false;
+										throw new IllegalStateException("Failed to parse line number[" + lineNumber + "] containing the text[" + currentLine + "].", e);
+									}
+
+									totalLinesRead.incrementAndGet();
+									if (!shouldContinue) {
+										break outerByteLoop;
+									}
 								}
-							});
+								currentLine = new StringBuilder();
+							} else {
+								currentLine.append(currentCharacter);
+							}
+						}
 
+						totalBytesRead.addAndGet(numberOfBytesRead);
+
+						if (textProgressListener != null) {
+							double percentComplete = (totalBytesRead.get() / (double) sizeInBytes) * 100;
+							int percentCompleteAsInt = (int) Math.floor(percentComplete);
+							if (percentCompleteAsInt > lastPercentComplete.getAndSet(percentCompleteAsInt)) {
+								long currentProcessTimeInMilliseconds = System.currentTimeMillis() - startTimeInMs;
+								executor.execute(new Runnable() {
+									@Override
+									public void run() {
+										textProgressListener.progressOccurred(new ProgressUpdate(totalLinesRead.get(), percentComplete, currentProcessTimeInMilliseconds));
+									}
+								});
+
+							}
 						}
 					}
-				}
 
-				if (shouldContinue && currentLine.length() > 0) {
-					processLine(currentLine.toString(), currentPositionInBytes, stopPositionInBytes, headerNameToValueMapFromRow, filePath);
+					if (shouldContinue && currentLine.length() > 0) {
+						try {
+							processLine(currentLine.toString(), currentPositionInBytes, stopPositionInBytes, headerNameToValueMapFromRow, filePath);
+						} catch (LineParserException e) {
+							int lineNumber = FileUtil.countNumberOfLinesInFile(delimitedInputStreamFactory, currentPositionInBytes) - 1;
+							System.out.println("fail");
+							errorOccurredInOneOfParsers.set(true);
+							shouldContinue = false;
+							throw new IllegalStateException("Failed to parse line number[" + lineNumber + "] containing the text[" + currentLine + "].", e);
+						}
+					}
 				}
 			} catch (IOException e) {
 				throw new RuntimeException(e.getMessage(), e);
@@ -804,7 +830,8 @@ public final class DelimitedFileParserUtil {
 			return null;
 		}
 
-		private boolean processLine(String currentLine, long currentPositionInBytes, long stopPositionInBytes, Map<String, String> headerNameToValueMapFromRow, String filePath) {
+		private boolean processLine(String currentLine, long currentPositionInBytes, long stopPositionInBytes, Map<String, String> headerNameToValueMapFromRow, String filePath)
+				throws LineParserException {
 			boolean continueProcessing = true;
 
 			// this is handling the case where two or more file parsers have been positioned in the same line

@@ -23,11 +23,11 @@ import java.io.IOException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import com.roche.heatseq.objects.ParsedProbeFile;
-import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.process.FastqReadTrimmer.ProbeInfoStats;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ParsedProbeFile;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
 
 public class FastqReadTrimmerTest {
 

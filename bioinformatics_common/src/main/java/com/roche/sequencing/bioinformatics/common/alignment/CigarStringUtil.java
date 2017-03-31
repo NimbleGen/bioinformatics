@@ -16,6 +16,9 @@
 
 package com.roche.sequencing.bioinformatics.common.alignment;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.roche.sequencing.bioinformatics.common.sequence.ICode;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCode;
@@ -56,9 +59,8 @@ public class CigarStringUtil {
 	}
 
 	static CigarString getCigarString(AlignmentPair alignmentPair) {
-		AlignmentPair alignmentWithoutEndingAndBeginningQueryInserts = alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts();
-		ISequence referenceSequenceAlignment = alignmentWithoutEndingAndBeginningQueryInserts.getReferenceAlignment();
-		ISequence querySequenceAlignment = alignmentWithoutEndingAndBeginningQueryInserts.getQueryAlignment();
+		ISequence referenceSequenceAlignment = alignmentPair.getReferenceAlignment();
+		ISequence querySequenceAlignment = alignmentPair.getQueryAlignment();
 
 		StringBuilder cigarStringBuilder = new StringBuilder();
 
@@ -87,45 +89,43 @@ public class CigarStringUtil {
 	}
 
 	static String getMismatchDetailsString(AlignmentPair alignmentPair) {
-		AlignmentPair alignmentWithoutEndingAndBeginningQueryInserts = alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts();
-		ISequence referenceSequenceAlignment = alignmentWithoutEndingAndBeginningQueryInserts.getReferenceAlignment();
-		ISequence querySequenceAlignment = alignmentWithoutEndingAndBeginningQueryInserts.getQueryAlignment();
-
+		ISequence referenceSequenceAlignment = alignmentPair.getReferenceAlignment();
+		ISequence querySequenceAlignment = alignmentPair.getQueryAlignment();
 		CigarString cigarString = getCigarString(alignmentPair);
 		return getMismatchDetailsString(referenceSequenceAlignment, querySequenceAlignment, cigarString);
 	}
 
 	static String getMismatchDetailsString(ISequence referenceAlignmentSequence, ISequence queryAlignmentSequence, CigarString cigarString) {
-		String summarizedCigarStringWithMisMatches = cigarString.getCigarString(true, true, true);
-		StringBuilder mismatchDetailsStringBuilder = new StringBuilder();
+		String summarizedCigarStringWithMisMatches = cigarString.getCigarString(true, true, false, false);
+
+		List<MismatchDetailsEntry> entries = new ArrayList<>();
 
 		StringBuilder currentString = new StringBuilder();
 		int alignmentIndex = 0;
-		boolean lastAdditionWasAMatch = false;
 		for (char currentChar : summarizedCigarStringWithMisMatches.toCharArray()) {
 			if (Character.isDigit(currentChar)) {
 				currentString.append(currentChar);
 			} else {
 				int number = Integer.valueOf(currentString.toString());
+
+				MismatchDetailsEntry lastEntry = null;
+				if (entries.size() > 0) {
+					lastEntry = entries.get(entries.size() - 1);
+				}
+
 				if (currentChar == CIGAR_ALIGNMENT_MATCH || currentChar == CIGAR_SEQUENCE_MATCH) {
-					mismatchDetailsStringBuilder.append(number);
-					lastAdditionWasAMatch = true;
-				} else if (currentChar == CIGAR_INSERTION_TO_REFERENCE) {
-					ISequence sequence = queryAlignmentSequence.subSequence(alignmentIndex, alignmentIndex + number - 1);
-					if (!lastAdditionWasAMatch) {
-						mismatchDetailsStringBuilder.append("0");
+					if (lastEntry != null && lastEntry.isAMatch()) {
+						lastEntry.count += number;
+					} else {
+						entries.add(new MismatchDetailsEntry(currentChar, number, null));
 					}
-					mismatchDetailsStringBuilder.append(REFERENCE_DELETION_INDICATOR_IN_MD_TAG + sequence);
+				} else if (currentChar == CIGAR_INSERTION_TO_REFERENCE) {
 				} else if (currentChar == CIGAR_DELETION_FROM_REFERENCE) {
-					// swallow the insertion
-					// lastAdditionWasAMatch should be whatever it was before hitting this section so do nothing
+					ISequence sequence = referenceAlignmentSequence.subSequence(alignmentIndex, alignmentIndex + number - 1);
+					entries.add(new MismatchDetailsEntry(currentChar, number, sequence));
 				} else if (currentChar == CIGAR_SEQUENCE_MISMATCH) {
 					ISequence sequence = referenceAlignmentSequence.subSequence(alignmentIndex, alignmentIndex + number - 1);
-					if (!lastAdditionWasAMatch) {
-						mismatchDetailsStringBuilder.append("0");
-					}
-					mismatchDetailsStringBuilder.append(sequence);
-					lastAdditionWasAMatch = false;
+					entries.add(new MismatchDetailsEntry(currentChar, number, sequence));
 				} else {
 					throw new AssertionError("Unrecognized character[" + currentChar + "] in cigar string[" + summarizedCigarStringWithMisMatches + "].");
 				}
@@ -134,10 +134,62 @@ public class CigarStringUtil {
 			}
 		}
 
+		StringBuilder mismatchDetailsStringBuilder = new StringBuilder();
+		MismatchDetailsEntry previousEntry = null;
+		for (MismatchDetailsEntry entry : entries) {
+			boolean isFirstEntry = (previousEntry == null);
+			if (isFirstEntry) {
+				if (!entry.isAMatch()) {
+					mismatchDetailsStringBuilder.append("0");
+				}
+			}
+			if (previousEntry != null && !previousEntry.isAMatch() && !entry.isAMatch()) {
+				mismatchDetailsStringBuilder.append("0");
+			}
+			mismatchDetailsStringBuilder.append(entry.toMismatchDetailsString());
+			previousEntry = entry;
+		}
+
 		return mismatchDetailsStringBuilder.toString();
 	}
 
-	static String summarizeCigarString(String cigarString) {
+	private static class MismatchDetailsEntry {
+		private final char type;
+		private int count;
+		private final ISequence sequence;
+
+		public MismatchDetailsEntry(char type, int count, ISequence sequence) {
+			super();
+			this.type = type;
+			this.count = count;
+			this.sequence = sequence;
+		}
+
+		public String toMismatchDetailsString() {
+			String mismatchDetailsString;
+			if (type == CIGAR_ALIGNMENT_MATCH || type == CIGAR_SEQUENCE_MATCH) {
+				mismatchDetailsString = "" + count;
+			} else if (type == CIGAR_INSERTION_TO_REFERENCE) {
+				mismatchDetailsString = "";
+			} else if (type == CIGAR_DELETION_FROM_REFERENCE) {
+				mismatchDetailsString = REFERENCE_DELETION_INDICATOR_IN_MD_TAG + sequence;
+			} else if (type == CIGAR_SEQUENCE_MISMATCH) {
+				mismatchDetailsString = "" + sequence;
+			} else {
+				throw new AssertionError("Unrecognized character[" + type + "].");
+			}
+			return mismatchDetailsString;
+		}
+
+		public boolean isAMatch() {
+			boolean isAMatch = (type == CIGAR_ALIGNMENT_MATCH || type == CIGAR_SEQUENCE_MATCH);
+			return isAMatch;
+
+		}
+
+	}
+
+	public static String summarizeCigarString(String cigarString) {
 		StringBuilder summarizedCigarString = new StringBuilder();
 
 		if (cigarString.length() > 0) {
@@ -164,7 +216,7 @@ public class CigarStringUtil {
 
 	static int getEditDistance(CigarString cigarString) {
 		int editDistance = 0;
-		String nonSummarizedCigarStringWithMisMatches = cigarString.getCigarString(false, true, false);
+		String nonSummarizedCigarStringWithMisMatches = cigarString.getCigarString(false, true, false, false);
 		for (char currentChar : nonSummarizedCigarStringWithMisMatches.toCharArray()) {
 
 			if ((currentChar == CIGAR_INSERTION_TO_REFERENCE) || (currentChar == CIGAR_SEQUENCE_MISMATCH)) {

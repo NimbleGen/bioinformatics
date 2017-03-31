@@ -25,7 +25,7 @@ public class ResourceUtil {
 	private final static boolean DEFAULT_OVERRIDE_EXISTING_FILES = true;
 
 	public static File getResourceAsPermanentReadOnlyFile(Class<?> resourceReferenceClass, String resourceName) throws IOException {
-		String md5Sum = Md5CheckSumUtil.md5sum(resourceReferenceClass, resourceName);
+		String md5Sum = Md5CheckSumUtil.md5Sum(resourceReferenceClass, resourceName);
 		File permanentReadOnlyFile = new File(FileUtil.getTempDirectory(), FileUtil.getFileNameWithoutExtension(resourceName) + "_" + md5Sum + FileUtil.getFileExtension(resourceName));
 		if (!permanentReadOnlyFile.exists()) {
 			String contents = readResourceAsString(resourceReferenceClass, resourceName);
@@ -164,8 +164,8 @@ public class ResourceUtil {
 							File file = new File(outputDirectory, resourceName);
 							boolean fileShouldBeCopied = true;
 							if (file.exists()) {
-								String existingMd5Sum = Md5CheckSumUtil.md5sum(file);
-								String newMd5Sum = Md5CheckSumUtil.md5sum(resourceReferenceClass, resourceName);
+								String existingMd5Sum = Md5CheckSumUtil.md5Sum(file);
+								String newMd5Sum = Md5CheckSumUtil.md5Sum(resourceReferenceClass, resourceName);
 								if (existingMd5Sum.equals(newMd5Sum)) {
 									fileShouldBeCopied = false;
 								}

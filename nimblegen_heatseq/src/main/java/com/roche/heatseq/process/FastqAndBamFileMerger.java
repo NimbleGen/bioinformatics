@@ -34,16 +34,16 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.roche.heatseq.objects.Probe;
 import com.roche.heatseq.process.FastqReadTrimmer.ProbeTrimmingInformation;
 import com.roche.heatseq.process.FastqReadTrimmer.TrimmedRead;
 import com.roche.heatseq.utils.BamSorter;
 import com.roche.heatseq.utils.BamSorter.CloseableAndIterableIterator;
 import com.roche.heatseq.utils.FastqSorter;
-import com.roche.heatseq.utils.IlluminaFastQReadNameUtil;
-import com.roche.heatseq.utils.PicardException;
 import com.roche.heatseq.utils.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
+import com.roche.sequencing.bioinformatics.common.utils.IlluminaFastQReadNameUtil;
+import com.roche.sequencing.bioinformatics.common.utils.fastq.PicardException;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
 
 /**
  * Merges alignment information from a BAM file with read string, quality string, and UID from two input fastQ files, joining on the read name. Stores the result in a 'merged' BAM file.

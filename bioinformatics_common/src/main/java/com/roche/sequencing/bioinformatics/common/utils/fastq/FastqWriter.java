@@ -13,27 +13,39 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.roche.heatseq.utils;
+package com.roche.sequencing.bioinformatics.common.utils.fastq;
+
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.zip.GZIPOutputStream;
+
+import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 
 import htsjdk.samtools.fastq.FastqConstants;
 import htsjdk.samtools.fastq.FastqRecord;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-
-import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
-
 public class FastqWriter implements AutoCloseable {
 
-	private final BufferedWriter writer;
+	private final BufferedOutputStream writer;
 
 	public FastqWriter(File fileToWrite) {
-		try {
-			writer = new BufferedWriter(new FileWriter(fileToWrite));
-		} catch (IOException e) {
-			throw new IllegalStateException(e.getMessage(), e);
+		String extension = FileUtil.getFileExtension(fileToWrite.getName());
+		boolean shouldZip = extension.equals("gz");
+		if (shouldZip) {
+			try {
+				writer = new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(fileToWrite)));
+			} catch (IOException e) {
+				throw new IllegalStateException(e.getMessage(), e);
+			}
+		} else {
+			try {
+				writer = new BufferedOutputStream(new FileOutputStream(fileToWrite));
+			} catch (IOException e) {
+				throw new IllegalStateException(e.getMessage(), e);
+			}
 		}
 	}
 
@@ -41,7 +53,7 @@ public class FastqWriter implements AutoCloseable {
 		try {
 			String recordAsString = FastqConstants.SEQUENCE_HEADER + record.getReadHeader() + StringUtil.NEWLINE + record.getReadString() + StringUtil.NEWLINE + FastqConstants.QUALITY_HEADER
 					+ (record.getBaseQualityHeader() == null ? "" : record.getBaseQualityHeader()) + StringUtil.NEWLINE + record.getBaseQualityString() + StringUtil.NEWLINE;
-			writer.write(recordAsString);
+			writer.write(recordAsString.getBytes());
 		} catch (IOException e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}

@@ -22,13 +22,9 @@ import java.text.DecimalFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.roche.heatseq.objects.ParsedProbeFile;
 import com.roche.heatseq.process.FastqReadTrimmer;
 import com.roche.heatseq.process.FastqValidator;
 import com.roche.heatseq.process.InputFilesExistValidator;
-import com.roche.heatseq.process.ProbeInfoFileValidator;
-import com.roche.heatseq.utils.ProbeFileUtil;
-import com.roche.heatseq.utils.ProbeFileUtil.ProbeHeaderInformation;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOption;
 import com.roche.sequencing.bioinformatics.common.commandline.CommandLineOptionsGroup;
 import com.roche.sequencing.bioinformatics.common.commandline.ParsedCommandLine;
@@ -36,6 +32,10 @@ import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.LoggingUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ParsedProbeFile;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeInfoFileValidator;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil.ProbeHeaderInformation;
 
 class TrimCli {
 

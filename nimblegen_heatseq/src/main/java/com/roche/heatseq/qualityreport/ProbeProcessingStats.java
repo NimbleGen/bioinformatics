@@ -19,8 +19,8 @@ package com.roche.heatseq.qualityreport;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 
-import com.roche.heatseq.objects.Probe;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
 
 /**
  * Simple object to hold onto statistics about processing that are useful for diagnostics

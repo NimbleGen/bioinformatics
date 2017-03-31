@@ -36,6 +36,14 @@ public class RunningStats {
 		maxValue = -Double.MAX_VALUE;
 	}
 
+	public synchronized void combine(RunningStats runningStats) {
+		this.sumOfValues.add(runningStats.sumOfValues);
+		this.sumOfSquares.add(runningStats.sumOfSquares);
+		this.minValue = Math.min(this.minValue, runningStats.minValue);
+		this.maxValue = Math.min(this.maxValue, runningStats.maxValue);
+		this.numberOfValues += runningStats.numberOfValues;
+	}
+
 	public synchronized void addValue(double value) {
 		BigDecimal valueAsBigDecimal = new BigDecimal(value);
 		minValue = Math.min(minValue, value);
