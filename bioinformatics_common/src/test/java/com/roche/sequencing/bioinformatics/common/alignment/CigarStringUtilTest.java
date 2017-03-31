@@ -37,7 +37,7 @@ public class CigarStringUtilTest {
 		NeedlemanWunschGlobalAlignment globalAlignment = new NeedlemanWunschGlobalAlignment(sequenceOne, sequenceTwo);
 		AlignmentPair alignmentPair = globalAlignment.getAlignmentPair();
 		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair);
-		assertEquals(mismatchDetailsString, "10A5^ACG5");
+		assertEquals(mismatchDetailsString, "10A5G5");
 	}
 
 	@Test(groups = { "integration" })
@@ -47,7 +47,7 @@ public class CigarStringUtilTest {
 		NeedlemanWunschGlobalAlignment globalAlignment = new NeedlemanWunschGlobalAlignment(sequenceOne, sequenceTwo);
 		AlignmentPair alignmentPair = globalAlignment.getAlignmentPair();
 		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair);
-		assertEquals(mismatchDetailsString, "10G5A5");
+		assertEquals(mismatchDetailsString, "10G5^AC0A5");
 	}
 
 	@Test(groups = { "integration" })
@@ -58,7 +58,7 @@ public class CigarStringUtilTest {
 		NeedlemanWunschGlobalAlignment globalAlignment = new NeedlemanWunschGlobalAlignment(sequenceOne, sequenceTwo);
 		AlignmentPair alignmentPair = globalAlignment.getAlignmentPair();
 		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair);
-		assertEquals(mismatchDetailsString, "11C118");
+		assertEquals(mismatchDetailsString, "0^CATTCCAGGCCTAAGATCCC11C118");
 	}
 
 	@Test(groups = { "integration" })
@@ -68,9 +68,9 @@ public class CigarStringUtilTest {
 		ISequence sequenceTwo = new IupacNucleotideCodeSequence("GCCCCCCCAGCTTGTGGAGCCTCTTACACCCAGTGGAGAAGCTCCCAACCAAGCTCTCTTGAGGATCTTGAAGGAAACTGAATTCAAAAAGATCAAAGTGCTGGGCTCCGGTGCGTTCGGCACGGTGT");
 		NeedlemanWunschGlobalAlignment globalAlignment = new NeedlemanWunschGlobalAlignment(sequenceOne, sequenceTwo);
 		AlignmentPair alignmentPair = globalAlignment.getAlignmentPair();
-		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts().getReferenceAlignment(), alignmentPair
-				.getAlignmentWithoutEndingAndBeginningQueryInserts().getQueryAlignment(), globalAlignment.getCigarString());
-		assertEquals(mismatchDetailsString, "0T127");
+		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts().getReferenceAlignment(),
+				alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts().getQueryAlignment(), globalAlignment.getCigarString());
+		assertEquals(mismatchDetailsString, "0^TCCCCCCCAGCTTGTGGAGCCT0C127");
 	}
 
 	@Test(groups = { "integration" })
@@ -80,9 +80,9 @@ public class CigarStringUtilTest {
 		ISequence sequenceTwo = new IupacNucleotideCodeSequence("GCCCCCCCAGCTTGTGGAGCCTCTTACACCCAGTGGAGAAGCTCCCAACCAAGCTCTCTTGAGGATCTTGAAGGAAACTGAATTCAAAAAGATCAAAGTGCTGGGCTCCGGTGCGTTCGGCACGGTGT");
 		NeedlemanWunschGlobalAlignment globalAlignment = new NeedlemanWunschGlobalAlignment(sequenceOne, sequenceTwo);
 		AlignmentPair alignmentPair = globalAlignment.getAlignmentPair();
-		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts().getReferenceAlignment(), alignmentPair
-				.getAlignmentWithoutEndingAndBeginningQueryInserts().getQueryAlignment(), globalAlignment.getCigarString());
-		assertEquals(mismatchDetailsString, "0T127");
+		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts().getReferenceAlignment(),
+				alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts().getQueryAlignment(), globalAlignment.getCigarString());
+		assertEquals(mismatchDetailsString, "0^TCCCCCCCAGCTTGTGGAGCCT0C64^CAA63");
 	}
 
 	@Test(groups = { "integration" })
@@ -93,9 +93,9 @@ public class CigarStringUtilTest {
 				.getReverse();
 		NeedlemanWunschGlobalAlignment globalAlignment = new NeedlemanWunschGlobalAlignment(sequenceOne, sequenceTwo);
 		AlignmentPair alignmentPair = globalAlignment.getAlignmentPair();
-		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts().getReferenceAlignment().getReverse(), alignmentPair
-				.getAlignmentWithoutEndingAndBeginningQueryInserts().getQueryAlignment().getReverse(), globalAlignment.getReverseCigarString());
-		assertEquals(mismatchDetailsString, "11C118");
+		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts().getReferenceAlignment().getReverse(),
+				alignmentPair.getAlignmentWithoutEndingAndBeginningQueryInserts().getQueryAlignment().getReverse(), globalAlignment.getReverseCigarString());
+		assertEquals(mismatchDetailsString, "0^GTCCATCGCCACTGGGATGG11C118");
 	}
 
 	@Test(groups = { "integration" })
