@@ -142,8 +142,8 @@ final class ExtendReadsToPrimer {
 
 				readOneExtended = true;
 				readOneRecord = createRecord(samHeader, readName, readGroup, readOneIsOnReverseStrand, cigarString, readOneExtensionDetails.getMismatchDetailsString(),
-						readOneExtensionDetails.getAlignmentStartInReference(), readOneExtendedSequence.toString(), readOneExtendedBaseQualities, sequenceName, oneMappingQuality,
-						readOneReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId(), isBestDuplicate);
+						readOneExtensionDetails.getEditDistance(), readOneExtensionDetails.getAlignmentStartInReference(), readOneExtendedSequence.toString(), readOneExtendedBaseQualities,
+						sequenceName, oneMappingQuality, readOneReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId(), isBestDuplicate);
 			}
 
 			ISequence ligationPrimer = probe.getLigationPrimerSequence().getReverseCompliment();
@@ -175,8 +175,8 @@ final class ExtendReadsToPrimer {
 				}
 				readTwoExtended = true;
 				readTwoRecord = createRecord(samHeader, readName, readGroup, readTwoIsOnReverseStrand, cigarString, readTwoExtensionDetails.getMismatchDetailsString(),
-						readTwoExtensionDetails.getAlignmentStartInReference(), readTwoExtendedSequence.toString(), readTwoExtendedBaseQualities, sequenceName, twoMappingQuality,
-						readTwoReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId(), isBestDuplicate);
+						readTwoExtensionDetails.getEditDistance(), readTwoExtensionDetails.getAlignmentStartInReference(), readTwoExtendedSequence.toString(), readTwoExtendedBaseQualities,
+						sequenceName, twoMappingQuality, readTwoReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId(), isBestDuplicate);
 			}
 
 			if (readOneRecord != null && readTwoRecord != null) {
@@ -215,6 +215,7 @@ final class ExtendReadsToPrimer {
 
 				CigarString cigarString = alignment.getCigarString();
 				String mismatchDetailsString = alignment.getMismatchDetailsString();
+				int editDistance = alignment.getEditDistance();
 				int alignmentStartInReference = 0;
 
 				int readLength = readWithoutPrimer.size() - 1;
@@ -231,7 +232,7 @@ final class ExtendReadsToPrimer {
 						alignmentStartInReference = primerReferencePositionAdjacentToSequence + 1;
 					}
 
-					readExtensionDetails = new ReadExtensionDetails(alignmentStartInReference, captureTargetStartIndexInRead, cigarString, mismatchDetailsString, readLength);
+					readExtensionDetails = new ReadExtensionDetails(alignmentStartInReference, captureTargetStartIndexInRead, cigarString, mismatchDetailsString, editDistance, readLength);
 				}
 			}
 		}
@@ -239,7 +240,7 @@ final class ExtendReadsToPrimer {
 		return readExtensionDetails;
 	}
 
-	private static SAMRecord createRecord(SAMFileHeader samHeader, String readName, String readGroup, boolean isNegativeStrand, CigarString cigarString, String mismatchDetailsString,
+	private static SAMRecord createRecord(SAMFileHeader samHeader, String readName, String readGroup, boolean isNegativeStrand, CigarString cigarString, String mismatchDetailsString, int editDistance,
 			int alignmentStartInReference, String readString, String baseQualityString, String sequenceName, int mappingQuality, int referenceLength, boolean isMarkedDuplicate, String extensionUid,
 			String ligationUid, String probeId, boolean isBestDuplicate) {
 		if (readString.length() != baseQualityString.length()) {
@@ -271,8 +272,9 @@ final class ExtendReadsToPrimer {
 		if (mismatchDetailsString != null && !mismatchDetailsString.isEmpty()) {
 			record.setAttribute(SAMRecordUtil.MISMATCH_DETAILS_ATTRIBUTE_TAG, mismatchDetailsString);
 		}
+
+		record.setAttribute(SAMRecordUtil.EDIT_DISTANCE_ATTRIBUTE_TAG, editDistance);
 		record.setAttribute(SAMRecordUtil.READ_GROUP_ATTRIBUTE_TAG, readGroup);
-		record.setAttribute(SAMRecordUtil.EDIT_DISTANCE_ATTRIBUTE_TAG, cigarString.getEditDistance());
 		return record;
 	}
 
@@ -371,16 +373,19 @@ final class ExtendReadsToPrimer {
 	private static class ReadExtensionDetails {
 		private final int alignmentStartInReference;
 		private final int readStart;
+		private final int editDistance;
 		private final int readLength;
 		private final CigarString alignmentCigarString;
 		private final String captureTargetMismatchDetailsString;
 
-		public ReadExtensionDetails(int alignmentStartInReference, int readStart, CigarString captureTargetAlignmentCigarString, String captureTargetMismatchDetailsString, int readLength) {
+		public ReadExtensionDetails(int alignmentStartInReference, int readStart, CigarString captureTargetAlignmentCigarString, String captureTargetMismatchDetailsString, int editDistance,
+				int readLength) {
 			super();
 			this.alignmentStartInReference = alignmentStartInReference;
 			this.readStart = readStart;
 			this.alignmentCigarString = captureTargetAlignmentCigarString;
 			this.captureTargetMismatchDetailsString = captureTargetMismatchDetailsString;
+			this.editDistance = editDistance;
 			this.readLength = readLength;
 		}
 
@@ -404,5 +409,8 @@ final class ExtendReadsToPrimer {
 			return captureTargetMismatchDetailsString;
 		}
 
+		public int getEditDistance() {
+			return editDistance;
+		}
 	}
 }

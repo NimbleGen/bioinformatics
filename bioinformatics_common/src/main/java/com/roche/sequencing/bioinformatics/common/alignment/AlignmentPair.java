@@ -141,6 +141,16 @@ public class AlignmentPair {
 		return CigarStringUtil.getMismatchDetailsString(this);
 	}
 
+	public int getEditDistance() {
+		int editDistance = 0;
+		for (int i = 0; i < referenceAlignment.size(); i++) {
+			if (!referenceAlignment.getCodeAt(i).equals(queryAlignment.getCodeAt(i))) {
+				editDistance++;
+			}
+		}
+		return editDistance;
+	}
+
 	/**
 	 * @return the reverse of the mismatch details string
 	 */

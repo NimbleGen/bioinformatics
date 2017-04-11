@@ -24,7 +24,8 @@ package com.roche.sequencing.bioinformatics.common.alignment;
 class TraceabilityMatrixCell {
 	private TraceabilityMatrixCell sourceCell;
 	private double score;
-	private Integer indexInGap;
+	private Integer indexInVerticalGap;
+	private Integer indexInHorizontalGap;
 	private final int row;
 	private final int col;
 
@@ -49,12 +50,20 @@ class TraceabilityMatrixCell {
 		return score;
 	}
 
-	public Integer getIndexInGap() {
-		return indexInGap;
+	public Integer getIndexInVerticalGap() {
+		return indexInVerticalGap;
 	}
 
-	public void setIndexInGap(Integer indexInGap) {
-		this.indexInGap = indexInGap;
+	public void setIndexInVerticalGap(Integer indexInVerticalGap) {
+		this.indexInVerticalGap = indexInVerticalGap;
+	}
+
+	public Integer getIndexInHorizontalGap() {
+		return indexInHorizontalGap;
+	}
+
+	public void setIndexInHorizontalGap(Integer indexInHorizontalGap) {
+		this.indexInHorizontalGap = indexInHorizontalGap;
 	}
 
 	/**

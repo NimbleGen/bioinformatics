@@ -273,8 +273,8 @@ public class NeedlemanWunschGlobalAlignment {
 
 		if (!isEndOfRow || getAlignmentScorer().shouldPenalizeEndingTerminalGaps()) {
 			if (isVerticalGapContinuation) {
-				if (cellAbove.getIndexInGap() != null) {
-					verticalScore += getAlignmentScorer().getGapScore(cellAbove.getIndexInGap() + 1);
+				if (cellAbove.getIndexInVerticalGap() != null) {
+					verticalScore += getAlignmentScorer().getGapScore(cellAbove.getIndexInVerticalGap() + 1);
 				} else {
 					throw new AssertionError();
 				}
@@ -289,8 +289,8 @@ public class NeedlemanWunschGlobalAlignment {
 
 		if (!isBottomOfColumn || getAlignmentScorer().shouldPenalizeEndingTerminalGaps()) {
 			if (isHorizontalGapContinuation) {
-				if (cellToLeft.getIndexInGap() != null) {
-					horizontalScore += getAlignmentScorer().getGapScore(cellToLeft.getIndexInGap());
+				if (cellToLeft.getIndexInHorizontalGap() != null) {
+					horizontalScore += getAlignmentScorer().getGapScore(cellToLeft.getIndexInHorizontalGap() + 1);
 				} else {
 					throw new AssertionError();
 				}
@@ -308,17 +308,17 @@ public class NeedlemanWunschGlobalAlignment {
 
 		if (maxScore == horizontalScore) {
 			currentCell.setSourceCell(cellToLeft);
-			if (cellToLeft.getIndexInGap() != null) {
-				currentCell.setIndexInGap(cellToLeft.getIndexInGap() + 1);
+			if (cellToLeft.getIndexInHorizontalGap() != null) {
+				currentCell.setIndexInHorizontalGap(cellToLeft.getIndexInHorizontalGap() + 1);
 			} else {
-				currentCell.setIndexInGap(0);
+				currentCell.setIndexInHorizontalGap(0);
 			}
 		} else if (maxScore == verticalScore) {
 			currentCell.setSourceCell(cellAbove);
-			if (cellAbove.getIndexInGap() != null) {
-				currentCell.setIndexInGap(cellAbove.getIndexInGap() + 1);
+			if (cellAbove.getIndexInVerticalGap() != null) {
+				currentCell.setIndexInVerticalGap(cellAbove.getIndexInVerticalGap() + 1);
 			} else {
-				currentCell.setIndexInGap(0);
+				currentCell.setIndexInVerticalGap(0);
 			}
 		} else if (maxScore == matchOrMismatchScore) {
 			currentCell.setSourceCell(cellAboveLeft);

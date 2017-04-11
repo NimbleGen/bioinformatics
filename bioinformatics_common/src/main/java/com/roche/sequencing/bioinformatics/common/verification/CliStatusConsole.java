@@ -31,7 +31,7 @@ public class CliStatusConsole {
 		logger.info(statusMessage);
 	}
 
-	static void logError(String errorMessage) {
+	public static void logError(String errorMessage) {
 		System.err.println(errorMessage);
 	}
 

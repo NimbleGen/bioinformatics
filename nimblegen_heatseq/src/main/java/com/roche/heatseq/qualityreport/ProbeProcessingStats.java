@@ -16,9 +16,7 @@
 
 package com.roche.heatseq.qualityreport;
 
-import java.math.RoundingMode;
-import java.text.DecimalFormat;
-
+import com.roche.sequencing.bioinformatics.common.utils.NumberFormatterUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
 
@@ -99,8 +97,6 @@ public class ProbeProcessingStats {
 	}
 
 	String toReportString() {
-		DecimalFormat formatter = new DecimalFormat("0.00");
-		formatter.setRoundingMode(RoundingMode.HALF_UP);
 		StringBuilder stringBuilder = new StringBuilder();
 
 		int readPairsAfterReduction = getTotalReadPairsRemainingAfterReduction();
@@ -109,7 +105,7 @@ public class ProbeProcessingStats {
 		int totalReadPairs = readPairsAfterReduction + totalDuplicateReadPairsRemoved;
 
 		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + totalReadPairs + StringUtil.TAB + readPairsAfterReduction + StringUtil.TAB + duplicateReadPairs + StringUtil.TAB);
-		stringBuilder.append(formatter.format(averageNumberOfReadPairsPerUid) + StringUtil.TAB + maxNumberOfReadPairsPerUid);
+		stringBuilder.append(NumberFormatterUtil.formatDouble(averageNumberOfReadPairsPerUid, 2) + StringUtil.TAB + maxNumberOfReadPairsPerUid);
 
 		return stringBuilder.toString();
 	}
@@ -120,13 +116,5 @@ public class ProbeProcessingStats {
 
 	public void setNumberOfDuplicateReadPairsUnableToExtendPrimer(int numberOfDuplicateReadPairsUnableExtendPrimer) {
 		this.numberOfDuplicateReadPairsUnableToExtendPrimer = numberOfDuplicateReadPairsUnableExtendPrimer;
-	}
-
-	public static void main(String[] args) {
-		double value = 1.1960;
-		DecimalFormat formatter = new DecimalFormat("0.00");
-		formatter.setRoundingMode(RoundingMode.HALF_UP);
-		System.out.println(formatter.format(value));
-
 	}
 }

@@ -16,8 +16,6 @@
 
 package com.roche.heatseq.process;
 
-import htsjdk.samtools.SAMRecord;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -44,6 +42,8 @@ import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.TabDelimitedFileWriter;
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
+
+import htsjdk.samtools.SAMRecord;
 
 /**
  * Filter a set of reads to find the best read per UID

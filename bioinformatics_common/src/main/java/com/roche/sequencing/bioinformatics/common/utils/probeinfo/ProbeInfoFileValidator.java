@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil.ProbeHeaderInformation;
+import com.roche.sequencing.bioinformatics.common.verification.CliStatusConsole;
 
 public class ProbeInfoFileValidator {
 
@@ -57,7 +58,7 @@ public class ProbeInfoFileValidator {
 			if (md5SumFromHeader != null) {
 				String calculatedMd5Sum = ProbeFileUtil.getHeaderlessMd5SumOfFile(probeInfoFile);
 				if (!md5SumFromHeader.equals(calculatedMd5Sum)) {
-					logger.error("WARNING: The probe information found within the probe information file[" + probeInfoFile.getAbsolutePath()
+					CliStatusConsole.logError("WARNING: The probe information found within the probe information file[" + probeInfoFile.getAbsolutePath()
 							+ "] has been modified from the originally produced content supplied by Roche NimbleGen.");
 				}
 			}

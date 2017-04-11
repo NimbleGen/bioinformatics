@@ -20,7 +20,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -28,14 +27,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.roche.heatseq.process.BamFileValidator;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarString;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarStringUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
 import com.roche.sequencing.bioinformatics.common.alignment.SimpleAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.genome.Genome;
-import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
@@ -309,373 +306,6 @@ public class BamFileUtil {
 		return isSorted;
 	}
 
-	public static void main(String[] args) throws IOException {
-		// validateBamFiles();
-		compareBamFiles();
-	}
-
-	public static void compareBamFiles() throws FileNotFoundException {
-		File newBamFile = new File("C:\\Users\\heilmank\\Desktop\\ryan\\dedup.bam");
-		// this is the old
-		File oldBamFile = new File("C:\\Users\\heilmank\\Desktop\\ryan\\dedup3.bam");
-		compareBamFiles(oldBamFile, newBamFile);
-	}
-
-	public static void validateBamFiles() throws IOException {
-		Genome genome = new Genome(new File("R:\\SoftwareDevelopment\\GenomeViewer\\hg38.gnm"));
-		// Genome genome = new Genome(new File("R:\\SoftwareDevelopment\\GenomeViewer\\hg19.gnm"));
-
-		// File directory = new File("S:\\workspace\\Caroline\\CN_311556\\fixed_full_analysis\\");
-		// for (File sampleDir : directory.listFiles())
-		// if (sampleDir.isDirectory()) {
-		// for (File inputBamFile : sampleDir.listFiles(new FileFilter() {
-		//
-		// @Override
-		// public boolean accept(File pathname) {
-		// return pathname.getName().endsWith("dedup.bam");
-		// }
-		// })) {
-		// validateCigarStringsAndReadLengths(inputBamFile, genome);
-		// }
-		// }
-
-		// File inputBamFile = new File("C:\\Users\\heilmank\\Desktop\\D1415017-nt-opgez_S8_L001_dedup.bam");
-		// File inputBamFile = new File("S:\\public\\kurt\\new_bug\\filtered_full_analysis\\S8_D1615160-opgezuiverd_S6_L001\\S8_D1615160-opgezuiverd_S6_L001_dedup.bam");
-		// File inputBamFile = new File("S:\\public\\kurt\\new_bug\\filtered_full_analysis\\debug\\S8_D1615160-opgezuiverd_S6_L001\\S8_D1615160-opgezuiverd_S6_L001_dedup.bam");
-		// File inputBamFile = new File("C:\\Users\\heilmank\\Desktop\\ryan2\\input.bam");
-		// File inputBamFile = new File("C:\\Users\\heilmank\\Desktop\\ryan2\\dedup.bam");
-
-		File inputBamFile = new File("C:\\Users\\heilmank\\Desktop\\ryan\\dedup.bam");
-		// File inputBamFile = new File("C:\\Users\\heilmank\\Desktop\\ryan\\results\\S07_superpool1capture1_S1_35380000reads_dedup.bam");
-		BamFileValidator.validate(inputBamFile);
-		// File inputBamFile = new File("C:\\Users\\heilmank\\Desktop\\ryan2\\S01_superpool1capture1_S1_all_reads_sorted.bam");
-		// validateCigarStringsAndReadLengths(inputBamFile, genome);
-		// File inputBamFile = new File("C:\\Users\\heilmank\\Desktop\\junk\\dsHybrid.srt_REDUCED.bam");
-
-		// createIndex(new File("D:/trim/kurt_trimmed.bam"));
-		// convertBamToSam(new File("D:/kurts_space/heatseq/carolina_818/S2_2_sorted.bam"), new File("D:/kurts_space/heatseq/carolina_818/S2_2_sorted.sam"));
-		boolean verbose = true;
-		checkBamCigarString(inputBamFile, genome, verbose);
-	}
-
-	private static void compareBamFiles(File oldSamFile, File newSamFile) throws FileNotFoundException {
-		Map<String, RecordPair> oldBamMap = parseBamFile(oldSamFile);
-		Map<String, RecordPair> newBamMap = parseBamFile(newSamFile);
-
-		int inOldButNotNew = 0;
-		int inNewButNotOld = 0;
-		int inBoth = 0;
-
-		Set<String> allReadNames = new HashSet<>(oldBamMap.keySet());
-		allReadNames.addAll(newBamMap.keySet());
-
-		ComparisonResult allRawResults = null;
-		ComparisonResult allFixedResults = null;
-
-		for (String readName : allReadNames) {
-			RecordPair oldRecordPair = oldBamMap.get(readName);
-			RecordPair newRecordPair = newBamMap.get(readName);
-			if (oldRecordPair == null && newRecordPair != null) {
-				inNewButNotOld++;
-			} else if (oldRecordPair != null && newRecordPair == null) {
-				inOldButNotNew++;
-			} else if (oldRecordPair != null && newRecordPair != null) {
-				inBoth++;
-
-				String oldOneReadString = oldRecordPair.getRecordOne().getReadString();
-				String oldTwoReadString = oldRecordPair.getRecordTwo().getReadString();
-				String newOneReadString = newRecordPair.getRecordOne().getReadString();
-				String newTwoReadString = newRecordPair.getRecordTwo().getReadString();
-
-				String oldOneCigar = oldRecordPair.getRecordOne().getCigar().toString();
-				String oldTwoCigar = oldRecordPair.getRecordTwo().getCigar().toString();
-				String newOneCigar = newRecordPair.getRecordOne().getCigar().toString();
-				String newTwoCigar = newRecordPair.getRecordTwo().getCigar().toString();
-
-				String oldOneMd = (String) oldRecordPair.getRecordOne().getAttribute(SAMRecordUtil.MISMATCH_DETAILS_ATTRIBUTE_TAG);
-				String oldTwoMd = (String) oldRecordPair.getRecordTwo().getAttribute(SAMRecordUtil.MISMATCH_DETAILS_ATTRIBUTE_TAG);
-				String newOneMd = (String) newRecordPair.getRecordOne().getAttribute(SAMRecordUtil.MISMATCH_DETAILS_ATTRIBUTE_TAG);
-				String newTwoMd = (String) newRecordPair.getRecordTwo().getAttribute(SAMRecordUtil.MISMATCH_DETAILS_ATTRIBUTE_TAG);
-
-				int oldOneStart = oldRecordPair.getRecordOne().getAlignmentStart();
-				int oldTwoStart = oldRecordPair.getRecordTwo().getAlignmentStart();
-				int newOneStart = newRecordPair.getRecordOne().getAlignmentStart();
-				int newTwoStart = newRecordPair.getRecordTwo().getAlignmentStart();
-
-				int oldOneStop = oldRecordPair.getRecordOne().getAlignmentEnd();
-				int oldTwoStop = oldRecordPair.getRecordTwo().getAlignmentEnd();
-				int newOneStop = newRecordPair.getRecordOne().getAlignmentEnd();
-				int newTwoStop = newRecordPair.getRecordTwo().getAlignmentEnd();
-
-				ComparisonResult result = compare(oldOneReadString, oldTwoReadString, newOneReadString, newTwoReadString, oldOneCigar, oldTwoCigar, newOneCigar, newTwoCigar, oldOneMd, oldTwoMd,
-						newOneMd, newTwoMd, oldOneStart, oldTwoStart, newOneStart, newTwoStart, oldOneStop, oldTwoStop, newOneStop, newTwoStop);
-				if (allRawResults == null) {
-					allRawResults = result;
-				} else {
-					allRawResults.add(result);
-				}
-
-				// try and fix and then compare
-				String fixedNewOneCigar = convertNewCigarStringToOld(newOneCigar);
-				String fixedNewTwoCigar = convertNewCigarStringToOld(newTwoCigar);
-
-				String fixedNewOneMd = convertNewMismatchDetailsStringToOld(newOneMd);
-				String fixedNewTwoMd = convertNewMismatchDetailsStringToOld(newTwoMd);
-
-				int fixedNewOneStop = convertNewStopToOld(newOneStop, newOneCigar);
-				int fixedNewTwoStop = convertNewStopToOld(newTwoStop, newTwoCigar);
-
-				ComparisonResult fixedResult = compare(oldOneReadString, oldTwoReadString, newOneReadString, newTwoReadString, oldOneCigar, oldTwoCigar, fixedNewOneCigar, fixedNewTwoCigar, oldOneMd,
-						oldTwoMd, fixedNewOneMd, fixedNewTwoMd, oldOneStart, oldTwoStart, newOneStart, newTwoStart, oldOneStop, oldTwoStop, fixedNewOneStop, fixedNewTwoStop);
-				if (allFixedResults == null) {
-					allFixedResults = fixedResult;
-				} else {
-					allFixedResults.add(fixedResult);
-				}
-
-				String recordOneStrand = "FORWARD";
-				if (oldRecordPair.getRecordOne().getReadFailsVendorQualityCheckFlag()) {
-					recordOneStrand = "REVERSE";
-				}
-
-				String recordTwoStrand = "FORWARD";
-				if (oldRecordPair.getRecordTwo().getReadFailsVendorQualityCheckFlag()) {
-					recordTwoStrand = "REVERSE";
-				}
-
-				if (!fixedResult.allMatch()) {
-					System.out.println("=============================================================");
-					System.out.println(readName);
-					System.out.println("-----" + ":ONE:" + recordOneStrand + "-------------------------------------");
-					System.out.println(oldRecordPair.getRecordOne().getReferenceName() + ":" + oldRecordPair.getRecordOne().getAlignmentStart() + "-" + oldRecordPair.getRecordOne().getAlignmentEnd());
-					outputComparisonOfRecords(oldOneReadString, oldOneCigar, oldOneMd, oldOneStart, oldOneStop, newOneReadString, fixedNewOneCigar, fixedNewOneMd, newOneStart, fixedNewOneStop);
-
-					System.out.println("-----" + ":TWO:" + recordTwoStrand + "-------------------------------------");
-					System.out.println(oldRecordPair.getRecordOne().getReferenceName() + ":" + oldRecordPair.getRecordOne().getAlignmentStart() + "-" + oldRecordPair.getRecordOne().getAlignmentEnd());
-					outputComparisonOfRecords(oldTwoReadString, oldTwoCigar, oldTwoMd, oldTwoStart, oldTwoStop, newTwoReadString, fixedNewTwoCigar, fixedNewTwoMd, newTwoStart, fixedNewTwoStop);
-					System.out.println("=============================================================");
-				}
-			}
-		}
-		System.out.println("--------------------------------------");
-		System.out.println("RAW RESULTS:");
-		System.out.println(allRawResults.getReport());
-		System.out.println("FIXED RESULTS:");
-		System.out.println(allFixedResults.getReport());
-
-		System.out.println("In_Old_But_Not_New:" + inOldButNotNew + " In_New_But_Not_Old:" + inNewButNotOld + " In_Both:" + inBoth);
-	}
-
-	public static ComparisonResult compare(String oldOneReadString, String oldTwoReadString, String newOneReadString, String newTwoReadString, String oldOneCigar, String oldTwoCigar,
-			String newOneCigar, String newTwoCigar, String oldOneMd, String oldTwoMd, String newOneMd, String newTwoMd, int oldOneStart, int oldTwoStart, int newOneStart, int newTwoStart,
-			int oldOneStop, int oldTwoStop, int newOneStop, int newTwoStop) {
-		boolean oneMatch = oldOneReadString.equals(newOneReadString);
-		boolean twoMatch = oldTwoReadString.equals(newTwoReadString);
-		boolean sequencesDiffer = (!oneMatch || !twoMatch);
-
-		boolean oneCigarMatch = oldOneCigar.equals(newOneCigar);
-		boolean twoCigarMatch = oldTwoCigar.toString().equals(newTwoCigar);
-		boolean cigarsDiffer = (!oneCigarMatch || !twoCigarMatch);
-
-		boolean oneMdMatch = oldOneMd.equals(newOneMd);
-		boolean twoMdMatch = oldTwoMd.equals(newTwoMd);
-		boolean mismatchDetailsDiffer = (!oneMdMatch || !twoMdMatch);
-
-		boolean oneStartMatch = oldOneStart == newOneStart;
-		boolean twoStartMatch = oldTwoStart == newTwoStart;
-		boolean startsDiffer = (!oneStartMatch || !twoStartMatch);
-
-		boolean oneStopMatch = oldOneStop == newOneStop;
-		boolean twoStopMatch = oldTwoStop == newTwoStop;
-		boolean stopsDiffer = (!oneStopMatch || !twoStopMatch);
-
-		return new ComparisonResult(sequencesDiffer, cigarsDiffer, mismatchDetailsDiffer, startsDiffer, stopsDiffer);
-	}
-
-	private static class ComparisonResult {
-		private int sequencesDiffer;
-		private int cigarsDiffer;
-		private int mismatchDetailsDiffer;
-		private int startsDiffer;
-		private int stopsDiffer;
-		private int totalReadPairs;
-		private int allMatch;
-
-		public ComparisonResult(boolean sequencesDiffer, boolean cigarsDiffer, boolean mismatchDetailsDiffer, boolean startsDiffer, boolean stopsDiffer) {
-			super();
-			if (sequencesDiffer) {
-				this.sequencesDiffer = 1;
-			}
-			if (cigarsDiffer) {
-				this.cigarsDiffer = 1;
-			}
-			if (mismatchDetailsDiffer) {
-				this.mismatchDetailsDiffer = 1;
-			}
-			if (startsDiffer) {
-				this.startsDiffer = 1;
-			}
-			if (stopsDiffer) {
-				this.stopsDiffer = 1;
-			}
-
-			if (!sequencesDiffer && !cigarsDiffer && !mismatchDetailsDiffer && !startsDiffer && !stopsDiffer) {
-				this.allMatch = 1;
-			}
-
-			this.totalReadPairs = 1;
-		}
-
-		public boolean allMatch() {
-			return this.totalReadPairs == this.allMatch;
-		}
-
-		public void add(ComparisonResult result) {
-			sequencesDiffer += result.sequencesDiffer;
-			cigarsDiffer += result.cigarsDiffer;
-			mismatchDetailsDiffer += result.mismatchDetailsDiffer;
-			startsDiffer += result.startsDiffer;
-			stopsDiffer += result.stopsDiffer;
-			allMatch += result.allMatch;
-			totalReadPairs += result.totalReadPairs;
-		}
-
-		public String getReport() {
-			StringBuilder report = new StringBuilder();
-			report.append("reads_cigar_do_not_match:" + cigarsDiffer + " reads_cigar_match:" + (totalReadPairs - cigarsDiffer) + StringUtil.NEWLINE);
-			report.append("reads_md_do_not_match:" + mismatchDetailsDiffer + " reads_md_match:" + (totalReadPairs - mismatchDetailsDiffer) + StringUtil.NEWLINE);
-			report.append("reads_start_do_not_match:" + startsDiffer + " reads_start_match:" + (totalReadPairs - startsDiffer) + StringUtil.NEWLINE);
-			report.append("reads_stop_do_not_match:" + stopsDiffer + " reads_stop_match:" + (totalReadPairs - stopsDiffer) + StringUtil.NEWLINE);
-			report.append("all_match:" + allMatch + " reads_not_all_match:" + (totalReadPairs - allMatch) + StringUtil.NEWLINE);
-			return report.toString();
-		}
-	}
-
-	private static String convertNewCigarStringToOld(String newCigarString) {
-		String returnCigarString = newCigarString;
-		if (newCigarString.endsWith("D")) {
-			int endIndex = newCigarString.length() - 2;
-			while (Character.isDigit(newCigarString.charAt(endIndex))) {
-				endIndex--;
-			}
-			returnCigarString = newCigarString.substring(0, endIndex + 1);
-		}
-
-		return returnCigarString;
-	}
-
-	private static int convertNewStopToOld(int stop, String newCigarString) {
-		int returnStop = stop;
-		if (newCigarString.endsWith("D")) {
-			int endIndex = newCigarString.length() - 2;
-			StringBuilder numberBuilder = new StringBuilder();
-			while (Character.isDigit(newCigarString.charAt(endIndex))) {
-				numberBuilder.append(newCigarString.charAt(endIndex));
-				endIndex--;
-			}
-
-			Integer value = Integer.parseInt(StringUtil.reverse(numberBuilder.toString()));
-			returnStop = stop - value;
-		}
-
-		return returnStop;
-	}
-
-	private static boolean isNucleotide(char character) {
-		char upperCase = Character.toUpperCase(character);
-		boolean isNucleotide = upperCase == 'A' || upperCase == 'C' || upperCase == 'G' || upperCase == 'T';
-		return isNucleotide;
-	}
-
-	private static String convertNewMismatchDetailsStringToOld(String newMismatchDetailsString) {
-		String returnMismatchDetailsString = newMismatchDetailsString;
-		int endIndex = newMismatchDetailsString.length() - 1;
-		while (isNucleotide(newMismatchDetailsString.charAt(endIndex))) {
-			endIndex--;
-		}
-		if (newMismatchDetailsString.charAt(endIndex) == '^') {
-			returnMismatchDetailsString = newMismatchDetailsString.substring(0, endIndex);
-		}
-
-		returnMismatchDetailsString = newMismatchDetailsString.replace("A", "Z");
-		returnMismatchDetailsString = newMismatchDetailsString.replace("T", "A");
-		returnMismatchDetailsString = newMismatchDetailsString.replace("Z", "T");
-
-		returnMismatchDetailsString = newMismatchDetailsString.replace("G", "Z");
-		returnMismatchDetailsString = newMismatchDetailsString.replace("C", "G");
-		returnMismatchDetailsString = newMismatchDetailsString.replace("Z", "C");
-
-		return returnMismatchDetailsString;
-	}
-
-	public static void outputComparisonOfRecords(String recordOneReadString, String recordOneCigarString, String recordOneMismatchDetails, int recordOneStart, int recordOneStop,
-			String recordTwoReadString, String recordTwoCigarString, String recordTwoMismatchDetails, int recordTwoStart, int recordTwoStop) {
-
-		printDetail("SEQ:", recordOneReadString, recordTwoReadString);
-		printDetail("CIG:", recordOneCigarString, recordTwoCigarString);
-		printDetail(" MD:", (String) recordOneMismatchDetails, recordTwoMismatchDetails);
-		printDetail("STT:", "" + recordOneStart, "" + recordTwoStart);
-		printDetail("STP:", "" + recordOneStop, "" + recordTwoStop);
-	}
-
-	private static void printDetail(String description, String stringOne, String stringTwo) {
-		if (!stringOne.equals(stringTwo)) {
-			System.out.println("1_" + description + stringOne);
-			System.out.println("2_" + description + stringTwo);
-		}
-	}
-
-	private static Map<String, RecordPair> parseBamFile(File inputSamFile) {
-		Map<String, RecordPair> recordPairsByName = new HashMap<>();
-
-		try (SamReader currentReader = SamReaderFactory.makeDefault().open(inputSamFile)) {
-			Iterator<SAMRecord> iter = currentReader.iterator();
-			while (iter.hasNext()) {
-				SAMRecord record = iter.next();
-				String recordName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(record.getReadName());
-				RecordPair recordPair = recordPairsByName.get(recordName);
-				if (recordPair == null) {
-					recordPair = new RecordPair();
-					recordPairsByName.put(recordName, recordPair);
-				}
-				if (record.getFirstOfPairFlag()) {
-					recordPair.setRecordOne(record);
-				} else {
-					recordPair.setRecordTwo(record);
-				}
-			}
-		} catch (IOException e) {
-			throw new PicardException(e.getMessage(), e);
-		}
-
-		return recordPairsByName;
-	}
-
-	private static class RecordPair {
-		private SAMRecord recordOne;
-		private SAMRecord recordTwo;
-
-		public RecordPair() {
-			super();
-		}
-
-		public SAMRecord getRecordOne() {
-			return recordOne;
-		}
-
-		public void setRecordOne(SAMRecord recordOne) {
-			this.recordOne = recordOne;
-		}
-
-		public SAMRecord getRecordTwo() {
-			return recordTwo;
-		}
-
-		public void setRecordTwo(SAMRecord recordTwo) {
-			this.recordTwo = recordTwo;
-		}
-	}
-
 	private static void validateCigarStringsAndReadLengths(File inputSamFile, Genome genome) throws FileNotFoundException {
 		double matchScore = SimpleAlignmentScorer.DEFAULT_MATCH_SCORE;
 		double mismatchPenalty = SimpleAlignmentScorer.DEFAULT_MISMATCH_PENALTY;
@@ -738,92 +368,7 @@ public class BamFileUtil {
 		return isValid;
 	}
 
-	private static void checkBamCigarString(File inputSamFile, Genome genome, boolean verbose) throws FileNotFoundException {
-		TallyMap<String> failedProbeIds = new TallyMap<>();
-		TallyMap<String> reasonsForFailure = new TallyMap<>();
-		List<String> failedReadNames = new ArrayList<>();
-		TallyMap<String> failureType = new TallyMap<>();
-
-		int readCount = 0;
-		int containingNCount = 0;
-
-		try (SamReader currentReader = SamReaderFactory.makeDefault().open(inputSamFile)) {
-			Iterator<SAMRecord> iter = currentReader.iterator();
-			while (iter.hasNext()) {
-				SAMRecord record = iter.next();
-				boolean containsN = record.getReadString().contains("N");
-				if (!containsN) {
-					CheckResult checkResult = checkBamCigarStringAndMismatchDetails(genome, record, verbose);
-					boolean cigarStringAndLengthIsOkay = checkSAMRecordCigarStringAndLength(record, verbose);
-
-					if (checkResult.failed || !cigarStringAndLengthIsOkay) {
-						String readName = record.getReadName();
-						String probeId = SAMRecordUtil.getProbeId(record);
-						if (verbose) {
-							System.out.println("Reason for Failure:" + checkResult.reasonForFailure);
-							System.out.println("Read Name:" + readName);
-							if (record.getFirstOfPairFlag()) {
-								System.out.println("Is read one.");
-							} else {
-								System.out.println("Is read two.");
-							}
-							if (record.getReadNegativeStrandFlag()) {
-								System.out.println("Is Negative Strand.");
-							} else {
-								System.out.println("Is Forward Strand.");
-							}
-							System.out.println(probeId);
-						}
-						if (probeId != null) {
-							failedProbeIds.add(probeId);
-						}
-						failedReadNames.add(readName);
-						if (checkResult.failed) {
-							reasonsForFailure.add(checkResult.reasonForFailure);
-						} else {
-							reasonsForFailure.add("Length check failed.");
-						}
-						String failureRecordType = "";
-						if (record.getFirstOfPairFlag()) {
-							failureRecordType += "1";
-						} else {
-							failureRecordType += "2";
-						}
-
-						if (record.getReadNegativeStrandFlag()) {
-							failureRecordType += "-";
-						} else {
-							failureRecordType += "+";
-						}
-
-						if (probeId.endsWith("+")) {
-							failureRecordType += "+";
-						} else {
-							failureRecordType += "-";
-						}
-						failureType.add(failureRecordType);
-					}
-				} else {
-					containingNCount++;
-				}
-				readCount++;
-			}
-		} catch (IOException e) {
-			throw new PicardException(e.getMessage(), e);
-		}
-
-		StringBuilder pids = new StringBuilder();
-		pids.append("\"");
-		for (String probeId : failedProbeIds.getTalliesAsMap().keySet()) {
-			pids.append(probeId + "\",\"");
-		}
-		pids.append("\"");
-		System.out.println(pids.toString());
-		System.out.println("Failed_Reads:" + failedReadNames.size() + "  Reads_Containing_N:" + containingNCount + "  Total_Reads:" + readCount);
-		System.out.println(failureType.getHistogramAsString());
-	}
-
-	private static class CheckResult {
+	public static class CheckResult {
 		private final boolean failed;
 		private String reasonForFailure;
 
@@ -831,6 +376,18 @@ public class BamFileUtil {
 			super();
 			this.failed = failed;
 			this.reasonForFailure = reasonForFailure;
+		}
+
+		public String getReasonForFailure() {
+			return reasonForFailure;
+		}
+
+		public void setReasonForFailure(String reasonForFailure) {
+			this.reasonForFailure = reasonForFailure;
+		}
+
+		public boolean isFailed() {
+			return failed;
 		}
 
 	}
@@ -857,6 +414,8 @@ public class BamFileUtil {
 					String expandedCigarString = CigarStringUtil.expandCigarString(summarizedCigarString);
 
 					String mismatchDetailsString = (String) record.getAttribute(SAMRecordUtil.MISMATCH_DETAILS_ATTRIBUTE_TAG);
+					Integer editDistance = (Integer) record.getAttribute(SAMRecordUtil.EDIT_DISTANCE_ATTRIBUTE_TAG);
+
 					Command[] commands = null;
 					if (mismatchDetailsString == null) {
 						failed = true;
@@ -868,115 +427,121 @@ public class BamFileUtil {
 							logBuilder.append(ArraysUtil.toString(commands, "") + StringUtil.NEWLINE);
 						}
 
-						// TODO this probably should be removed so the check is accurate
-						if ((StringUtil.countMatches(expandedCigarString, "I") >= 0) && (StringUtil.countMatches(expandedCigarString, "D") >= 0)) {
+						StringBuilder newReference = new StringBuilder();
+						StringBuilder referenceFromMd = new StringBuilder();
+						StringBuilder newSequence = new StringBuilder();
 
-							StringBuilder newReference = new StringBuilder();
-							StringBuilder referenceFromMd = new StringBuilder();
-							StringBuilder newSequence = new StringBuilder();
+						int referenceIndex = 0;
+						int mdIndex = 0;
+						int index = 0;
 
-							int referenceIndex = 0;
-							int mdIndex = 0;
-							int index = 0;
+						StringBuilder md = new StringBuilder();
+						StringBuilder cigar = new StringBuilder();
 
-							StringBuilder md = new StringBuilder();
-							StringBuilder cigar = new StringBuilder();
+						int newEditDistance = 0;
 
-							sequenceLoop: for (int cigarIndex = 0; cigarIndex < expandedCigarString.length(); cigarIndex++) {
-								int mdIndexAtStart = mdIndex;
-								char cigarSymbol = expandedCigarString.charAt(cigarIndex);
-								cigar.append(cigarSymbol);
-								Command command = null;
-								if (mdIndex < commands.length) {
-									command = commands[mdIndex];
-									md.append(command);
-								}
+						sequenceLoop: for (int cigarIndex = 0; cigarIndex < expandedCigarString.length(); cigarIndex++) {
+							char cigarSymbol = expandedCigarString.charAt(cigarIndex);
+							cigar.append(cigarSymbol);
+							Command command = null;
+							if (mdIndex < commands.length) {
+								command = commands[mdIndex];
+								md.append(command);
+							}
 
-								boolean isMatch = CigarStringUtil.isMatch(cigarSymbol);
-								boolean isMismatch = false;
-								if (isMatch) {
-									if (command == null) {
-										reasonForFailure = "Expected Match or MisMatch in the mismatch details (based on contents on the cigar string) string but a mismatch detail was not found.";
-										failed = true;
-										break sequenceLoop;
-									} else {
-										if (command.isMisMatch) {
-											isMismatch = true;
-										} else if (command.isMatch) {
-
-										} else {
-											reasonForFailure = "Expected Match or MisMatch in the mismatch details (based on contents on the cigar string) string but found " + command.getType() + ".";
-											failed = true;
-											break sequenceLoop;
-										}
-									}
-								}
-								boolean isDeletion = CigarStringUtil.isDeletionToReference(cigarSymbol);
-								boolean isInsertion = CigarStringUtil.isInsertionToReference(cigarSymbol);
-
-								boolean isClip = CigarStringUtil.isClip(cigarSymbol);
-								if (isMatch) {
-									newReference.append(referenceSequence.subSequence(referenceIndex, referenceIndex));
-									newSequence.append(sequence.subSequence(index, index));
-									if (isMismatch) {
-										if (command.getCharacter() != null) {
-											referenceFromMd.append(command.getCharacter());
-										} else {
-											reasonForFailure = "Expected a provided character for MisMatch but it was not provided in the mismatch details string.";
-											failed = true;
-											break sequenceLoop;
-										}
-									} else {
-										referenceFromMd.append(sequence.subSequence(index, index));
-									}
-									referenceIndex++;
-									index++;
-									mdIndex++;
-								} else if (isInsertion) {
-									newReference.append("_");
-									newSequence.append(sequence.subSequence(index, index));
-									referenceFromMd.append("_");
-									index++;
-								} else if (isDeletion) {
-									newSequence.append("_");
-									newReference.append(referenceSequence.subSequence(referenceIndex, referenceIndex));
-									if (command != null && command.getCharacter() != null) {
-										referenceFromMd.append(command.getCharacter());
-									} else {
-										reasonForFailure = "Expected a sequence in the mismatch details to describe the deleted sequence.";
-										failed = true;
-										break sequenceLoop;
-									}
-
-									mdIndex++;
-									referenceIndex++;
-								} else if (isClip) {
+							boolean isMatch = CigarStringUtil.isMatch(cigarSymbol);
+							boolean isMismatch = false;
+							if (isMatch) {
+								if (command == null) {
+									reasonForFailure = "Expected Match or MisMatch in the mismatch details (based on contents on the cigar string) string but a mismatch detail was not found.";
+									failed = true;
 									break sequenceLoop;
 								} else {
-									throw new AssertionError("Unrecognized type");
+									if (command.isMisMatch) {
+										isMismatch = true;
+									} else if (command.isMatch) {
+
+									} else {
+										reasonForFailure = "Expected Match or MisMatch in the mismatch details (based on contents on the cigar string) string but found " + command.getType() + ".";
+										failed = true;
+										break sequenceLoop;
+									}
+								}
+							}
+							boolean isDeletion = CigarStringUtil.isDeletionToReference(cigarSymbol);
+							boolean isInsertion = CigarStringUtil.isInsertionToReference(cigarSymbol);
+
+							boolean isClip = CigarStringUtil.isClip(cigarSymbol);
+							if (isMatch) {
+								newReference.append(referenceSequence.subSequence(referenceIndex, referenceIndex));
+								newSequence.append(sequence.subSequence(index, index));
+								if (isMismatch) {
+									if (command.getCharacter() != null) {
+										referenceFromMd.append(command.getCharacter());
+										newEditDistance++;
+									} else {
+										reasonForFailure = "Expected a provided character for MisMatch but it was not provided in the mismatch details string.";
+										failed = true;
+										break sequenceLoop;
+									}
+								} else {
+									referenceFromMd.append(sequence.subSequence(index, index));
+								}
+								referenceIndex++;
+								index++;
+								mdIndex++;
+							} else if (isInsertion) {
+								newEditDistance++;
+								newReference.append("_");
+								newSequence.append(sequence.subSequence(index, index));
+								referenceFromMd.append("_");
+								index++;
+							} else if (isDeletion) {
+								newSequence.append("_");
+								newReference.append(referenceSequence.subSequence(referenceIndex, referenceIndex));
+								if (command != null && command.getCharacter() != null) {
+									referenceFromMd.append(command.getCharacter());
+									newEditDistance++;
+								} else {
+									reasonForFailure = "Expected a sequence in the mismatch details to describe the deleted sequence.";
+									failed = true;
+									break sequenceLoop;
 								}
 
+								mdIndex++;
+								referenceIndex++;
+							} else if (isClip) {
+								break sequenceLoop;
+							} else {
+								throw new AssertionError("Unrecognized type");
 							}
 
-							if (isVerbose) {
-								logBuilder.append("   summarized_md:" + mismatchDetailsString + StringUtil.NEWLINE);
-								logBuilder.append("summarized_cigar:" + summarizedCigarString + StringUtil.NEWLINE);
-								logBuilder.append("         mdindex:" + mdIndex + StringUtil.NEWLINE);
-								logBuilder.append("             seq:" + newSequence.toString() + StringUtil.NEWLINE);
-								logBuilder.append("           cigar:" + cigar + StringUtil.NEWLINE);
-								logBuilder.append("              md:" + md.toString() + StringUtil.NEWLINE);
-								logBuilder.append("          md_ref:" + referenceFromMd.toString() + StringUtil.NEWLINE);
-								logBuilder.append("             ref:" + newReference.toString() + StringUtil.NEWLINE);
+						}
 
-								logBuilder.append(StringUtil.NEWLINE);
-							}
+						if (isVerbose) {
+							logBuilder.append("   summarized_md:" + mismatchDetailsString + StringUtil.NEWLINE);
+							logBuilder.append("summarized_cigar:" + summarizedCigarString + StringUtil.NEWLINE);
+							logBuilder.append("         mdindex:" + mdIndex + StringUtil.NEWLINE);
+							logBuilder.append("             seq:" + newSequence.toString() + StringUtil.NEWLINE);
+							logBuilder.append("           cigar:" + cigar + StringUtil.NEWLINE);
+							logBuilder.append("              md:" + md.toString() + StringUtil.NEWLINE);
+							logBuilder.append("          md_ref:" + referenceFromMd.toString() + StringUtil.NEWLINE);
+							logBuilder.append("             ref:" + newReference.toString() + StringUtil.NEWLINE);
 
-							if (!newReference.toString().equals(referenceFromMd.toString())) {
-								reasonForFailure = "Failed because reference does not match the reference built from the mismatch details string.";
-								failed = true;
-							}
+							logBuilder.append(StringUtil.NEWLINE);
+						}
+
+						if (editDistance != newEditDistance) {
+							reasonForFailure = "Failed because calculated edit distance[" + newEditDistance + "] does not match the provided edit distance[" + editDistance + "].";
+							failed = true;
+						}
+
+						if (!newReference.toString().equals(referenceFromMd.toString())) {
+							reasonForFailure = "Failed because reference does not match the reference built from the mismatch details string.";
+							failed = true;
 						}
 					}
+					// }
 				}
 			} catch (IllegalStateException e) {
 				reasonForFailure = e.getMessage();
