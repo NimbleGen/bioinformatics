@@ -615,7 +615,7 @@ public class FastqFindAndTrimTool {
 		return valuesByNameMap;
 	}
 
-	private static class OutputFiles {
+	public static class OutputFiles {
 		private final File outputSequenceSearchFindSummaryFile;
 		private final File outputFastQFindSummaryFile;
 		private final File outputFindAlignmentFile;

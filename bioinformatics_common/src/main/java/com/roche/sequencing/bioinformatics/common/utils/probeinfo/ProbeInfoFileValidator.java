@@ -21,15 +21,10 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil.ProbeHeaderInformation;
 import com.roche.sequencing.bioinformatics.common.verification.CliStatusConsole;
 
 public class ProbeInfoFileValidator {
-
-	private static final Logger logger = LoggerFactory.getLogger(ProbeInfoFileValidator.class);
 
 	private ProbeInfoFileValidator() {
 		throw new AssertionError();

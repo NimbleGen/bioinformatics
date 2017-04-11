@@ -134,7 +134,7 @@ public class BamFileUtil {
 		picardSortAndCompress(true, inputSamFile, outputBamFile, SortOrder.coordinate, null);
 	}
 
-	private static void convertBamToSam(File inputBamFile, File outputSamFile) {
+	public static void convertBamToSam(File inputBamFile, File outputSamFile) {
 		picardSortAndCompress(false, inputBamFile, outputSamFile, SortOrder.coordinate, null);
 	}
 
@@ -306,7 +306,7 @@ public class BamFileUtil {
 		return isSorted;
 	}
 
-	private static void validateCigarStringsAndReadLengths(File inputSamFile, Genome genome) throws FileNotFoundException {
+	public static void validateCigarStringsAndReadLengths(File inputSamFile, Genome genome) throws FileNotFoundException {
 		double matchScore = SimpleAlignmentScorer.DEFAULT_MATCH_SCORE;
 		double mismatchPenalty = SimpleAlignmentScorer.DEFAULT_MISMATCH_PENALTY;
 		double gapOpenPenalty = SimpleAlignmentScorer.DEFAULT_GAP_OPEN_PENALTY;
@@ -647,18 +647,6 @@ public class BamFileUtil {
 			this.isMatch = isMatch;
 			this.isMisMatch = isMisMatch;
 			this.character = character;
-		}
-
-		public boolean isInsertion() {
-			return isInsertion;
-		}
-
-		public boolean isMatch() {
-			return isMatch;
-		}
-
-		public boolean isMisMatch() {
-			return isMisMatch;
 		}
 
 		public Character getCharacter() {
