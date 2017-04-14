@@ -27,8 +27,6 @@ import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
  */
 public class ProbeProcessingStats {
 	private final Probe probe;
-	private final int totalUids;
-	private final double averageNumberOfReadPairsPerUid;
 	private final int totalDuplicateReadPairsRemoved;
 	private final int totalReadPairsRemainingAfterReduction;
 	private final int maxNumberOfReadPairsPerUid;
@@ -53,12 +51,10 @@ public class ProbeProcessingStats {
 	 * @param uidOfEntryWithMaxReadPairs
 	 * @param totalTimeToProcessInMs
 	 */
-	public ProbeProcessingStats(Probe probe, int totalUids, double averageNumberOfReadPairsPerUid, int totalDuplicateReadPairsRemoved, int totalReadPairsRemainingAfterReduction,
-			int maxNumberOfReadPairsPerUid, String uidComposition, String uidCompositionByPosition, String weightedUidComposition, String weightedUidCompositionByPosition) {
+	public ProbeProcessingStats(Probe probe, int totalDuplicateReadPairsRemoved, int totalReadPairsRemainingAfterReduction, int maxNumberOfReadPairsPerUid, String uidComposition,
+			String uidCompositionByPosition, String weightedUidComposition, String weightedUidCompositionByPosition) {
 		super();
 		this.probe = probe;
-		this.totalUids = totalUids;
-		this.averageNumberOfReadPairsPerUid = averageNumberOfReadPairsPerUid;
 		this.totalDuplicateReadPairsRemoved = totalDuplicateReadPairsRemoved;
 		this.totalReadPairsRemainingAfterReduction = totalReadPairsRemainingAfterReduction;
 		this.maxNumberOfReadPairsPerUid = maxNumberOfReadPairsPerUid;
@@ -68,14 +64,6 @@ public class ProbeProcessingStats {
 		this.weightedUidCompositionByPosition = weightedUidCompositionByPosition;
 		this.numberOfUniqueReadPairsUnableExtendPrimer = 0;
 		this.numberOfDuplicateReadPairsUnableToExtendPrimer = 0;
-	}
-
-	public int getTotalUids() {
-		return totalUids;
-	}
-
-	public double getAverageNumberOfReadPairsPerUid() {
-		return averageNumberOfReadPairsPerUid;
 	}
 
 	public int getTotalDuplicateReadPairsRemoved() {
@@ -104,6 +92,8 @@ public class ProbeProcessingStats {
 
 		int totalReadPairs = readPairsAfterReduction + totalDuplicateReadPairsRemoved;
 
+		double averageNumberOfReadPairsPerUid = getAverageNumberOfReadPairsPerUid();
+
 		stringBuilder.append(probe.getProbeId() + StringUtil.TAB + totalReadPairs + StringUtil.TAB + readPairsAfterReduction + StringUtil.TAB + duplicateReadPairs + StringUtil.TAB);
 		stringBuilder.append(NumberFormatterUtil.formatDouble(averageNumberOfReadPairsPerUid, 2) + StringUtil.TAB + maxNumberOfReadPairsPerUid);
 
@@ -116,5 +106,18 @@ public class ProbeProcessingStats {
 
 	public void setNumberOfDuplicateReadPairsUnableToExtendPrimer(int numberOfDuplicateReadPairsUnableExtendPrimer) {
 		this.numberOfDuplicateReadPairsUnableToExtendPrimer = numberOfDuplicateReadPairsUnableExtendPrimer;
+	}
+
+	public double getAverageNumberOfReadPairsPerUid() {
+		double averageNumberOfReadPairsPerUid = 0;
+
+		double readPairsAfterReduction = getTotalReadPairsRemainingAfterReduction();
+
+		double totalReadPairs = readPairsAfterReduction + totalDuplicateReadPairsRemoved;
+
+		if ((totalReadPairs != 0) && (readPairsAfterReduction != 0)) {
+			averageNumberOfReadPairsPerUid = totalReadPairs / ((double) readPairsAfterReduction);
+		}
+		return averageNumberOfReadPairsPerUid;
 	}
 }

@@ -148,7 +148,6 @@ class FilterByUid {
 			uidToDataMap.put(fullUid, uidData);
 		}
 
-		int totalReadPairs = 0;
 		int minNumberOfReadPairsPerUid = Integer.MAX_VALUE;
 		int maxNumberOfReadPairsPerUid = 0;
 		int[] sizeByUid = new int[uidToDataMap.size()];
@@ -168,7 +167,6 @@ class FilterByUid {
 				weightedUidsByProbe.add(uidSequence);
 			}
 
-			totalReadPairs += readPairsByUid;
 			sizeByUid[i] = readPairsByUid;
 			minNumberOfReadPairsPerUid = Math.min(minNumberOfReadPairsPerUid, readPairsByUid);
 			maxNumberOfReadPairsPerUid = Math.max(maxNumberOfReadPairsPerUid, readPairsByUid);
@@ -191,13 +189,6 @@ class FilterByUid {
 
 		if (minNumberOfReadPairsPerUid == Integer.MAX_VALUE) {
 			minNumberOfReadPairsPerUid = 0;
-		}
-
-		int totalUids = uidToDataMap.size();
-		double averageNumberOfReadPairsPerUid = 0;
-
-		if ((totalReadPairs != 0) && (totalUids != 0)) {
-			averageNumberOfReadPairsPerUid = totalReadPairs / ((double) totalUids);
 		}
 
 		TabDelimitedFileWriter uniqueProbeTalliesWriter = reportManager.getUniqueProbeTalliesWriter();
@@ -231,7 +222,7 @@ class FilterByUid {
 			}
 
 			if (probeCoverageWriter != null) {
-				probeCoverageWriter.writeLine((Object[]) new String[] { probe.getSequenceName(), "" + probe.getStart(), "" + probe.getStop(), "" + probe.getProbeId(), "" + totalUids,
+				probeCoverageWriter.writeLine((Object[]) new String[] { probe.getSequenceName(), "" + probe.getStart(), "" + probe.getStop(), "" + probe.getProbeId(), "" + uniqueReadPairs.size(),
 						probe.getProbeStrand().getSymbol(), "" + probe.getCaptureTargetStart(), "" + probe.getCaptureTargetStop(), "", "", "", "" });
 			}
 		}
@@ -242,8 +233,8 @@ class FilterByUid {
 		String weightedUidComposition = NucleotideCompositionUtil.getNucleotideComposition(weightedUidsByProbe);
 		String weightedUidCompositionByPosition = NucleotideCompositionUtil.getNucleotideCompositionByPosition(weightedUidsByProbe);
 
-		ProbeProcessingStats probeProcessingStats = new ProbeProcessingStats(probe, totalUids, averageNumberOfReadPairsPerUid, duplicateReadPairs.size(), uniqueReadPairs.size(),
-				maxNumberOfReadPairsPerUid, uidComposition, uidCompositionByPosition, weightedUidComposition, weightedUidCompositionByPosition);
+		ProbeProcessingStats probeProcessingStats = new ProbeProcessingStats(probe, duplicateReadPairs.size(), uniqueReadPairs.size(), maxNumberOfReadPairsPerUid, uidComposition,
+				uidCompositionByPosition, weightedUidComposition, weightedUidCompositionByPosition);
 
 		return new UidReductionResultsForAProbe(probeProcessingStats, uniqueReadPairs, duplicateReadPairs);
 	}

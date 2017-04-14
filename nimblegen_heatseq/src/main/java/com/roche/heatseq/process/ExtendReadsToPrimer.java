@@ -339,15 +339,6 @@ final class ExtendReadsToPrimer {
 		return primerEndIndexInRead;
 	}
 
-	public static void main(String[] args) {
-		IAlignmentScorer scorer = new SimpleAlignmentScorer(SimpleAlignmentScorer.DEFAULT_MATCH_SCORE, SimpleAlignmentScorer.DEFAULT_MISMATCH_PENALTY, SimpleAlignmentScorer.DEFAULT_GAP_EXTEND_PENALTY,
-				SimpleAlignmentScorer.DEFAULT_GAP_OPEN_PENALTY, true, false);
-		NeedlemanWunschGlobalAlignment alignment = new NeedlemanWunschGlobalAlignment(new IupacNucleotideCodeSequence("TTTGGTAGTTCCCTTTGTGCATCTTACCCTCATTGACACTTTCA"),
-				new IupacNucleotideCodeSequence("GTCCAACATTGGTTAAGT"), scorer);
-		System.out.println(alignment.getTraceabilityMatrixAsString());
-		System.out.println(alignment.getAlignmentAsString());
-	}
-
 	static ExtendReadResults extendReadsToPrimers(Probe probe, List<IReadPair> readPairs, IAlignmentScorer alignmentScorer) {
 		List<IReadPair> extendedReadPairs = new ArrayList<IReadPair>();
 		List<IReadPair> unableToExtendReadPairs = new ArrayList<IReadPair>();

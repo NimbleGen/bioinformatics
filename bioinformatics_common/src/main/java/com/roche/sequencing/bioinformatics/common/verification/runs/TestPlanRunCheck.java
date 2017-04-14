@@ -123,8 +123,8 @@ public class TestPlanRunCheck {
 			}
 			break;
 		case OUTPUT_FILE_MATCHES_EXISTING_FILE:
-			boolean directoryAndRegexInputs = matchingFileRegex != null && !matchingFileRegex.isEmpty() && relativePathToMatchingFileDirectory != null
-					&& !relativePathToMatchingFileDirectory.isEmpty() && outputFileRegex != null && !outputFileRegex.isEmpty();
+			boolean directoryAndRegexInputs = matchingFileRegex != null && !matchingFileRegex.isEmpty() && relativePathToMatchingFileDirectory != null && !relativePathToMatchingFileDirectory.isEmpty()
+					&& outputFileRegex != null && !outputFileRegex.isEmpty();
 
 			if (!directoryAndRegexInputs) {
 				throw new IllegalStateException("The relativePathToMatchingFileDirectory and the matchingFileRegex key/value pairs are expected for the check type[" + checkType + "].");
@@ -659,8 +659,8 @@ public class TestPlanRunCheck {
 							comparisonStrings.add("comment lines are ignored");
 						}
 						if (getLinesToSkipInOutputFileForComparing().length > 0) {
-							comparisonStrings.add("lines[" + ArraysUtil.toString(NumberFormatterUtil.summarizeNumbersAsString(getLinesToSkipInOutputFileForComparing()), ", ")
-									+ "] in the output file are ignored");
+							comparisonStrings.add(
+									"lines[" + ArraysUtil.toString(NumberFormatterUtil.summarizeNumbersAsString(getLinesToSkipInOutputFileForComparing()), ", ") + "] in the output file are ignored");
 						}
 						if (getLinesToSkipInMatchingFileForComparing().length > 0) {
 							comparisonStrings.add("lines[" + ArraysUtil.toString(NumberFormatterUtil.summarizeNumbersAsString(getLinesToSkipInMatchingFileForComparing()), ", ")
@@ -701,7 +701,7 @@ public class TestPlanRunCheck {
 					if (success) {
 						resultsDescription = "The calculatedmd5Sum[" + calculatedMd5Sum + "] on file[" + matchingOutputFile.getAbsolutePath() + "] matches the expected md5sum[" + md5Sum + "].";
 					} else {
-						resultsDescription = "The calculatedmd5Sum[" + calculatedMd5Sum + "] on file[" + matchingOutputFile.getAbsolutePath() + "] DOES NOTmatch the expected md5sum[" + md5Sum + "].";
+						resultsDescription = "The calculatedmd5Sum[" + calculatedMd5Sum + "] on file[" + matchingOutputFile.getAbsolutePath() + "] DOES NOT match the expected md5sum[" + md5Sum + "].";
 					}
 				} catch (IOException e) {
 					resultsDescription = "Unable to calculate the md5Sum on file[" + matchingOutputFile.getAbsolutePath() + "].  " + e.getMessage();

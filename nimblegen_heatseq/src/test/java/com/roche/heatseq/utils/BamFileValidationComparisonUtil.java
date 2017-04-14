@@ -17,6 +17,7 @@ import com.roche.heatseq.utils.BamFileUtil.CheckResult;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarStringUtil;
 import com.roche.sequencing.bioinformatics.common.genome.Genome;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
+import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.IlluminaFastQReadNameUtil;
 import com.roche.sequencing.bioinformatics.common.utils.ListUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
@@ -40,40 +41,54 @@ public class BamFileValidationComparisonUtil {
 
 	public static void compareBamFilesInTestPlanRuns() throws IOException {
 		File oldTestDir = new File("C:\\Users\\heilmank\\Desktop\\hsqutils_testplan_results_20160516105046\\hsqutils_testplan_results");
-		// File newTestDir = new File("C:\\Users\\heilmank\\Desktop\\hsqutils_testplan_results_v1_1_20170407085619\\hsqutils_testplan_results_v1_1");
-		File newTestDir = new File("R:\\SoftwareDevelopment\\HeatSeqApplication\\Validation\\autotestplan_current\\hsqutils_testplan_results_v1_1");
+		File newTestDir = new File("C:\\Users\\heilmank\\Desktop\\hsqutils_testplan_results_v1_1_20170411141655\\hsqutils_testplan_results_v1_1");
+		// File newTestDir = new File("R:\\SoftwareDevelopment\\HeatSeqApplication\\Validation\\autotestplan_current\\hsqutils_testplan_results_v1_1");
 
-		Genome genome = new Genome(new File("R:\\SoftwareDevelopment\\GenomeViewer\\hg19.gnm"));
+		Genome hg38Genome = new Genome(new File("R:\\SoftwareDevelopment\\GenomeViewer\\hg38.gnm"));
+		Genome hg19Genome = new Genome(new File("R:\\SoftwareDevelopment\\GenomeViewer\\hg19.gnm"));
 
 		for (File directory : newTestDir.listFiles()) {
 			String directoryName = directory.getName();
-			// if (directoryName.contains("run_4")) {
-			File outputDir = new File(directory, "outputDir");
-			if (outputDir.exists()) {
-				File[] files = outputDir.listFiles(new FileFilter() {
-					@Override
-					public boolean accept(File pathname) {
-						return pathname.getName().endsWith(".bam");
+			if (directoryName.contains("run_58")) {
+				File outputDir = new File(directory, "outputDir");
+				if (outputDir.exists()) {
+					Genome genome = hg19Genome;
+					if (directoryName.contains("run_63")) {
+						genome = hg38Genome;
 					}
-				});
+					File[] files = outputDir.listFiles(new FileFilter() {
+						@Override
+						public boolean accept(File pathname) {
+							return pathname.getName().endsWith(".bam");
+						}
+					});
 
-				if (files.length > 1) {
-					throw new AssertionError();
-				}
-
-				if (files.length == 1) {
-					File newBamFile = files[0];
-					File oldBamFile = new File(oldTestDir, directoryName + "\\outputDir\\" + newBamFile.getName());
-					if (newBamFile.exists() && oldBamFile.exists()) {
-						System.out.println("comparing newBam[" + newBamFile.getAbsolutePath() + "] to oldBam[" + oldBamFile.getAbsolutePath() + "].");
-						checkBamCigarString(newBamFile, genome, true);
-						// checkBamCigarString(oldBamFile, genome, true);
-						compareBamFiles(oldBamFile, newBamFile, genome);
+					if (files.length > 1) {
+						throw new AssertionError();
 					}
-				}
 
+					if (files.length == 1) {
+						File newBamFile = files[0];
+						File oldBamFile = new File(oldTestDir, directoryName + "\\outputDir\\" + newBamFile.getName());
+						if (newBamFile.exists() && oldBamFile.exists()) {
+							System.out.println("comparing newBam[" + newBamFile.getAbsolutePath() + "] to oldBam[" + oldBamFile.getAbsolutePath() + "].");
+							checkBamCigarString(newBamFile, genome, true);
+							// checkBamCigarString(oldBamFile, genome, true);
+							compareBamFiles(oldBamFile, newBamFile, genome);
+						}
+
+						File outputDirectory = new File("C:\\Users\\heilmank\\Desktop\\bam_comp\\" + directoryName + "\\");
+						FileUtil.createDirectory(outputDirectory);
+						if (newBamFile.exists()) {
+							BamFileUtil.convertBamToSam(newBamFile, new File(outputDirectory, "new_" + newBamFile.getName() + ".sam"));
+						}
+						if (oldBamFile.exists()) {
+							BamFileUtil.convertBamToSam(oldBamFile, new File(outputDirectory, "old_" + oldBamFile.getName() + ".sam"));
+						}
+					}
+
+				}
 			}
-			// }
 		}
 	}
 
@@ -122,10 +137,12 @@ public class BamFileValidationComparisonUtil {
 			RecordPair newRecordPair = newBamMap.get(readName);
 			if (oldRecordPair == null && newRecordPair != null) {
 				inNewButNotOld++;
-				inNewButNotOldList.add(readName);
+				String newProbeId = SAMRecordUtil.getProbeId(newRecordPair.getRecordOne());
+				inNewButNotOldList.add(readName + "(" + newProbeId + ")");
 			} else if (oldRecordPair != null && newRecordPair == null) {
 				inOldButNotNew++;
-				inOldButNotNewList.add(readName);
+				String oldProbeId = SAMRecordUtil.getProbeId(oldRecordPair.getRecordOne());
+				inOldButNotNewList.add(readName + "(" + oldProbeId + ")");
 			} else if (oldRecordPair != null && newRecordPair != null) {
 				inBoth++;
 

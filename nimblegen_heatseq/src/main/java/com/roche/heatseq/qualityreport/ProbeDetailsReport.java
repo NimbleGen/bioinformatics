@@ -61,14 +61,14 @@ public class ProbeDetailsReport {
 
 	public void writeEntry(ProbeProcessingStats probeProcessingStats) {
 		duplicateReadPairsRemoved += probeProcessingStats.getTotalDuplicateReadPairsRemoved();
-		if (probeProcessingStats.getTotalUids() == 0) {
+		if (probeProcessingStats.getTotalReadPairsRemainingAfterReduction() == 0) {
 			probesWithNoMappedReadPairs++;
 		} else {
 			totalNonZeroProbes++;
 		}
 		totalReadPairsAfterReduction += probeProcessingStats.getTotalReadPairsRemainingAfterReduction();
-		maxNumberOfUidsPerProbe = Math.max(maxNumberOfUidsPerProbe, probeProcessingStats.getTotalUids());
-		sumOfProbeDistinctUids += probeProcessingStats.getTotalUids();
+		maxNumberOfUidsPerProbe = Math.max(maxNumberOfUidsPerProbe, probeProcessingStats.getTotalReadPairsRemainingAfterReduction());
+		sumOfProbeDistinctUids += probeProcessingStats.getTotalReadPairsRemainingAfterReduction();
 
 		sumOfAverageNumberOfReadPairsPerProbeUid += probeProcessingStats.getAverageNumberOfReadPairsPerUid();
 

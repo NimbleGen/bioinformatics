@@ -361,10 +361,6 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 				while (allSamRecordsIter.hasNext()) {
 					SAMRecord record = allSamRecordsIter.next();
 
-					if (record.getReadName().equals("M01947:205:000000000-AB8AB:1:2112:6577:16586")) {
-						System.out.println("here:");
-					}
-					
 					// note: that sometimes a mate has incorrect details about whether or not its mate is mapped
 					// so by checking the flag we will exclude these incorrectly labeled reads
 					boolean isUnmapped = record.getMateUnmappedFlag() || record.getReadUnmappedFlag();

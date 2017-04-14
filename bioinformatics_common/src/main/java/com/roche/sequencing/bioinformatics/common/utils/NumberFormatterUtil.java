@@ -102,6 +102,9 @@ public class NumberFormatterUtil {
 	}
 
 	public static void main(String[] args) {
-		System.out.println(ArraysUtil.toString(summarizeNumbersAsString(new int[] { 34, 35, 132, 370, 521, 1343, 1440, 1834, 2159, 2268, 4352 }), ", "));
+		int totalReadPairs = 18;
+		int totalUids = 15;
+		double averageNumberOfReadPairsPerUid = totalReadPairs / ((double) totalUids);
+		System.out.println(formatDouble(averageNumberOfReadPairsPerUid, 2));
 	}
 }
