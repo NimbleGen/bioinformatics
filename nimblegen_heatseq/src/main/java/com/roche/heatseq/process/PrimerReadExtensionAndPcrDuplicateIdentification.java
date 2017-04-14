@@ -953,7 +953,8 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 					readsToWrite.addAll(extendDuplicateReadResults.getExtendedReads());
 					numberOfDuplicateReadPairsUnableExtendPrimer = extendDuplicateReadResults.getUnableToExtendReads().size();
 
-					PrimerReadExtensionAndPcrDuplicateIdentification.this.numberOfDuplicateReadPairs.addAndGet(extendDuplicateReadResults.getExtendedReads().size());
+					PrimerReadExtensionAndPcrDuplicateIdentification.this.numberOfDuplicateReadPairs
+							.addAndGet(extendDuplicateReadResults.getExtendedReads().size() + numberOfDuplicateReadPairsUnableExtendPrimer);
 				} else {
 					PrimerReadExtensionAndPcrDuplicateIdentification.this.numberOfDuplicateReadPairs.addAndGet(duplicateReads.size());
 				}

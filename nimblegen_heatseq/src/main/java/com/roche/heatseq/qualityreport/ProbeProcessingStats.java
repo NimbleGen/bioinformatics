@@ -90,7 +90,7 @@ public class ProbeProcessingStats {
 		int readPairsAfterReduction = getTotalReadPairsRemainingAfterReduction();
 		int duplicateReadPairs = getTotalDuplicateReadPairsRemoved();
 
-		int totalReadPairs = readPairsAfterReduction + totalDuplicateReadPairsRemoved;
+		int totalReadPairs = readPairsAfterReduction + duplicateReadPairs;
 
 		double averageNumberOfReadPairsPerUid = getAverageNumberOfReadPairsPerUid();
 
@@ -112,8 +112,9 @@ public class ProbeProcessingStats {
 		double averageNumberOfReadPairsPerUid = 0;
 
 		double readPairsAfterReduction = getTotalReadPairsRemainingAfterReduction();
+		double duplicateReadPairs = getTotalDuplicateReadPairsRemoved();
 
-		double totalReadPairs = readPairsAfterReduction + totalDuplicateReadPairsRemoved;
+		double totalReadPairs = readPairsAfterReduction + duplicateReadPairs;
 
 		if ((totalReadPairs != 0) && (readPairsAfterReduction != 0)) {
 			averageNumberOfReadPairsPerUid = totalReadPairs / ((double) readPairsAfterReduction);

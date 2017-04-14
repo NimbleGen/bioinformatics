@@ -5,6 +5,8 @@ import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -16,7 +18,10 @@ import com.roche.heatseq.process.BamFileValidator;
 import com.roche.heatseq.utils.BamFileUtil.CheckResult;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarStringUtil;
 import com.roche.sequencing.bioinformatics.common.genome.Genome;
+import com.roche.sequencing.bioinformatics.common.genome.StrandedGenomicRangedCoordinate;
 import com.roche.sequencing.bioinformatics.common.mapping.TallyMap;
+import com.roche.sequencing.bioinformatics.common.sequence.Strand;
+import com.roche.sequencing.bioinformatics.common.utils.AlphaNumericStringComparator;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.IlluminaFastQReadNameUtil;
 import com.roche.sequencing.bioinformatics.common.utils.ListUtil;
@@ -34,8 +39,8 @@ public class BamFileValidationComparisonUtil {
 	}
 
 	public static void main(String[] args) throws IOException {
-		// compareSingleBamFiles();
-		compareBamFilesInTestPlanRuns();
+		compareSingleBamFiles();
+		// compareBamFilesInTestPlanRuns();
 		// validateBamFiles();
 	}
 
@@ -132,19 +137,40 @@ public class BamFileValidationComparisonUtil {
 		// ComparisonResult allRawResults = null;
 		ComparisonResult allFixedResults = null;
 
+		Set<String> dupInOld_uniqueInNew = new HashSet<>();
+		Set<String> uniqueInOld_dupInNew = new HashSet<>();
+
+		TallyMap<String> oldProbeTally = new TallyMap<>();
+		TallyMap<String> newProbeTally = new TallyMap<>();
+		TallyMap<String> newDupProbeTally = new TallyMap<>();
+		TallyMap<String> newUniqueProbeTally = new TallyMap<>();
+
 		for (String readName : allReadNames) {
 			RecordPair oldRecordPair = oldBamMap.get(readName);
 			RecordPair newRecordPair = newBamMap.get(readName);
 			if (oldRecordPair == null && newRecordPair != null) {
 				inNewButNotOld++;
 				String newProbeId = SAMRecordUtil.getProbeId(newRecordPair.getRecordOne());
+				newProbeTally.add(newProbeId);
+				if (newRecordPair.getRecordOne().getDuplicateReadFlag()) {
+					newDupProbeTally.add(newProbeId);
+				} else {
+					newUniqueProbeTally.add(newProbeId);
+				}
 				inNewButNotOldList.add(readName + "(" + newProbeId + ")");
 			} else if (oldRecordPair != null && newRecordPair == null) {
 				inOldButNotNew++;
 				String oldProbeId = SAMRecordUtil.getProbeId(oldRecordPair.getRecordOne());
+				oldProbeTally.add(oldProbeId);
 				inOldButNotNewList.add(readName + "(" + oldProbeId + ")");
 			} else if (oldRecordPair != null && newRecordPair != null) {
 				inBoth++;
+
+				if (oldRecordPair.getRecordOne().getDuplicateReadFlag() && !newRecordPair.getRecordOne().getDuplicateReadFlag()) {
+					dupInOld_uniqueInNew.add(readName);
+				} else if (!oldRecordPair.getRecordOne().getDuplicateReadFlag() && newRecordPair.getRecordOne().getDuplicateReadFlag()) {
+					uniqueInOld_dupInNew.add(readName);
+				}
 
 				String oldOneReadString = oldRecordPair.getRecordOne().getReadString();
 				String oldTwoReadString = oldRecordPair.getRecordTwo().getReadString();
@@ -155,6 +181,14 @@ public class BamFileValidationComparisonUtil {
 
 				if (!oldProbeId.equals(newProbeId)) {
 					assignedToDifferentProbes++;
+				}
+
+				oldProbeTally.add(oldProbeId);
+				newProbeTally.add(newProbeId);
+				if (newRecordPair.getRecordOne().getDuplicateReadFlag()) {
+					newDupProbeTally.add(newProbeId);
+				} else {
+					newUniqueProbeTally.add(newProbeId);
 				}
 
 				String oldOneCigar = oldRecordPair.getRecordOne().getCigar().toString();
@@ -260,6 +294,39 @@ public class BamFileValidationComparisonUtil {
 		if (inNewButNotOldList.size() > 0) {
 			System.out.println("**In New but Not Old:" + ListUtil.toString(inNewButNotOldList));
 		}
+		System.out.println("Duplicate in old, Unique in New:" + ListUtil.toString(new ArrayList<String>(dupInOld_uniqueInNew)));
+		System.out.println("Unique in old, Duplicate in New:" + ListUtil.toString(new ArrayList<String>(uniqueInOld_dupInNew)));
+
+		Comparator<String> stringComparator = new AlphaNumericStringComparator(true);
+
+		List<String> probeIds = new ArrayList<>(oldProbeTally.getTalliesAsMap().keySet());
+		Collections.sort(probeIds, new Comparator<String>() {
+
+			@Override
+			public int compare(String o1, String o2) {
+				StrandedGenomicRangedCoordinate g1 = new StrandedGenomicRangedCoordinate(o1);
+				StrandedGenomicRangedCoordinate g2 = new StrandedGenomicRangedCoordinate(o2);
+
+				int result = stringComparator.compare(g1.getContainerName(), g2.getContainerName());
+				if (result == 0) {
+					result = Long.compare(g1.getStartLocation(), g2.getStartLocation());
+					if (result == 0) {
+						result = Long.compare(g1.getStopLocation(), g2.getStopLocation());
+						if (result == 0) {
+							result = Boolean.compare(g2.getStrand() == Strand.FORWARD, g1.getStrand() == Strand.FORWARD);
+						}
+					}
+				}
+
+				return result;
+			}
+		});
+
+		for (String probeId : probeIds) {
+			System.out
+					.println(probeId + StringUtil.TAB + newProbeTally.getCount(probeId) + StringUtil.TAB + newUniqueProbeTally.getCount(probeId) + StringUtil.TAB + newDupProbeTally.getCount(probeId));
+		}
+
 		System.out.println();
 		System.out.println();
 	}
