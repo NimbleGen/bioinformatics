@@ -43,16 +43,16 @@ Substituting your GitHub username for <i>username</i>.
 
 Build the HeatSeq Tool by doing the following:
 
-cd bioinformatics/build/heatseq_commandline<br>
+cd bioinformatics/nimblegen_heatseq_build/hsqutils_commandline<br>
 mvn install
 
 After a successful build the HeatSeq application .jar file will be at:
 
-/bioinformatics/nimblegen_heatseq/target/nimblegen_heatseq-0.0.1-SNAPSHOT-<i>timestamp</i>-jar-with-dependencies.jar 
+/bioinformatics/nimblegen_heatseq_build/hsqutils_commandline/target/hsqutils_v1_0.jar 
 
-Where <i>timestamp</i> will be the date and time the .jar file was built.  You can now run the HeatSeq application by calling:
+You can now run the HeatSeq application by calling:
 
-java -jar nimblegen_heatseq-0.0.1-SNAPSHOT-<i>timestamp</i>-jar-with-dependencies.jar
+java -jar hsqutils_v1_0.jar
 
 
 
