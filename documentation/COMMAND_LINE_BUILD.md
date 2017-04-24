@@ -5,7 +5,7 @@ These instructions are for building the Heatseq Tool on the Linux command line.
 
 **Section 1: Install Java**
 
-The Heatseq Tool requires Java version 7.  To check which version of Java you have installed type 'javac -version'.  If you don't have Java installed or if your version is less than 1.7 download and install the [latest Java JDK](http://www.oracle.com/technetwork/java/javase/downloads/jdk7-downloads-1880260.html).
+The Heatseq Tool requires Java version 8.  To check which version of Java you have installed type 'javac -version'.  If you don't have Java installed or if your version is less than 1.8 download and install the [latest Java JDK](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html).
 
 **Section 2: Install maven**
 
