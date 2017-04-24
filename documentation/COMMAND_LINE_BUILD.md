@@ -44,6 +44,7 @@ Substituting your GitHub username for <i>username</i>.
 Build the HeatSeq Tool by doing the following:
 
 >cd bioinformatics/nimblegen_heatseq_build/hsqutils_commandline<br>
+>
 >mvn install
 
 After a successful build the HeatSeq application .jar file will be at:
