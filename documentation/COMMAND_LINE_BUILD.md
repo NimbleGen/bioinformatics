@@ -48,11 +48,11 @@ mvn install
 
 After a successful build the HeatSeq application .jar file will be at:
 
-/bioinformatics/nimblegen_heatseq_build/hsqutils_commandline/target/hsqutils_v1_0.jar 
+/bioinformatics/nimblegen_heatseq_build/hsqutils_commandline/target/hsqutils_[version].jar 
 
 You can now run the HeatSeq application by calling:
 
-java -jar hsqutils_v1_0.jar
+java -jar hsqutils_[version].jar
 
 
 
