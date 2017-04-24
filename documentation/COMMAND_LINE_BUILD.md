@@ -35,7 +35,7 @@ Type 'git --version' and ensure that you have git installed.  If not, download a
 
 Clone the Heatseq Tool's GitHub repository by doing the following:
 
-git clone https://<i>username</i>@github.com/NimbleGen/bioinformatics.git
+>git clone https://<i>username</i>@github.com/NimbleGen/bioinformatics.git
 
 Substituting your GitHub username for <i>username</i>.
 
@@ -52,7 +52,8 @@ After a successful build the HeatSeq application .jar file will be at:
 /bioinformatics/nimblegen_heatseq_build/hsqutils_commandline/target/hsqutils_[version].jar 
 
 You can now run the HeatSeq application by calling:
->cd bioinformatics/nimblegen_heatseq_build/hsqutils_commandline/target/
+>cd bioinformatics/nimblegen_heatseq_build/hsqutils_commandline/target/<br>
+>
 >java -jar hsqutils_[version].jar
 
 
