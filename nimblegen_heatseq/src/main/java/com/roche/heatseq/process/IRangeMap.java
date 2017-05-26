@@ -17,12 +17,22 @@ package com.roche.heatseq.process;
 
 import java.util.List;
 
+import com.roche.heatseq.process.RangeMap.LocationToValue;
+
 interface IRangeMap<O> {
 
 	void put(int startInclusive, int stopInclusive, O object);
 
 	List<O> getObjectsThatContainRangeInclusive(int startInclusive, int stopInclusive);
 
-	List<O> getObjectsThatContainRangeInclusiveOld(int startInclusive, int stopInclusive);
+	List<O> getObjectsThatOverlapRangeInclusive(int startInclusive, int stopInclusive);
+
+	int size();
+
+	int getMinStart();
+
+	int getMaxStop();
+
+	List<LocationToValue<O>> getLocationToValueList();
 
 }

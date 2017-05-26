@@ -41,6 +41,16 @@ public class CigarStringUtilTest {
 	}
 
 	@Test(groups = { "integration" })
+	public void mismatchDetailsOne_B_Test() {
+		ISequence sequenceOne = new IupacNucleotideCodeSequence("AAAAAAAAAAATTTTT--GCTTTTTTTTTTTTTT");
+		ISequence sequenceTwo = new IupacNucleotideCodeSequence("AAAAAAAAAAGTTTTTACAGTTTTTTTTTTTTTT");
+		NeedlemanWunschGlobalAlignment globalAlignment = new NeedlemanWunschGlobalAlignment(sequenceOne, sequenceTwo);
+		AlignmentPair alignmentPair = globalAlignment.getAlignmentPair();
+		String mismatchDetailsString = CigarStringUtil.getMismatchDetailsString(alignmentPair);
+		assertEquals(mismatchDetailsString, "10A5G0C14");
+	}
+
+	@Test(groups = { "integration" })
 	public void mismatchDetailsOneATest() {
 		ISequence sequenceOne = new IupacNucleotideCodeSequence("AAAAAAAAAAGTTTTTACATTTTT");
 		ISequence sequenceTwo = new IupacNucleotideCodeSequence("AAAAAAAAAAATTTTT--GTTTTT");

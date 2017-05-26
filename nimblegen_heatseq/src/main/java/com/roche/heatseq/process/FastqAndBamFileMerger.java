@@ -16,20 +16,11 @@
 
 package com.roche.heatseq.process;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileHeader.SortOrder;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.fastq.FastqRecord;
-import htsjdk.samtools.util.CloseableIterator;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +35,16 @@ import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.IlluminaFastQReadNameUtil;
 import com.roche.sequencing.bioinformatics.common.utils.fastq.PicardException;
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
+
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.fastq.FastqRecord;
+import htsjdk.samtools.util.CloseableIterator;
 
 /**
  * Merges alignment information from a BAM file with read string, quality string, and UID from two input fastQ files, joining on the read name. Stores the result in a 'merged' BAM file.
@@ -89,7 +90,7 @@ class FastqAndBamFileMerger {
 	}
 
 	public static File createMergedFastqAndBamFileFromUnsortedFiles(File unsortedBamFile, File unsortedBamFileIndex, File unsortedFastq1File, File unsortedFastq2File, File outputBamFile,
-			boolean trimmingSkipped, ProbeTrimmingInformation probeTrimmingInformation, File tempDirectory, Map<String, Probe> readsToProbeAssignments, String commonReadNameBeginning) {
+			boolean trimmingSkipped, ProbeTrimmingInformation probeTrimmingInformation, File tempDirectory, Map<String, Set<Probe>> readsToProbeAssignments, String commonReadNameBeginning) {
 		return createMergedFastqAndBamFileFromUnsortedFilesNew(unsortedBamFile, unsortedBamFileIndex, unsortedFastq1File, unsortedFastq2File, outputBamFile, trimmingSkipped, probeTrimmingInformation,
 				tempDirectory, readsToProbeAssignments, commonReadNameBeginning);
 	}
@@ -108,11 +109,12 @@ class FastqAndBamFileMerger {
 	 * @return
 	 */
 	private static File createMergedFastqAndBamFileFromUnsortedFilesNew(File unsortedBamFile, File unsortedBamFileIndex, File unsortedFastq1File, File unsortedFastq2File, File outputBamFile,
-			boolean trimmingSkipped, ProbeTrimmingInformation probeTrimmingInformation, File tempDirectory, Map<String, Probe> readsToProbeAssignments, String commonReadNameBeginning) {
+			boolean trimmingSkipped, ProbeTrimmingInformation probeTrimmingInformation, File tempDirectory, Map<String, Set<Probe>> readsToProbeAssignments, String commonReadNameBeginning) {
 		// Each new iteration starts at the first record.
 
 		long bamSortStart = System.currentTimeMillis();
 		try (CloseableAndIterableIterator<SAMRecord> samIter = BamSorter.getSortedBamIterator(unsortedBamFile, tempDirectory, new BamSorter.SamRecordNameComparator())) {
+
 			long bamSortStop = System.currentTimeMillis();
 			logger.info("time to sort bam:" + DateUtil.convertMillisecondsToHHMMSS(bamSortStop - bamSortStart));
 
@@ -139,8 +141,7 @@ class FastqAndBamFileMerger {
 			SAMFileWriter samWriter = new SAMFileWriterFactory().setMaxRecordsInRam(PrimerReadExtensionAndPcrDuplicateIdentification.DEFAULT_MAX_RECORDS_IN_RAM).setTempDirectory(tempDirectory)
 					.makeBAMWriter(header, false, outputBamFile, 0);
 
-			MergedSamIterator mergedSamIterator = new MergedSamIterator(samIter, fastq1Iter, fastq2Iter, trimmingSkipped, probeTrimmingInformation, commonReadNameBeginning, readsToProbeAssignments);
-			// CloseableIterator<SAMRecord> sortedMergedSamIter = BamSorter.getSortedBamIterator(mergedSamIterator, header, tempDirectory, SortOrder.coordinate.getComparatorInstance());
+			MergedSamIterator mergedSamIterator = new MergedSamIterator(samIter, fastq1Iter, fastq2Iter, trimmingSkipped, probeTrimmingInformation, commonReadNameBeginning);
 			while (mergedSamIterator.hasNext()) {
 				samWriter.addAlignment(mergedSamIterator.next());
 			}
@@ -168,16 +169,16 @@ class FastqAndBamFileMerger {
 		private final Iterator<FastqRecord> fastq2Iter;
 		private final boolean trimmingSkipped;
 		private final ProbeTrimmingInformation probeTrimmingInformation;
-		private final Map<String, Probe> readsToProbeAssignments;
 		private SAMRecord nextRecord;
 		private SAMRecord samRecord;
 		private FastqRecord fastqOneRecord;
 		private FastqRecord fastqTwoRecord;
 		private final String commonReadNameBeginning;
 		private int totalMatches;
+		private int readsSkppedBecauseNotAssignedToAProbe;
 
 		public MergedSamIterator(Iterator<SAMRecord> samIter, Iterator<FastqRecord> fastq1Iter, Iterator<FastqRecord> fastq2Iter, boolean trimmingSkipped,
-				ProbeTrimmingInformation probeTrimmingInformation, String commonReadNameBeginning, Map<String, Probe> readsToProbeAssignments) {
+				ProbeTrimmingInformation probeTrimmingInformation, String commonReadNameBeginning) {
 			super();
 			this.samIter = samIter;
 			this.fastq1Iter = fastq1Iter;
@@ -186,7 +187,7 @@ class FastqAndBamFileMerger {
 			this.probeTrimmingInformation = probeTrimmingInformation;
 			this.commonReadNameBeginning = commonReadNameBeginning;
 			this.totalMatches = 0;
-			this.readsToProbeAssignments = readsToProbeAssignments;
+			this.readsSkppedBecauseNotAssignedToAProbe = 0;
 			nextRecord = getNextRecordToReturn();
 		}
 
@@ -223,14 +224,12 @@ class FastqAndBamFileMerger {
 						fastqTwoRecord = null;
 					} else if (samToFastqComparison == 0) {
 						totalMatches++;
-						if (readsToProbeAssignments.containsKey(samName)) {
-							if (samRecord.getFirstOfPairFlag()) {
-								nextRecordToReturn = checkAndStoreFastqInfoInRecord(samRecord, fastqOneRecord.getReadString(), fastqOneRecord.getBaseQualityString(), trimmingSkipped,
-										probeTrimmingInformation);
-							} else {
-								nextRecordToReturn = checkAndStoreFastqInfoInRecord(samRecord, fastqTwoRecord.getReadString(), fastqTwoRecord.getBaseQualityString(), trimmingSkipped,
-										probeTrimmingInformation);
-							}
+						if (samRecord.getFirstOfPairFlag()) {
+							nextRecordToReturn = checkAndStoreFastqInfoInRecord(samRecord, fastqOneRecord.getReadString(), fastqOneRecord.getBaseQualityString(), trimmingSkipped,
+									probeTrimmingInformation);
+						} else {
+							nextRecordToReturn = checkAndStoreFastqInfoInRecord(samRecord, fastqTwoRecord.getReadString(), fastqTwoRecord.getBaseQualityString(), trimmingSkipped,
+									probeTrimmingInformation);
 						}
 						samRecord = null;
 					}
@@ -253,6 +252,10 @@ class FastqAndBamFileMerger {
 
 		public int getTotalMatches() {
 			return totalMatches;
+		}
+
+		public int getReadsSkippedBecauseNotAssignedToAProbe() {
+			return readsSkppedBecauseNotAssignedToAProbe;
 		}
 
 		@Override

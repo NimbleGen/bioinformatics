@@ -20,7 +20,14 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
+import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
+import com.roche.sequencing.bioinformatics.common.utils.ListUtil;
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil.ProbeHeaderInformation;
 import com.roche.sequencing.bioinformatics.common.verification.CliStatusConsole;
 
@@ -71,6 +78,26 @@ public class ProbeInfoFileValidator {
 		} catch (IOException e) {
 			throw new IllegalStateException("Unable to parse the provided PROBE file[" + probeInfoFile.getAbsolutePath() + "].", e);
 		}
+
+		Map<ISequence, Set<String>> probeIdsBySequence = new HashMap<>();
+		for (Probe probe : probeInfo) {
+			ISequence sequence = probe.getProbeSequence();
+			Set<String> probeIds = probeIdsBySequence.get(sequence);
+			if (probeIds == null) {
+				probeIds = new HashSet<>();
+				probeIdsBySequence.put(sequence, probeIds);
+			}
+			probeIds.add(probe.getProbeId());
+		}
+
+		for (Set<String> matchingProbeIds : probeIdsBySequence.values()) {
+			if (matchingProbeIds.size() > 1) {
+				CliStatusConsole.logError("WARNING: The probe information found within the probe information file[" + probeInfoFile.getAbsolutePath()
+						+ "] contains the following probes which have the exact same sequence and therefore HSQUtils will not be able uniquely assign reads to either of these probes: "
+						+ ListUtil.toString(new ArrayList<>(matchingProbeIds)));
+			}
+		}
+
 		return probeInfo;
 	}
 

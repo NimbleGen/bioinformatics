@@ -7,12 +7,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.yaml.snakeyaml.Yaml;
 
+import com.jayway.jsonpath.DocumentContext;
+import com.jayway.jsonpath.JsonPath;
 import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
 import com.roche.sequencing.bioinformatics.common.utils.CheckSumUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
@@ -21,6 +26,12 @@ import com.roche.sequencing.bioinformatics.common.utils.ListUtil;
 import com.roche.sequencing.bioinformatics.common.utils.Md5CheckSumUtil;
 import com.roche.sequencing.bioinformatics.common.utils.NumberFormatterUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
+
+import net.minidev.json.JSONArray;
+import nu.xom.Builder;
+import nu.xom.Document;
+import nu.xom.Nodes;
+import nu.xom.ParsingException;
 
 public class TestPlanRunCheck {
 
@@ -38,6 +49,8 @@ public class TestPlanRunCheck {
 	private final static String COMPARISON_OPTIONS_KEY = "comparisonOptions";
 	private final static String LINES_TO_SKIP_IN_OUTPUT_FILE_FOR_COMPARISON_KEY = "outputFileLinesToSkipForComparison";
 	private final static String LINES_TO_SKIP_IN_MATCHING_FILE_FOR_COMPARISON_KEY = "matchingFileLinesToSkipForComparison";
+	private final static String JSON_PATHS_TO_CONTAINED_TEXT_MAPPING_KEY = "jsonPathsToContainedTextMapping";
+	private final static String XPATHS_TO_CONTAINED_TEXT_MAPPING_KEY = "xPathsToContainedTextMapping";
 
 	private final TestPlanRunCheckTypeEnum checkType;
 	private final String[] textToFind;
@@ -57,13 +70,17 @@ public class TestPlanRunCheck {
 	private final int[] linesToSkipInOutputFileForComparing;
 	private final int[] linesToSkipInMatchingFileForComparing;
 
+	private final Map<String, String> jsonPathsToContainedTextMapping;
+	private final Map<String, String> xPathsToContainedTextMapping;
+
 	private final String fileName;
 
 	private TestPlanRun parentRun;
 
 	private TestPlanRunCheck(String fileName, TestPlanRun parentRun, TestPlanRunCheckTypeEnum checkType, String[] textToFind, String outputFileRegex, String[] relativePathToOutputFile, String md5Sum,
 			String relativePathToMatchingFileDirectory, String matchingFileRegex, String description, String[] requirements, String acceptanceCriteria, String[] notes,
-			FileComparisonOptionsEnum[] fileComparisonOptions, int[] linesToSkipInOutputFileForComparing, int[] linesToSkipInMathcingFileForComparing) {
+			FileComparisonOptionsEnum[] fileComparisonOptions, int[] linesToSkipInOutputFileForComparing, int[] linesToSkipInMathcingFileForComparing,
+			Map<String, String> jsonPathsToContainedTextMapping, Map<String, String> xPathsToContainedTextMapping) {
 		super();
 		this.fileName = fileName;
 		this.parentRun = parentRun;
@@ -81,6 +98,8 @@ public class TestPlanRunCheck {
 		this.fileComparisonOptions = fileComparisonOptions;
 		this.linesToSkipInMatchingFileForComparing = linesToSkipInMathcingFileForComparing;
 		this.linesToSkipInOutputFileForComparing = linesToSkipInOutputFileForComparing;
+		this.jsonPathsToContainedTextMapping = jsonPathsToContainedTextMapping;
+		this.xPathsToContainedTextMapping = xPathsToContainedTextMapping;
 
 		switch (checkType) {
 		case CONSOLE_ERRORS_DOES_NOT_CONTAIN_TEXT:
@@ -144,6 +163,16 @@ public class TestPlanRunCheck {
 				throw new IllegalStateException("The textToFind and outputFileRegex key/value pairs are expected for the check type[" + checkType + "].");
 			} else if (md5Sum != null || relativePathToMatchingFileDirectory != null || matchingFileRegex != null) {
 				throw new IllegalStateException("Key/value pairs were provided which do not match what is expected for the check type[" + checkType + "].");
+			}
+			break;
+		case XML_CONTAINS_TEXT:
+			if (xPathsToContainedTextMapping == null || xPathsToContainedTextMapping.size() == 0) {
+				throw new IllegalStateException("The " + XPATHS_TO_CONTAINED_TEXT_MAPPING_KEY + " key/value pairs are expected for the check type[" + checkType + "].");
+			}
+			break;
+		case JSON_CONTAINS_TEXT:
+			if (jsonPathsToContainedTextMapping == null || jsonPathsToContainedTextMapping.size() == 0) {
+				throw new IllegalStateException("The " + JSON_PATHS_TO_CONTAINED_TEXT_MAPPING_KEY + " key/value pairs are expected for the check type[" + checkType + "].");
 			}
 			break;
 		case RECORD_CONSOLE_OUTPUT:
@@ -277,6 +306,31 @@ public class TestPlanRunCheck {
 					description += "that the console output does not contain the text['" + ArraysUtil.toString(textToFind, "', '") + "'].";
 				}
 				break;
+			case XML_CONTAINS_TEXT:
+				if (isRequirementsPresent()) {
+					description = "Verify ";
+				} else {
+					description = "Confirm ";
+				}
+
+				description += "that the " + getOutputFileDescriptions() + " contains the following texts corresponding with the provided XPaths:" + StringUtil.NEWLINE;
+
+				description += getXmlXPathToTextString(xPathsToContainedTextMapping);
+
+				break;
+			case JSON_CONTAINS_TEXT:
+				if (isRequirementsPresent()) {
+					description = "Verify ";
+				} else {
+					description = "Confirm ";
+				}
+
+				description += "that the " + getOutputFileDescriptions() + " contains the following texts corresponding with the provided JSONPaths:" + StringUtil.NEWLINE;
+
+				description += getJsonPathToTextString(jsonPathsToContainedTextMapping);
+
+				break;
+
 			case RECORD_CONSOLE_OUTPUT:
 				description = "Record the text from the console output in the 'Actual Results' section.";
 				break;
@@ -373,6 +427,14 @@ public class TestPlanRunCheck {
 					acceptanceCriteria = "The console output does not contain the text \"" + ArraysUtil.toString(textToFind, "\", \"") + "\".";
 				}
 				break;
+			case XML_CONTAINS_TEXT:
+				acceptanceCriteria = "The " + getOutputFileDescriptions() + " is present and contains the following texts for each corresponding XPath:" + StringUtil.NEWLINE;
+				acceptanceCriteria += getXmlXPathToTextString(xPathsToContainedTextMapping);
+				break;
+			case JSON_CONTAINS_TEXT:
+				acceptanceCriteria = "The " + getOutputFileDescriptions() + " is present and contains the following texts for each corresponding JSONPath:" + StringUtil.NEWLINE;
+				acceptanceCriteria += getJsonPathToTextString(jsonPathsToContainedTextMapping);
+				break;
 			case RECORD_CONSOLE_OUTPUT:
 				acceptanceCriteria = "";
 				break;
@@ -382,6 +444,26 @@ public class TestPlanRunCheck {
 		}
 
 		return acceptanceCriteria;
+	}
+
+	private static String getXmlXPathToTextString(Map<String, String> xPathsToContainedTextMapping) {
+		StringBuilder xPathToTextBuilder = new StringBuilder();
+		for (Entry<String, String> entry : xPathsToContainedTextMapping.entrySet()) {
+			String xPath = entry.getKey();
+			String containedText = entry.getValue();
+			xPathToTextBuilder.append("  [XPATH]" + xPath + " : [Contained Text]" + containedText + StringUtil.NEWLINE);
+		}
+		return xPathToTextBuilder.toString();
+	}
+
+	private static String getJsonPathToTextString(Map<String, String> jsonPathsToContainedTextMapping) {
+		StringBuilder jsonPathToTextBuilder = new StringBuilder();
+		for (Entry<String, String> entry : jsonPathsToContainedTextMapping.entrySet()) {
+			String jsonPath = entry.getKey();
+			String containedText = entry.getValue();
+			jsonPathToTextBuilder.append("  [JSONPATH]" + jsonPath + " : [Contained Text]" + containedText + StringUtil.NEWLINE);
+		}
+		return jsonPathToTextBuilder.toString();
 	}
 
 	private String getOutputFileDescriptions() {
@@ -408,7 +490,7 @@ public class TestPlanRunCheck {
 			List<String> foundText = new ArrayList<String>();
 			List<String> notFoundText = new ArrayList<String>();
 			for (String text : textToFind) {
-				if (runResults.getConsoleErrors().contains(text)) {
+				if (containsText(runResults.getConsoleErrors(), text)) {
 					foundText.add(text);
 				} else {
 					notFoundText.add(text);
@@ -438,7 +520,7 @@ public class TestPlanRunCheck {
 				List<String> foundText2 = new ArrayList<String>();
 				List<String> notFoundText2 = new ArrayList<String>();
 				for (String text : textToFind) {
-					if (runResults.getConsoleErrors().contains(text)) {
+					if (containsText(runResults.getConsoleErrors(), text)) {
 						foundText2.add(text);
 					} else {
 						notFoundText2.add(text);
@@ -716,7 +798,7 @@ public class TestPlanRunCheck {
 			List<String> foundText3 = new ArrayList<String>();
 			List<String> notFoundText3 = new ArrayList<String>();
 			for (String text : textToFind) {
-				if (runResults.getConsoleOutput().contains(text)) {
+				if (containsText(runResults.getConsoleOutput(), text)) {
 					foundText3.add(text);
 				} else {
 					notFoundText3.add(text);
@@ -745,7 +827,7 @@ public class TestPlanRunCheck {
 				List<String> foundText4 = new ArrayList<String>();
 				List<String> notFoundText4 = new ArrayList<String>();
 				for (String text : textToFind) {
-					if (runResults.getConsoleOutput().contains(text)) {
+					if (containsText(runResults.getConsoleOutput(), text)) {
 						foundText4.add(text);
 					} else {
 						notFoundText4.add(text);
@@ -764,6 +846,114 @@ public class TestPlanRunCheck {
 				}
 			}
 			break;
+		case XML_CONTAINS_TEXT:
+			File xmlOutputFile = getMatchingFile(runResults);
+
+			StringBuilder xmlFoundDescriptionBuilder = new StringBuilder();
+			StringBuilder xmlNotFoundDescriptionBuilder = new StringBuilder();
+
+			for (Entry<String, String> entry : xPathsToContainedTextMapping.entrySet()) {
+				String xPath = entry.getKey();
+				String textToFind = entry.getValue();
+
+				boolean textInXPathFound = false;
+
+				String xmlText;
+				try {
+					xmlText = FileUtil.readFileAsString(xmlOutputFile);
+					Document document = new Builder().build(xmlText, null);
+					Nodes nodes = document.query(xPath);
+					if (nodes != null && nodes.size() > 0) {
+						String text = nodes.get(0).getValue();
+						textInXPathFound = containsText(text, textToFind);
+					}
+				} catch (IOException | ParsingException e) {
+					// not necessary but improves code readability
+					textInXPathFound = false;
+				}
+
+				if (textInXPathFound) {
+					xmlFoundDescriptionBuilder.append("  [XPATH]" + xPath + " : [Contained Text]" + textToFind + StringUtil.NEWLINE);
+				} else {
+					xmlNotFoundDescriptionBuilder.append("  [XPATH]" + xPath + " : [Contained Text]" + textToFind + StringUtil.NEWLINE);
+				}
+			}
+
+			success = xmlNotFoundDescriptionBuilder.length() == 0;
+
+			resultsDescription = "The contents of the XML output file[" + xmlOutputFile + "] ";
+
+			if (xmlFoundDescriptionBuilder.length() > 0) {
+				resultsDescription += "contains the following text[s] and corresponding XPaths:" + StringUtil.NEWLINE + xmlFoundDescriptionBuilder.toString();
+				if (xmlNotFoundDescriptionBuilder.length() > 0) {
+					resultsDescription += "but DOES NOT contain the following text[s] for each corresponding XPaths:" + StringUtil.NEWLINE + xmlNotFoundDescriptionBuilder.toString();
+				}
+			} else {
+				if (xmlNotFoundDescriptionBuilder.length() > 0) {
+					resultsDescription += "DOES NOT contain the following text[s] for each corresponding XPaths:" + StringUtil.NEWLINE + xmlNotFoundDescriptionBuilder.toString();
+				} else {
+					throw new AssertionError();
+				}
+			}
+			break;
+		case JSON_CONTAINS_TEXT:
+			File jsonOutputFile = getMatchingFile(runResults);
+
+			StringBuilder jsonFoundDescriptionBuilder = new StringBuilder();
+			StringBuilder jsonNotFoundDescriptionBuilder = new StringBuilder();
+
+			for (Entry<String, String> entry : jsonPathsToContainedTextMapping.entrySet()) {
+				String jsonPath = entry.getKey();
+				String textToFind = entry.getValue();
+
+				boolean textInJsonPathFound = false;
+
+				String jsonText;
+				try {
+					jsonText = FileUtil.readFileAsString(jsonOutputFile);
+					DocumentContext jsonContext = JsonPath.parse(jsonText);
+					Object jsonPathObject = jsonContext.read(jsonPath);
+
+					String textFromJsonPath = "";
+					if (jsonPathObject instanceof JSONArray) {
+						JSONArray jsonArray = (JSONArray) jsonPathObject;
+						for (Object jsonArrayItem : jsonArray) {
+							if (jsonArrayItem instanceof String) {
+								textFromJsonPath += jsonArrayItem;
+							}
+						}
+					} else if (jsonPathObject instanceof String) {
+						textFromJsonPath = (String) jsonPathObject;
+					}
+
+					textInJsonPathFound = containsText(textFromJsonPath, textToFind);
+				} catch (IOException e) {
+					// not necessary but improves code readability
+					textInJsonPathFound = false;
+				}
+
+				if (textInJsonPathFound) {
+					jsonFoundDescriptionBuilder.append("  [JSONPATH]" + jsonPath + " : [Contained Text]" + textToFind + StringUtil.NEWLINE);
+				} else {
+					jsonNotFoundDescriptionBuilder.append("  [JSONPATH]" + jsonPath + " : [Contained Text]" + textToFind + StringUtil.NEWLINE);
+				}
+			}
+
+			success = jsonNotFoundDescriptionBuilder.length() == 0;
+
+			resultsDescription = "The contents of the JSON output file[" + jsonOutputFile + "] ";
+
+			if (jsonFoundDescriptionBuilder.length() > 0) {
+				resultsDescription += "contains the following text[s] and corresponding JSONPaths:" + StringUtil.NEWLINE + jsonFoundDescriptionBuilder.toString();
+				if (jsonNotFoundDescriptionBuilder.length() > 0) {
+					resultsDescription += "but DOES NOT contain the following text[s] for each corresponding JSONPaths:" + StringUtil.NEWLINE + jsonNotFoundDescriptionBuilder.toString();
+				}
+			} else {
+				if (jsonNotFoundDescriptionBuilder.length() > 0) {
+					resultsDescription += "DOES NOT contain the following text[s] for each corresponding JSONPaths:" + StringUtil.NEWLINE + jsonNotFoundDescriptionBuilder.toString();
+				}
+			}
+			break;
 		case RECORD_CONSOLE_OUTPUT:
 			success = true;
 			resultsDescription = "Console Output: " + StringUtil.NEWLINE + runResults.getConsoleOutput();
@@ -772,6 +962,48 @@ public class TestPlanRunCheck {
 			throw new IllegalStateException("The TestPlanRunCheckType[" + checkType + "] is not recognized.");
 		}
 		return new TestPlanRunCheckResult(success, resultsDescription);
+	}
+
+	private boolean containsText(String textToSearch, String textToFind) {
+		boolean containsText = false;
+
+		boolean isRegularExpression = textToFind.startsWith("/");
+
+		if (isRegularExpression) {
+			String javaPattern = textToFind.substring(1);
+			int flags = 0;
+			if (javaPattern.contains("/")) {
+				int index = javaPattern.length() - 1;
+				while (javaPattern.charAt(index) != '/') {
+					index--;
+				}
+
+				String perlRegExModifiers = javaPattern.substring(index + 1);
+
+				if (perlRegExModifiers.contains("i")) {
+					flags = flags | Pattern.CASE_INSENSITIVE;
+				}
+				if (perlRegExModifiers.contains("s")) {
+					flags = flags | Pattern.DOTALL;
+				}
+				if (perlRegExModifiers.contains("m")) {
+					flags = flags | Pattern.MULTILINE;
+				}
+				if (perlRegExModifiers.contains("x")) {
+					flags = flags | Pattern.COMMENTS;
+				}
+
+				javaPattern = javaPattern.substring(0, index);
+
+			}
+			Pattern pattern = Pattern.compile(javaPattern, flags);
+			Matcher matcher = pattern.matcher(textToSearch);
+			containsText = matcher.find();
+		} else {
+			containsText = textToSearch.contains(textToFind);
+		}
+
+		return containsText;
 	}
 
 	private List<File> getMatchingFiles(RunResults runResults) {
@@ -894,8 +1126,12 @@ public class TestPlanRunCheck {
 					}
 				}
 
+				Map<String, String> jsonPathsToContainedTextMapping = parseMapYamlNode(root.get(JSON_PATHS_TO_CONTAINED_TEXT_MAPPING_KEY));
+				Map<String, String> xPathsToContainedTextMapping = parseMapYamlNode(root.get(XPATHS_TO_CONTAINED_TEXT_MAPPING_KEY));
+
 				checks.add(new TestPlanRunCheck(checkFileName, parentRun, checkType, textToFind, outputFileRegex, relativePathToOutputFile, md5Sum, relativePathToMatchingFileDirectory,
-						matchingFileRegex, description, requirements, acceptanceCriteria, notes, comparisonOptions, lineNumberInOutputFileToSkip, lineNumberInMatchingFileToSkip));
+						matchingFileRegex, description, requirements, acceptanceCriteria, notes, comparisonOptions, lineNumberInOutputFileToSkip, lineNumberInMatchingFileToSkip,
+						jsonPathsToContainedTextMapping, xPathsToContainedTextMapping));
 			} catch (Exception e) {
 				throw new IllegalStateException(e.getMessage() + " File[" + inputYaml.getAbsolutePath() + "].", e);
 			}
@@ -922,6 +1158,24 @@ public class TestPlanRunCheck {
 		}
 
 		return values;
+	}
+
+	public static Map<String, String> parseMapYamlNode(Object object) {
+		Map<String, String> map = new LinkedHashMap<>();
+
+		if (object != null) {
+			if (object instanceof Map) {
+				@SuppressWarnings("unchecked")
+				Map<Object, Object> objectAsMap = (Map<Object, Object>) object;
+				for (Entry<Object, Object> entry : objectAsMap.entrySet()) {
+					map.put((String) entry.getKey(), (String) entry.getValue());
+				}
+			} else {
+				throw new AssertionError("Expecting Map but found " + object.getClass());
+			}
+		}
+
+		return map;
 	}
 
 	public String getFileName() {

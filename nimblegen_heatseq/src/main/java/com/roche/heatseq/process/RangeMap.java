@@ -15,12 +15,6 @@
  */
 package com.roche.heatseq.process;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordIterator;
-import htsjdk.samtools.SamInputResource;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,56 +32,93 @@ import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ParsedProbeFil
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil;
 
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SamInputResource;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+
 class RangeMap<O> implements IRangeMap<O> {
 
-	private final List<StartLocationToValue<O>> startingLocationToValue;
+	private final List<LocationToValue<O>> locationToValue;
+	private int minStart = Integer.MAX_VALUE;
+	private int maxStop = -Integer.MAX_VALUE;
 	private boolean locationsSorted;
 
 	private ForwardComparator<O> forwardComparator = new ForwardComparator<O>();
 
 	public RangeMap() {
-		startingLocationToValue = new ArrayList<RangeMap.StartLocationToValue<O>>();
+		locationToValue = new ArrayList<RangeMap.LocationToValue<O>>();
 		locationsSorted = true;
 	}
 
 	public int size() {
-		return startingLocationToValue.size();
+		return locationToValue.size();
 	}
 
-	public void put(int startInclusive, int stopInclusive, O object) {
-		startingLocationToValue.add(new StartLocationToValue<O>(object, Math.min(startInclusive, stopInclusive), Math.max(startInclusive, stopInclusive)));
+	public List<LocationToValue<O>> getLocationToValueList() {
+		return Collections.unmodifiableList(locationToValue);
+	}
+
+	public synchronized void put(int startInclusive, int stopInclusive, O object) {
+		minStart = Math.min(minStart, startInclusive);
+		maxStop = Math.max(maxStop, stopInclusive);
+		locationToValue.add(new LocationToValue<O>(object, Math.min(startInclusive, stopInclusive), Math.max(startInclusive, stopInclusive)));
 		locationsSorted = false;
 	}
 
-	public List<O> getObjectsThatContainRangeInclusive(int startInclusive, int stopInclusive) {
+	/**
+	 * Note that this is not optimized and done using brute force
+	 * 
+	 * @param startInclusive
+	 * @param stopInclusive
+	 * @return
+	 */
+	public synchronized List<O> getObjectsThatOverlapRangeInclusive(int startInclusive, int stopInclusive) {
+		List<O> objectsOverlappingRange = new ArrayList<O>();
+
+		for (LocationToValue<O> rangeAndValue : locationToValue) {
+			boolean rangesOverlapInclusive = Math.max(startInclusive, rangeAndValue.startLocation) <= Math.min(stopInclusive, rangeAndValue.endLocation);
+			if (rangesOverlapInclusive) {
+				objectsOverlappingRange.add(rangeAndValue.value);
+			}
+		}
+
+		return objectsOverlappingRange;
+	}
+
+	/**
+	 * An optimized function which uses a binary search to identify all ranges that are contained inclusively.
+	 */
+	public synchronized List<O> getObjectsThatContainRangeInclusive(int startInclusive, int stopInclusive) {
 		int startLocationToFind = Math.min(startInclusive, stopInclusive);
 		int stopLocationToFind = Math.max(startInclusive, stopInclusive);
 
 		List<O> objectsWithinRange = new ArrayList<O>();
 
 		if (!locationsSorted) {
-			Collections.sort(startingLocationToValue, forwardComparator);
+			Collections.sort(locationToValue, forwardComparator);
 			locationsSorted = true;
 		}
 
 		int loIndex = 1;
-		int hiIndex = startingLocationToValue.size();
+		int hiIndex = locationToValue.size();
 
 		boolean searchComplete = false;
 
 		// binary search
 		while (!searchComplete) {
 			int afterSearchIndex = loIndex + ((hiIndex - loIndex) / 2);
-			if (afterSearchIndex <= startingLocationToValue.size()) {
+			if (afterSearchIndex <= locationToValue.size()) {
 				int afterSearchLocation = Integer.MAX_VALUE;
-				if (afterSearchIndex < startingLocationToValue.size()) {
-					afterSearchLocation = startingLocationToValue.get(afterSearchIndex).getStartLocation();
+				if (afterSearchIndex < locationToValue.size()) {
+					afterSearchLocation = locationToValue.get(afterSearchIndex).getStartLocation();
 				}
 				if (afterSearchLocation >= startLocationToFind) {
-					int beforeSearchLocation = startingLocationToValue.get(afterSearchIndex - 1).getStartLocation();
+					int beforeSearchLocation = locationToValue.get(afterSearchIndex - 1).getStartLocation();
 					boolean searchLocationFound = beforeSearchLocation <= startLocationToFind;
 					if (searchLocationFound) {
-						StartLocationToValue<O> currentIndex = startingLocationToValue.get(afterSearchIndex - 1);
+						LocationToValue<O> currentIndex = locationToValue.get(afterSearchIndex - 1);
 						// this currently assumes that no probe completely overlaps another probe
 						while (currentIndex != null && currentIndex.getEndLocation() >= stopLocationToFind) {
 							if (currentIndex.getStartLocation() <= startLocationToFind && currentIndex.getEndLocation() >= stopLocationToFind) {
@@ -95,7 +126,7 @@ class RangeMap<O> implements IRangeMap<O> {
 							}
 							afterSearchIndex--;
 							if (afterSearchIndex > 0) {
-								currentIndex = startingLocationToValue.get(afterSearchIndex - 1);
+								currentIndex = locationToValue.get(afterSearchIndex - 1);
 							} else {
 								currentIndex = null;
 							}
@@ -119,80 +150,20 @@ class RangeMap<O> implements IRangeMap<O> {
 		return objectsWithinRange;
 	}
 
-	public List<O> getObjectsThatContainRangeInclusiveOld(int startInclusive, int stopInclusive) {
-		int startLocationToFind = Math.min(startInclusive, stopInclusive);
-		int stopLocationToFind = Math.max(startInclusive, stopInclusive);
-
-		List<O> objectsWithinRange = new ArrayList<O>();
-
-		if (!locationsSorted) {
-			Collections.sort(startingLocationToValue, forwardComparator);
-			locationsSorted = true;
-		}
-
-		int loIndex = 1;
-		int hiIndex = startingLocationToValue.size();
-
-		boolean searchComplete = false;
-
-		// binary search
-		while (!searchComplete) {
-			int afterSearchIndex = loIndex + ((hiIndex - loIndex) / 2);
-			if (afterSearchIndex <= startingLocationToValue.size()) {
-				int afterSearchLocation = Integer.MAX_VALUE;
-				if (afterSearchIndex < startingLocationToValue.size()) {
-					afterSearchLocation = startingLocationToValue.get(afterSearchIndex).getStartLocation();
-				}
-				if (afterSearchLocation >= startLocationToFind) {
-					int beforeSearchLocation = startingLocationToValue.get(afterSearchIndex - 1).getStartLocation();
-					boolean searchLocationFound = beforeSearchLocation < startLocationToFind;
-					if (searchLocationFound) {
-						StartLocationToValue<O> currentIndex = startingLocationToValue.get(afterSearchIndex - 1);
-						// this currently assumes that no probe completely overlaps another probe
-						while (currentIndex != null && currentIndex.getEndLocation() >= stopLocationToFind) {
-							if (currentIndex.getStartLocation() <= startLocationToFind && currentIndex.getEndLocation() >= stopLocationToFind) {
-								objectsWithinRange.add(currentIndex.getValue());
-							}
-							afterSearchIndex--;
-							if (afterSearchIndex > 0) {
-								currentIndex = startingLocationToValue.get(afterSearchIndex - 1);
-							} else {
-								currentIndex = null;
-							}
-						}
-						searchComplete = true;
-					} else {
-						hiIndex = afterSearchIndex - 1;
-					}
-				} else if (afterSearchLocation < startInclusive) {
-					loIndex = afterSearchIndex + 1;
-				}
-
-				if (hiIndex < loIndex) {
-					searchComplete = true;
-				}
-			} else {
-				searchComplete = true;
-			}
-		}
-
-		return objectsWithinRange;
-	}
-
-	private static class ForwardComparator<O> implements Comparator<StartLocationToValue<O>> {
+	private static class ForwardComparator<O> implements Comparator<LocationToValue<O>> {
 		@Override
-		public int compare(StartLocationToValue<O> o1, StartLocationToValue<O> o2) {
+		public int compare(LocationToValue<O> o1, LocationToValue<O> o2) {
 			return Integer.compare(o1.startLocation, o2.startLocation);
 		}
 
 	}
 
-	private static class StartLocationToValue<O> {
+	public static class LocationToValue<O> {
 		private final O value;
 		private final int startLocation;
 		private final int endLocation;
 
-		public StartLocationToValue(O value, int startLocation, int endLocation) {
+		public LocationToValue(O value, int startLocation, int endLocation) {
 			super();
 			this.value = value;
 			this.startLocation = startLocation;
@@ -333,5 +304,15 @@ class RangeMap<O> implements IRangeMap<O> {
 			throw new PicardException(e.getMessage(), e);
 		}
 
+	}
+
+	@Override
+	public int getMinStart() {
+		return minStart;
+	}
+
+	@Override
+	public int getMaxStop() {
+		return maxStop;
 	}
 }

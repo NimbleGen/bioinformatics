@@ -271,4 +271,22 @@ public class AlignmentPair {
 		return new AlignmentPair(referenceAlignment.subSequence(start, stop), queryAlignment.subSequence(start, stop));
 	}
 
+	public int getNumberOfNonTerminalGaps() {
+		AlignmentPair trimmedAlignmentPair = getAlignmentWithoutEndingAndBeginningReferenceInserts().getAlignmentWithoutEndingAndBeginningQueryInserts();
+		int nonTerminalGaps = trimmedAlignmentPair.getNumberOfInsertionsRelativeToReference() + trimmedAlignmentPair.getNumberOfDeletionsRelativeToReference();
+		return nonTerminalGaps;
+	}
+
+	public int getNumberOfMatches() {
+		int numberOfMatches = 0;
+		for (int i = 0; i < referenceAlignment.size(); i++) {
+			ICode ref = referenceAlignment.getCodeAt(i);
+			ICode query = queryAlignment.getCodeAt(i);
+			if (!ref.matches(IupacNucleotideCode.GAP) && !query.matches(IupacNucleotideCode.GAP) && ref.matches(query)) {
+				numberOfMatches++;
+			}
+		}
+		return numberOfMatches;
+	}
+
 }

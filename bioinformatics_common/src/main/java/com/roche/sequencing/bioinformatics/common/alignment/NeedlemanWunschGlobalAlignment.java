@@ -438,4 +438,9 @@ public class NeedlemanWunschGlobalAlignment {
 	public int getNumberOfMismatches() {
 		return alignment.getNumberOfMismatches();
 	}
+
+	public int getNumberOfMatches() {
+		return alignment.getNumberOfMatches();
+	}
+
 }

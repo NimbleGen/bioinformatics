@@ -17,7 +17,12 @@
 package com.roche.heatseq.utils;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.SAMRecordPair;
 import com.roche.heatseq.qualityreport.ReportManager;
@@ -27,6 +32,7 @@ import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.NeedlemanWunschGlobalAlignment;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSequence;
+import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
 
 import htsjdk.samtools.SAMFileHeader;
@@ -42,7 +48,7 @@ import htsjdk.samtools.SAMRecord;
  */
 public class SAMRecordUtil {
 
-	// private static Logger logger = LoggerFactory.getLogger(SAMRecordUtil.class);
+	private static Logger logger = LoggerFactory.getLogger(SAMRecordUtil.class);
 
 	private static final String EXTENSION_UID_SAMRECORD_ATTRIBUTE_TAG = "EI";
 	private static final String LIGATION_UID_SAMRECORD_ATTRIBUTE_TAG = "LI";
@@ -53,6 +59,7 @@ public class SAMRecordUtil {
 	public static final String EDIT_DISTANCE_ATTRIBUTE_TAG = "NM";
 	private static final String EXTENSION_ERROR_ATTRIBUTE_TAG = "EE";
 	private static final String MAPPED_READ_LENGTH_ATTRIBUTE_TAG = "ML";
+	private static final String ALTERNATIVE_HITS_ATTRIBUTE_TAG = "XA";
 
 	private SAMRecordUtil() {
 		throw new AssertionError();
@@ -184,6 +191,17 @@ public class SAMRecordUtil {
 		String completeReadWithUid = record.getReadString();
 		ISequence extensionPrimerSequence = probe.getExtensionPrimerSequence();
 		return getVariableLengthUid(completeReadWithUid, extensionPrimerSequence, reportManager, probe, alignmentScorer);
+	}
+
+	public static int getEditDistance(SAMRecord record) {
+		int editDistance = 0;
+		Object editDistanceAsObject = record.getAttribute(EDIT_DISTANCE_ATTRIBUTE_TAG);
+		if (editDistanceAsObject != null) {
+			if (editDistanceAsObject instanceof Integer) {
+				editDistance = (Integer) editDistanceAsObject;
+			}
+		}
+		return editDistance;
 	}
 
 	/**
@@ -339,5 +357,143 @@ public class SAMRecordUtil {
 			uidGroup = uidGroupAsObject.toString();
 		}
 		return uidGroup;
+	}
+
+	public static List<AlternativeHit> getAlternativeHitsFromAttribute(SAMRecord record) {
+		List<AlternativeHit> alternativeHit;
+
+		Object alternativeHitsAsObject = record.getAttribute(ALTERNATIVE_HITS_ATTRIBUTE_TAG);
+		if (alternativeHitsAsObject != null) {
+			alternativeHit = AlternativeHit.fromAttributeText(alternativeHitsAsObject.toString());
+		} else {
+			alternativeHit = Collections.emptyList();
+		}
+		return alternativeHit;
+	}
+
+	public static String getAlternativeHitsAsString(List<AlternativeHit> alternativeHits) {
+		StringBuilder text = new StringBuilder();
+		for (AlternativeHit hit : alternativeHits) {
+			text.append(hit.toAttributeText());
+		}
+		return text.toString();
+	}
+
+	public static void setAlternativeHitsAttribute(SAMRecord record, List<AlternativeHit> alternativeHits) {
+
+		String alternativeHitsString = getAlternativeHitsAsString(alternativeHits);
+
+		record.setAttribute(ALTERNATIVE_HITS_ATTRIBUTE_TAG, alternativeHitsString);
+	}
+
+	public static boolean recordHasAltHits(SAMRecord record) {
+		return record.getAttribute(ALTERNATIVE_HITS_ATTRIBUTE_TAG) != null;
+	}
+
+	public static class AlternativeHit {
+		private final String container;
+		private final int start;
+		private final int stop;
+		private final Strand strand;
+		private final String cigarString;
+		private final int editDistance;
+
+		private AlternativeHit(String container, int start, int stop, Strand strand, String cigarString, int editDistance) {
+			super();
+			this.container = container;
+			this.start = start;
+			this.stop = stop;
+			this.strand = strand;
+			this.cigarString = cigarString;
+			this.editDistance = editDistance;
+		}
+
+		public AlternativeHit(SAMRecord record) {
+			super();
+			this.container = record.getReferenceName();
+			this.start = record.getAlignmentStart();
+			this.stop = record.getAlignmentEnd();
+			if (record.getReadNegativeStrandFlag()) {
+				this.strand = Strand.REVERSE;
+			} else {
+				this.strand = Strand.FORWARD;
+			}
+			this.cigarString = record.getCigarString();
+			this.editDistance = SAMRecordUtil.getEditDistance(record);
+		}
+
+		public String getContainer() {
+			return container;
+		}
+
+		public int getStart() {
+			return start;
+		}
+
+		public int getStop() {
+			return stop;
+		}
+
+		public Strand getStrand() {
+			return strand;
+		}
+
+		public String getCigarString() {
+			return cigarString;
+		}
+
+		public int getEditDistance() {
+			return editDistance;
+		}
+
+		public static List<AlternativeHit> fromAttributeText(String attributeText) {
+			List<AlternativeHit> alternativeHit = new ArrayList<>();
+			String[] entries = attributeText.split(";");
+			for (String entry : entries) {
+				String[] fields = entry.split(",");
+				if (fields.length == 4) {
+					String container = fields[0];
+
+					try {
+						int startAndStrand = Integer.parseInt(fields[1]);
+						Strand strand = Strand.FORWARD;
+						if (startAndStrand < 0) {
+							strand = Strand.REVERSE;
+						}
+						int start = Math.abs(startAndStrand);
+
+						String cigarString = fields[2];
+
+						int editDistance = Integer.parseInt(fields[3]);
+
+						int length = CigarStringUtil.expandCigarString(cigarString).length();
+						int stop = start + length;
+
+						alternativeHit.add(new AlternativeHit(container, start, stop, strand, cigarString, editDistance));
+
+					} catch (NumberFormatException e) {
+						logger.warn("Unable to parse the XA attribute text[" + attributeText + "] so the alternative hit will not be utilized.");
+					}
+
+				}
+			}
+			return alternativeHit;
+		}
+
+		public String toAttributeText() {
+			StringBuilder attributeText = new StringBuilder();
+
+			attributeText.append(container + ",");
+			if (strand == Strand.FORWARD) {
+				attributeText.append("+");
+			} else {
+				attributeText.append("-");
+			}
+			attributeText.append(start + ",");
+			attributeText.append(cigarString + ",");
+			attributeText.append(editDistance + ";");
+			return attributeText.toString();
+		}
+
 	}
 }

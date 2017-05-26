@@ -13,7 +13,7 @@
 	<packaging>pom</packaging>
 	<name>Auto Test Plan</name>
 	<description>Command line tool for Automating Test Plans</description>
-	<version>v1_0</version>
+	<version>v2_0</version>
 
 	<modules>
 		<module>../../bioinformatics_common</module>

@@ -16,12 +16,12 @@
 
 package com.roche.heatseq.objects;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
-
 import com.roche.heatseq.utils.BamFileUtil;
 import com.roche.heatseq.utils.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
+
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
 
 /**
  * 
@@ -177,6 +177,70 @@ public class ReadPair implements IReadPair {
 	@Override
 	public boolean isBestPairDuplicateGroup() {
 		return isBestPairInUidGroup;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((captureTargetSequence == null) ? 0 : captureTargetSequence.hashCode());
+		result = prime * result + ((extensionUid == null) ? 0 : extensionUid.hashCode());
+		result = prime * result + (isBestPairInUidGroup ? 1231 : 1237);
+		result = prime * result + ((ligationUid == null) ? 0 : ligationUid.hashCode());
+		result = prime * result + ((mate == null) ? 0 : mate.hashCode());
+		result = prime * result + ((probeId == null) ? 0 : probeId.hashCode());
+		result = prime * result + (readOneExtended ? 1231 : 1237);
+		result = prime * result + (readTwoExtended ? 1231 : 1237);
+		result = prime * result + ((record == null) ? 0 : record.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ReadPair other = (ReadPair) obj;
+		if (captureTargetSequence == null) {
+			if (other.captureTargetSequence != null)
+				return false;
+		} else if (!captureTargetSequence.equals(other.captureTargetSequence))
+			return false;
+		if (extensionUid == null) {
+			if (other.extensionUid != null)
+				return false;
+		} else if (!extensionUid.equals(other.extensionUid))
+			return false;
+		if (isBestPairInUidGroup != other.isBestPairInUidGroup)
+			return false;
+		if (ligationUid == null) {
+			if (other.ligationUid != null)
+				return false;
+		} else if (!ligationUid.equals(other.ligationUid))
+			return false;
+		if (mate == null) {
+			if (other.mate != null)
+				return false;
+		} else if (!mate.equals(other.mate))
+			return false;
+		if (probeId == null) {
+			if (other.probeId != null)
+				return false;
+		} else if (!probeId.equals(other.probeId))
+			return false;
+		if (readOneExtended != other.readOneExtended)
+			return false;
+		if (readTwoExtended != other.readTwoExtended)
+			return false;
+		if (record == null) {
+			if (other.record != null)
+				return false;
+		} else if (!record.equals(other.record))
+			return false;
+		return true;
 	}
 
 }
