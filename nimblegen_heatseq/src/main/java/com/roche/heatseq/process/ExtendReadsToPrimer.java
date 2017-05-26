@@ -26,6 +26,7 @@ import com.roche.heatseq.objects.ExtendReadResults;
 import com.roche.heatseq.objects.IReadPair;
 import com.roche.heatseq.objects.ReadPair;
 import com.roche.heatseq.utils.SAMRecordUtil;
+import com.roche.heatseq.utils.SAMRecordUtil.AlternativeHit;
 import com.roche.sequencing.bioinformatics.common.alignment.AlignmentPair;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarString;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
@@ -68,10 +69,11 @@ final class ExtendReadsToPrimer {
 	 * @param readPair
 	 * @return UniqueProbeRepresentativeData with extended reads or null if it could not be extended
 	 */
-	private static IReadPair extendReadPair(Probe probe, IReadPair readPair, IAlignmentScorer alignmentScorer) {
-		return extendReadPair(readPair.isMarkedDuplicate(), readPair.getExtensionUid(), readPair.getLigationUid(), probe, readPair.getSamHeader(), readPair.getSequenceName(), readPair.getReadName(),
+	static IReadPair extendReadPair(Probe probe, IReadPair readPair, IAlignmentScorer alignmentScorer) {
+		return extendReadPair(readPair.isMarkedDuplicate(), readPair.getExtensionUid(), readPair.getLigationUid(), probe, readPair.getSamHeader(), probe.getSequenceName(), readPair.getReadName(),
 				readPair.getReadGroup(), new IupacNucleotideCodeSequence(readPair.getSequenceOne()), readPair.getSequenceOneQualityString(), new IupacNucleotideCodeSequence(readPair.getSequenceTwo()),
-				readPair.getSequenceTwoQualityString(), readPair.getOneMappingQuality(), readPair.getTwoMappingQuality(), readPair.isBestPairDuplicateGroup(), alignmentScorer);
+				readPair.getSequenceTwoQualityString(), readPair.getOneMappingQuality(), readPair.getTwoMappingQuality(), readPair.isBestPairDuplicateGroup(), alignmentScorer,
+				SAMRecordUtil.getAlternativeHitsFromAttribute(readPair.getRecord()), SAMRecordUtil.getAlternativeHitsFromAttribute(readPair.getMateRecord()));
 	}
 
 	/**
@@ -92,7 +94,7 @@ final class ExtendReadsToPrimer {
 	 */
 	private static IReadPair extendReadPair(boolean isMarkedDuplicate, String extensionUid, String ligationUid, Probe probe, SAMFileHeader samHeader, String sequenceName, String readName,
 			String readGroup, ISequence sequenceOne, String sequenceOneQualityString, ISequence sequenceTwo, String sequenceTwoQualityString, int oneMappingQuality, int twoMappingQuality,
-			boolean isBestDuplicate, IAlignmentScorer alignmentScorer) {
+			boolean isBestDuplicate, IAlignmentScorer alignmentScorer, List<AlternativeHit> recordAltHits, List<AlternativeHit> mateAltHits) {
 		IReadPair extendedReadPair = null;
 		boolean readOneExtended = false;
 		boolean readTwoExtended = false;
@@ -143,7 +145,7 @@ final class ExtendReadsToPrimer {
 				readOneExtended = true;
 				readOneRecord = createRecord(samHeader, readName, readGroup, readOneIsOnReverseStrand, cigarString, readOneExtensionDetails.getMismatchDetailsString(),
 						readOneExtensionDetails.getEditDistance(), readOneExtensionDetails.getAlignmentStartInReference(), readOneExtendedSequence.toString(), readOneExtendedBaseQualities,
-						sequenceName, oneMappingQuality, readOneReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId(), isBestDuplicate);
+						sequenceName, oneMappingQuality, readOneReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId(), isBestDuplicate, recordAltHits);
 			}
 
 			ISequence ligationPrimer = probe.getLigationPrimerSequence().getReverseCompliment();
@@ -176,7 +178,7 @@ final class ExtendReadsToPrimer {
 				readTwoExtended = true;
 				readTwoRecord = createRecord(samHeader, readName, readGroup, readTwoIsOnReverseStrand, cigarString, readTwoExtensionDetails.getMismatchDetailsString(),
 						readTwoExtensionDetails.getEditDistance(), readTwoExtensionDetails.getAlignmentStartInReference(), readTwoExtendedSequence.toString(), readTwoExtendedBaseQualities,
-						sequenceName, twoMappingQuality, readTwoReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId(), isBestDuplicate);
+						sequenceName, twoMappingQuality, readTwoReferenceLength, isMarkedDuplicate, extensionUid, ligationUid, probe.getProbeId(), isBestDuplicate, mateAltHits);
 			}
 
 			if (readOneRecord != null && readTwoRecord != null) {
@@ -242,7 +244,7 @@ final class ExtendReadsToPrimer {
 
 	private static SAMRecord createRecord(SAMFileHeader samHeader, String readName, String readGroup, boolean isNegativeStrand, CigarString cigarString, String mismatchDetailsString, int editDistance,
 			int alignmentStartInReference, String readString, String baseQualityString, String sequenceName, int mappingQuality, int referenceLength, boolean isMarkedDuplicate, String extensionUid,
-			String ligationUid, String probeId, boolean isBestDuplicate) {
+			String ligationUid, String probeId, boolean isBestDuplicate, List<AlternativeHit> alternativeHits) {
 		if (readString.length() != baseQualityString.length()) {
 			throw new IllegalStateException(
 					"SAMRecord read[" + readString + "] length[" + readString.length() + "] and base quality[" + baseQualityString + "] length[" + baseQualityString.length() + "] must be the same.");
@@ -275,6 +277,7 @@ final class ExtendReadsToPrimer {
 
 		record.setAttribute(SAMRecordUtil.EDIT_DISTANCE_ATTRIBUTE_TAG, editDistance);
 		record.setAttribute(SAMRecordUtil.READ_GROUP_ATTRIBUTE_TAG, readGroup);
+		SAMRecordUtil.setAlternativeHitsAttribute(record, alternativeHits);
 		return record;
 	}
 
@@ -344,7 +347,26 @@ final class ExtendReadsToPrimer {
 		List<IReadPair> unableToExtendReadPairs = new ArrayList<IReadPair>();
 
 		for (IReadPair readPair : readPairs) {
+			AlternativeHit recordAsAlternativeHit = new AlternativeHit(readPair.getRecord());
+			AlternativeHit mateAsAlternativeHit = new AlternativeHit(readPair.getMateRecord());
+
+			boolean probeContainsRecord = probe.getSequenceName().equals(recordAsAlternativeHit.getContainer()) && probe.getCaptureTargetStart() <= recordAsAlternativeHit.getStart()
+					&& probe.getCaptureTargetStop() >= recordAsAlternativeHit.getStop();
+			boolean recordUsesAltHit = SAMRecordUtil.recordHasAltHits(readPair.getRecord()) && !probeContainsRecord;
+
+			boolean probeContainsMateRecord = probe.getSequenceName().equals(mateAsAlternativeHit.getContainer()) && probe.getCaptureTargetStart() <= mateAsAlternativeHit.getStart()
+					&& probe.getCaptureTargetStop() >= mateAsAlternativeHit.getStop();
+			boolean mateUsesAltHit = SAMRecordUtil.recordHasAltHits(readPair.getMateRecord()) && !probeContainsMateRecord;
+
 			IReadPair extendedReadPair = ExtendReadsToPrimer.extendReadPair(probe, readPair, alignmentScorer);
+
+			if (recordUsesAltHit) {
+				updateAlternativeHits(extendedReadPair.getRecord(), recordAsAlternativeHit, probe);
+			}
+
+			if (mateUsesAltHit) {
+				updateAlternativeHits(extendedReadPair.getMateRecord(), mateAsAlternativeHit, probe);
+			}
 
 			if (extendedReadPair.isReadOneExtended() && extendedReadPair.isReadTwoExtended()) {
 				extendedReadPairs.add(extendedReadPair);
@@ -354,6 +376,30 @@ final class ExtendReadsToPrimer {
 		}
 
 		return new ExtendReadResults(extendedReadPairs, unableToExtendReadPairs);
+	}
+
+	private static void updateAlternativeHits(SAMRecord record, AlternativeHit newHit, Probe probe) {
+		List<AlternativeHit> oldHits = SAMRecordUtil.getAlternativeHitsFromAttribute(record);
+		List<AlternativeHit> newHits = new ArrayList<>();
+		AlternativeHit removedHit = null;
+		for (AlternativeHit hit : oldHits) {
+			boolean probeOverlapsHit = probe.getSequenceName().equals(hit.getContainer()) && probe.getCaptureTargetStart() <= hit.getStart() && probe.getCaptureTargetStop() >= hit.getStop();
+			if (!probeOverlapsHit) {
+				newHits.add(hit);
+			} else {
+				removedHit = hit;
+			}
+		}
+		newHits.add(newHit);
+
+		String info = "Record:[" + record.getReadName() + "] is utilizing an alternative mapping for probe assignment.";
+		if (removedHit != null) {
+			info += "  The following entry has been removed as an alternative mapping and will be utilized for probe assignment: [" + removedHit.toAttributeText() + "].";
+		}
+		info += "  The following entry has been added as an alternative mapping: [" + newHit.toAttributeText() + "].";
+		logger.info(info);
+
+		SAMRecordUtil.setAlternativeHitsAttribute(record, newHits);
 	}
 
 	/**

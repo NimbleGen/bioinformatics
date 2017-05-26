@@ -142,12 +142,18 @@ public class CigarStringUtil {
 				if (!entry.isAMatch()) {
 					mismatchDetailsStringBuilder.append("0");
 				}
+			} else {
+				if (!previousEntry.isAMatch() && !entry.isAMatch()) {
+					mismatchDetailsStringBuilder.append("0");
+				}
 			}
-			if (previousEntry != null && !previousEntry.isAMatch() && !entry.isAMatch()) {
-				mismatchDetailsStringBuilder.append("0");
-			}
+
 			mismatchDetailsStringBuilder.append(entry.toMismatchDetailsString());
 			previousEntry = entry;
+		}
+
+		if (previousEntry != null && !previousEntry.isAMatch()) {
+			mismatchDetailsStringBuilder.append("0");
 		}
 
 		return mismatchDetailsStringBuilder.toString();
@@ -174,7 +180,15 @@ public class CigarStringUtil {
 			} else if (type == CIGAR_DELETION_FROM_REFERENCE) {
 				mismatchDetailsString = REFERENCE_DELETION_INDICATOR_IN_MD_TAG + sequence;
 			} else if (type == CIGAR_SEQUENCE_MISMATCH) {
-				mismatchDetailsString = "" + sequence;
+				// insert a zero between all mismatches
+				String sequenceWithZeroes = "";
+				for (int i = 0; i < sequence.size(); i++) {
+					sequenceWithZeroes += sequence.getCodeAt(i).toString();
+					if (i != sequence.size() - 1) {
+						sequenceWithZeroes += "0";
+					}
+				}
+				mismatchDetailsString = "" + sequenceWithZeroes;
 			} else {
 				throw new AssertionError("Unrecognized character[" + type + "].");
 			}
