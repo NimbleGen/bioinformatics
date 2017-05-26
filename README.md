@@ -1,10 +1,8 @@
 bioinformatics
 ==============
 
-Bioinformatics tools developed at Roche NimbleGen.
+Bioinformatics tools developed at Roche Sequencing Solutions Madison.
 
-For instructions on building the heatseq application in Eclipse please see [Building the Heatseq Tool in Eclipse](documentation/BUILD.md)
-.
 
-For instructions on building the heatseq application on a Linux command line please see [Building the Heatseq Tool on the command line](documentation/COMMAND_LINE_BUILD.md)
+For instructions on building HSQUtils on the command line please see [building HSQUtils on the command line](documentation/COMMAND_LINE_BUILD.md)
 .
