@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.roche.heatseq.utils.SAMRecordUtil.AlternativeHit;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarString;
 import com.roche.sequencing.bioinformatics.common.alignment.CigarStringUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
@@ -344,6 +346,37 @@ public class BamFileUtil {
 		// System.out.println(readNames.toString());
 		System.out.println("Valid:" + validCount + " Invalid:" + invalidCount);
 		System.out.println(ListUtil.toString(READ_NAMES, "\", \""));
+	}
+
+	public static void main(String[] args) throws FileNotFoundException {
+		File inputSamFile = new File("D:\\kurts_space\\heatseq\\2017\\probe_overlap\\S1_fulldbPlus_2x150_sorted.bam");
+		Map<String, SAMRecord> firstRecord = new HashMap<String, SAMRecord>();
+		Map<String, SAMRecord> secondRecord = new HashMap<String, SAMRecord>();
+		try (SamReader currentReader = SamReaderFactory.makeDefault().open(inputSamFile)) {
+			Iterator<SAMRecord> iter = currentReader.iterator();
+			while (iter.hasNext()) {
+				SAMRecord record = iter.next();
+				if (record.getFirstOfPairFlag()) {
+					firstRecord.put(record.getReadName(), record);
+				} else {
+					secondRecord.put(record.getReadName(), record);
+				}
+			}
+		} catch (IOException e) {
+			throw new PicardException(e.getMessage(), e);
+		}
+
+		for (String readName : firstRecord.keySet()) {
+			SAMRecord first = firstRecord.get(readName);
+			SAMRecord second = secondRecord.get(readName);
+
+			List<AlternativeHit> firstAltHits = SAMRecordUtil.getAlternativeHitsFromAttribute(first);
+			List<AlternativeHit> secondAltHits = SAMRecordUtil.getAlternativeHitsFromAttribute(second);
+
+			if ((firstAltHits == null || firstAltHits.size() == 0) && (secondAltHits != null && secondAltHits.size() > 0 && second.getMappingQuality() > 0)) {
+				System.out.println(readName);
+			}
+		}
 	}
 
 	private static List<String> READ_NAMES = new ArrayList<>();

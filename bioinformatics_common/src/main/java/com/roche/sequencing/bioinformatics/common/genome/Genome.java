@@ -191,10 +191,10 @@ public class Genome implements IGenome {
 	}
 
 	public static void main(String[] args) {
-		File genomeFile = new File("D:/kurts_space/sequence/hg19_genome.gnm");
+		File genomeFile = new File("D:/kurts_space/sequence/hg38.gnm");
 		try {
 			Genome genome = new Genome(genomeFile);
-			ISequence sequence = getSequenceByProbeId(genome, "chr6:117632028:117632054:+");
+			ISequence sequence = getSequenceByProbeId(genome, "chr2:58194207:58194307:+");
 			if (sequence != null) {
 				System.out.println(sequence);
 				System.out.println(sequence.getReverseCompliment());
