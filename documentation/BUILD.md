@@ -1,3 +1,6 @@
+
+Pleae note that this document is out of date and does not depict the current build process for the HSQUtils software on eclipse.
+
 Building the Heatseq Tool in Eclipse
 -------------------------
 

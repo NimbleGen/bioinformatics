@@ -5,7 +5,7 @@ These instructions are for building the Heatseq Tool on the Linux command line.
 
 **Section 1: Install Java**
 
-The Heatseq Tool requires Java version 7.  To check which version of Java you have installed type 'javac -version'.  If you don't have Java installed or if your version is less than 1.7 download and install the [latest Java JDK](http://www.oracle.com/technetwork/java/javase/downloads/jdk7-downloads-1880260.html).
+The Heatseq Tool requires Java version 8.  To check which version of Java you have installed type 'javac -version'.  If you don't have Java installed or if your version is less than 1.8 download and install the [latest Java JDK](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html).
 
 **Section 2: Install maven**
 
@@ -35,7 +35,7 @@ Type 'git --version' and ensure that you have git installed.  If not, download a
 
 Clone the Heatseq Tool's GitHub repository by doing the following:
 
-git clone https://<i>username</i>@github.com/NimbleGen/bioinformatics.git
+>git clone https://<i>username</i>@github.com/NimbleGen/bioinformatics.git
 
 Substituting your GitHub username for <i>username</i>.
 
@@ -43,16 +43,18 @@ Substituting your GitHub username for <i>username</i>.
 
 Build the HeatSeq Tool by doing the following:
 
-cd bioinformatics/build/heatseq_commandline<br>
-mvn install
+>cd bioinformatics/nimblegen_heatseq_build/hsqutils_commandline<br>
+>
+>mvn install
 
 After a successful build the HeatSeq application .jar file will be at:
 
-/bioinformatics/nimblegen_heatseq/target/nimblegen_heatseq-0.0.1-SNAPSHOT-<i>timestamp</i>-jar-with-dependencies.jar 
+/bioinformatics/nimblegen_heatseq_build/hsqutils_commandline/target/hsqutils_[version].jar 
 
-Where <i>timestamp</i> will be the date and time the .jar file was built.  You can now run the HeatSeq application by calling:
-
-java -jar nimblegen_heatseq-0.0.1-SNAPSHOT-<i>timestamp</i>-jar-with-dependencies.jar
+You can now run the HeatSeq application by calling:
+>cd bioinformatics/nimblegen_heatseq_build/hsqutils_commandline/target/<br>
+>
+>java -jar hsqutils_[version].jar
 
 
 
