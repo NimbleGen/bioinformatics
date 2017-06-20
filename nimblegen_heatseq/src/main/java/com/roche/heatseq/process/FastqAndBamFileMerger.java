@@ -175,7 +175,6 @@ class FastqAndBamFileMerger {
 		private FastqRecord fastqTwoRecord;
 		private final String commonReadNameBeginning;
 		private int totalMatches;
-		private int readsSkppedBecauseNotAssignedToAProbe;
 
 		public MergedSamIterator(Iterator<SAMRecord> samIter, Iterator<FastqRecord> fastq1Iter, Iterator<FastqRecord> fastq2Iter, boolean trimmingSkipped,
 				ProbeTrimmingInformation probeTrimmingInformation, String commonReadNameBeginning) {
@@ -187,7 +186,6 @@ class FastqAndBamFileMerger {
 			this.probeTrimmingInformation = probeTrimmingInformation;
 			this.commonReadNameBeginning = commonReadNameBeginning;
 			this.totalMatches = 0;
-			this.readsSkppedBecauseNotAssignedToAProbe = 0;
 			nextRecord = getNextRecordToReturn();
 		}
 
@@ -252,10 +250,6 @@ class FastqAndBamFileMerger {
 
 		public int getTotalMatches() {
 			return totalMatches;
-		}
-
-		public int getReadsSkippedBecauseNotAssignedToAProbe() {
-			return readsSkppedBecauseNotAssignedToAProbe;
 		}
 
 		@Override
