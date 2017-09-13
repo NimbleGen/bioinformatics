@@ -93,7 +93,7 @@ public class ProbeInfoFileValidator {
 		for (Set<String> matchingProbeIds : probeIdsBySequence.values()) {
 			if (matchingProbeIds.size() > 1) {
 				CliStatusConsole.logError("WARNING: The probe information found within the probe information file[" + probeInfoFile.getAbsolutePath()
-						+ "] contains the following probes which have the exact same sequence and therefore HSQUtils will not be able uniquely assign reads to either of these probes: "
+						+ "] contains the following probes which have the exact same sequence and therefore HSQutils will not be able uniquely assign reads to either of these probes: "
 						+ ListUtil.toString(new ArrayList<>(matchingProbeIds)));
 			}
 		}

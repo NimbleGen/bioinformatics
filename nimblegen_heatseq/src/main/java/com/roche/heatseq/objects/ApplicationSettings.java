@@ -18,7 +18,9 @@ package com.roche.heatseq.objects;
 
 import java.io.File;
 
+import com.roche.heatseq.process.FastqReadTrimmer.ProbeTrimmingInformation;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ParsedProbeFile;
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil.ProbeHeaderInformation;
 
 /**
@@ -29,8 +31,8 @@ import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil.
 public class ApplicationSettings {
 
 	private final File probeFile;
+	private final ParsedProbeFile parsedProbeFile;
 	private final File bamFile;
-	private final File bamFileIndex;
 	private final File fastQ1File;
 	private final File fastQ2File;
 	private final File outputDirectory;
@@ -55,6 +57,8 @@ public class ApplicationSettings {
 	private final ProbeHeaderInformation probeHeaderInformation;
 	private final boolean readsNotTrimmed;
 	private final String sampleName;
+	private final int numberOfRecordsInFastq;
+	private final ProbeTrimmingInformation probeTrimmingInformation;
 
 	/**
 	 * Default Constructor
@@ -75,14 +79,16 @@ public class ApplicationSettings {
 	 * @param programVersion
 	 * @param numProcessors
 	 */
-	public ApplicationSettings(File probeFile, File bamFile, File bamFileIndex, File fastQ1File, File fastQ2File, File outputDirectory, File tempDirectory, String outputBamFileName,
+	public ApplicationSettings(File probeFile, ParsedProbeFile parsedProbeFile, File bamFile, File fastQ1File, File fastQ2File, File outputDirectory, File tempDirectory, String outputBamFileName,
 			String outputFilePrefix, String originalBamFileName, boolean shouldOutputReports, boolean shouldExcludeProgramInBamHeader, String commandLineSignature, String programName,
 			String programVersion, int numProcessors, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, int extensionUidLength, int ligationUidLength, boolean markDuplicates,
-			boolean keepDuplicates, boolean mergePairs, boolean useStrictReadToProbeMatching, ProbeHeaderInformation probeHeaderInformation, boolean readsNotTrimmed, String sampleName) {
+			boolean keepDuplicates, boolean mergePairs, boolean useStrictReadToProbeMatching, ProbeHeaderInformation probeHeaderInformation, boolean readsNotTrimmed, String sampleName,
+			int numberOfRecordsInFastq, ProbeTrimmingInformation probeTrimmingInformation) {
+
 		super();
 		this.probeFile = probeFile;
+		this.parsedProbeFile = parsedProbeFile;
 		this.bamFile = bamFile;
-		this.bamFileIndex = bamFileIndex;
 		this.fastQ1File = fastQ1File;
 		this.fastQ2File = fastQ2File;
 		this.outputDirectory = outputDirectory;
@@ -107,6 +113,8 @@ public class ApplicationSettings {
 		this.probeHeaderInformation = probeHeaderInformation;
 		this.readsNotTrimmed = readsNotTrimmed;
 		this.sampleName = sampleName;
+		this.numberOfRecordsInFastq = numberOfRecordsInFastq;
+		this.probeTrimmingInformation = probeTrimmingInformation;
 	}
 
 	/**
@@ -121,13 +129,6 @@ public class ApplicationSettings {
 	 */
 	public File getBamFile() {
 		return bamFile;
-	}
-
-	/**
-	 * @return bamFileIndex
-	 */
-	public File getBamFileIndex() {
-		return bamFileIndex;
 	}
 
 	/**
@@ -287,6 +288,18 @@ public class ApplicationSettings {
 
 	public String getSampleName() {
 		return sampleName;
+	}
+
+	public ParsedProbeFile getParsedProbeFile() {
+		return parsedProbeFile;
+	}
+
+	public int getNumberOfRecordsInFastq() {
+		return numberOfRecordsInFastq;
+	}
+
+	public ProbeTrimmingInformation getProbeTrimmingInformation() {
+		return probeTrimmingInformation;
 	}
 
 }

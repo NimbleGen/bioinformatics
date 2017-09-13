@@ -27,5 +27,10 @@
 			<groupId>com.github.samtools</groupId>
 			<artifactId>htsjdk</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<version>1.4.196</version>
+		</dependency>
 	</dependencies>
 </project>

@@ -33,6 +33,7 @@ public class CliStatusConsole {
 
 	public static void logError(String errorMessage) {
 		System.err.println(errorMessage);
+		logger.error(errorMessage);
 	}
 
 	public static void logError(Throwable throwable) {

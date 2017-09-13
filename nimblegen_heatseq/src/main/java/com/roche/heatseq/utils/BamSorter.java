@@ -15,15 +15,6 @@
  */
 package com.roche.heatseq.utils;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileHeader.SortOrder;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordIterator;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,10 +30,49 @@ import org.slf4j.LoggerFactory;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.fastq.PicardException;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordCoordinateComparator;
+import htsjdk.samtools.SAMRecordDuplicateComparator;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SAMRecordQueryNameComparator;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+
 public class BamSorter {
 
 	private final static Logger logger = LoggerFactory.getLogger(FastqSorter.class);
-	private final static int RECORDS_PER_CHUNK = 3000000;
+	private final static int RECORDS_PER_CHUNK = 500000;
+	private final static int BAM_COMPRESSION_LEVEL = 0; // most compressed
+
+	public static void sortBamFile(File inputBamFile, File outputBamFile, File tempDirectory, final Comparator<SAMRecord> comparator) {
+		try (SamReader currentReader = SamReaderFactory.makeDefault().open(inputBamFile)) {
+			SAMFileHeader header = currentReader.getFileHeader();
+			Iterator<SAMRecord> iter = currentReader.iterator();
+			try (CloseableAndIterableIterator<SAMRecord> sortedIter = getSortedBamIterator(iter, header, tempDirectory, comparator)) {
+
+				if (comparator.getClass().equals(SAMRecordCoordinateComparator.class)) {
+					header.setSortOrder(SortOrder.coordinate);
+				} else if (comparator.getClass().equals(SAMRecordQueryNameComparator.class)) {
+					header.setSortOrder(SortOrder.queryname);
+				} else if (comparator.getClass().equals(SAMRecordDuplicateComparator.class)) {
+					header.setSortOrder(SortOrder.duplicate);
+				}
+				try (SAMFileWriter writer = new SAMFileWriterFactory().makeBAMWriter(header, true, outputBamFile, BAM_COMPRESSION_LEVEL)) {
+					while (sortedIter.hasNext()) {
+						SAMRecord nextRecord = sortedIter.next();
+						writer.addAlignment(nextRecord);
+					}
+				}
+			}
+		} catch (IOException e) {
+			throw new PicardException(e.getMessage(), e);
+		}
+
+	}
 
 	public static CloseableAndIterableIterator<SAMRecord> getSortedBamIterator(File inputBamFile, File tempDirectory, final Comparator<SAMRecord> comparator) {
 		CloseableAndIterableIterator<SAMRecord> returnIter = null;
@@ -58,6 +88,11 @@ public class BamSorter {
 
 	private static CloseableAndIterableIterator<SAMRecord> getSortedBamIterator(Iterator<SAMRecord> samIterator, SAMFileHeader header, File tempDirectory, final Comparator<SAMRecord> comparator) {
 		File chunkDirectory = new File(tempDirectory, "bam_chunks_" + System.currentTimeMillis() + "/");
+		try {
+			FileUtil.createDirectory(chunkDirectory);
+		} catch (IOException e) {
+			throw new IllegalStateException(e.getMessage(), e);
+		}
 		List<File> chunkFiles = createInitialSortedFileChunks(samIterator, header, chunkDirectory, comparator);
 		return new SortedBamIterator(chunkDirectory, chunkFiles, comparator);
 	}
@@ -74,10 +109,11 @@ public class BamSorter {
 		private final SAMRecordIterator[] iters;
 		private final SamReader[] readers;
 		private SAMRecord nextRecord;
+		private final Comparator<SAMRecord> comparator;
 
 		private SortedBamIterator(File chunkDirectory, List<File> chunkFiles, final Comparator<SAMRecord> comparator) {
 			this.chunkDirectory = chunkDirectory;
-
+			this.comparator = comparator;
 			currentSortedRecords = new TreeSet<SamRecordAndChunkIndex>(new Comparator<SamRecordAndChunkIndex>() {
 				@Override
 				public int compare(SamRecordAndChunkIndex o1, SamRecordAndChunkIndex o2) {
@@ -100,6 +136,7 @@ public class BamSorter {
 			nextRecord = getNextRecordToReturn();
 		}
 
+		@Override
 		public boolean hasNext() {
 			return nextRecord != null;
 		}
@@ -114,13 +151,23 @@ public class BamSorter {
 				if (currentIter.hasNext()) {
 					SAMRecord nextChunkRecord = currentIter.next();
 					if (!currentSortedRecords.add(new SamRecordAndChunkIndex(nextChunkRecord, chunkIndex))) {
-						throw new IllegalStateException("Provided comparator does not uniquely identify the records.");
+						// add this point we know there is a problem just collecting more info before reporting the problem.
+						SamRecordAndChunkIndex alreadyContainedRecord = null;
+						for (SamRecordAndChunkIndex samRecordAndChunk : currentSortedRecords) {
+							if (comparator.compare(samRecordAndChunk.getRecord(), nextChunkRecord) == 0) {
+								alreadyContainedRecord = samRecordAndChunk;
+							}
+						}
+						throw new IllegalStateException("Provided comparator does not uniquely identify the records.  Comparator failed on sam record[" + nextChunkRecord.getReadName() + " isReadOne:"
+								+ nextChunkRecord.getFirstOfPairFlag() + "] in chunk[" + chunkIndex + "] which matches [" + alreadyContainedRecord.getRecord().getReadName() + " isReadOne:"
+								+ alreadyContainedRecord.getRecord().getFirstOfPairFlag() + "] in chunk[" + alreadyContainedRecord.getChunkIndex() + "].");
 					}
 				}
 			}
 			return nextRecord;
 		}
 
+		@Override
 		public SAMRecord next() {
 			SAMRecord recordToReturn = nextRecord;
 			nextRecord = getNextRecordToReturn();
@@ -240,7 +287,11 @@ public class BamSorter {
 			this.header = header;
 			this.recordsToWrite = recordsToWrite;
 			this.comparator = comparator;
-			this.chunkFile = new File(tempDirectory, chunkFileIndex + "_temp_sorting.sam");
+			try {
+				this.chunkFile = File.createTempFile(chunkFileIndex + "_temp_sorting_", ".bam", tempDirectory);
+			} catch (IOException e) {
+				throw new IllegalStateException(e.getMessage(), e);
+			}
 		}
 
 		@Override
@@ -256,8 +307,7 @@ public class BamSorter {
 			try {
 				FileUtil.createNewFile(chunkFile);
 				Collections.sort(recordsToWrite, comparator);
-
-				SAMFileWriter writer = new SAMFileWriterFactory().makeBAMWriter(header, true, chunkFile, 0);
+				SAMFileWriter writer = new SAMFileWriterFactory().makeBAMWriter(header, true, chunkFile, BAM_COMPRESSION_LEVEL);
 
 				for (SAMRecord recordToWrite : recordsToWrite) {
 					writer.addAlignment(recordToWrite);
@@ -266,6 +316,32 @@ public class BamSorter {
 			} catch (IOException e) {
 				logger.warn(e.getMessage(), e);
 			}
+		}
+	}
+
+	public static class SamRecordNameAsIndexComparator implements Comparator<SAMRecord> {
+		@Override
+		public int compare(SAMRecord o1, SAMRecord o2) {
+			int result = 0;
+			try {
+				Integer one = Integer.parseInt(o1.getReadName());
+				Integer two = Integer.parseInt(o2.getReadName());
+				result = Integer.compare(one, two);
+			} catch (NumberFormatException e) {
+				result = o1.getReadName().compareTo(o2.getReadName());
+			}
+			if (result == 0) {
+				int o1PairNumber = 1;
+				if (!o1.getFirstOfPairFlag()) {
+					o1PairNumber = 2;
+				}
+				int o2PairNumber = 1;
+				if (!o2.getFirstOfPairFlag()) {
+					o2PairNumber = 2;
+				}
+				result = Integer.compare(o1PairNumber, o2PairNumber);
+			}
+			return result;
 		}
 	}
 

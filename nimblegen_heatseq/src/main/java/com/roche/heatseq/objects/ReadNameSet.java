@@ -24,11 +24,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ReadNameSet implements Set<String> {
 
 	private final Set<String> set;
-	private final String commonBeginnning;
 
-	public ReadNameSet(String commonBeginning) {
+	public ReadNameSet() {
 		set = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
-		this.commonBeginnning = commonBeginning;
 	}
 
 	@Override
@@ -63,10 +61,7 @@ public class ReadNameSet implements Set<String> {
 
 	@Override
 	public boolean add(String e) {
-		if (!e.startsWith(commonBeginnning)) {
-			throw new IllegalStateException("The provided readName[" + e + "] does not start with the expected read name beginning[" + commonBeginnning + "].");
-		}
-		e = e.replaceFirst(commonBeginnning, "");
+
 		return set.add(e);
 	}
 

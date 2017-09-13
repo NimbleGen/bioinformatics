@@ -27,10 +27,11 @@ import com.roche.sequencing.bioinformatics.common.utils.FunGeneralErrors;
 import com.roche.sequencing.bioinformatics.common.utils.LoggingUtil;
 import com.roche.sequencing.bioinformatics.common.utils.ManifestUtil;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
+import com.roche.sequencing.bioinformatics.common.verification.CliStatusConsole;
 
 public class HsqUtilsCli {
 
-	public final static String APPLICATION_NAME = "HSQUtils";
+	public final static String APPLICATION_NAME = "HSQutils";
 	private final static String JAR_FILE_NAME = "hsqutils.jar";
 	private static String applicationVersionFromManifest = "unversioned--currently running in eclipse";
 
@@ -57,7 +58,7 @@ public class HsqUtilsCli {
 			} else {
 				t.printStackTrace();
 			}
-			CliStatusConsole.logError("If you are unable to fix this issue and believe the application is in error please contact technical support at \"http://www.nimblegen.com/contact\".");
+			CliStatusConsole.logError("If you are unable to fix this issue and believe the application is in error please contact technical support at \"sequencing.roche.com/support.html\".");
 			CliStatusConsole.logError("");
 			CliStatusConsole.logError(underlineFrame);
 			CliStatusConsole.logError("");
@@ -138,8 +139,8 @@ public class HsqUtilsCli {
 				+ StringUtil.TAB + "-----------", getCommandLineOptionsGroupForAll());
 		commands.addCommand(new Command(TRIM_COMMAND_NAME, "Trim reads within the fastq files to represent the capture target regions.", TrimCli.getCommandLineOptionsGroupForTrimming()));
 		commands.addCommand(new Command(DEDUPLICATION_COMMAND_NAME,
-				"Eliminate or Identify duplicate reads and include only portions of the read that overlap with the capture target sequence in the sequence alignment (BAM file).", DeduplicationCli
-						.getCommandLineOptionsGroup()));
+				"Eliminate or Identify duplicate reads and include only portions of the read that overlap with the capture target sequence in the sequence alignment (BAM file).",
+				DeduplicationCli.getCommandLineOptionsGroup()));
 
 		return commands;
 	}

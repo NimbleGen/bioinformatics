@@ -31,10 +31,12 @@ import org.slf4j.LoggerFactory;
 
 import com.roche.heatseq.objects.ApplicationSettings;
 import com.roche.heatseq.process.BamFileValidator;
+import com.roche.heatseq.process.FastqReadTrimmer;
+import com.roche.heatseq.process.FastqReadTrimmer.ProbeTrimmingInformation;
 import com.roche.heatseq.process.FastqValidator;
 import com.roche.heatseq.process.InputFilesExistValidator;
 import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentification;
-import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentification.ReadNameDetails;
+import com.roche.heatseq.process.ReadNameTracking;
 import com.roche.heatseq.utils.BamFileUtil;
 import com.roche.sequencing.bioinformatics.common.alignment.IAlignmentScorer;
 import com.roche.sequencing.bioinformatics.common.alignment.SimpleAlignmentScorer;
@@ -51,20 +53,16 @@ import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil.ProbeHeaderInformation;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileHeader.SortOrder;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReader.Type;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 
 public class DeduplicationCli {
 	private final static Logger logger = LoggerFactory.getLogger(DeduplicationCli.class);
 
-	private final static int MAX_NUMBER_OF_PROCESSORS = 20;
-
-	private final static String SAM_FILE_EXTENSION = "sam";
+	private final static int MAX_NUMBER_OF_PROCESSORS = 24;
 
 	public final static int DEFAULT_EXTENSION_UID_LENGTH = 10;
 	public final static int DEFAULT_LIGATION_UID_LENGTH = 0;
@@ -101,7 +99,7 @@ public class DeduplicationCli {
 	// "Use a lenient validation stringency for all SAM files read by this program.", false, true);
 	private final static CommandLineOption MARK_DUPLICATES_OPTION = new CommandLineOption("Mark Duplicates", "markDuplicates", null, "Mark duplicate reads in the bam file instead of removing them.",
 			false, true);
-	private final static CommandLineOption KEEP_DUPLICATES_OPTION = new CommandLineOption("Keep Duplicates", "disableDuplicateRemoval", null,
+	private final static CommandLineOption KEEP_DUPLICATES_OPTION = new CommandLineOption("Disable Duplicate Removal", "disableDuplicateRemoval", null,
 			"Keep duplicate reads in the bam file instead of removing them. ", false, true, true);
 	private final static CommandLineOption MERGE_PAIRS_OPTION = new CommandLineOption("Merge Pairs", "mergePairs", null, "Merge pairs using the highest quality base reads from each read.", false,
 			true);
@@ -111,6 +109,8 @@ public class DeduplicationCli {
 	private final static CommandLineOption EXCLUDE_NEW_PROGRAM_IN_BAM_HEADER_OPTION = new CommandLineOption("Exclude Program in Bam Header", "excludeProgramInBamHeader", null,
 			"Don not include a program entry for this application in the bam header.", false, true, true);
 	private final static CommandLineOption SAVE_TEMP_OPTION = new CommandLineOption("Save Temp Files", "saveTemp", null, "Save temporary files.", false, true, true);
+	private final static CommandLineOption READ_NAMES_TO_TRACK_FILE_OPTION = new CommandLineOption("Read Names To Track File", "trackReadNamesFile", null,
+			"File with line delimited read names (or indexes) to track in the log.", false, false, true);
 	final static CommandLineOption VERSION_OPTION = new CommandLineOption("Print Version", "version", null, "Print the version for this application.", false, true);
 
 	// Note: these variables are for debugging purposes
@@ -188,9 +188,22 @@ public class DeduplicationCli {
 		String bamFileString = parsedCommandLine.getOptionsValue(INPUT_BAM_OPTION);
 		File samOrBamFile = new File(bamFileString);
 
+		if (parsedCommandLine.isOptionPresent(READ_NAMES_TO_TRACK_FILE_OPTION)) {
+			File readTrackingFile = new File(parsedCommandLine.getOptionsValue(READ_NAMES_TO_TRACK_FILE_OPTION));
+			try {
+				String readNames = FileUtil.readFileAsString(readTrackingFile);
+				for (String readName : readNames.split(StringUtil.NEWLINE)) {
+					ReadNameTracking.addReadNameToTrack(readName);
+				}
+			} catch (IOException e) {
+				logger.warn(e.getMessage(), e);
+			}
+
+		}
+
 		InputFilesExistValidator.validate(fastQ1File, fastQ2File, probeInfoFile, samOrBamFile);
 
-		FastqValidator.validate(fastQ1File, fastQ2File);
+		int numberOfRecordsInFastq = FastqValidator.validateAndGetNumberOfRecords(fastQ1File, fastQ2File);
 
 		ParsedProbeFile parsedProbeFile = ProbeFileUtil.parseProbeInfoFileWithValidation(probeInfoFile);
 
@@ -357,17 +370,7 @@ public class DeduplicationCli {
 				});
 			}
 
-			// Try to locate or create an index file for the input bam file
-			File bamIndexFile = null;
-			File sortedBamFile = null;
-			File validSamOrBamInputFile = null;
-			boolean isSamFormat = false;
-
-			boolean newSortedBamFileCreated = false;
-
 			try (SamReader samReader = SamReaderFactory.makeDefault().open(samOrBamFile);) {
-				isSamFormat = samReader.type() == Type.SAM_TYPE;
-
 				SAMFileHeader header = samReader.getFileHeader();
 
 				try {
@@ -409,67 +412,9 @@ public class DeduplicationCli {
 					throw new IllegalStateException("Could not find the provided BAM file[" + samOrBamFile.getAbsolutePath() + "].");
 				}
 
-				boolean isSortIndicatedInHeader = header.getSortOrder().equals(SortOrder.coordinate);
-				boolean isSamFile = FileUtil.getFileExtension(samOrBamFile).equals(SAM_FILE_EXTENSION) || isSamFormat;
-
-				if (isSortIndicatedInHeader) {
-					logger.debug("The input BAM file[" + samOrBamFile.getAbsolutePath() + "] was deemed sorted based on header information.");
-				}
-				if (!isSortIndicatedInHeader || isSamFile) {
-					CliStatusConsole.logStatus("The input SAM/BAM file is not sorted.");
-					sortedBamFile = new File(tempOutputDirectory, "sorted_" + FileUtil.getFileNameWithoutExtension(samOrBamFile.getName()) + ".bam");
-					CliStatusConsole.logStatus("Creating a sorted input BAM file at [" + sortedBamFile.getAbsolutePath() + "].");
-
-					long sortStart = System.currentTimeMillis();
-					BamFileUtil.sortOnCoordinates(samOrBamFile, sortedBamFile);
-					long sortStop = System.currentTimeMillis();
-					CliStatusConsole.logStatus("Done creating a sorted BAM file in " + DateUtil.convertMillisecondsToHHMMSS(sortStop - sortStart) + "(HH:MM:SS).");
-
-					newSortedBamFileCreated = true;
-				} else {
-					CliStatusConsole.logStatus("The BAM header indicates that the BAM file is sorted.");
-					sortedBamFile = samOrBamFile;
-				}
 			}
 
-			if (!newSortedBamFileCreated) {
-				// Look for the index in the same location as the file but with a .bai extension instead of a .bam extension
-				File tempBamIndexfile = new File(FileUtil.getFileNameWithoutExtension(bamFileString) + ".bai");
-				if (tempBamIndexfile.exists()) {
-					bamIndexFile = tempBamIndexfile;
-					CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
-				}
-
-				// Try looking for a .bai file in the same location as the bam file
-				if (bamIndexFile == null) {
-					// Try looking for a .bam.bai file in the same location as the bam file
-					tempBamIndexfile = new File(bamFileString + ".bai");
-					if (tempBamIndexfile.exists()) {
-						bamIndexFile = tempBamIndexfile;
-						CliStatusConsole.logStatus("Using the BAM Index File located at [" + bamIndexFile + "].");
-					}
-				}
-			}
-
-			// We couldn't find an index file, create one in our temp directory
-			if ((bamIndexFile == null) || !bamIndexFile.exists()) {
-				// a bam index file was not provided so create one in the default location
-				bamIndexFile = new File(tempOutputDirectory, sortedBamFile.getName() + ".bai");
-				FileUtil.createNewFile(bamIndexFile);
-				CliStatusConsole.logStatus("A BAM Index File was not found in the default location so creating bam index file at [" + bamIndexFile.getAbsolutePath() + "].");
-				long indexStart = System.currentTimeMillis();
-				try {
-					BamFileUtil.createIndex(sortedBamFile, bamIndexFile);
-					long indexStop = System.currentTimeMillis();
-					CliStatusConsole.logStatus("Done creating the BAM Index File in " + DateUtil.convertMillisecondsToHHMMSS(indexStop - indexStart) + "(HH:MM:SS).");
-				} catch (Exception e) {
-					throw new IllegalStateException("Could not create bam index file at [" + bamIndexFile.getAbsolutePath() + "].", e);
-				}
-			}
-
-			validSamOrBamInputFile = sortedBamFile;
-
-			try (SamReader samReader = SamReaderFactory.makeDefault().open(validSamOrBamInputFile)) {
+			try (SamReader samReader = SamReaderFactory.makeDefault().open(samOrBamFile)) {
 				SAMRecordIterator samIter = samReader.iterator();
 
 				boolean noEntriesInBam = false;
@@ -507,9 +452,22 @@ public class DeduplicationCli {
 
 			boolean readsNotTrimmed = parsedCommandLine.isOptionPresent(TRIMMING_SKIPPED_OPTION);
 
-			sortMergeFilterAndExtendReads(applicationName, applicationVersion, probeInfoFile, validSamOrBamInputFile, bamIndexFile, fastQ1File, fastQ2File, outputDirectory, outputBamFileName,
+			ProbeTrimmingInformation probeTrimmingInformation;
+			try {
+				probeTrimmingInformation = FastqReadTrimmer.getProbeTrimmingInformation(parsedProbeFile, probeInfoFile, !readsNotTrimmed);
+			} catch (IOException e1) {
+				throw new IllegalStateException("Unable to read probe file[" + probeInfoFile + "].");
+			}
+
+			sortMergeFilterAndExtendReads(applicationName, applicationVersion, probeInfoFile, parsedProbeFile, samOrBamFile, fastQ1File, fastQ2File, outputDirectory, outputBamFileName,
 					outputFilePrefix, tempOutputDirectory, shouldOutputInternalReports, shouldExcludeProgramInBamHeader, commandLineSignature, numProcessors, extensionUidLength, ligationUidLength,
-					allowVariableLengthUids, alignmentScorer, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching, readsNotTrimmed, probeHeaderInformation, sampleName);
+					allowVariableLengthUids, alignmentScorer, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching, readsNotTrimmed, probeHeaderInformation, sampleName,
+					numberOfRecordsInFastq, probeTrimmingInformation);
+
+			// TODO do not make the original creation of prelim output bam be sorted
+			// TODO sort the output bam based on readnames and readnumbers
+			// TODO create new bam that contains read names from fastq
+			// TODO sort new bam by coords
 
 			long applicationStop = System.currentTimeMillis();
 			CliStatusConsole.logStatus("Deduplication has completed successfully.");
@@ -522,24 +480,22 @@ public class DeduplicationCli {
 		}
 	}
 
-	private static void sortMergeFilterAndExtendReads(String applicationName, String applicationVersion, File probeFile, File bamFile, File bamIndexFile, File fastQ1File, File fastQ2File,
-			File outputDirectory, String outputBamFileName, String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputReports, boolean shouldExcludeProgramInBamHeader,
+	private static void sortMergeFilterAndExtendReads(String applicationName, String applicationVersion, File probeFile, ParsedProbeFile parsedProbeFile, File bamFile, File fastQ1File,
+			File fastQ2File, File outputDirectory, String outputBamFileName, String outputFilePrefix, File tempOutputDirectory, boolean shouldOutputReports, boolean shouldExcludeProgramInBamHeader,
 			String commandLineSignature, int numProcessors, int extensionUidLength, int ligationUidLength, boolean allowVariableLengthUids, IAlignmentScorer alignmentScorer, boolean markDuplicates,
-			boolean keepDuplicates, boolean mergePairs, boolean useStrictReadToProbeMatching, boolean readsNotTrimmed, ProbeHeaderInformation probeHeaderInformation, String sampleName) {
+			boolean keepDuplicates, boolean mergePairs, boolean useStrictReadToProbeMatching, boolean readsNotTrimmed, ProbeHeaderInformation probeHeaderInformation, String sampleName,
+			int numberOfRecordsInFastq, ProbeTrimmingInformation probeTrimmingInformation) {
 		try {
 
 			long totalTimeStart = System.currentTimeMillis();
-			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, bamFile, bamIndexFile, fastQ1File, fastQ2File, outputDirectory, tempOutputDirectory, outputBamFileName,
+			ApplicationSettings applicationSettings = new ApplicationSettings(probeFile, parsedProbeFile, bamFile, fastQ1File, fastQ2File, outputDirectory, tempOutputDirectory, outputBamFileName,
 					outputFilePrefix, bamFile.getName(), shouldOutputReports, shouldExcludeProgramInBamHeader, commandLineSignature, applicationName, applicationVersion, numProcessors,
 					allowVariableLengthUids, alignmentScorer, extensionUidLength, ligationUidLength, markDuplicates, keepDuplicates, mergePairs, useStrictReadToProbeMatching, probeHeaderInformation,
-					readsNotTrimmed, sampleName);
+					readsNotTrimmed, sampleName, numberOfRecordsInFastq, probeTrimmingInformation);
 
-			ReadNameDetails readNameDetails = PrimerReadExtensionAndPcrDuplicateIdentification.verifyReadNamesCanBeHandledByDedupAndFindCommonReadNameBeginning(applicationSettings.getFastQ1File(),
-					applicationSettings.getFastQ2File());
+			PrimerReadExtensionAndPcrDuplicateIdentification.verifyReadNamesCanBeHandledByDedup(applicationSettings.getFastQ1File(), applicationSettings.getFastQ2File());
 
-			String commonReadNameBeginning = readNameDetails.getCommonReadNameBeginning();
-
-			PrimerReadExtensionAndPcrDuplicateIdentification extendReadsAndIdentifyDuplicates = new PrimerReadExtensionAndPcrDuplicateIdentification(commonReadNameBeginning);
+			PrimerReadExtensionAndPcrDuplicateIdentification extendReadsAndIdentifyDuplicates = new PrimerReadExtensionAndPcrDuplicateIdentification();
 			extendReadsAndIdentifyDuplicates.filterBamEntriesByUidAndExtendReadsToPrimers(applicationSettings);
 
 			long totalTimeStop = System.currentTimeMillis();
@@ -576,6 +532,7 @@ public class DeduplicationCli {
 		// group.addOption(MERGE_PAIRS_OPTION);
 		// group.addOption(NOT_TRIMMED_TO_WITHIN_CAPTURE_TARGET_OPTION);
 		group.addOption(INTERNAL_REPORTS_OPTION);
+		group.addOption(READ_NAMES_TO_TRACK_FILE_OPTION);
 		group.addOption(EXCLUDE_NEW_PROGRAM_IN_BAM_HEADER_OPTION);
 		return group;
 	}

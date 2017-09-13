@@ -16,8 +16,6 @@
 
 package com.roche.heatseq.process;
 
-import htsjdk.samtools.fastq.FastqRecord;
-
 import java.io.IOException;
 
 import org.testng.Assert;
@@ -29,12 +27,14 @@ import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ParsedProbeFile;
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
 
+import htsjdk.samtools.fastq.FastqRecord;
+
 public class FastqReadTrimmerTest {
 
 	@Test(groups = { "unit" })
 	public void trimOneTest() {
 		FastqRecord record = new FastqRecord("pref", "AAAAAGGGGGTTTTTCCCCC", "qualHeader", "AAAAAGGGGGTTTTTCCCCC");
-		FastqRecord trimmedRecord = FastqReadTrimmer.trim(record, 5, 14, true);
+		FastqRecord trimmedRecord = FastqReadTrimmer.trim(record, 5, 14, true, 0);
 		Assert.assertEquals(trimmedRecord.getReadString().length(), 10);
 		Assert.assertEquals(trimmedRecord.getBaseQualityString().length(), 10);
 	}

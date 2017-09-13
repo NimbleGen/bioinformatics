@@ -364,7 +364,7 @@ public class SAMRecordUtil {
 
 		Object alternativeHitsAsObject = record.getAttribute(ALTERNATIVE_HITS_ATTRIBUTE_TAG);
 		if (alternativeHitsAsObject != null) {
-			alternativeHit = AlternativeHit.fromAttributeText(alternativeHitsAsObject.toString());
+			alternativeHit = AlternativeHit.fromAttributeText(record, alternativeHitsAsObject.toString());
 		} else {
 			alternativeHit = Collections.emptyList();
 		}
@@ -391,62 +391,53 @@ public class SAMRecordUtil {
 	}
 
 	public static class AlternativeHit {
-		private final String container;
-		private final int start;
-		private final int stop;
-		private final Strand strand;
-		private final String cigarString;
-		private final int editDistance;
+		private final SAMRecord copyOfSamRecord;
 
-		private AlternativeHit(String container, int start, int stop, Strand strand, String cigarString, int editDistance) {
+		private AlternativeHit(SAMRecord samRecord, String container, int start, int stop, Strand strand, String cigarString) {
 			super();
-			this.container = container;
-			this.start = start;
-			this.stop = stop;
-			this.strand = strand;
-			this.cigarString = cigarString;
-			this.editDistance = editDistance;
+			this.copyOfSamRecord = samRecord.deepCopy();
+			this.copyOfSamRecord.setReferenceName(container);
+			this.copyOfSamRecord.setAlignmentStart(start);
+			this.copyOfSamRecord.setReadNegativeStrandFlag(strand == Strand.REVERSE);
+			this.copyOfSamRecord.setCigarString(cigarString);
 		}
 
 		public AlternativeHit(SAMRecord record) {
 			super();
-			this.container = record.getReferenceName();
-			this.start = record.getAlignmentStart();
-			this.stop = record.getAlignmentEnd();
-			if (record.getReadNegativeStrandFlag()) {
-				this.strand = Strand.REVERSE;
-			} else {
-				this.strand = Strand.FORWARD;
-			}
-			this.cigarString = record.getCigarString();
-			this.editDistance = SAMRecordUtil.getEditDistance(record);
+			this.copyOfSamRecord = record.deepCopy();
+		}
+
+		public SAMRecord getAsSAMRecord() {
+			return copyOfSamRecord;
 		}
 
 		public String getContainer() {
-			return container;
+			return copyOfSamRecord.getReferenceName();
 		}
 
 		public int getStart() {
-			return start;
+			return copyOfSamRecord.getAlignmentStart();
 		}
 
 		public int getStop() {
-			return stop;
+			return copyOfSamRecord.getAlignmentEnd();
 		}
 
 		public Strand getStrand() {
+			Strand strand = null;
+			if (copyOfSamRecord.getReadNegativeStrandFlag()) {
+				strand = Strand.REVERSE;
+			} else {
+				strand = Strand.FORWARD;
+			}
 			return strand;
 		}
 
 		public String getCigarString() {
-			return cigarString;
+			return copyOfSamRecord.getCigarString();
 		}
 
-		public int getEditDistance() {
-			return editDistance;
-		}
-
-		public static List<AlternativeHit> fromAttributeText(String attributeText) {
+		public static List<AlternativeHit> fromAttributeText(SAMRecord samRecord, String attributeText) {
 			List<AlternativeHit> alternativeHit = new ArrayList<>();
 			String[] entries = attributeText.split(";");
 			for (String entry : entries) {
@@ -464,12 +455,12 @@ public class SAMRecordUtil {
 
 						String cigarString = fields[2];
 
-						int editDistance = Integer.parseInt(fields[3]);
+						// int editDistance = Integer.parseInt(fields[3]);
 
 						int length = CigarStringUtil.expandCigarString(cigarString).length();
 						int stop = start + length;
 
-						alternativeHit.add(new AlternativeHit(container, start, stop, strand, cigarString, editDistance));
+						alternativeHit.add(new AlternativeHit(samRecord, container, start, stop, strand, cigarString));
 
 					} catch (NumberFormatException e) {
 						logger.warn("Unable to parse the XA attribute text[" + attributeText + "] so the alternative hit will not be utilized.");
@@ -483,15 +474,15 @@ public class SAMRecordUtil {
 		public String toAttributeText() {
 			StringBuilder attributeText = new StringBuilder();
 
-			attributeText.append(container + ",");
-			if (strand == Strand.FORWARD) {
+			attributeText.append(getContainer() + ",");
+			if (getStrand() == Strand.FORWARD) {
 				attributeText.append("+");
 			} else {
 				attributeText.append("-");
 			}
-			attributeText.append(start + ",");
-			attributeText.append(cigarString + ",");
-			attributeText.append(editDistance + ";");
+			attributeText.append(getStart() + ",");
+			attributeText.append(getCigarString() + ",");
+			attributeText.append(getEditDistance(copyOfSamRecord) + ";");
 			return attributeText.toString();
 		}
 

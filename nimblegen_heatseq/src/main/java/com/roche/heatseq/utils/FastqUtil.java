@@ -4,13 +4,16 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 import com.roche.sequencing.bioinformatics.common.sequence.ISequence;
 import com.roche.sequencing.bioinformatics.common.sequence.NucleotideCodeSequence;
 import com.roche.sequencing.bioinformatics.common.utils.ArraysUtil;
 import com.roche.sequencing.bioinformatics.common.utils.FileUtil;
+import com.roche.sequencing.bioinformatics.common.utils.IlluminaFastQReadNameUtil;
 import com.roche.sequencing.bioinformatics.common.utils.fastq.FastqReader;
 import com.roche.sequencing.bioinformatics.common.utils.fastq.FastqWriter;
 
@@ -45,6 +48,22 @@ public class FastqUtil {
 		}
 	}
 
+	public static Map<String, String> getReadNameToFastqIndexMap(File fastqFile) {
+		Map<String, String> readNameToFastqIndexMap = new HashMap<>();
+
+		int fastqIndex = 0;
+		try (FastqReader reader = new FastqReader(fastqFile)) {
+			while (reader.hasNext()) {
+				FastqRecord record = reader.next();
+				String readName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(record.getReadHeader());
+				readNameToFastqIndexMap.put(readName, "" + fastqIndex);
+				fastqIndex++;
+			}
+		}
+
+		return readNameToFastqIndexMap;
+	}
+
 	public static void subSample(File fastqFile, File outputFile, int sampleSize) throws IOException {
 
 		int numberOfLines = FileUtil.countNumberOfLinesInFile(fastqFile);
@@ -52,6 +71,36 @@ public class FastqUtil {
 
 		sampleSize = Math.min(sampleSize, numberOfEntries);
 		int[] sortedSampledIndexes = getSortedSampledIndexes(numberOfEntries, sampleSize, System.currentTimeMillis());
+
+		int fastqIndex = 0;
+		int sortedSampleIndex = 0;
+		try (FastqWriter writer = new FastqWriter(outputFile)) {
+			try (FastqReader reader = new FastqReader(fastqFile)) {
+				while (reader.hasNext() && (sortedSampleIndex < sortedSampledIndexes.length)) {
+					FastqRecord record = reader.next();
+
+					if (fastqIndex == sortedSampledIndexes[sortedSampleIndex]) {
+						writer.write(record);
+						sortedSampleIndex++;
+					}
+
+					fastqIndex++;
+				}
+			}
+		}
+
+	}
+
+	public static void getFirstNEntries(File fastqFile, File outputFile, int numberOfEntries) throws IOException {
+
+		int numberOfLines = FileUtil.countNumberOfLinesInFile(fastqFile);
+		int totalNumberOfEntries = numberOfLines / LINES_PER_ENTRY;
+
+		numberOfEntries = Math.min(totalNumberOfEntries, numberOfEntries);
+		int[] sortedSampledIndexes = new int[numberOfEntries];
+		for (int i = 0; i < numberOfEntries; i++) {
+			sortedSampledIndexes[i] = i;
+		}
 
 		int fastqIndex = 0;
 		int sortedSampleIndex = 0;
@@ -98,11 +147,20 @@ public class FastqUtil {
 	}
 
 	public static void main(String[] args) {
-		File in = new File("C:\\Users\\heilmank\\Desktop\\in.fastq");
-		File out = new File("C:\\Users\\heilmank\\Desktop\\out.fastq");
+		File in = new File("D:\\kurts_space\\shared\\Todd_big\\r1.fastq");
+		File out = new File("D:\\kurts_space\\shared\\Todd_big\\r1_1000.fastq");
 
 		try {
-			subSample(in, out, 1000);
+			getFirstNEntries(in, out, 1000);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		in = new File("D:\\kurts_space\\shared\\Todd_big\\r2.fastq");
+		out = new File("D:\\kurts_space\\shared\\Todd_big\\r2_1000.fastq");
+
+		try {
+			getFirstNEntries(in, out, 1000);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

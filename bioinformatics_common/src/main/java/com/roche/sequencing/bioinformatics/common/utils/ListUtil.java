@@ -4,11 +4,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 public class ListUtil {
 
 	private ListUtil() {
 		throw new AssertionError();
+	}
+
+	public static <T> String toString(Set<T> set) {
+		List<T> list = new ArrayList<>(set);
+		return ListUtil.toString(list);
 	}
 
 	public static <T> String toString(List<T> list) {
@@ -52,6 +58,7 @@ public class ListUtil {
 	}
 
 	private static class NormalComparator<T extends Comparable<T>> implements Comparator<T> {
+		@Override
 		public int compare(T o1, T o2) {
 			return o1.compareTo(o2);
 		}

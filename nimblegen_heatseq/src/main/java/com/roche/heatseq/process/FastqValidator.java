@@ -15,8 +15,6 @@
  */
 package com.roche.heatseq.process;
 
-import htsjdk.samtools.fastq.FastqRecord;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -30,6 +28,8 @@ import org.slf4j.LoggerFactory;
 import com.roche.sequencing.bioinformatics.common.utils.fastq.FastqReader;
 import com.roche.sequencing.bioinformatics.common.utils.fastq.PicardException;
 
+import htsjdk.samtools.fastq.FastqRecord;
+
 public class FastqValidator {
 
 	private static Logger logger = LoggerFactory.getLogger(FastqValidator.class);
@@ -38,13 +38,13 @@ public class FastqValidator {
 		throw new AssertionError();
 	}
 
-	public static void validate(File fastqOne, File fastqTwo) {
+	public static int validateAndGetNumberOfRecords(File fastqOne, File fastqTwo) {
 		boolean fastqOneIsPresent = fastqOne != null;
 		int fastqOneSize = 0;
 		if (fastqOneIsPresent) {
-			fastqOneSize = validateAndGetSize(fastqOne, "FASTQ1");
+			fastqOneSize = validateAndGetNumberOfRecords(fastqOne, "FASTQ1");
 		}
-		int fastqTwoSize = validateAndGetSize(fastqTwo, "FASTQ2");
+		int fastqTwoSize = validateAndGetNumberOfRecords(fastqTwo, "FASTQ2");
 
 		if (fastqOneIsPresent && fastqOne.getAbsolutePath().equals(fastqTwo.getAbsolutePath())) {
 			throw new IllegalStateException("The same file[" + fastqTwo.getAbsolutePath() + "] was provided for FASTQ1 and FASTQ2.");
@@ -60,9 +60,11 @@ public class FastqValidator {
 			throw new IllegalStateException("The provided FASTQ1[" + fastqOne.getAbsolutePath() + "] and FASTQ2[" + fastqTwo.getAbsolutePath()
 					+ "] contained a different number of entries, the number of FASTQ1 entries[" + fastqOneSize + "] and the number of FASTQ2 entries[" + fastqTwoSize + "].");
 		}
+		return fastqOneSize;
+
 	}
 
-	private static int validateAndGetSize(File fastq, String fileName) {
+	private static int validateAndGetNumberOfRecords(File fastq, String fileName) {
 
 		if (!fastq.exists()) {
 			throw new IllegalStateException("Unable to find provided " + fileName + " file[" + fastq.getAbsolutePath() + "].");

@@ -65,7 +65,7 @@ import htsjdk.samtools.util.StringUtil;
  * Reads a fastq file.
  */
 public class FastqReader implements Iterator<FastqRecord>, Iterable<FastqRecord>, Closeable {
-	private final static int DEFAULT_BUFFER_SIZE = 4096;
+	private final static int DEFAULT_BUFFER_SIZE = 16384;
 
 	private final BufferedReader reader;
 	private FastqRecord nextRecord;
@@ -171,10 +171,12 @@ public class FastqReader implements Iterator<FastqRecord>, Iterable<FastqRecord>
 		}
 	}
 
+	@Override
 	public boolean hasNext() {
 		return nextRecord != null;
 	}
 
+	@Override
 	public FastqRecord next() {
 		if (!hasNext()) {
 			throw new NoSuchElementException("next() called when !hasNext()");
@@ -188,10 +190,12 @@ public class FastqReader implements Iterator<FastqRecord>, Iterable<FastqRecord>
 		return rec;
 	}
 
+	@Override
 	public void remove() {
 		throw new UnsupportedOperationException("Unsupported operation");
 	}
 
+	@Override
 	public Iterator<FastqRecord> iterator() {
 		return this;
 	}
@@ -200,6 +204,7 @@ public class FastqReader implements Iterator<FastqRecord>, Iterable<FastqRecord>
 		return line;
 	}
 
+	@Override
 	public void close() {
 		try {
 			reader.close();
