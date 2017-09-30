@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory;
 import com.roche.heatseq.objects.ExtendReadResults;
 import com.roche.heatseq.objects.IReadPair;
 import com.roche.heatseq.objects.ReadPair;
-import com.roche.heatseq.process.PrimerReadExtensionAndPcrDuplicateIdentification.ProbeSearchStartAndStop;
 import com.roche.heatseq.utils.SAMRecordUtil;
 import com.roche.heatseq.utils.SAMRecordUtil.AlternativeHit;
 import com.roche.sequencing.bioinformatics.common.alignment.AlignmentPair;
@@ -350,29 +349,26 @@ final class ExtendReadsToPrimer {
 		List<IReadPair> unableToExtendReadPairs = new ArrayList<IReadPair>();
 
 		for (IReadPair readPair : readPairs) {
-			AlternativeHit recordAsAlternativeHit = new AlternativeHit(readPair.getRecord());
-			AlternativeHit mateAsAlternativeHit = new AlternativeHit(readPair.getMateRecord());
-			String a = "Probe:" + probe.getSequenceName() + " " + probe.getCaptureTargetStart() + " " + probe.getCaptureTargetStop();
-			String b = "Read1:" + recordAsAlternativeHit.getContainer() + " " + recordAsAlternativeHit.getStart() + " " + recordAsAlternativeHit.getStop();
-			String c = "Read2:" + mateAsAlternativeHit.getContainer() + " " + mateAsAlternativeHit.getStart() + " " + mateAsAlternativeHit.getStop();
-			boolean probeContainsRecord = probe.getSequenceName().equals(recordAsAlternativeHit.getContainer())
-					&& doLinesOverlap(probe.getCaptureTargetStart(), probe.getCaptureTargetStop(), recordAsAlternativeHit.getStart(), recordAsAlternativeHit.getStop());
-			boolean recordUsesAltHit = SAMRecordUtil.recordHasAltHits(readPair.getRecord()) && !probeContainsRecord;
+			// AlternativeHit recordAsAlternativeHit = new AlternativeHit(readPair.getRecord());
+			// AlternativeHit mateAsAlternativeHit = new AlternativeHit(readPair.getMateRecord());
+			// boolean probeContainsRecord = probe.getSequenceName().equals(recordAsAlternativeHit.getContainer())
+			// && doLinesOverlap(probe.getCaptureTargetStart(), probe.getCaptureTargetStop(), recordAsAlternativeHit.getStart(), recordAsAlternativeHit.getStop());
+			// boolean recordUsesAltHit = SAMRecordUtil.recordHasAltHits(readPair.getRecord()) && !probeContainsRecord;
 
-			boolean probeContainsMateRecord = probe.getSequenceName().equals(mateAsAlternativeHit.getContainer())
-					&& doLinesOverlap(probe.getCaptureTargetStart(), probe.getCaptureTargetStop(), mateAsAlternativeHit.getStart(), mateAsAlternativeHit.getStop());
-			boolean mateUsesAltHit = SAMRecordUtil.recordHasAltHits(readPair.getMateRecord()) && !probeContainsMateRecord;
+			// boolean probeContainsMateRecord = probe.getSequenceName().equals(mateAsAlternativeHit.getContainer())
+			// && doLinesOverlap(probe.getCaptureTargetStart(), probe.getCaptureTargetStop(), mateAsAlternativeHit.getStart(), mateAsAlternativeHit.getStop());
+			// boolean mateUsesAltHit = SAMRecordUtil.recordHasAltHits(readPair.getMateRecord()) && !probeContainsMateRecord;
 
 			IReadPair extendedReadPair = ExtendReadsToPrimer.extendReadPair(probe, readPair, alignmentScorer);
 
 			if (extendedReadPair.isReadOneExtended() && extendedReadPair.isReadTwoExtended()) {
-				if (recordUsesAltHit) {
-					updateAlternativeHits(probeHeaderInformation, extendedReadPair.getRecord(), recordAsAlternativeHit, probe);
-				}
+				// if (recordUsesAltHit) {
+				// updateAlternativeHits(probeHeaderInformation, extendedReadPair.getRecord(), recordAsAlternativeHit, probe);
+				// }
 
-				if (mateUsesAltHit) {
-					updateAlternativeHits(probeHeaderInformation, extendedReadPair.getMateRecord(), mateAsAlternativeHit, probe);
-				}
+				// if (mateUsesAltHit) {
+				// updateAlternativeHits(probeHeaderInformation, extendedReadPair.getMateRecord(), mateAsAlternativeHit, probe);
+				// }
 
 				extendedReadPairs.add(extendedReadPair);
 			} else {
@@ -381,42 +377,6 @@ final class ExtendReadsToPrimer {
 		}
 
 		return new ExtendReadResults(extendedReadPairs, unableToExtendReadPairs);
-	}
-
-	private static boolean doLinesOverlap(int startLine1, int stopLine1, int startLine2, int stopLine2) {
-		boolean linesOverlap = (stopLine1 - startLine2 >= 0) && (stopLine2 - startLine1 >= 0);
-		return linesOverlap;
-	}
-
-	private static void updateAlternativeHits(ProbeHeaderInformation probeHeaderInformation, SAMRecord record, AlternativeHit newHit, Probe probe) {
-		List<AlternativeHit> oldHits = SAMRecordUtil.getAlternativeHitsFromAttribute(record);
-		List<AlternativeHit> newHits = new ArrayList<>();
-		AlternativeHit removedHit = null;
-
-		ProbeSearchStartAndStop probeSearchStartAndStop = PrimerReadExtensionAndPcrDuplicateIdentification.getProbeSearchBoundaries(probeHeaderInformation, probe);
-		int probeQueryStart = probeSearchStartAndStop.getStart();
-		int probeQueryStop = probeSearchStartAndStop.getStop();
-
-		for (AlternativeHit oldHit : oldHits) {
-			boolean probeOverlapsHit = probe.getSequenceName().equals(oldHit.getContainer()) && doLinesOverlap(probeQueryStart, probeQueryStop, oldHit.getStart(), oldHit.getStop());
-			if (!probeOverlapsHit) {
-				newHits.add(oldHit);
-			} else {
-				removedHit = oldHit;
-			}
-		}
-		newHits.add(newHit);
-
-		if (removedHit == null) {
-			throw new AssertionError();
-		}
-
-		String info = "Record:[" + record.getReadName() + "] is utilizing an alternative mapping for probe assignment.";
-		info += "  The following entry has been removed as an alternative mapping and will be utilized for probe assignment: [" + removedHit.toAttributeText() + "].";
-		info += "  The following entry is no longer being used as a primary alignment and has been added as an alternative mapping: [" + newHit.toAttributeText() + "].";
-		logger.info(info);
-
-		SAMRecordUtil.setAlternativeHitsAttribute(record, newHits);
 	}
 
 	/**

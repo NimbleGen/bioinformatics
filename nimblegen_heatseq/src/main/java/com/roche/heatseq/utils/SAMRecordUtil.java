@@ -360,15 +360,15 @@ public class SAMRecordUtil {
 	}
 
 	public static List<AlternativeHit> getAlternativeHitsFromAttribute(SAMRecord record) {
-		List<AlternativeHit> alternativeHit;
+		List<AlternativeHit> alternativeHits;
 
 		Object alternativeHitsAsObject = record.getAttribute(ALTERNATIVE_HITS_ATTRIBUTE_TAG);
 		if (alternativeHitsAsObject != null) {
-			alternativeHit = AlternativeHit.fromAttributeText(record, alternativeHitsAsObject.toString());
+			alternativeHits = AlternativeHit.fromAttributeText(record, alternativeHitsAsObject.toString());
 		} else {
-			alternativeHit = Collections.emptyList();
+			alternativeHits = Collections.emptyList();
 		}
-		return alternativeHit;
+		return alternativeHits;
 	}
 
 	public static String getAlternativeHitsAsString(List<AlternativeHit> alternativeHits) {
@@ -438,7 +438,7 @@ public class SAMRecordUtil {
 		}
 
 		public static List<AlternativeHit> fromAttributeText(SAMRecord samRecord, String attributeText) {
-			List<AlternativeHit> alternativeHit = new ArrayList<>();
+			List<AlternativeHit> alternativeHits = new ArrayList<>();
 			String[] entries = attributeText.split(";");
 			for (String entry : entries) {
 				String[] fields = entry.split(",");
@@ -460,7 +460,7 @@ public class SAMRecordUtil {
 						int length = CigarStringUtil.expandCigarString(cigarString).length();
 						int stop = start + length;
 
-						alternativeHit.add(new AlternativeHit(samRecord, container, start, stop, strand, cigarString));
+						alternativeHits.add(new AlternativeHit(samRecord, container, start, stop, strand, cigarString));
 
 					} catch (NumberFormatException e) {
 						logger.warn("Unable to parse the XA attribute text[" + attributeText + "] so the alternative hit will not be utilized.");
@@ -468,7 +468,19 @@ public class SAMRecordUtil {
 
 				}
 			}
-			return alternativeHit;
+
+			// go through the alternative hits for this record and update their alternative hits
+			for (AlternativeHit currentHit : alternativeHits) {
+				List<AlternativeHit> alternativeHitsForCurrentHit = new ArrayList<>(alternativeHits);
+				// remove this mapping as an alternative hit since it is now the primary mapping
+				alternativeHitsForCurrentHit.remove(currentHit);
+				// add the original mapping
+				alternativeHitsForCurrentHit.add(new AlternativeHit(samRecord));
+
+				setAlternativeHitsAttribute(currentHit.copyOfSamRecord, alternativeHitsForCurrentHit);
+			}
+
+			return alternativeHits;
 		}
 
 		public String toAttributeText() {

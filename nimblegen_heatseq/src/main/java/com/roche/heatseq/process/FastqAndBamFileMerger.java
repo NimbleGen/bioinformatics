@@ -213,11 +213,17 @@ class FastqAndBamFileMerger {
 		private SAMRecord getNextRecordToReturn() {
 			SAMRecord nextRecordToReturn = null;
 
-			while ((((samRecord == null && samIter.hasNext()) || samRecord != null)
+			samRecordLoop: while ((((samRecord == null && samIter.hasNext()) || samRecord != null)
 					&& ((fastqOneRecord == null && fastq1Iter.hasNext() && fastqTwoRecord == null && fastq2Iter.hasNext()) || (fastqOneRecord != null && fastqTwoRecord != null)))
 					&& nextRecordToReturn == null) {
 				if (samRecord == null) {
 					samRecord = samIter.next();
+
+					// handle the case where it ends on a non primary alignment
+					if (samRecord.getNotPrimaryAlignmentFlag()) {
+						samRecord = null;
+						continue samRecordLoop;
+					}
 
 					if (samRecord != null && sampleSamReadNames.size() < NUMBER_OF_SAMPLE_READ_NAMES_TO_STORE) {
 						sampleSamReadNames.add(samRecord.getReadName());

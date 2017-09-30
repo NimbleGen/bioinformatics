@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 public class JvmUtil {
@@ -297,6 +298,22 @@ public class JvmUtil {
 		return jvmDetails;
 	}
 
+	// Take from StringUtil
+	private static Random RANDOM = new Random();
+	// Taken from StringUtil
+	private static char[] CHARACTERS = new char[] { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2',
+			'3', '4', '5', '6', '7', '8', '9' };
+
+	// Taken from StringUtil
+	public synchronized static String generateRandomString(int length) {
+		char[] text = new char[length];
+		for (int i = 0; i < length; i++) {
+			text[i] = CHARACTERS[RANDOM.nextInt(CHARACTERS.length)];
+		}
+		return new String(text);
+
+	}
+
 	public static String getJvmInspectorOutput(File pathToJavaExecutable) throws URISyntaxException {
 		StringBuilder output = new StringBuilder();
 
@@ -305,35 +322,48 @@ public class JvmUtil {
 		ProcessBuilder jvmInspectorProcessBuilder = null;
 
 		if (isInJar(JavaJvmInspector.class)) {
-			InputStream inputStream = JavaJvmInspector.class.getResourceAsStream("JavaJvmInspector.class");
-			String classDirectory = JavaJvmInspector.class.getName();
-			classDirectory = classDirectory.replace(".", File.separator);
-			File tempDirectory = getTempDirectory();
-			File outputLocation = new File(tempDirectory, classDirectory + ".class");
-			if (!outputLocation.exists()) {
-				outputLocation.getParentFile().mkdirs();
-			}
-
-			OutputStream outputStream = null;
+			InputStream inputStream = null;
 			try {
-				outputStream = new FileOutputStream(outputLocation);
-				byte[] buffer = new byte[1024];
-				int len;
-				while ((len = inputStream.read(buffer)) != -1) {
-					outputStream.write(buffer, 0, len);
+				inputStream = JavaJvmInspector.class.getResourceAsStream("JavaJvmInspector.class");
+				String classDirectory = JavaJvmInspector.class.getName();
+				classDirectory = classDirectory.replace(".", File.separator);
+				File tempDirectory = getTempDirectory();
+
+				File outputLocation = new File(tempDirectory, classDirectory + "_" + System.currentTimeMillis() + "_" + generateRandomString(10) + ".class");
+				if (!outputLocation.exists()) {
+					outputLocation.getParentFile().mkdirs();
 				}
-			} catch (Exception e) {
-				throw new IllegalStateException(e.getMessage(), e);
+
+				OutputStream outputStream = null;
+				try {
+					outputStream = new FileOutputStream(outputLocation);
+					byte[] buffer = new byte[1024];
+					int len;
+					while ((len = inputStream.read(buffer)) != -1) {
+						outputStream.write(buffer, 0, len);
+					}
+				} catch (Exception e) {
+					throw new IllegalStateException(e.getMessage(), e);
+				} finally {
+					if (outputStream != null) {
+						try {
+							outputStream.close();
+						} catch (IOException e) {
+							throw new IllegalStateException(e.getMessage(), e);
+						}
+					}
+				}
+				jvmInspectorProcessBuilder = new ProcessBuilder(path, "-classpath", tempDirectory.getAbsolutePath(), JavaJvmInspector.class.getName());
 			} finally {
-				if (outputStream != null) {
+				if (inputStream != null) {
 					try {
-						outputStream.close();
+						inputStream.close();
 					} catch (IOException e) {
 						throw new IllegalStateException(e.getMessage(), e);
 					}
 				}
 			}
-			jvmInspectorProcessBuilder = new ProcessBuilder(path, "-classpath", tempDirectory.getAbsolutePath(), JavaJvmInspector.class.getName());
+
 		} else {
 			String classPath = new File(JavaJvmInspector.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getAbsolutePath();
 			jvmInspectorProcessBuilder = new ProcessBuilder(path, "-classpath", classPath, JavaJvmInspector.class.getName());
