@@ -805,14 +805,31 @@ public class PrimerReadExtensionAndPcrDuplicateIdentification {
 								readIndexToRecordsMap.put(entry.getKey(), entry.getValue());
 							}
 
-							// remove any records that don't have both pairs
+							// do not include any records that don't have both pairs
+							// do not include any records that have sequence containing N
 							Map<Integer, SAMRecordPair> readNameToFullyPairedRecordsMap = new HashMap<Integer, SAMRecordPair>();
 							for (Entry<Integer, SAMRecordPair> entry : readIndexToRecordsMap.entrySet()) {
 								Integer readIndex = entry.getKey();
 								SAMRecordPair pair = entry.getValue();
+								// do not add any records that don't have both pairs
 								if (pair.getFirstOfPairRecord() != null && pair.getSecondOfPairRecord() != null) {
-									readNameToFullyPairedRecordsMap.put(readIndex, pair);
-									readsToProbesAssignmentResults.remove(readIndex);
+
+									boolean firstOfPairContainsN = pair.getFirstOfPairRecord().getReadString().toLowerCase().contains("n");
+									boolean secondOfPairContainsN = pair.getSecondOfPairRecord().getReadString().toLowerCase().contains("n");
+									// do not include any records that have sequence containing N
+									if (!firstOfPairContainsN && !secondOfPairContainsN) {
+										readNameToFullyPairedRecordsMap.put(readIndex, pair);
+										readsToProbesAssignmentResults.remove(readIndex);
+									} else {
+										if (ReadNameTracking.shouldTrackReadName(readIndex)) {
+											String firstOfPairSequence = pair.getFirstOfPairRecord().getReadString();
+											String secondOfPairSequence = pair.getSecondOfPairRecord().getReadString();
+											String message = "Read Name[" + readIndex + "] contains an 'N' in its sequence {First_Of_Pair_Sequence[" + firstOfPairSequence
+													+ "] Second_Of_Pair_Sequence[" + secondOfPairSequence + "]} so it will not be assigned to a probe.";
+											System.out.println(message);
+											logger.info(message);
+										}
+									}
 								}
 							}
 

@@ -362,7 +362,10 @@ public class SAMRecordUtil {
 	public static List<AlternativeHit> getAlternativeHitsFromAttribute(SAMRecord record) {
 		List<AlternativeHit> alternativeHits;
 
-		Object alternativeHitsAsObject = record.getAttribute(ALTERNATIVE_HITS_ATTRIBUTE_TAG);
+		Object alternativeHitsAsObject = null;
+		if (record != null) {
+			alternativeHitsAsObject = record.getAttribute(ALTERNATIVE_HITS_ATTRIBUTE_TAG);
+		}
 		if (alternativeHitsAsObject != null) {
 			alternativeHits = AlternativeHit.fromAttributeText(record, alternativeHitsAsObject.toString());
 		} else {

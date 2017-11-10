@@ -249,7 +249,7 @@ public class DeduplicationCli {
 				if (genomeNameFromProbeInfoFile != null) {
 					isGenomeNameFromProbeFileIsRecognized = GenomeIdentifier.isGenomeNameRecognized(genomeNameFromProbeInfoFile);
 					if (!isGenomeNameFromProbeFileIsRecognized) {
-						CliStatusConsole.logStatus("WARNING: This version of HSQUtils does not recognize the specified genome build [" + genomeNameFromProbeInfoFile
+						CliStatusConsole.logStatus("WARNING: This version of HSQutils does not recognize the specified genome build [" + genomeNameFromProbeInfoFile
 								+ "] and cannot verify that the BAM file header matches the indicated reference sequence.");
 					}
 				} else {

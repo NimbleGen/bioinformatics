@@ -356,7 +356,7 @@ public class FastqSorter {
 		File fastq2File = new File("D:\\kurts_space\\shared\\hsq_stand\\S01_Typical_Batch_1_rep1_S1_R2_quality_filtered.fastq");
 		int numberOfLines = FileUtil.countNumberOfLinesInFile(fastqFile);
 		System.out.println("number of fastq entries:" + (numberOfLines / 4));
-		File tempDir = new File("C:\\Users\\heilmank\\AppData\\Local\\Temp\\proc8_Results_HSQUtils_3962064479944936215\\");
+		File tempDir = new File("C:\\Users\\heilmank\\AppData\\Local\\Temp\\proc8_Results_HSQutils_3962064479944936215\\");
 		int count = 0;
 		File namesOut = new File("C:\\Users\\heilmank\\Desktop\\fastqnames.txt");
 		File namesOut2 = new File("C:\\Users\\heilmank\\Desktop\\fastqnames2.txt");
