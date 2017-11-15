@@ -8,7 +8,7 @@
 	<packaging>pom</packaging>
 	<version>1.0</version>
 	<name>Roche NimbleGen Super POM</name>
-	<description>The Super POM for the Roche sequencing project. The top level, parent project that builds the sub-modules.</description>
+	<description>The Super POM forR the Roche sequencing project. The top level, parent project that builds the sub-modules.</description>
 
 	<dependencies>
 		<dependency>

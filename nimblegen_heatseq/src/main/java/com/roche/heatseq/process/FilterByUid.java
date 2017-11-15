@@ -49,7 +49,6 @@ import htsjdk.samtools.SAMRecord;
  * Filter a set of reads to find the best read per UID
  */
 class FilterByUid {
-	@SuppressWarnings("unused")
 	private final static Logger logger = LoggerFactory.getLogger(FilterByUid.class);
 
 	/**
@@ -69,7 +68,7 @@ class FilterByUid {
 	 *            Used to report on UID quality
 	 * @return A UidReductionResultsForAProbe containing the processing statistics and the reduced probe set
 	 */
-	static UidReductionResultsForAProbe reduceReadsByProbeAndUid(Probe probe, Map<String, SAMRecordPair> readNameToRecordsMap, ReportManager reportManager, boolean allowVariableLengthUids,
+	static UidReductionResultsForAProbe reduceReadsByProbeAndUid(Probe probe, Map<Integer, SAMRecordPair> readIndexToRecordsMap, ReportManager reportManager, boolean allowVariableLengthUids,
 			int expectedExtensionUidLength, int expectedLigationUidLength, IAlignmentScorer alignmentScorer, Set<ISequence> distinctUids, List<ISequence> uids, boolean markDuplicates,
 			boolean useStrictReadToProbeMatching) {
 
@@ -78,8 +77,7 @@ class FilterByUid {
 
 		// Process the data into a list
 		List<IReadPair> datas = new ArrayList<IReadPair>();
-		for (Entry<String, SAMRecordPair> readNameToSamRecordPairEntry : readNameToRecordsMap.entrySet()) {
-			SAMRecordPair recordPair = readNameToSamRecordPairEntry.getValue();
+		for (SAMRecordPair recordPair : readIndexToRecordsMap.values()) {
 			SAMRecord record = recordPair.getFirstOfPairRecord();
 			SAMRecord mate = recordPair.getSecondOfPairRecord();
 			boolean readPairAlignsWithProbeCoordinates = true;
@@ -179,8 +177,25 @@ class FilterByUid {
 				if (!readPair.equals(bestPair)) {
 					if (markDuplicates) {
 						readPair.markAsDuplicate();
+						if (ReadNameTracking.shouldTrackReadName(readPair.getReadName())) {
+							String message = "Read Name[" + readPair.getReadName() + "] with uid[" + uid + "] has been marked as a duplicate read.";
+							System.out.println(message);
+							logger.info(message);
+						}
+					} else {
+						if (ReadNameTracking.shouldTrackReadName(readPair.getReadName())) {
+							String message = "Read Name[" + readPair.getReadName() + "] with uid[" + uid + "] has been identified as a duplicate read.";
+							System.out.println(message);
+							logger.info(message);
+						}
 					}
 					duplicateReadPairs.add(readPair);
+				} else {
+					if (ReadNameTracking.shouldTrackReadName(readPair.getReadName())) {
+						String message = "Read Name[" + readPair.getReadName() + "] with uid[" + uid + "] has been identified as a unique read.";
+						System.out.println(message);
+						logger.info(message);
+					}
 				}
 			}
 
@@ -266,15 +281,15 @@ class FilterByUid {
 	private static IReadPair findBestData(List<IReadPair> data) {
 		IReadPair bestPair = null;
 		int bestScore = Integer.MIN_VALUE;
-		String bestReadPairId = null;
-
+		Integer bestReadPairIdAsInteger = null;
 		for (IReadPair currentPair : data) {
 			int currentScore = currentPair.getTotalSequenceQualityScore();
 			String currentPairId = currentPair.getReadName();
-			if ((currentScore > bestScore) || (currentScore == bestScore && (currentPairId.compareTo(bestReadPairId) < 0))) {
+			Integer currentPairIdAsInteger = Integer.parseInt(currentPairId);
+			if ((currentScore > bestScore) || ((currentScore == bestScore) && (Integer.compare(currentPairIdAsInteger, bestReadPairIdAsInteger) < 0))) {
 				bestScore = currentScore;
 				bestPair = currentPair;
-				bestReadPairId = currentPairId;
+				bestReadPairIdAsInteger = currentPairIdAsInteger;
 			}
 		}
 

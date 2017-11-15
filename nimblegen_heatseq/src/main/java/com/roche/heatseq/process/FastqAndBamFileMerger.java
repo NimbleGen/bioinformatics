@@ -18,8 +18,10 @@ package com.roche.heatseq.process;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -33,8 +35,8 @@ import com.roche.heatseq.utils.FastqSorter;
 import com.roche.heatseq.utils.SAMRecordUtil;
 import com.roche.sequencing.bioinformatics.common.utils.DateUtil;
 import com.roche.sequencing.bioinformatics.common.utils.IlluminaFastQReadNameUtil;
+import com.roche.sequencing.bioinformatics.common.utils.ListUtil;
 import com.roche.sequencing.bioinformatics.common.utils.fastq.PicardException;
-import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileHeader.SortOrder;
@@ -89,14 +91,8 @@ class FastqAndBamFileMerger {
 		return isTrimAmountCorrect;
 	}
 
-	public static File createMergedFastqAndBamFileFromUnsortedFiles(File unsortedBamFile, File unsortedBamFileIndex, File unsortedFastq1File, File unsortedFastq2File, File outputBamFile,
-			boolean trimmingSkipped, ProbeTrimmingInformation probeTrimmingInformation, File tempDirectory, Map<String, Set<Probe>> readsToProbeAssignments, String commonReadNameBeginning) {
-		return createMergedFastqAndBamFileFromUnsortedFilesNew(unsortedBamFile, unsortedBamFileIndex, unsortedFastq1File, unsortedFastq2File, outputBamFile, trimmingSkipped, probeTrimmingInformation,
-				tempDirectory, readsToProbeAssignments, commonReadNameBeginning);
-	}
-
 	/**
-	 * Working from an unsorted bam file and unsorted paired fastQ files, output a merged, coordinate sorted bam file.
+	 * Working from an unsorted bam file and unsorted paired fastQ files, output a merged, read index sorted bam file.
 	 * 
 	 * This is essentially a classic hash join: http://en.wikipedia.org/wiki/Hash_join#Classic_hash_join
 	 * 
@@ -105,61 +101,67 @@ class FastqAndBamFileMerger {
 	 * @param unsortedBamFile
 	 * @param unsortedFastq1File
 	 * @param unsortedFastq2File
-	 * @param outputBamFile
+	 * @param bamFileWithRawFastqSequencesAndQualities
 	 * @return
 	 */
-	private static File createMergedFastqAndBamFileFromUnsortedFilesNew(File unsortedBamFile, File unsortedBamFileIndex, File unsortedFastq1File, File unsortedFastq2File, File outputBamFile,
-			boolean trimmingSkipped, ProbeTrimmingInformation probeTrimmingInformation, File tempDirectory, Map<String, Set<Probe>> readsToProbeAssignments, String commonReadNameBeginning) {
+	public static File createBamFileWithDataFromRawFastqFiles(File unsortedDedupedBamFile, File originalUnsortedFastq1File, File originalUnsortedFastq2File, File dedupedBamFileWithOriginalNames,
+			boolean trimmingSkipped, ProbeTrimmingInformation probeTrimmingInformation, File tempDirectory, MergedSamNamingConvention namingConvention, boolean useFastqSequenceAndQualities,
+			boolean shouldCheckIBamfTrimmed, Comparator<FastqRecord> fastqComparator, Comparator<SAMRecord> bamComparator, boolean useFastqIndexesAsFastqReadNamesWhenMerging,
+			boolean addIndexFromInputFastqToNameWithUnderscoreDelimiter) {
 		// Each new iteration starts at the first record.
+		try (CloseableIterator<FastqRecord> fastq1Iter = FastqSorter.getSortedFastqIterator(originalUnsortedFastq1File, tempDirectory, fastqComparator,
+				addIndexFromInputFastqToNameWithUnderscoreDelimiter)) {
+			try (CloseableIterator<FastqRecord> fastq2Iter = FastqSorter.getSortedFastqIterator(originalUnsortedFastq2File, tempDirectory, fastqComparator,
+					addIndexFromInputFastqToNameWithUnderscoreDelimiter)) {
 
-		long bamSortStart = System.currentTimeMillis();
-		try (CloseableAndIterableIterator<SAMRecord> samIter = BamSorter.getSortedBamIterator(unsortedBamFile, tempDirectory, new BamSorter.SamRecordNameComparator())) {
+				long bamSortStart = System.currentTimeMillis();
+				try (CloseableAndIterableIterator<SAMRecord> samIter = BamSorter.getSortedBamIterator(unsortedDedupedBamFile, tempDirectory, bamComparator)) {
 
-			long bamSortStop = System.currentTimeMillis();
-			logger.info("time to sort bam:" + DateUtil.convertMillisecondsToHHMMSS(bamSortStop - bamSortStart));
+					long bamSortStop = System.currentTimeMillis();
+					logger.info("Time to sort bam by integer read names (read indexes from raw fastq files):" + DateUtil.convertMillisecondsToHHMMSSMMM(bamSortStop - bamSortStart) + "(HH:MM:SS:MMM)");
 
-			long fastqOneSortStart = System.currentTimeMillis();
-			CloseableIterator<FastqRecord> fastq1Iter = FastqSorter.getSortedFastqIterator(unsortedFastq1File, tempDirectory, new FastqSorter.FastqRecordNameComparator());
-			long fastqOneSortStop = System.currentTimeMillis();
-			logger.info("time to sort fastq1:" + DateUtil.convertMillisecondsToHHMMSS(fastqOneSortStop - fastqOneSortStart));
+					long mergeStart = System.currentTimeMillis();
+					SAMFileHeader header = null;
+					try (SamReader samReader = SamReaderFactory.makeDefault().open(unsortedDedupedBamFile)) {
+						header = samReader.getFileHeader();
+						header.setSortOrder(SortOrder.unsorted);
+					} catch (IOException e) {
+						throw new PicardException(e.getMessage(), e);
+					}
 
-			long fastqTwoSortStart = System.currentTimeMillis();
-			CloseableIterator<FastqRecord> fastq2Iter = FastqSorter.getSortedFastqIterator(unsortedFastq2File, tempDirectory, new FastqSorter.FastqRecordNameComparator());
-			long fastqTwoSortStop = System.currentTimeMillis();
-			logger.info("time to sort fastq2:" + DateUtil.convertMillisecondsToHHMMSS(fastqTwoSortStop - fastqTwoSortStart));
-			long mergeStart = System.currentTimeMillis();
+					// Make a sorted, bam file writer with the fastest level of compression (0)
+					SAMFileWriter samWriter = new SAMFileWriterFactory().setMaxRecordsInRam(PrimerReadExtensionAndPcrDuplicateIdentification.DEFAULT_MAX_RECORDS_IN_RAM).setTempDirectory(tempDirectory)
+							.makeBAMWriter(header, true, dedupedBamFileWithOriginalNames, 0);
 
-			SAMFileHeader header = null;
-			try (SamReader samReader = SamReaderFactory.makeDefault().open(unsortedBamFile)) {
-				header = samReader.getFileHeader();
-			} catch (IOException e) {
-				throw new PicardException(e.getMessage(), e);
+					MergedSamIterator mergedSamIterator = new MergedSamIterator(samIter, fastq1Iter, fastq2Iter, trimmingSkipped, probeTrimmingInformation, namingConvention,
+							useFastqSequenceAndQualities, shouldCheckIBamfTrimmed, useFastqIndexesAsFastqReadNamesWhenMerging);
+					while (mergedSamIterator.hasNext()) {
+						samWriter.addAlignment(mergedSamIterator.next());
+					}
+
+					long mergeStop = System.currentTimeMillis();
+
+					logger.info("Done merging raw fastq names with deduped bam file[" + dedupedBamFileWithOriginalNames.getAbsolutePath() + "]:"
+							+ DateUtil.convertMillisecondsToHHMMSS(mergeStop - mergeStart));
+
+					if (mergedSamIterator.getTotalMatches() == 0) {
+						throw new IllegalStateException(
+								"The read names in the input Fastq files do not match the reads names in the provided bam/sam file.  Some sample Bam File Record Read Names are as follows: ["
+										+ ListUtil.toString(mergedSamIterator.getSampleSamReadNames()) + "].  Some sample Fastq Read Names are as follows: ["
+										+ ListUtil.toString(mergedSamIterator.getSampleFastqReadNames()) + "].");
+					}
+
+					samWriter.close();
+				}
+
 			}
-			header.setSortOrder(SortOrder.coordinate);
-
-			// Make a sorted, bam file writer with the fastest level of compression
-			SAMFileWriter samWriter = new SAMFileWriterFactory().setMaxRecordsInRam(PrimerReadExtensionAndPcrDuplicateIdentification.DEFAULT_MAX_RECORDS_IN_RAM).setTempDirectory(tempDirectory)
-					.makeBAMWriter(header, false, outputBamFile, 0);
-
-			MergedSamIterator mergedSamIterator = new MergedSamIterator(samIter, fastq1Iter, fastq2Iter, trimmingSkipped, probeTrimmingInformation, commonReadNameBeginning);
-			while (mergedSamIterator.hasNext()) {
-				samWriter.addAlignment(mergedSamIterator.next());
-			}
-
-			long mergeStop = System.currentTimeMillis();
-
-			logger.info("Done merging[" + outputBamFile.getAbsolutePath() + "]:" + DateUtil.convertMillisecondsToHHMMSS(mergeStop - mergeStart));
-
-			if (mergedSamIterator.getTotalMatches() == 0) {
-				throw new IllegalStateException("The read names in the input Fastq files do not match the reads names in the provided bam/sam file.");
-			}
-
-			fastq1Iter.close();
-			fastq2Iter.close();
-			samWriter.close();
 		}
 
-		return outputBamFile;
+		return dedupedBamFileWithOriginalNames;
+	}
+
+	public static enum MergedSamNamingConvention {
+		FASTQ_READ_NAME, SAM_BAM_READ_NAME, INDEX_AFTER_UNDERSCORE_DELIMITER_IN_FASTQ_READ_NAME
 	}
 
 	private static class MergedSamIterator implements Iterator<SAMRecord> {
@@ -169,71 +171,178 @@ class FastqAndBamFileMerger {
 		private final Iterator<FastqRecord> fastq2Iter;
 		private final boolean trimmingSkipped;
 		private final ProbeTrimmingInformation probeTrimmingInformation;
+		private final MergedSamNamingConvention namingConvention;
+		private final boolean useFastqSequenceAndQualities;
+		private final boolean shouldCheckIfBamTrimmed;
+		private final boolean useFastqIndexesAsFastqReadNamesWhenMerging;
+		// these are used for logging purposes, basically to give the user some example names when the readnames in the fastq and sam files do not match
+		private final static int NUMBER_OF_SAMPLE_READ_NAMES_TO_STORE = 5;
+		private final Set<String> sampleSamReadNames;
+		private final Set<String> sampleFastqReadNames;
+
 		private SAMRecord nextRecord;
 		private SAMRecord samRecord;
 		private FastqRecord fastqOneRecord;
 		private FastqRecord fastqTwoRecord;
-		private final String commonReadNameBeginning;
-		private int totalMatches;
+		private int totalMatchingPairs;
+		private int fastqIndex;
+		private String lastSamRecordName;
+		private boolean lastSamRecordIsFirstOfPair;
+		private String lastSamRecordDescription;
 
 		public MergedSamIterator(Iterator<SAMRecord> samIter, Iterator<FastqRecord> fastq1Iter, Iterator<FastqRecord> fastq2Iter, boolean trimmingSkipped,
-				ProbeTrimmingInformation probeTrimmingInformation, String commonReadNameBeginning) {
+				ProbeTrimmingInformation probeTrimmingInformation, MergedSamNamingConvention namingConvention, boolean useFastqSequenceAndQualities, boolean shouldCheckIfBamTrimmed,
+				boolean useFastqIndexesAsFastqReadNamesWhenMerging) {
 			super();
 			this.samIter = samIter;
 			this.fastq1Iter = fastq1Iter;
 			this.fastq2Iter = fastq2Iter;
 			this.trimmingSkipped = trimmingSkipped;
 			this.probeTrimmingInformation = probeTrimmingInformation;
-			this.commonReadNameBeginning = commonReadNameBeginning;
-			this.totalMatches = 0;
+			this.totalMatchingPairs = 0;
+			this.namingConvention = namingConvention;
+			this.useFastqSequenceAndQualities = useFastqSequenceAndQualities;
+			this.shouldCheckIfBamTrimmed = shouldCheckIfBamTrimmed;
+			this.useFastqIndexesAsFastqReadNamesWhenMerging = useFastqIndexesAsFastqReadNamesWhenMerging;
+			this.fastqIndex = -1;
+			this.sampleSamReadNames = new HashSet<>();
+			this.sampleFastqReadNames = new HashSet<>();
 			nextRecord = getNextRecordToReturn();
 		}
 
 		private SAMRecord getNextRecordToReturn() {
 			SAMRecord nextRecordToReturn = null;
-			while (((samRecord == null && samIter.hasNext()) || (fastqOneRecord == null && fastq1Iter.hasNext() && fastqTwoRecord == null && fastq2Iter.hasNext())) && nextRecordToReturn == null) {
+
+			samRecordLoop: while ((((samRecord == null && samIter.hasNext()) || samRecord != null)
+					&& ((fastqOneRecord == null && fastq1Iter.hasNext() && fastqTwoRecord == null && fastq2Iter.hasNext()) || (fastqOneRecord != null && fastqTwoRecord != null)))
+					&& nextRecordToReturn == null) {
 				if (samRecord == null) {
 					samRecord = samIter.next();
-				}
 
-				if (fastqOneRecord == null) {
-					fastqOneRecord = fastq1Iter.next();
-				}
-
-				if (fastqTwoRecord == null) {
-					fastqTwoRecord = fastq2Iter.next();
-				}
-
-				String samName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(commonReadNameBeginning, samRecord.getReadName());
-				String fastqOneName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(commonReadNameBeginning, fastqOneRecord.getReadHeader());
-				String fastqTwoName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(commonReadNameBeginning, fastqTwoRecord.getReadHeader());
-				// make sure the fastq files have the same read header
-				int fastqComp = fastqOneName.compareTo(fastqTwoName);
-				if (fastqComp < 0) {
-					fastqOneRecord = null;
-				} else if (fastqComp > 0) {
-					fastqTwoRecord = null;
-				} else if (fastqComp == 0) {
-					int samToFastqComparison = samName.compareTo(fastqOneName);
-					if (samToFastqComparison < 0) {
+					// handle the case where it ends on a non primary alignment
+					if (samRecord.getNotPrimaryAlignmentFlag()) {
 						samRecord = null;
-					} else if (samToFastqComparison > 0) {
-						fastqOneRecord = null;
-						fastqTwoRecord = null;
-					} else if (samToFastqComparison == 0) {
-						totalMatches++;
-						if (samRecord.getFirstOfPairFlag()) {
-							nextRecordToReturn = checkAndStoreFastqInfoInRecord(samRecord, fastqOneRecord.getReadString(), fastqOneRecord.getBaseQualityString(), trimmingSkipped,
-									probeTrimmingInformation);
-						} else {
-							nextRecordToReturn = checkAndStoreFastqInfoInRecord(samRecord, fastqTwoRecord.getReadString(), fastqTwoRecord.getBaseQualityString(), trimmingSkipped,
-									probeTrimmingInformation);
-						}
-						samRecord = null;
+						continue samRecordLoop;
+					}
+
+					if (samRecord != null && sampleSamReadNames.size() < NUMBER_OF_SAMPLE_READ_NAMES_TO_STORE) {
+						sampleSamReadNames.add(samRecord.getReadName());
 					}
 				}
+
+				if (fastqOneRecord == null && fastqTwoRecord == null) {
+					fastqIndex++;
+					fastqOneRecord = fastq1Iter.next();
+					fastqTwoRecord = fastq2Iter.next();
+
+					if (fastqOneRecord != null && sampleFastqReadNames.size() < NUMBER_OF_SAMPLE_READ_NAMES_TO_STORE) {
+						sampleFastqReadNames.add(fastqOneRecord.getReadHeader());
+					}
+				}
+
+				String samName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(samRecord.getReadName());
+
+				String fastqOneName = fastqOneRecord.getReadHeader();
+				String fastqTwoName = fastqTwoRecord.getReadHeader();
+
+				int lastIndexOfUnderscore = fastqOneName.lastIndexOf(FastqSorter.FASTQ_NAME_AND_INDEX_DELIMITER);
+				if ((lastIndexOfUnderscore >= 0) && (lastIndexOfUnderscore < fastqOneName.length())) {
+					fastqOneName = fastqOneName.substring(0, lastIndexOfUnderscore);
+				}
+
+				lastIndexOfUnderscore = fastqTwoName.lastIndexOf(FastqSorter.FASTQ_NAME_AND_INDEX_DELIMITER);
+				if ((lastIndexOfUnderscore >= 0) && (lastIndexOfUnderscore < fastqTwoName.length())) {
+					fastqTwoName = fastqTwoName.substring(0, lastIndexOfUnderscore);
+				}
+
+				fastqOneName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(fastqOneName);
+				fastqTwoName = IlluminaFastQReadNameUtil.getUniqueIdForReadHeader(fastqTwoName);
+
+				// make sure the fastq files have the same read header
+				int fastqComp = fastqOneName.compareTo(fastqTwoName);
+				if (fastqComp != 0) {
+					throw new IllegalStateException("The read names within the Fastq files do not match, Fastq1 has read name [" + fastqOneName + "] at line [" + (totalMatchingPairs * 4)
+							+ "] whereas Fastq2 has read name [" + fastqTwoName + "] at line [" + (totalMatchingPairs * 4) + "].");
+				}
+				int samToFastqComparison = 0;
+				if (useFastqIndexesAsFastqReadNamesWhenMerging) {
+					Integer samNameAsInt = Integer.parseInt(samName);
+					samToFastqComparison = Integer.compare(samNameAsInt, fastqIndex);
+				} else {
+					samToFastqComparison = samName.compareTo(fastqOneName);
+				}
+				if (samToFastqComparison < 0) {
+					boolean recordsUniqueIdentifiersMatch = samRecord != null && lastSamRecordName != null && samRecord.getReadName().equals(lastSamRecordName)
+							&& samRecord.getFirstOfPairFlag() == lastSamRecordIsFirstOfPair;
+					if (recordsUniqueIdentifiersMatch) {
+						String readNumberString = "Read 1/2";
+						if (samRecord.getSecondOfPairFlag()) {
+							readNumberString = "Read 2/2";
+						}
+						logger.warn("Duplicate SAMRecord entry for " + readNumberString + " with Read Name[" + samRecord.getReadName() + "].  The records are as follows:[" + samRecord + "], ["
+								+ lastSamRecordDescription + "].  Only the first entry will be used, skipping all subsequent, duplicate entries.");
+					} else {
+						logger.warn("Skipping SAMRecorq entry[" + samRecord + "] because it doesn't match values in the fastq files.");
+					}
+					lastSamRecordName = samRecord.getReadName();
+					lastSamRecordDescription = samRecord.toString();
+					lastSamRecordIsFirstOfPair = samRecord.getFirstOfPairFlag();
+					samRecord = null;
+				} else if (samToFastqComparison > 0) {
+					fastqOneRecord = null;
+					fastqTwoRecord = null;
+				} else if (samToFastqComparison == 0) {
+					FastqRecord fastqRecord = null;
+					if (samRecord.getFirstOfPairFlag()) {
+						fastqRecord = fastqOneRecord;
+					} else {
+						fastqRecord = fastqTwoRecord;
+
+						fastqOneRecord = null;
+						fastqTwoRecord = null;
+						totalMatchingPairs++;
+					}
+					String readString = samRecord.getReadString();
+					String qualityString = samRecord.getBaseQualityString();
+					String readName = null;
+					if (useFastqSequenceAndQualities) {
+						readString = fastqRecord.getReadString();
+						qualityString = fastqRecord.getBaseQualityString();
+					}
+					if (namingConvention == MergedSamNamingConvention.FASTQ_READ_NAME) {
+						readName = fastqOneName;
+					} else if (namingConvention == MergedSamNamingConvention.INDEX_AFTER_UNDERSCORE_DELIMITER_IN_FASTQ_READ_NAME) {
+						String fastqReadName = fastqRecord.getReadHeader();
+						lastIndexOfUnderscore = fastqReadName.lastIndexOf(FastqSorter.FASTQ_NAME_AND_INDEX_DELIMITER);
+						if ((lastIndexOfUnderscore >= 0) && (lastIndexOfUnderscore < fastqReadName.length())) {
+							// grab the index that was placed by the FastqSorter
+							readName = fastqReadName.substring(lastIndexOfUnderscore + FastqSorter.FASTQ_NAME_AND_INDEX_DELIMITER.length(), fastqReadName.length());
+						} else {
+							throw new IllegalStateException("The provided Fastsq Records do not terminate in an underscore id pattern as required by the "
+									+ MergedSamNamingConvention.INDEX_AFTER_UNDERSCORE_DELIMITER_IN_FASTQ_READ_NAME.name() + " naming convention.");
+						}
+					} else if (namingConvention == MergedSamNamingConvention.SAM_BAM_READ_NAME) {
+						readName = samRecord.getReadName();
+					} else {
+						throw new AssertionError();
+					}
+					lastSamRecordName = samRecord.getReadName();
+					lastSamRecordDescription = samRecord.toString();
+					lastSamRecordIsFirstOfPair = samRecord.getFirstOfPairFlag();
+					nextRecordToReturn = checkAndStoreFastqInfoInRecord(samRecord, readString, qualityString, trimmingSkipped, probeTrimmingInformation, readName, shouldCheckIfBamTrimmed);
+					samRecord = null;
+				}
+
 			}
 			return nextRecordToReturn;
+		}
+
+		public Set<String> getSampleSamReadNames() {
+			return Collections.unmodifiableSet(sampleSamReadNames);
+		}
+
+		public Set<String> getSampleFastqReadNames() {
+			return Collections.unmodifiableSet(sampleFastqReadNames);
 		}
 
 		@Override
@@ -249,7 +358,7 @@ class FastqAndBamFileMerger {
 		}
 
 		public int getTotalMatches() {
-			return totalMatches;
+			return totalMatchingPairs;
 		}
 
 		@Override
@@ -257,14 +366,15 @@ class FastqAndBamFileMerger {
 			throw new IllegalStateException("Method not implemented.");
 
 		}
+
 	}
 
 	private static SAMRecord checkAndStoreFastqInfoInRecord(SAMRecord samRecord, String readSequenceFromFastq, String readBaseQualityFromFastq, boolean trimmingSkipped,
-			ProbeTrimmingInformation probeTrimmingInformation) {
-		if (!trimmingSkipped && !isTrimAmountCorrect(samRecord, readSequenceFromFastq, readBaseQualityFromFastq, trimmingSkipped, probeTrimmingInformation)) {
+			ProbeTrimmingInformation probeTrimmingInformation, String readName, boolean shouldCheckIfBamTrimmed) {
+		if (!trimmingSkipped && (shouldCheckIfBamTrimmed && !isTrimAmountCorrect(samRecord, readSequenceFromFastq, readBaseQualityFromFastq, trimmingSkipped, probeTrimmingInformation))) {
 			throw new UnableToMergeFastqAndBamFilesException();
 		}
-		return storeFastqInfoInRecord(samRecord, readSequenceFromFastq, readBaseQualityFromFastq);
+		return storeFastqInfoInRecord(samRecord, readSequenceFromFastq, readBaseQualityFromFastq, readName);
 	}
 
 	/**
@@ -276,11 +386,12 @@ class FastqAndBamFileMerger {
 	 * @param uid
 	 * @return
 	 */
-	private static SAMRecord storeFastqInfoInRecord(SAMRecord record, String readSequenceFromFastq, String readBaseQualityFromFastq) {
+	private static SAMRecord storeFastqInfoInRecord(SAMRecord record, String readSequenceFromFastq, String readBaseQualityFromFastq, String readName) {
 		int mappedReadLength = record.getReadLength();
 		SAMRecordUtil.setMappedReadLength(record, mappedReadLength);
 		record.setReadString(readSequenceFromFastq);
 		record.setBaseQualityString(readBaseQualityFromFastq);
+		record.setReadName(readName);
 		return record;
 	}
 }

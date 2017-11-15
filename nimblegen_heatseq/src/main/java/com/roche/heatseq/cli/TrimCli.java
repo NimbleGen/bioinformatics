@@ -92,7 +92,7 @@ class TrimCli {
 
 		InputFilesExistValidator.validate(fastQ1File, fastQ2File, probeFile);
 
-		FastqValidator.validate(fastQ1File, fastQ2File);
+		FastqValidator.validateAndGetNumberOfRecords(fastQ1File, fastQ2File);
 
 		long requiredSpaceInBytes = fastQ1File.length() * 2;
 		long usableSpaceInBytes = outputDirectory.getUsableSpace();

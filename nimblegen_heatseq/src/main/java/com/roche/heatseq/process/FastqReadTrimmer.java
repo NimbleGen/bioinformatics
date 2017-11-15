@@ -15,10 +15,6 @@
  */
 package com.roche.heatseq.process;
 
-import htsjdk.samtools.fastq.FastqRecord;
-import htsjdk.samtools.fastq.FastqWriter;
-import htsjdk.samtools.fastq.FastqWriterFactory;
-
 import java.io.File;
 import java.io.IOException;
 
@@ -35,6 +31,10 @@ import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ParsedProbeFil
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil;
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil.ProbeHeaderInformation;
+
+import htsjdk.samtools.fastq.FastqRecord;
+import htsjdk.samtools.fastq.FastqWriter;
+import htsjdk.samtools.fastq.FastqWriterFactory;
 
 public class FastqReadTrimmer {
 
@@ -53,7 +53,7 @@ public class FastqReadTrimmer {
 		logger.info("read one--first base to keep:" + readOneTrimFromStart + "  lastBaseToKeep:" + readOneTrimStop);
 		logger.info("read two--first base to keep:" + readTwoTrimFromStart + "  lastBaseToKeep:" + readTwoTrimStop);
 
-		PrimerReadExtensionAndPcrDuplicateIdentification.verifyReadNamesCanBeHandledByDedupAndFindCommonReadNameBeginning(inputFastqOneFile, inputFastqTwoFile);
+		PrimerReadExtensionAndPcrDuplicateIdentification.verifyReadNamesCanBeHandledByDedup(inputFastqOneFile, inputFastqTwoFile);
 
 		if (!trimPrimers) {
 			performThreePrimeTrimming = false;
@@ -64,18 +64,18 @@ public class FastqReadTrimmer {
 		} catch (PicardException e) {
 			throw new IllegalStateException("Unable to parse Fastq File One[" + inputFastqOneFile.getAbsolutePath() + "].  " + e.getMessage());
 		}
-		CliStatusConsole.logStatus("Finished trimming (1 of 2): " + inputFastqOneFile.getAbsolutePath() + ".  The trimmed output has been placed at " + outputFastqOneFile.getAbsolutePath() + "."
-				+ StringUtil.NEWLINE);
+		CliStatusConsole.logStatus(
+				"Finished trimming (1 of 2): " + inputFastqOneFile.getAbsolutePath() + ".  The trimmed output has been placed at " + outputFastqOneFile.getAbsolutePath() + "." + StringUtil.NEWLINE);
 		try {
 			trimReads(inputFastqTwoFile, outputFastqTwoFile, readTwoTrimFromStart, readTwoTrimStop, performThreePrimeTrimming);
 		} catch (PicardException e) {
 			throw new IllegalStateException("Unable to parse input Fastq File Two[" + inputFastqTwoFile.getAbsolutePath() + "].  " + e.getMessage());
 		}
-		CliStatusConsole.logStatus("Finished trimming (2 of 2):" + inputFastqTwoFile.getAbsolutePath() + ".  The trimmed output has been placed at " + outputFastqTwoFile.getAbsolutePath() + "."
-				+ StringUtil.NEWLINE);
+		CliStatusConsole.logStatus(
+				"Finished trimming (2 of 2):" + inputFastqTwoFile.getAbsolutePath() + ".  The trimmed output has been placed at " + outputFastqTwoFile.getAbsolutePath() + "." + StringUtil.NEWLINE);
 	}
 
-	static ProbeTrimmingInformation getProbeTrimmingInformation(ParsedProbeFile probeInfo, File probeInfoFile, boolean trimPrimers) throws IOException {
+	public static ProbeTrimmingInformation getProbeTrimmingInformation(ParsedProbeFile probeInfo, File probeInfoFile, boolean trimPrimers) throws IOException {
 		ProbeInfoStats probeInfoStats = collectStatsFromProbeInformation(probeInfo);
 
 		logger.info(probeInfoStats.toString());
@@ -150,7 +150,7 @@ public class FastqReadTrimmer {
 		return new ProbeInfoStats(maxExtensionPrimerLength, maxLigationPrimerLength, maxCaptureTargetLength, minExtensionPrimerLength, minLigationPrimerLength, minCaptureTargetLength);
 	}
 
-	static class ProbeTrimmingInformation {
+	public static class ProbeTrimmingInformation {
 		private final boolean performThreePrimeTrimming;
 		private final int readOneTrimFromStart;
 		private final int readOneTrimStop;
@@ -277,14 +277,16 @@ public class FastqReadTrimmer {
 			throw new IllegalStateException("Unable to create an output file at [" + outputFastqFile.getAbsolutePath() + "].", e);
 		}
 
+		int recordIndex = 0;
 		FastqWriterFactory factory = new FastqWriterFactory();
 		FastqWriter fastQWriter = factory.newWriter(outputFastqFile);
 		try {
 			try (FastqReader fastQReader = new FastqReader(inputFastqFile)) {
 				while (fastQReader.hasNext()) {
 					FastqRecord record = fastQReader.next();
-					FastqRecord newRecord = trim(record, firstBaseToKeep, lastBaseToKeep, performThreePrimeTrimming);
+					FastqRecord newRecord = trim(record, firstBaseToKeep, lastBaseToKeep, performThreePrimeTrimming, recordIndex);
 					fastQWriter.write(newRecord);
+					recordIndex++;
 				}
 			}
 		} finally {
@@ -292,13 +294,14 @@ public class FastqReadTrimmer {
 		}
 	}
 
-	static FastqRecord trim(FastqRecord record, int firstBaseToKeep, int lastBaseToKeep, boolean performThreePrimeTrimming) {
+	static FastqRecord trim(FastqRecord record, int firstBaseToKeep, int lastBaseToKeep, boolean performThreePrimeTrimming, int recordIndex) {
+		String readName = record.getReadHeader();
 		String readString = record.getReadString();
 		String readQuality = record.getBaseQualityString();
 
 		TrimmedRead trimmedRead = trim(readString, readQuality, firstBaseToKeep, lastBaseToKeep, performThreePrimeTrimming);
 
-		FastqRecord newRecord = new FastqRecord(record.getReadHeader(), trimmedRead.getTrimmedReadString(), record.getBaseQualityHeader(), trimmedRead.getTrimmedReadQuality());
+		FastqRecord newRecord = new FastqRecord(readName, trimmedRead.getTrimmedReadString(), record.getBaseQualityHeader(), trimmedRead.getTrimmedReadQuality());
 		return newRecord;
 
 	}
@@ -306,6 +309,11 @@ public class FastqReadTrimmer {
 	static TrimmedRead trim(String readString, String readQuality, int firstBaseToKeep, int lastBaseToKeep, boolean performThreePrimeTrimming) {
 		if (firstBaseToKeep >= readString.length()) {
 			throw new IllegalArgumentException("Unable to trim " + firstBaseToKeep + " bases from the beginning of a sequence with length[" + readString.length() + "]");
+		}
+
+		if (readString.length() != readQuality.length()) {
+			throw new IllegalStateException("The Read String[" + readString + "] and Read Quality[" + readQuality + "] are not of the same length, their lengths are [" + readString.length()
+					+ "] and [" + readQuality.length() + "] respectively.");
 		}
 
 		int lastBase = readString.length() - 1;

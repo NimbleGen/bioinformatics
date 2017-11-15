@@ -932,7 +932,7 @@ public final class FileUtil {
 			units = BYTES;
 		}
 
-		double relativeSize = (double) sizeInBytes / divisor;
+		double relativeSize = sizeInBytes / divisor;
 		String fileSizeLabel = "";
 
 		synchronized (DF) {

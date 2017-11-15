@@ -39,6 +39,7 @@ import com.roche.sequencing.bioinformatics.common.sequence.IupacNucleotideCodeSe
 import com.roche.sequencing.bioinformatics.common.sequence.Strand;
 import com.roche.sequencing.bioinformatics.common.utils.StringUtil;
 import com.roche.sequencing.bioinformatics.common.utils.probeinfo.Probe;
+import com.roche.sequencing.bioinformatics.common.utils.probeinfo.ProbeFileUtil.ProbeHeaderInformation;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
@@ -170,6 +171,7 @@ final class ExtendReadsToPrimer {
 				String readTwoExtendedBaseQualities = sequenceTwoQualityString.substring(readTwoExtensionDetails.getReadStart(), readTwoExtensionDetails.getReadStop() + 1);
 				int readTwoReferenceLength = probe.getCaptureTargetSequence().size();
 				CigarString cigarString = readTwoExtensionDetails.getAlignmentCigarString();
+
 				if (readTwoIsOnReverseStrand) {
 					readTwoExtendedSequence = readTwoExtendedSequence.getReverseCompliment();
 					readTwoExtendedBaseQualities = StringUtil.reverse(readTwoExtendedBaseQualities);
@@ -342,33 +344,32 @@ final class ExtendReadsToPrimer {
 		return primerEndIndexInRead;
 	}
 
-	static ExtendReadResults extendReadsToPrimers(Probe probe, List<IReadPair> readPairs, IAlignmentScorer alignmentScorer) {
+	static ExtendReadResults extendReadsToPrimers(ProbeHeaderInformation probeHeaderInformation, Probe probe, List<IReadPair> readPairs, IAlignmentScorer alignmentScorer) {
 		List<IReadPair> extendedReadPairs = new ArrayList<IReadPair>();
 		List<IReadPair> unableToExtendReadPairs = new ArrayList<IReadPair>();
 
 		for (IReadPair readPair : readPairs) {
-			AlternativeHit recordAsAlternativeHit = new AlternativeHit(readPair.getRecord());
-			AlternativeHit mateAsAlternativeHit = new AlternativeHit(readPair.getMateRecord());
+			// AlternativeHit recordAsAlternativeHit = new AlternativeHit(readPair.getRecord());
+			// AlternativeHit mateAsAlternativeHit = new AlternativeHit(readPair.getMateRecord());
+			// boolean probeContainsRecord = probe.getSequenceName().equals(recordAsAlternativeHit.getContainer())
+			// && doLinesOverlap(probe.getCaptureTargetStart(), probe.getCaptureTargetStop(), recordAsAlternativeHit.getStart(), recordAsAlternativeHit.getStop());
+			// boolean recordUsesAltHit = SAMRecordUtil.recordHasAltHits(readPair.getRecord()) && !probeContainsRecord;
 
-			boolean probeContainsRecord = probe.getSequenceName().equals(recordAsAlternativeHit.getContainer()) && probe.getCaptureTargetStart() <= recordAsAlternativeHit.getStart()
-					&& probe.getCaptureTargetStop() >= recordAsAlternativeHit.getStop();
-			boolean recordUsesAltHit = SAMRecordUtil.recordHasAltHits(readPair.getRecord()) && !probeContainsRecord;
-
-			boolean probeContainsMateRecord = probe.getSequenceName().equals(mateAsAlternativeHit.getContainer()) && probe.getCaptureTargetStart() <= mateAsAlternativeHit.getStart()
-					&& probe.getCaptureTargetStop() >= mateAsAlternativeHit.getStop();
-			boolean mateUsesAltHit = SAMRecordUtil.recordHasAltHits(readPair.getMateRecord()) && !probeContainsMateRecord;
+			// boolean probeContainsMateRecord = probe.getSequenceName().equals(mateAsAlternativeHit.getContainer())
+			// && doLinesOverlap(probe.getCaptureTargetStart(), probe.getCaptureTargetStop(), mateAsAlternativeHit.getStart(), mateAsAlternativeHit.getStop());
+			// boolean mateUsesAltHit = SAMRecordUtil.recordHasAltHits(readPair.getMateRecord()) && !probeContainsMateRecord;
 
 			IReadPair extendedReadPair = ExtendReadsToPrimer.extendReadPair(probe, readPair, alignmentScorer);
 
-			if (recordUsesAltHit) {
-				updateAlternativeHits(extendedReadPair.getRecord(), recordAsAlternativeHit, probe);
-			}
-
-			if (mateUsesAltHit) {
-				updateAlternativeHits(extendedReadPair.getMateRecord(), mateAsAlternativeHit, probe);
-			}
-
 			if (extendedReadPair.isReadOneExtended() && extendedReadPair.isReadTwoExtended()) {
+				// if (recordUsesAltHit) {
+				// updateAlternativeHits(probeHeaderInformation, extendedReadPair.getRecord(), recordAsAlternativeHit, probe);
+				// }
+
+				// if (mateUsesAltHit) {
+				// updateAlternativeHits(probeHeaderInformation, extendedReadPair.getMateRecord(), mateAsAlternativeHit, probe);
+				// }
+
 				extendedReadPairs.add(extendedReadPair);
 			} else {
 				unableToExtendReadPairs.add(readPair);
@@ -376,30 +377,6 @@ final class ExtendReadsToPrimer {
 		}
 
 		return new ExtendReadResults(extendedReadPairs, unableToExtendReadPairs);
-	}
-
-	private static void updateAlternativeHits(SAMRecord record, AlternativeHit newHit, Probe probe) {
-		List<AlternativeHit> oldHits = SAMRecordUtil.getAlternativeHitsFromAttribute(record);
-		List<AlternativeHit> newHits = new ArrayList<>();
-		AlternativeHit removedHit = null;
-		for (AlternativeHit hit : oldHits) {
-			boolean probeOverlapsHit = probe.getSequenceName().equals(hit.getContainer()) && probe.getCaptureTargetStart() <= hit.getStart() && probe.getCaptureTargetStop() >= hit.getStop();
-			if (!probeOverlapsHit) {
-				newHits.add(hit);
-			} else {
-				removedHit = hit;
-			}
-		}
-		newHits.add(newHit);
-
-		String info = "Record:[" + record.getReadName() + "] is utilizing an alternative mapping for probe assignment.";
-		if (removedHit != null) {
-			info += "  The following entry has been removed as an alternative mapping and will be utilized for probe assignment: [" + removedHit.toAttributeText() + "].";
-		}
-		info += "  The following entry has been added as an alternative mapping: [" + newHit.toAttributeText() + "].";
-		logger.info(info);
-
-		SAMRecordUtil.setAlternativeHitsAttribute(record, newHits);
 	}
 
 	/**

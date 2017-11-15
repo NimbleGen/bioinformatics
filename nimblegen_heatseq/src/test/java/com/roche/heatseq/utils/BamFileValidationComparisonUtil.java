@@ -98,12 +98,16 @@ public class BamFileValidationComparisonUtil {
 	}
 
 	public static void compareSingleBamFiles() throws IOException {
-		Genome genome = new Genome(new File("R:\\SoftwareDevelopment\\GenomeViewer\\hg19.gnm"));
 
-		File newBamFile = new File("C:\\Users\\heilmank\\Desktop\\a\\1_1\\output.bam");
+		Genome genome = new Genome(new File("D:\\kurts_space\\sequence\\hg19_genome.gnm"));
+
+		File newBamFile = new File("D:\\kurts_space\\shared\\hsq_stand\\results_small\\S01_Typical_Batch_1_rep1_S1_dedup.bam");
 		// this is the old
-		File oldBamFile = new File("C:\\Users\\heilmank\\Desktop\\a\\1_0\\output.bam");
+		File oldBamFile = new File("D:\\kurts_space\\shared\\hsq_stand\\results_small3\\S01_Typical_Batch_1_rep1_S1_dedup.bam");
 		compareBamFiles(oldBamFile, newBamFile, genome);
+
+		String report = compareBamFiles(oldBamFile, newBamFile, genome);
+		FileUtil.writeStringToFile(new File("C:\\Users\\heilmank\\Desktop\\report.txt"), report);
 	}
 
 	public static void validateBamFiles() throws IOException {
@@ -116,7 +120,12 @@ public class BamFileValidationComparisonUtil {
 		checkBamCigarString(inputBamFile, genome, verbose);
 	}
 
-	private static void compareBamFiles(File oldSamFile, File newSamFile, Genome genome) throws FileNotFoundException {
+	private static String compareBamFiles(File oldSamFile, File newSamFile, Genome genome) throws FileNotFoundException {
+		return compareBamFiles(oldSamFile, newSamFile, genome, false);
+	}
+
+	private static String compareBamFiles(File oldSamFile, File newSamFile, Genome genome, boolean shouldConvertNegativeStrand) throws FileNotFoundException {
+		StringBuilder report = new StringBuilder();
 		Map<String, RecordPair> oldBamMap = parseBamFile(oldSamFile);
 		Map<String, RecordPair> newBamMap = parseBamFile(newSamFile);
 
@@ -246,7 +255,7 @@ public class BamFileValidationComparisonUtil {
 				if (shouldSkip) {
 					fixedCompareSkipped++;
 				} else {
-					if (isProbeNegativeStrand) {
+					if (shouldConvertNegativeStrand && isProbeNegativeStrand) {
 						fixedNewOneCigar = convertNewCigarStringToOld(newOneCigar);
 						fixedNewTwoCigar = convertNewCigarStringToOld(newTwoCigar);
 
@@ -260,6 +269,10 @@ public class BamFileValidationComparisonUtil {
 					ComparisonResult fixedResult = compare(oldOneReadString, oldTwoReadString, newOneReadString, newTwoReadString, oldOneCigar, oldTwoCigar, fixedNewOneCigar, fixedNewTwoCigar,
 							oldOneMd, oldTwoMd, fixedNewOneMd, fixedNewTwoMd, oldOneStart, oldTwoStart, newOneStart, newTwoStart, oldOneStop, oldTwoStop, fixedNewOneStop, fixedNewTwoStop);
 
+					if (fixedResult.allButMdMatch()) {
+						System.out.println(readName);
+					}
+
 					if (allFixedResults == null) {
 						allFixedResults = fixedResult;
 					} else {
@@ -268,34 +281,37 @@ public class BamFileValidationComparisonUtil {
 
 					// note: this should not get hit once the comparisons match
 					if (!fixedResult.allButMdMatch()) {
-						System.out.println("=============================================================");
-						System.out.println(readName);
-						System.out.println(
-								oldRecordPair.getRecordOne().getReferenceName() + ":" + oldRecordPair.getRecordOne().getAlignmentStart() + "-" + oldRecordPair.getRecordOne().getAlignmentEnd());
-						System.out.println("-----" + ":ONE:" + recordOneStrand + "-------------------------------------" + oldProbeId);
-						outputComparisonOfRecords(oldOneReadString, oldOneCigar, oldOneMd, oldOneStart, oldOneStop, newOneReadString, fixedNewOneCigar, fixedNewOneMd, newOneStart, fixedNewOneStop);
+						report.append("=============================================================" + StringUtil.NEWLINE);
+						report.append(readName + StringUtil.NEWLINE);
+						report.append(oldRecordPair.getRecordOne().getReferenceName() + ":" + oldRecordPair.getRecordOne().getAlignmentStart() + "-" + oldRecordPair.getRecordOne().getAlignmentEnd()
+								+ StringUtil.NEWLINE);
+						report.append("-----" + ":ONE:" + recordOneStrand + "-------------------------------------" + oldProbeId + StringUtil.NEWLINE);
+						report.append(outputComparisonOfRecords(oldOneReadString, oldOneCigar, oldOneMd, oldOneStart, oldOneStop, newOneReadString, fixedNewOneCigar, fixedNewOneMd, newOneStart,
+								fixedNewOneStop) + StringUtil.NEWLINE);
 
-						System.out.println("-----" + ":TWO:" + recordTwoStrand + "-------------------------------------");
-						outputComparisonOfRecords(oldTwoReadString, oldTwoCigar, oldTwoMd, oldTwoStart, oldTwoStop, newTwoReadString, fixedNewTwoCigar, fixedNewTwoMd, newTwoStart, fixedNewTwoStop);
+						report.append("-----" + ":TWO:" + recordTwoStrand + "-------------------------------------" + StringUtil.NEWLINE);
+						report.append(outputComparisonOfRecords(oldTwoReadString, oldTwoCigar, oldTwoMd, oldTwoStart, oldTwoStop, newTwoReadString, fixedNewTwoCigar, fixedNewTwoMd, newTwoStart,
+								fixedNewTwoStop) + StringUtil.NEWLINE);
 
-						System.out.println("=============================================================");
+						report.append("=============================================================" + StringUtil.NEWLINE);
 
 					}
 				}
 			}
 		}
-		System.out.println("--------------------------------------");
-		System.out.println("FIXED RESULTS:");
-		System.out.println(allFixedResults.getReport() + " skipped:" + fixedCompareSkipped + " md_mismatches_only:" + mdMismatches + " assignedToDifferentProbes:" + assignedToDifferentProbes);
-		System.out.println("In_Old_But_Not_New:" + inOldButNotNew + " In_New_But_Not_Old:" + inNewButNotOld + " In_Both:" + inBoth);
+		report.append("--------------------------------------");
+		report.append("FIXED RESULTS:");
+		report.append(allFixedResults.getReport() + " skipped:" + fixedCompareSkipped + " md_mismatches_only:" + mdMismatches + " assignedToDifferentProbes:" + assignedToDifferentProbes
+				+ StringUtil.NEWLINE);
+		report.append("In_Old_But_Not_New:" + inOldButNotNew + " In_New_But_Not_Old:" + inNewButNotOld + " In_Both:" + inBoth + StringUtil.NEWLINE);
 		if (inOldButNotNewList.size() > 0) {
-			System.out.println("**In Old but Not New:" + ListUtil.toString(inOldButNotNewList));
+			report.append("**In Old but Not New:" + ListUtil.toString(inOldButNotNewList) + StringUtil.NEWLINE);
 		}
 		if (inNewButNotOldList.size() > 0) {
-			System.out.println("**In New but Not Old:" + ListUtil.toString(inNewButNotOldList));
+			report.append("**In New but Not Old:" + ListUtil.toString(inNewButNotOldList) + StringUtil.NEWLINE);
 		}
-		System.out.println("Duplicate in old, Unique in New:" + ListUtil.toString(new ArrayList<String>(dupInOld_uniqueInNew)));
-		System.out.println("Unique in old, Duplicate in New:" + ListUtil.toString(new ArrayList<String>(uniqueInOld_dupInNew)));
+		report.append("Duplicate in old, Unique in New:" + ListUtil.toString(new ArrayList<String>(dupInOld_uniqueInNew)));
+		report.append("Unique in old, Duplicate in New:" + ListUtil.toString(new ArrayList<String>(uniqueInOld_dupInNew)) + StringUtil.NEWLINE);
 
 		Comparator<String> stringComparator = new AlphaNumericStringComparator(true);
 
@@ -323,12 +339,13 @@ public class BamFileValidationComparisonUtil {
 		});
 
 		for (String probeId : probeIds) {
-			System.out
-					.println(probeId + StringUtil.TAB + newProbeTally.getCount(probeId) + StringUtil.TAB + newUniqueProbeTally.getCount(probeId) + StringUtil.TAB + newDupProbeTally.getCount(probeId));
+			report.append(probeId + StringUtil.TAB + newProbeTally.getCount(probeId) + StringUtil.TAB + newUniqueProbeTally.getCount(probeId) + StringUtil.TAB + newDupProbeTally.getCount(probeId)
+					+ StringUtil.NEWLINE);
 		}
 
-		System.out.println();
-		System.out.println();
+		report.append("");
+		report.append("");
+		return report.toString();
 	}
 
 	public static ComparisonResult compare(String oldOneReadString, String oldTwoReadString, String newOneReadString, String newTwoReadString, String oldOneCigar, String oldTwoCigar,
@@ -617,25 +634,29 @@ public class BamFileValidationComparisonUtil {
 		}
 	}
 
-	public static void outputComparisonOfRecords(String recordOneReadString, String recordOneCigarString, String recordOneMismatchDetails, int recordOneStart, int recordOneStop,
+	public static StringBuilder outputComparisonOfRecords(String recordOneReadString, String recordOneCigarString, String recordOneMismatchDetails, int recordOneStart, int recordOneStop,
 			String recordTwoReadString, String recordTwoCigarString, String recordTwoMismatchDetails, int recordTwoStart, int recordTwoStop) {
 
-		printDetail("SEQ:", recordOneReadString, recordTwoReadString);
-		printDetail("CIG:", recordOneCigarString, recordTwoCigarString);
-		printDetail(" MD:", (String) recordOneMismatchDetails, recordTwoMismatchDetails);
-		printDetail("STT:", "" + recordOneStart, "" + recordTwoStart);
-		printDetail("STP:", "" + recordOneStop, "" + recordTwoStop);
+		StringBuilder print = new StringBuilder();
+		print.append(printDetail("SEQ:", recordOneReadString, recordTwoReadString) + StringUtil.NEWLINE);
+		print.append(printDetail("CIG:", recordOneCigarString, recordTwoCigarString) + StringUtil.NEWLINE);
+		print.append(printDetail(" MD:", recordOneMismatchDetails, recordTwoMismatchDetails) + StringUtil.NEWLINE);
+		print.append(printDetail("STT:", "" + recordOneStart, "" + recordTwoStart) + StringUtil.NEWLINE);
+		print.append(printDetail("STP:", "" + recordOneStop, "" + recordTwoStop) + StringUtil.NEWLINE);
+		return print;
 	}
 
-	private static void printDetail(String description, String stringOne, String stringTwo) {
-		printDetail(description, stringOne, stringTwo, false);
+	private static StringBuilder printDetail(String description, String stringOne, String stringTwo) {
+		return printDetail(description, stringOne, stringTwo, false);
 	}
 
-	private static void printDetail(String description, String stringOne, String stringTwo, boolean alwaysDisplay) {
+	private static StringBuilder printDetail(String description, String stringOne, String stringTwo, boolean alwaysDisplay) {
+		StringBuilder print = new StringBuilder();
 		if (!stringOne.equals(stringTwo) || alwaysDisplay) {
-			System.out.println("1_" + description + stringOne);
-			System.out.println("2_" + description + stringTwo);
+			print.append("1_" + description + stringOne + StringUtil.NEWLINE);
+			print.append("2_" + description + stringTwo + StringUtil.NEWLINE);
 		}
+		return print;
 	}
 
 }

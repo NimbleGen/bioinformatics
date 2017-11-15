@@ -18,6 +18,7 @@ package com.roche.sequencing.bioinformatics.common.utils.probeinfo;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,10 +32,18 @@ import java.util.Set;
  */
 public class ParsedProbeFile implements Iterable<Probe> {
 	private final Map<String, List<Probe>> probesBySequence;
+	private final Map<String, Probe> probesByProbeId;
+	private int maxProbeIdLength;
 
 	public ParsedProbeFile() {
 		super();
 		probesBySequence = new LinkedHashMap<String, List<Probe>>();
+		probesByProbeId = new HashMap<String, Probe>();
+		this.maxProbeIdLength = 0;
+	}
+
+	public int getMaxProbeIdLength() {
+		return maxProbeIdLength;
 	}
 
 	/**
@@ -50,8 +59,15 @@ public class ParsedProbeFile implements Iterable<Probe> {
 			probes = new ArrayList<Probe>();
 		}
 
+		maxProbeIdLength = Math.max(maxProbeIdLength, probe.getProbeId().length());
+
 		probes.add(probe);
 		probesBySequence.put(sequenceName, probes);
+		probesByProbeId.put(probe.getProbeId(), probe);
+	}
+
+	public Probe getProbe(String probeId) {
+		return probesByProbeId.get(probeId);
 	}
 
 	/**

@@ -653,6 +653,7 @@ public class BamFileUtil {
 			return character;
 		}
 
+		@Override
 		public String toString() {
 			String value;
 			if (isMatch) {
@@ -671,6 +672,16 @@ public class BamFileUtil {
 			return value;
 		}
 
+	}
+
+	public static void main(String[] args) {
+		File newBamFile = new File("D:\\kurts_space\\shared\\hsq_stand\\results_small\\S01_Typical_Batch_1_rep1_S1_dedup.bam");
+		File newSamFile = new File("D:\\kurts_space\\shared\\hsq_stand\\results_small\\S01_Typical_Batch_1_rep1_S1_dedup.sam");
+		convertBamToSam(newBamFile, newSamFile);
+		// this is the old
+		File oldBamFile = new File("D:\\kurts_space\\shared\\hsq_stand\\results_small2\\S01_Typical_Batch_1_rep1_S1_dedup.bam");
+		File oldSamFile = new File("D:\\kurts_space\\shared\\hsq_stand\\results_small2\\S01_Typical_Batch_1_rep1_S1_dedup.sam");
+		convertBamToSam(oldBamFile, oldSamFile);
 	}
 
 }
